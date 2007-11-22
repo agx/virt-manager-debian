@@ -26,12 +26,13 @@ from time import time
 import logging
 from socket import gethostbyaddr, gethostname
 import dbus
+import threading
+import gtk
 
 from virtManager.domain import vmmDomain
 from virtManager.network import vmmNetwork
 from virtManager.netdev import vmmNetDevice
 
-# static methods for getting various bits out of the URI
 def get_local_hostname():
     try:
         (host, aliases, ipaddrs) = gethostbyaddr(gethostname())
@@ -39,44 +40,6 @@ def get_local_hostname():
     except:
         logging.warning("Unable to resolve local hostname for machine")
         return "localhost"
-    
-def get_short_hostname(uri):
-    hostname = get_hostname(uri)
-    offset = hostname.find(".")
-    if offset > 0 and not hostname[0].isdigit():
-        return hostname[0:offset]
-    return hostname
-
-def get_hostname(uri):
-    try:
-        (scheme, username, netloc, path, query, fragment) = uri_split(uri)
-        
-        if netloc != "":
-            return netloc
-    except Exception, e:
-        logging.warning("Cannot parse URI %s: %s" % (uri, str(e)))
-            
-    return get_local_hostname()
-    
-def is_remote(uri):
-    try:
-        (scheme, username, netloc, path, query, fragment) = uri_split(uri)
-        if netloc == "":
-            return False
-        return True
-    except:
-        return True
-
-def get_transport(uri):
-    try:
-        (scheme, username, netloc, path, query, fragment) = uri_split(uri)
-        if scheme:
-            offset = scheme.index("+")
-            if offset > 0:
-                return [scheme[offset:], username]
-    except:
-        pass
-    return [None, None]
 
 # Standard python urlparse is utterly braindead - refusing to parse URIs
 # in any useful fashion unless the 'scheme' is in some pre-defined white
@@ -133,38 +96,42 @@ class vmmConnection(gobject.GObject):
                            [str]),
         "resources-sampled": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
                               []),
-        "disconnected": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE, [str])
+        "state-changed": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
+                          []),
+        "connect-error": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
+                          [str]),
         }
 
-    def __init__(self, config, uri, readOnly, active=True):
+    STATE_DISCONNECTED = 0
+    STATE_CONNECTING = 1
+    STATE_ACTIVE = 2
+    STATE_INACTIVE = 3
+
+    def __init__(self, config, uri, readOnly = None):
         self.__gobject_init__()
         self.config = config
-        self.uri = uri
         self.readOnly = readOnly
-        self._active = active
 
-        openURI = uri
-        if openURI == "Xen":
-            openURI = None
+        self.connectThread = None
+        self.connectError = None
+        self.uri = uri
+        if self.uri is None or self.uri.lower() == "xen":
+            self.uri = "xen:///"
 
-        if readOnly is None:
-            try:
-                self.vmm = libvirt.open(openURI)
-                self.readOnly = False
-            except:
-                self.vmm = libvirt.openReadOnly(openURI)
-                self.readOnly = True
-        else:
-            if readOnly:
-                self.vmm = libvirt.openReadOnly(openURI)
-            else:
-                self.vmm = libvirt.open(openURI)
+        self.state = self.STATE_DISCONNECTED
+        self.vmm = None
 
+        # Host network devices. name -> vmmNetDevice object
         self.netdevs = {}
+        # Virtual networks UUUID -> vmmNetwork object
         self.nets = {}
+        # Virtual machines. UUID -> vmmDomain object
         self.vms = {}
+        # Running virtual machines. UUID -> vmmDomain object
         self.activeUUIDs = []
+        # Resource utilization statistics
         self.record = []
+        self.hostinfo = None
 
         self.detect_network_devices()
 
@@ -205,10 +172,12 @@ class vmmConnection(gobject.GObject):
                 # welcomed...
                 sysfspath = obj.GetPropertyString("linux.sysfs_path")
 
-                # Sick, disgusting hack for Xen netloop crack which renames
-                # ethN -> pethN, but which HAL never sees
+                # If running a device in bridged mode, there's a reasonable
+                # chance that the actual ethernet device has been renamed to
+                # something else. ethN -> pethN
                 psysfspath = sysfspath[0:len(sysfspath)-len(name)] + "p" + name
                 if os.path.exists(psysfspath):
+                    name = "p" + name
                     sysfspath = psysfspath
 
                 brportpath = os.path.join(sysfspath, "brport")
@@ -244,47 +213,61 @@ class vmmConnection(gobject.GObject):
         return self.readOnly
 
     def get_type(self):
+        if self.vmm is None:
+            return None
         return self.vmm.getType()
 
-    def get_name(self):
+    def get_short_hostname(self):
+        hostname = self.get_hostname()
+        offset = hostname.find(".")
+        if offset > 0 and not hostname[0].isdigit():
+            return hostname[0:offset]
+        return hostname
+
+    def get_hostname(self, resolveLocal=False):
         try:
             (scheme, username, netloc, path, query, fragment) = uri_split(self.uri)
 
-            i = scheme.find("+")
-            if i > 0:
-                scheme = scheme[0:i]
-
-            if netloc == "":
-                netloc = self.get_local_hostname()
-
-            if scheme == "xen":
-                return "Xen on %s" % netloc
-            elif scheme == "qemu":
-                if path == "/session":
-                    return "QEMU session on %s" % netloc
-                else:
-                    return "QEMU system on %s" % netloc
-            elif scheme == "test":
-                return "Test on %s" % netloc
+            if netloc != "":
+                return netloc
         except Exception, e:
             logging.warning("Cannot parse URI %s: %s" % (self.uri, str(e)))
 
-        return self.uri
-
-    def get_local_hostname(self):
-        return get_local_hostname()
-
-    def get_short_hostname(self):
-        return get_short_hostname(self.uri)
-
-    def get_hostname(self):
-        return get_hostname(self.uri)
+        if resolveLocal:
+            return get_local_hostname()
+        return "localhost"
 
     def get_transport(self):
-        return get_transport(self.uri)
+        try:
+            (scheme, username, netloc, path, query, fragment) = uri_split(self.uri)
+            if scheme:
+                offset = scheme.index("+")
+                if offset > 0:
+                    return [scheme[offset+1:], username]
+        except:
+            pass
+        return [None, None]
+
+    def get_driver(self):
+        try:
+            (scheme, username, netloc, path, query, fragment) = uri_split(self.uri)
+            if scheme:
+                offset = scheme.find("+")
+                if offset > 0:
+                    return scheme[:offset]
+                return scheme
+        except Exception, e:
+            pass
+        return "xen"
 
     def is_remote(self):
-        return is_remote(self.uri)
+        try:
+            (scheme, username, netloc, path, query, fragment) = uri_split(self.uri)
+            if netloc == "":
+                return False
+            return True
+        except:
+            return True
 
     def get_uri(self):
         return self.uri
@@ -298,13 +281,96 @@ class vmmConnection(gobject.GObject):
     def get_net_device(self, path):
         return self.netdevs[path]
 
+    def open(self):
+        if self.state != self.STATE_DISCONNECTED:
+            return
+
+        self.state = self.STATE_CONNECTING
+        self.emit("state-changed")
+
+        logging.debug("Scheduling background open thread for " + self.uri)
+        self.connectThread = threading.Thread(target = self._open_thread, name="Connect " + self.uri)
+        self.connectThread.setDaemon(True)
+        self.connectThread.start()
+
+
+    def _open_thread(self):
+        logging.debug("Background thread is running")
+        try:
+            if self.readOnly is None:
+                try:
+                    self.vmm = libvirt.open(self.uri)
+                    self.readOnly = False
+                except:
+                    self.vmm = libvirt.openReadOnly(self.uri)
+                    self.readOnly = True
+            else:
+                if self.readOnly:
+                    self.vmm = libvirt.openReadOnly(self.uri)
+                else:
+                    self.vmm = libvirt.open(self.uri)
+            self.state = self.STATE_ACTIVE
+        except:
+            self.state = self.STATE_DISCONNECTED
+
+            (type, value, stacktrace) = sys.exc_info ()
+            # Detailed error message, in English so it can be Googled.
+            self.connectError = \
+                    ("Unable to open connection to hypervisor URI '%s':\n" %
+                     str(self.uri)) + \
+                    str(type) + " " + str(value) + "\n" + \
+                    traceback.format_exc (stacktrace)
+            logging.error(self.connectError)
+
+        # We want to kill off this thread asap, so schedule a gobject
+        # idle even to inform the UI of result
+        logging.debug("Background open thread complete, scheduling notify")
+        gtk.gdk.threads_enter()
+        try:
+            gobject.idle_add(self._open_notify)
+        finally:
+            gtk.gdk.threads_leave()
+        self.connectThread = None
+
+    def _open_notify(self):
+        logging.debug("Notifying open result")
+        gtk.gdk.threads_enter()
+        try:
+            if self.state == self.STATE_ACTIVE:
+                self.tick()
+            self.emit("state-changed")
+
+            if self.state == self.STATE_DISCONNECTED:
+                self.emit("connect-error", self.connectError)
+                self.connectError = None
+        finally:
+            gtk.gdk.threads_leave()
+
+
+    def pause(self):
+        if self.state != self.STATE_ACTIVE:
+            return
+        self.state = self.STATE_INACTIVE
+        self.emit("state-changed")
+
+    def resume(self):
+        if self.state != self.STATE_INACTIVE:
+            return
+        self.state = self.STATE_ACTIVE
+        self.emit("state-changed")
+
     def close(self):
         if self.vmm == None:
             return
 
         #self.vmm.close()
         self.vmm = None
-        self.emit("disconnected", self.uri)
+        self.nets = {}
+        self.vms = {}
+        self.activeUUIDs = []
+        self.record = []
+        self.state = self.STATE_DISCONNECTED
+        self.emit("state-changed")
 
     def list_vm_uuids(self):
         return self.vms.keys()
@@ -335,6 +401,8 @@ class vmmConnection(gobject.GObject):
         return handle_id
 
     def pretty_host_memory_size(self):
+        if self.vmm is None:
+            return ""
         mem = self.host_memory_size()
         if mem > (1024*1024):
             return "%2.2f GB" % (mem/(1024.0*1024.0))
@@ -343,15 +411,23 @@ class vmmConnection(gobject.GObject):
 
 
     def host_memory_size(self):
+        if self.vmm is None:
+            return 0
         return self.hostinfo[1]*1024
 
     def host_architecture(self):
+        if self.vmm is None:
+            return ""
         return self.hostinfo[0]
 
     def host_active_processor_count(self):
+        if self.vmm is None:
+            return 0
         return self.hostinfo[2]
 
     def host_maximum_processor_count(self):
+        if self.vmm is None:
+            return 0
         return self.hostinfo[4] * self.hostinfo[5] * self.hostinfo[6] * self.hostinfo[7]
 
     def create_network(self, xml, start=True, autostart=True):
@@ -375,10 +451,7 @@ class vmmConnection(gobject.GObject):
         return status
 
     def tick(self, noStatsUpdate=False):
-        if self.vmm == None:
-            return
-
-        if not self.active:
+        if self.state != self.STATE_ACTIVE:
             return
 
         oldNets = self.nets
@@ -398,7 +471,9 @@ class vmmConnection(gobject.GObject):
             logging.warn("Unable to list inactive networks")
 
         # check of net devices
-        newPaths = self.hal_iface.FindDeviceByCapability("net")
+        newPaths = []
+        if self.hal_iface:
+            newPaths = self.hal_iface.FindDeviceByCapability("net")
         for newPath in newPaths:
             self._device_added(newPath)
 
@@ -570,11 +645,11 @@ class vmmConnection(gobject.GObject):
             self.vms[uuid].tick(now)
 
         if not noStatsUpdate:
-            self.recalculate_stats(now)
+            self._recalculate_stats(now)
 
         return 1
 
-    def recalculate_stats(self, now):
+    def _recalculate_stats(self, now):
         expected = self.config.get_stats_history_length()
         current = len(self.record)
         if current > expected:
@@ -681,48 +756,20 @@ class vmmConnection(gobject.GObject):
                 uuid.append('-')
         return "".join(uuid)
 
+    def get_state(self):
+        return self.state
 
-    # Standard python urlparse is utterly braindead - refusing to parse URIs
-    # in any useful fashion unless the 'scheme' is in some pre-defined white
-    # list. Theis functions is a hacked version of urlparse
-
-    def uri_split(self):
-        uri = self.uri
-        username = netloc = query = fragment = ''
-        i = uri.find(":")
-        if i > 0:
-            scheme, uri = uri[:i].lower(), uri[i+1:]
-            if uri[:2] == '//':
-                netloc, uri = self._splitnetloc(uri, 2)
-                offset = netloc.find("@")
-                if offset > 0:
-                    username = netloc[0:offset]
-                    netloc = netloc[offset+1:]
-            if '#' in uri:
-                uri, fragment = uri.split('#', 1)
-            if '?' in uri:
-                uri, query = uri.split('?', 1)
+    def get_state_text(self):
+        if self.state == self.STATE_DISCONNECTED:
+            return _("Disconnected")
+        elif self.state == self.STATE_CONNECTING:
+            return _("Connecting")
+        elif self.state == self.STATE_ACTIVE:
+            return _("Active")
+        elif self.state == self.STATE_INACTIVE:
+            return _("Inactive")
         else:
-            scheme = uri.lower()
-
-        return scheme, username, netloc, uri, query, fragment
-
-    def _splitnetloc(self, url, start=0):
-        for c in '/?#': # the order is important!
-            delim = url.find(c, start)
-            if delim >= 0:
-                break
-        else:
-            delim = len(url)
-        return url[start:delim], url[delim:]
-
-
-    def is_active(self):
-        return self._active
-    def set_active(self, val):
-        self._active = val
-    active = property(is_active, set_active)
-
+            return _("Unknown")
 
 gobject.type_register(vmmConnection)
 

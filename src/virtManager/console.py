@@ -26,6 +26,8 @@ import logging
 import dbus
 import traceback
 import gtkvnc
+import os
+import socket
 
 from virtManager.error import vmmErrorDialog
 
@@ -60,22 +62,29 @@ class vmmConsole(gobject.GObject):
         self.window.get_widget("control-shutdown").set_icon_widget(gtk.Image())
         self.window.get_widget("control-shutdown").get_icon_widget().set_from_file(config.get_icon_dir() + "/icon_shutdown.png")
 
+        self.accel_groups = gtk.accel_groups_from_object(topwin)
+        self.gtk_settings_accel = None
+
         self.vncViewer = gtkvnc.Display()
+        self.vncTunnel = None
         if self.config.get_console_keygrab() == 2:
             self.vncViewer.set_keyboard_grab(True)
-
-        self.vncViewer.set_pointer_grab(True)
+            self.vncViewer.set_pointer_grab(True)
+        else:
+            self.vncViewer.set_keyboard_grab(False)
+            self.vncViewer.set_pointer_grab(False)
         self.vncViewer.set_pointer_local(True)
-        #self.vncViewer.set_sticky_modifiers(True)
 
         self.vncViewer.connect("vnc-pointer-grab", self.notify_grabbed)
         self.vncViewer.connect("vnc-pointer-ungrab", self.notify_ungrabbed)
 
-        self.window.get_widget("console-pages").append_page(self.vncViewer)
+        self.window.get_widget("console-vnc-align").add(self.vncViewer)
         self.vncViewer.realize()
         self.vncViewer.show()
-        self.vncViewerFailures = 0
+        self.vncViewerRetriesScheduled = 0
         self.vncViewerRetryDelay = 125
+        self.vncViewer.connect("size-request", self._force_resize)
+        self.connected = 0
 
         self.notifyID = None
         try:
@@ -89,8 +98,6 @@ class vmmConsole(gobject.GObject):
             pass
 
         self.window.get_widget("console-pages").set_show_tabs(False)
-        self.window.get_widget("console-unavailable").set_size_request(640, 480)
-        self.window.get_widget("console-auth").set_size_request(640, 480)
 
         self.config.on_console_keygrab_changed(self.keygrab_changed)
 
@@ -108,6 +115,7 @@ class vmmConsole(gobject.GObject):
             "on_menu_vm_save_activate": self.control_vm_save_domain,
             "on_menu_vm_destroy_activate": self.control_vm_destroy,
             "on_menu_vm_screenshot_activate": self.control_vm_screenshot,
+            "on_menu_vm_pause_activate": self.control_vm_pause,
 
             "on_menu_view_serial_activate": self.control_vm_terminal,
             "on_menu_view_details_activate": self.control_vm_details,
@@ -125,6 +133,38 @@ class vmmConsole(gobject.GObject):
         self.vncViewer.connect("vnc-auth-credential", self._vnc_auth_credential)
         self.vncViewer.connect("vnc-initialized", self._vnc_initialized)
         self.vncViewer.connect("vnc-disconnected", self._vnc_disconnected)
+        self.vncViewer.connect("vnc-keyboard-grab", self._disable_modifiers)
+        self.vncViewer.connect("vnc-keyboard-ungrab", self._enable_modifiers)
+
+    # Black magic todo with scrolled windows. Basically the behaviour we want
+    # is that if it possible to resize the window to show entire guest desktop
+    # then we should do that and never show scrollbars. If the local screen is
+    # too small then we can turn on scrolling. You would think the 'Automatic'
+    # policy would work, but even if viewport is identical sized to the VNC
+    # widget it still seems to show scrollbars. So we do evil stuff here
+    def _force_resize(self, src, size):
+        w,h = src.get_size_request()
+        self.window.get_widget("console-screenshot").set_size_request(w, h)
+        self.window.get_widget("console-vnc-scroll").set_size_request(w, h)
+        topw,toph = self.window.get_widget("vmm-console").size_request()
+
+        padx = topw-w
+        pady = toph-h
+        rootw = src.get_screen().get_width()
+        rooth = src.get_screen().get_height()
+
+        maxw = rootw - 100 - padx
+        maxh = rooth - 100 - pady
+        if w > maxw or h > maxh:
+            self.window.get_widget("console-vnc-viewport").set_size_request(maxw, maxh)
+            self.window.get_widget("console-screenshot-viewport").set_size_request(maxw, maxh)
+            self.window.get_widget("console-vnc-scroll").set_policy(gtk.POLICY_ALWAYS, gtk.POLICY_ALWAYS)
+            self.window.get_widget("console-screenshot-scroll").set_policy(gtk.POLICY_ALWAYS, gtk.POLICY_ALWAYS)
+        else:
+            self.window.get_widget("console-vnc-viewport").set_size_request(w, h)
+            self.window.get_widget("console-screenshot-viewport").set_size_request(w, h)
+            self.window.get_widget("console-vnc-scroll").set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)
+            self.window.get_widget("console-screenshot-scroll").set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)
 
     # Auto-increase the window size to fit the console - within reason
     # though, cos we don't want a min window size greater than the screen
@@ -141,6 +181,25 @@ class vmmConsole(gobject.GObject):
             vncHeight = rootHeight - 200
 
         self.window.get_widget("console-vnc-vp").set_size_request(vncWidth+2, vncHeight+2)
+
+
+    def _disable_modifiers(self, ignore=None):
+        topwin = self.window.get_widget("vmm-console")
+        for g in self.accel_groups:
+            topwin.remove_accel_group(g)
+        settings = gtk.settings_get_default()
+        self.gtk_settings_accel = settings.get_property('gtk-menu-bar-accel')
+        settings.set_property('gtk-menu-bar-accel', None)
+
+    def _enable_modifiers(self, ignore=None):
+        topwin = self.window.get_widget("vmm-console")
+        if self.gtk_settings_accel is None:
+            return
+        settings = gtk.settings_get_default()
+        settings.set_property('gtk-menu-bar-accel', self.gtk_settings_accel)
+        self.gtk_settings_accel = None
+        for g in self.accel_groups:
+            topwin.add_accel_group(g)
 
     def notify_grabbed(self, src):
         topwin = self.window.get_widget("vmm-console")
@@ -182,18 +241,21 @@ class vmmConsole(gobject.GObject):
     def keygrab_changed(self, src, ignore1=None,ignore2=None,ignore3=None):
         if self.config.get_console_keygrab() == 2:
             self.vncViewer.set_keyboard_grab(True)
+            self.vncViewer.set_pointer_grab(True)
         else:
             self.vncViewer.set_keyboard_grab(False)
+            self.vncViewer.set_pointer_grab(False)
 
     def toggle_fullscreen(self, src):
         if src.get_active():
             self.window.get_widget("vmm-console").fullscreen()
-            # XXX re-instate
-            #if self.config.get_console_keygrab() == 1:
-            #    self.vncViewer.grab_keyboard()
+            if self.config.get_console_keygrab() == 1:
+                gtk.gdk.keyboard_grab(self.vncViewer.window, False, 0L)
+                self._disable_modifiers()
         else:
-            #if self.config.get_console_keygrab() == 1:
-            #    self.vncViewer.ungrab_keyboard()
+            if self.config.get_console_keygrab() == 1:
+                self._enable_modifiers()
+                gtk.gdk.keyboard_ungrab(0L)
             self.window.get_widget("vmm-console").unfullscreen()
 
     def toggle_toolbar(self, src):
@@ -231,44 +293,96 @@ class vmmConsole(gobject.GObject):
            return 1
         return 0
 
+    def view_vm_status(self):
+        status = self.vm.status()
+        if status == libvirt.VIR_DOMAIN_SHUTOFF:
+            self.activate_unavailable_page(_("Guest not running"))
+        else:
+            if status == libvirt.VIR_DOMAIN_CRASHED:
+                self.activate_unavailable_page(_("Guest has crashed"))
+
     def _vnc_disconnected(self, src):
+        if self.vncTunnel is not None:
+            self.close_tunnel()
+        self.connected = 0
         logging.debug("VNC disconnected")
-        self.vncViewerFailures = self.vncViewerFailures + 1
-        self.activate_unavailable_page(_("Console was disconnected from guest"))
+        if self.vm.status() in [ libvirt.VIR_DOMAIN_SHUTOFF, libvirt.VIR_DOMAIN_CRASHED ]:
+            self.view_vm_status()
+            return
+
+        self.activate_unavailable_page(_("TCP/IP error: VNC connection to hypervisor host got refused or disconnected!"))
+
         if not self.is_visible():
             return
 
-        if self.vncViewerFailures < 10:
-            self.schedule_retry()
-        else:
-            logging.error("Too many connection failures, not retrying again")
+        self.schedule_retry()
 
     def _vnc_initialized(self, src):
+        self.connected = 1
         logging.debug("VNC initialized")
         self.activate_viewer_page()
 
         # Had a succesfull connect, so reset counters now
-        self.vncViewerFailures = 0
+        self.vncViewerRetriesScheduled = 0
         self.vncViewerRetryDelay = 125
 
     def schedule_retry(self):
+        self.vncViewerRetriesScheduled = self.vncViewerRetriesScheduled + 1
+        if self.vncViewerRetriesScheduled >= 10:
+            logging.error("Too many connection failures, not retrying again")
+            return
         logging.warn("Retrying connection in %d ms", self.vncViewerRetryDelay)
         gobject.timeout_add(self.vncViewerRetryDelay, self.retry_login)
         if self.vncViewerRetryDelay < 2000:
             self.vncViewerRetryDelay = self.vncViewerRetryDelay * 2
 
     def retry_login(self):
+        if self.connected:
+            return
         gtk.gdk.threads_enter()
         try:
             logging.debug("Got timed retry")
             self.try_login()
-            return False
+            return
         finally:
             gtk.gdk.threads_leave()
 
+    def open_tunnel(self, server, vncaddr ,vncport):
+        if self.vncTunnel is not None:
+            return
+
+        logging.debug("Spawning SSH tunnel to %s, for %s:%d" %(server, vncaddr, vncport))
+
+        fds = socket.socketpair()
+        pid = os.fork()
+        if pid == 0:
+            fds[0].close()
+            os.close(0)
+            os.close(1)
+            os.dup(fds[1].fileno())
+            os.dup(fds[1].fileno())
+            os.execlp("ssh", "ssh", "-p", "22", "-l", "root", server, "nc", vncaddr, str(vncport))
+            os._exit(1)
+        else:
+            fds[1].close()
+
+        logging.debug("Tunnel PID %d FD %d" % (fds[0].fileno(), pid))
+        self.vncTunnel = [fds[0], pid]
+        return fds[0].fileno()
+
+    def close_tunnel(self):
+        if self.vncTunnel is None:
+            return
+
+        logging.debug("Shutting down tunnel PID %d FD %d" % (self.vncTunnel[1], self.vncTunnel[0].fileno()))
+        self.vncTunnel[0].close()
+        os.waitpid(self.vncTunnel[1], 0)
+        self.vncTunnel = None
+
     def try_login(self, src=None):
         if self.vm.get_id() < 0:
-            self.activate_unavailable_page(_("Console not available for inactive guest"))
+            self.activate_unavailable_page(_("Guest not running"))
+            self.schedule_retry()
             return
 
         logging.debug("Trying console login")
@@ -296,7 +410,11 @@ class vmmConsole(gobject.GObject):
         self.activate_unavailable_page(_("Connecting to console for guest"))
         logging.debug("Starting connect process for %s %s" % (host, str(port)))
         try:
-            self.vncViewer.open_host(host, str(port))
+            if trans is not None and trans in ("ssh", "ext"):
+                fd = self.open_tunnel(host, "127.0.0.1", port)
+                self.vncViewer.open_fd(fd)
+            else:
+                self.vncViewer.open_host(host, str(port))
         except:
             (type, value, stacktrace) = sys.exc_info ()
             details = \
@@ -320,7 +438,7 @@ class vmmConsole(gobject.GObject):
                 self.vncViewer.set_credential(credList[i], "libvirt")
             else:
                 # Force it to stop re-trying
-                self.vncViewerFailures = 10
+                self.vncViewerRetriesScheduled = 10
                 self.vncViewer.close()
                 self.activate_unavailable_page(_("Unsupported console authentication type"))
 
@@ -503,7 +621,7 @@ class vmmConsole(gobject.GObject):
             if self.window.get_widget("console-pages").get_current_page() != PAGE_UNAVAILABLE:
                 self.vncViewer.close()
                 self.window.get_widget("console-pages").set_current_page(PAGE_UNAVAILABLE)
-            self.activate_unavailable_page(_("Console not available for inactive guest"))
+            self.view_vm_status()
         else:
             if status == libvirt.VIR_DOMAIN_PAUSED:
                 if self.window.get_widget("console-pages").get_current_page() == PAGE_VNCVIEWER:
@@ -543,7 +661,7 @@ class vmmConsole(gobject.GObject):
                     if self.vncViewer.is_open():
                         self.activate_viewer_page()
                     else:
-                        self.vncViewerFailures = 0
+                        self.vncViewerRetriesScheduled = 0
                         self.vncViewerRetryDelay = 125
                         self.try_login()
                         self.ignorePause = False

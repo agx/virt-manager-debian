@@ -151,7 +151,7 @@ class vmmDomain(gobject.GObject):
             self.emit("status-changed", status)
 
     def tick(self, now):
-        if not self.connection.active:
+        if self.connection.get_state() != self.connection.STATE_ACTIVE:
             return
         # Clear cached XML
         self.xml = None
@@ -455,8 +455,14 @@ class vmmDomain(gobject.GObject):
                 port = int(port)
 
         transport, username = self.connection.get_transport()
-
-        return [type, self.connection.get_hostname(), port, transport]
+        if transport is None:
+            # Force use of 127.0.0.1, because some (broken) systems don't 
+            # reliably resolve 'localhost' into 127.0.0.1, either returning
+            # the public IP, or an IPv6 addr. Neither work since QEMU only
+            # listens on 127.0.0.1 for VNC.
+            return [type, "127.0.0.1", port, None]
+        else:
+            return [type, self.connection.get_hostname(), port, transport]
 
 
     def get_disk_devices(self):
@@ -508,6 +514,67 @@ class vmmDomain(gobject.GObject):
     def add_disk_device(self, xml):
         self.vm.attachDevice(xml)
 
+    def connect_cdrom_device(self, type, source, target):
+        xml = self.get_xml()
+        doc = None
+        try:
+            doc = libxml2.parseDoc(xml)
+        except:
+            return []
+        ctx = doc.xpathNewContext()
+        try:
+            disk_fragment = ctx.xpathEval("/domain/devices/disk[@device='cdrom' and target/@dev='%s']" % target)
+            if len(disk_fragment) == 0:
+                raise RuntimeError("Attmpted to connect cdrom device to %s, but %s does not exist" % (target,target))
+            if len(disk_fragment) > 1:
+                raise RuntimeError("Found multiple cdrom devices named %s. This domain's XML is malformed." % target)
+            disk_fragment[0].setProp("type", type)
+            elem = disk_fragment[0].newChild(None, "source", None)
+            if type == "file":
+                elem.setProp("file", source)
+            else:
+                elem.setProp("dev", source)
+            result = disk_fragment[0].serialize()
+            logging.debug("connect_cdrom_device produced the following XML: %s" % result)
+        finally:
+            if ctx != None:
+                ctx.xpathFreeContext()
+            if doc != None:
+                doc.freeDoc()
+        self.add_disk_device(result)
+
+    def disconnect_cdrom_device(self, target):
+        xml = self.get_xml()
+        doc = None
+        try:
+            doc = libxml2.parseDoc(xml)
+        except:
+            return []
+        ctx = doc.xpathNewContext()
+        try:
+            disk_fragment = ctx.xpathEval("/domain/devices/disk[@device='cdrom' and target/@dev='%s']" % target)
+            if len(disk_fragment) == 0:
+                raise RuntimeError("Attmpted to disconnect cdrom device from %s, but %s does not exist" % (target,target))
+            if len(disk_fragment) > 1:
+                raise RuntimeError("Found multiple cdrom devices named %s. This domain's XML is malformed." % target)
+            sourcenode = None
+            for child in disk_fragment[0].children:
+                if child.name == "source":
+                    sourcenode = child
+                    break
+                else:
+                    continue
+            sourcenode.unlinkNode()
+            sourcenode.freeNode()
+            result = disk_fragment[0].serialize()
+            logging.debug("disconnect_cdrom_device produced the following XML: %s" % result)
+        finally:
+            if ctx != None:
+                ctx.xpathFreeContext()
+            if doc != None:
+                doc.freeDoc()
+        self.add_disk_device(result)
+
     def get_network_devices(self):
         xml = self.get_xml()
         doc = None
@@ -553,6 +620,56 @@ class vmmDomain(gobject.GObject):
                 doc.freeDoc()
         return nics
 
+    def get_input_devices(self):
+        xml = self.get_xml()
+        doc = None
+        try:
+            doc = libxml2.parseDoc(xml)
+        except:
+            return []
+        ctx = doc.xpathNewContext()
+        inputs = []
+        try:
+            ret = ctx.xpathEval("/domain/devices/input")
+
+            for node in ret:
+                type = node.prop("type")
+                bus = node.prop("bus")
+                # XXX Replace 'None' with device model when libvirt supports that
+                inputs.append([type, bus, None, type + ":" + bus])
+        finally:
+            if ctx != None:
+                ctx.xpathFreeContext()
+            if doc != None:
+                doc.freeDoc()
+        return inputs
+
+    def get_graphics_devices(self):
+        xml = self.get_xml()
+        doc = None
+        try:
+            doc = libxml2.parseDoc(xml)
+        except:
+            return []
+        ctx = doc.xpathNewContext()
+        graphics = []
+        try:
+            ret = ctx.xpathEval("/domain/devices/graphics[1]")
+            for node in ret:
+                type = node.prop("type")
+                if type == "vnc":
+                    listen = node.prop("listen")
+                    port = node.prop("port")
+                    graphics.append([type, listen, port, type])
+                else:
+                    graphics.append([type, None, None, type])
+        finally:
+            if ctx != None:
+                ctx.xpathFreeContext()
+            if doc != None:
+                doc.freeDoc()
+        return graphics
+
     def add_device(self, xml):
         logging.debug("Adding device " + xml)
 
@@ -560,80 +677,111 @@ class vmmDomain(gobject.GObject):
         # otherwise the device gets added to the XML twice.
         vmxml = self.vm.XMLDesc(0)
 
-        if self.is_active():
-            self.vm.attachDevice(xml)
-
+        device_exception = None
+        try:
+            if self.is_active():
+                self.vm.attachDevice(xml)
+        except libvirtError, e:
+            device_exception = str(e)
 
         index = vmxml.find("</devices>")
         newxml = vmxml[0:index] + xml + vmxml[index:]
-
         logging.debug("Redefine with " + newxml)
-
         self.get_connection().define_domain(newxml)
+
+        # Invalidate cached XML
+        self.xml = None
+        if device_exception:
+            raise RuntimeError, "Unable to attach device to live guest, libvirt reported error:\n" + device_exception 
 
     def remove_device(self, dev_xml):
         logging.debug("Removing device " + dev_xml)
+        xml = self.vm.XMLDesc(0)
 
+        # do the live guest first
+        device_exception = None
         if self.is_active():
-            self.vm.detachDevice(dev_xml)
-        else:
-            # XXX remove from defined XML. Eek !
-            xml = self.get_xml()
-            doc = None
             try:
-                doc = libxml2.parseDoc(xml)
-            except:
-                return
-            ctx = doc.xpathNewContext()
-            try:
-                dev_doc = libxml2.parseDoc(dev_xml)
-            except:
-                raise RuntimeError("Device XML would not parse")
-            dev_ctx = dev_doc.xpathNewContext()
-            ret = None
-            try:
-                dev = dev_ctx.xpathEval("//*")
-                dev_type = dev[0].name
-                if dev_type=="interface":
-                    address = dev_ctx.xpathEval("/interface/mac/@address")
-                    if len(address) > 0 and address[0].content != None:
-                        logging.debug("The mac address appears to be %s" % address[0].content)
-                        ret = ctx.xpathEval("/domain/devices/interface[mac/@address='%s']" % address[0].content)
-                    if len(ret) >0:
-                        ret[0].unlinkNode()
-                        ret[0].freeNode()
-                        newxml=doc.serialize()
-                        logging.debug("Redefine with " + newxml)
-                        self.get_connection().define_domain(newxml)
-                elif dev_type=="disk":
-                    disk_type_node = dev_ctx.xpathEval("/disk/@type")
-                    disk_type = None
-                    if len(disk_type_node) > 0 and disk_type_node[0].content != None:
-                        disk_type = disk_type_node[0].content
-                    logging.debug("Looking for disk type %s" % disk_type)
-                    if disk_type == "block":
-                        path = dev_ctx.xpathEval("/disk/source/@dev")
-                        if len(path) > 0 and path[0].content != None:
-                            logging.debug("Looking for path %s" % path[0].content)
-                            ret = ctx.xpathEval("/domain/devices/disk[source/@dev='%s']" % path[0].content)
-                    elif disk_type == "file":
-                        path = dev_ctx.xpathEval("/disk/source/@file")
-                        if len(path) > 0 and path[0].content != None:
-                            ret = ctx.xpathEval("/domain/devices/disk[source/@file='%s']" % path[0].content)
-                    if len(ret) > 0:
-                        ret[0].unlinkNode()
-                        ret[0].freeNode()
-                        newxml=doc.serialize()
-                        logging.debug("Redefine with " + newxml)
-                        self.get_connection().define_domain(newxml)
+                self.vm.detachDevice(dev_xml)
+            except libvirtError, e:
+                device_exception = str(e)
 
-            finally:
-                if ctx != None:
-                    ctx.xpathFreeContext()
-                if doc != None:
-                    doc.freeDoc()
-                if dev_doc != None:
-                    dev_doc.freeDoc()
+        # then the stored XML
+        doc = None
+        try:
+            doc = libxml2.parseDoc(xml)
+        except:
+            return
+        ctx = doc.xpathNewContext()
+        try:
+            dev_doc = libxml2.parseDoc(dev_xml)
+        except:
+            raise RuntimeError("Device XML would not parse")
+        dev_ctx = dev_doc.xpathNewContext()
+        ret = None
+        try:
+            dev = dev_ctx.xpathEval("//*")
+            dev_type = dev[0].name
+            if dev_type=="interface":
+                address = dev_ctx.xpathEval("/interface/mac/@address")
+                if len(address) > 0 and address[0].content != None:
+                    logging.debug("The mac address appears to be %s" % address[0].content)
+                    ret = ctx.xpathEval("/domain/devices/interface[mac/@address='%s']" % address[0].content)
+                if len(ret) >0:
+                    ret[0].unlinkNode()
+                    ret[0].freeNode()
+                    newxml=doc.serialize()
+                    logging.debug("Redefine with " + newxml)
+                    self.get_connection().define_domain(newxml)
+            elif dev_type=="disk":
+                path = dev_ctx.xpathEval("/disk/target/@dev")
+                if len(path) > 0 and path[0].content != None:
+                    logging.debug("Looking for path %s" % path[0].content)
+                    ret = ctx.xpathEval("/domain/devices/disk[target/@dev='%s']" % path[0].content)
+                if len(ret) > 0:
+                    ret[0].unlinkNode()
+                    ret[0].freeNode()
+                    newxml=doc.serialize()
+                    logging.debug("Redefine with " + newxml)
+                    self.get_connection().define_domain(newxml)
+            elif dev_type=="input":
+                type = dev_ctx.xpathEval("/input/@type")
+                bus = dev_ctx.xpathEval("/input/@bus")
+                if len(type) > 0 and type[0].content != None and len(bus) > 0 and bus[0].content != None:
+                    logging.debug("Looking for type %s bus %s" % (type[0].content, bus[0].content))
+                    ret = ctx.xpathEval("/domain/devices/input[@type='%s' and @bus='%s']" % (type[0].content, bus[0].content))
+                if len(ret) > 0:
+                    ret[0].unlinkNode()
+                    ret[0].freeNode()
+                    newxml=doc.serialize()
+                    logging.debug("Redefine with " + newxml)
+                    self.get_connection().define_domain(newxml)
+            elif dev_type=="graphics":
+                type = dev_ctx.xpathEval("/graphics/@type")
+                if len(type) > 0 and type[0].content != None:
+                    logging.debug("Looking for type %s" % type[0].content)
+                    ret = ctx.xpathEval("/domain/devices/graphics[@type='%s']" % type[0].content)
+                if len(ret) > 0:
+                    ret[0].unlinkNode()
+                    ret[0].freeNode()
+                    newxml=doc.serialize()
+                    logging.debug("Redefine with " + newxml)
+                    self.get_connection().define_domain(newxml)
+
+        finally:
+            if ctx != None:
+                ctx.xpathFreeContext()
+            if doc != None:
+                doc.freeDoc()
+            if dev_doc != None:
+                dev_doc.freeDoc()
+
+        # Invalidate cached XML
+        self.xml = None
+
+        # if we had a problem with the live guest, complain here
+        if device_exception:
+            raise RuntimeError, "Unable to detach device from live guest, libvirt reported: \n" + device_exception
 
     def set_vcpu_count(self, vcpus):
         vcpus = int(vcpus)
