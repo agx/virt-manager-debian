@@ -7,7 +7,7 @@
 %define _extra_release %{?dist:%{dist}}%{!?dist:%{?extra_release:%{extra_release}}}
 
 Name: virt-manager
-Version: 0.5.0
+Version: 0.5.2
 Release: 1%{_extra_release}
 Summary: Virtual Machine Manager
 
@@ -140,6 +140,19 @@ fi
 %{_datadir}/man/man1/%{name}.1*
 
 %changelog
+* Thu Oct  4 2007 Daniel P. Berrange <berrange@redhat.com> - 0.5.2-1
+- No scrollbars for high res guest in low res host (rhbz 273181)
+- Unable to remove network device (rhbz 242900)
+- Fixed broken menu items (rhbz 307551)
+- Allow adding of graphics console (rhbz 215524)
+
+* Tue Sep 25 2007 Daniel P. Berrange <berrange@redhat.com> - 0.5.1-1
+- Open connections in background
+- Make VNC connection retries more robust
+- Allow changing of CDROM media on the fly
+- Add PXE boot installation of HVM guests
+- Allow tunnelling VNC over SSH
+
 * Wed Aug 29 2007 Daniel P. Berrange <berrange@redhat.com> - 0.5.0-1
 - Support for managing remote hosts
 - Switch to use GTK-VNC for the guest console
