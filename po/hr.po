@@ -1,0 +1,2733 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2007-08-29 16:23-0400\n"
+"PO-Revision-Date: 2007-07-02 07:22+0100\n"
+"Last-Translator: Renato Pavicic <renato<-at->translator-shop.org>\n"
+"Language-Team: CROATIAN <www.translator-shop.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+#: ../src/virt-manager.desktop.in.in.h:1
+#, fuzzy
+msgid "Manage virtual machines"
+msgstr "Spremanje virtualnog računala"
+
+#: ../src/virt-manager.desktop.in.in.h:2 ../src/vmm-about.glade.h:3
+#: ../../po/../src/vmm-manager.glade:8
+msgid "Virtual Machine Manager"
+msgstr "Upravljač virtualnog računala"
+
+#: ../src/vmm-about.glade.h:1
+msgid "Copyright (C) 2006 Red Hat Inc."
+msgstr "Autorska prava (c) 2006 Red Hat, Inc."
+
+#: ../src/vmm-about.glade.h:2
+msgid "Powered by libvirt"
+msgstr "Pogonjeno s libvirt"
+
+#: ../src/vmm-about.glade.h:4
+msgid "http://virt-manager.et.redhat.com/"
+msgstr "http://virt-manager.et.redhat.com/"
+
+#. TRANSLATORS: Replace this string with your names, one name per line.
+#: ../src/vmm-about.glade.h:6
+msgid "translator-credits"
+msgstr "Renato Pavičić, renato@translator-shop.org"
+
+#: ../src/vmm-console.glade.h:1
+msgid "<b>The console is currently unavailable</b>"
+msgstr "<B>Konzola trenutno nije dostupna</B>"
+
+#: ../src/vmm-console.glade.h:2
+msgid "Auth"
+msgstr "Autent"
+
+#: ../src/vmm-console.glade.h:3
+msgid "Login"
+msgstr "Prijava"
+
+#: ../src/vmm-console.glade.h:4
+#, fuzzy
+msgid "Password Field"
+msgstr "Lozinka:"
+
+#: ../src/vmm-console.glade.h:5
+msgid "Password:"
+msgstr "Lozinka:"
+
+#: ../src/vmm-console.glade.h:6 ../src/vmm-details.glade.h:41
+msgid "Pause"
+msgstr "Pauza"
+
+#: ../src/vmm-console.glade.h:7 ../src/vmm-details.glade.h:43
+msgid "Run"
+msgstr "Pokreni"
+
+#: ../src/vmm-console.glade.h:8 ../src/vmm-details.glade.h:44
+msgid "S_hutdown"
+msgstr "_Gašenje"
+
+#: ../src/vmm-console.glade.h:9
+msgid "Save this password in your keyring"
+msgstr "Spremanje lozinke u vaš svežanj ključeva"
+
+#: ../src/vmm-console.glade.h:10
+msgid "Screenshot"
+msgstr "Slika zaslona"
+
+#: ../src/vmm-console.glade.h:11 ../src/vmm-details.glade.h:46
+#: ../../po/../src/virtManager/domain.py:407
+msgid "Shutdown"
+msgstr "Gašenje"
+
+#: ../src/vmm-console.glade.h:12 ../src/vmm-details.glade.h:53
+msgid "Toolbar"
+msgstr "Alatna traka"
+
+#: ../src/vmm-console.glade.h:13
+msgid "Unavailable"
+msgstr "Nije raspoloživo"
+
+#: ../src/vmm-console.glade.h:14
+msgid "Virtual Machine Console"
+msgstr "Konzola virtualnog računala"
+
+#: ../src/vmm-console.glade.h:15 ../src/vmm-details.glade.h:60
+msgid "Virtual _Machine"
+msgstr "Virtualno _računalo"
+
+#: ../src/vmm-console.glade.h:16 ../src/vmm-details.glade.h:61
+#: ../../po/../src/vmm-manager.glade:298
+msgid "_Contents"
+msgstr ""
+
+#: ../src/vmm-console.glade.h:17 ../src/vmm-details.glade.h:62
+msgid "_Destroy"
+msgstr "_Uništi"
+
+#: ../src/vmm-console.glade.h:18
+msgid "_Details"
+msgstr "_Detalji"
+
+#: ../src/vmm-console.glade.h:19
+msgid "_FullScreen"
+msgstr "_PrekoZaslona"
+
+#: ../src/vmm-console.glade.h:20 ../src/vmm-host.glade.h:43
+#: ../src/vmm-details.glade.h:64 ../../po/../src/vmm-manager.glade:289
+msgid "_Help"
+msgstr "_Pomoć"
+
+#: ../src/vmm-console.glade.h:21 ../src/vmm-details.glade.h:65
+msgid "_Pause"
+msgstr "_Pauza"
+
+#: ../src/vmm-console.glade.h:22 ../src/vmm-details.glade.h:66
+msgid "_Run"
+msgstr "_Pokreni"
+
+#: ../src/vmm-console.glade.h:23 ../src/vmm-details.glade.h:67
+msgid "_Save"
+msgstr "_Spremi"
+
+#: ../src/vmm-console.glade.h:24 ../src/vmm-details.glade.h:68
+msgid "_Serial Console"
+msgstr "_Serijska konzola"
+
+#: ../src/vmm-console.glade.h:25
+msgid "_Take Screenshot"
+msgstr "_Izradi sliku zaslona"
+
+#: ../src/vmm-console.glade.h:26 ../src/vmm-details.glade.h:69
+#: ../../po/../src/vmm-manager.glade:206
+msgid "_View"
+msgstr "_Prikaz"
+
+#: ../src/vmm-create-net.glade.h:1 ../src/vmm-create.glade.h:1
+msgid "\t"
+msgstr "\t"
+
+#: ../src/vmm-create-net.glade.h:2 ../src/vmm-add-hardware.glade.h:2
+#: ../src/vmm-create.glade.h:4
+msgid "/xen/demo.img"
+msgstr "/xen/demo.img"
+
+#: ../src/vmm-create-net.glade.h:3
+msgid "192.168.1.1"
+msgstr "192.168.1.1"
+
+#: ../src/vmm-create-net.glade.h:4
+msgid "192.168.1.255"
+msgstr "192.168.1.255"
+
+#: ../src/vmm-create-net.glade.h:5
+msgid "192.168.10.0/24"
+msgstr "192.168.10.0/24"
+
+#: ../src/vmm-create-net.glade.h:6
+msgid "192.168.10.254"
+msgstr "192.168.10.254"
+
+#: ../src/vmm-create-net.glade.h:7
+msgid "255.255.255.0"
+msgstr "255.255.255.0"
+
+#: ../src/vmm-create-net.glade.h:8
+msgid "256"
+msgstr "256"
+
+#: ../src/vmm-create-net.glade.h:9 ../src/vmm-add-hardware.glade.h:3
+#: ../src/vmm-create.glade.h:9
+msgid "5 GB"
+msgstr "5 GB"
+
+#: ../src/vmm-create-net.glade.h:10
+msgid "<b>DHCP</b>"
+msgstr "<b>DHCP</b>"
+
+#: ../src/vmm-create-net.glade.h:11
+msgid "<b>Example:</b> network1"
+msgstr "<b>Primjer:</b> mreža1"
+
+#: ../src/vmm-create-net.glade.h:12
+msgid "<b>Forwarding</b>"
+msgstr "<b>Prosljeđivanje</b>"
+
+#: ../src/vmm-create-net.glade.h:13
+msgid ""
+"<b>Hint:</b> The network should be choosen from one of the IPv4 private "
+"address ranges. eg 10.0.0.0/8,  172.16.0.0/12, or 192.168.0.0/16"
+msgstr ""
+"<b>Savjet:</b> Mrežu je potrebno izabrati između jednog od opsega IPv4 "
+"privatnih adresa, npr. 10.0.0.0/8, 172.16.0.0/12 ili 192.168.0.0/16."
+
+#: ../src/vmm-create-net.glade.h:14
+msgid "<b>IPv4 network</b>"
+msgstr "<B>IPv4 mreža</B>"
+
+#: ../src/vmm-create-net.glade.h:15 ../src/vmm-create.glade.h:19
+msgid "<b>Summary</b>"
+msgstr "<b>Sažetak</b>"
+
+#: ../src/vmm-create-net.glade.h:16
+msgid ""
+"<b>Tip:</b> Unless you wish to reserve some addresses to allow static "
+"network configuration in virtual machines, these parameters can be left with "
+"their default values."
+msgstr ""
+"<b>Savjet:</b> Osim u slučaju ako neke adrese želite rezervirati kako biste "
+"dopustili statičko mrežno konfiguriranje unutar virtualnih računala, ovim se "
+"parametrima mogu ostaviti njihove zadane vrijednosti."
+
+#: ../src/vmm-create-net.glade.h:17
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Choosing an "
+"IPv4 address space</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Odabir prostora "
+"IPv4 adrese</span>"
+
+#: ../src/vmm-create-net.glade.h:18
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Connecting to "
+"physical network</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Povezivanje na "
+"fizičku mrežu</span>"
+
+#: ../src/vmm-create-net.glade.h:19
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Creating a new "
+"virtual network </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Izrada nove "
+"virtualne mreže</span>"
+
+#: ../src/vmm-create-net.glade.h:20
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Naming your "
+"virtual network </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Davanje naziva "
+"virtualnoj mreži</span>"
+
+#: ../src/vmm-create-net.glade.h:21
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to create "
+"network</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Spremnost za "
+"izradu mreže</span>"
+
+#: ../src/vmm-create-net.glade.h:22
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Selecting the "
+"DHCP range</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Odabir DHCP "
+"raspona</span>"
+
+#: ../src/vmm-create-net.glade.h:23
+msgid "A <b>name</b> for your new virtual network"
+msgstr "<B>Naziv</B> vaše nove virtualne mreže"
+
+#: ../src/vmm-create-net.glade.h:24
+msgid "Broadcast:"
+msgstr "Objava:"
+
+#: ../src/vmm-create-net.glade.h:25 ../src/vmm-add-hardware.glade.h:19
+#: ../src/vmm-create.glade.h:45
+msgid "Complete"
+msgstr "Dovrši"
+
+#: ../src/vmm-create-net.glade.h:26
+msgid "Connectivity:"
+msgstr "Povezivanje:"
+
+#: ../src/vmm-create-net.glade.h:27
+msgid "Create a new virtual network"
+msgstr "Izradi novu virtualnu mrežu"
+
+#: ../src/vmm-create-net.glade.h:28
+msgid "DHCP"
+msgstr "DHCP"
+
+#: ../src/vmm-create-net.glade.h:29
+msgid "Desination:"
+msgstr "Odredište:"
+
+#: ../src/vmm-create-net.glade.h:30 ../src/vmm-host.glade.h:15
+#, fuzzy
+msgid "End Address"
+msgstr "Završna adresa:"
+
+#: ../src/vmm-create-net.glade.h:31
+msgid "End address:"
+msgstr "Završna adresa:"
+
+#: ../src/vmm-create-net.glade.h:32
+msgid "End:"
+msgstr "Završetak:"
+
+#: ../src/vmm-create-net.glade.h:33
+msgid "Forwarding"
+msgstr "Prosljeđivanje"
+
+#: ../src/vmm-create-net.glade.h:34
+msgid "Forwarding to physical network"
+msgstr "Prosljeđivanje prema fizičkoj mreži"
+
+#: ../src/vmm-create-net.glade.h:35
+msgid "Gateway:"
+msgstr "Pristupnik:"
+
+#: ../src/vmm-create-net.glade.h:36
+msgid "IPv4"
+msgstr "IPv4"
+
+#: ../src/vmm-create-net.glade.h:37 ../src/vmm-add-hardware.glade.h:32
+#: ../src/vmm-create.glade.h:64
+msgid "Intro"
+msgstr "Uvod"
+
+#: ../src/vmm-create-net.glade.h:38
+#: ../../po/../src/virtManager/createnet.py:259
+#: ../../po/../src/virtManager/host.py:235
+msgid "Isolated virtual network"
+msgstr "Izolirana virtualna mreža"
+
+#: ../src/vmm-create-net.glade.h:39 ../src/vmm-host.glade.h:24
+#: ../../po/../src/virtManager/createnet.py:94
+#: ../../po/../src/virtManager/createnet.py:257
+#: ../../po/../src/virtManager/host.py:232
+msgid "NAT to any physical device"
+msgstr "NAT prema bilo kojem fizičkom uređaju"
+
+#: ../src/vmm-create-net.glade.h:40 ../src/vmm-create.glade.h:79
+#: ../../po/../src/virtManager/manager.py:712
+msgid "Name"
+msgstr "Naziv"
+
+#: ../src/vmm-create-net.glade.h:41
+msgid "Net Name Field"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:42
+msgid "Netmask:"
+msgstr "Mrežna maska:"
+
+#: ../src/vmm-create-net.glade.h:43 ../src/vmm-host.glade.h:29
+#, fuzzy
+msgid "Network Range"
+msgstr "Upotreba mreže:"
+
+#: ../src/vmm-create-net.glade.h:44
+msgid "Network _Name:"
+msgstr "_Naziv mreže:"
+
+#: ../src/vmm-create-net.glade.h:45
+msgid "Network name:"
+msgstr "Naziv mreže:"
+
+#: ../src/vmm-create-net.glade.h:46 ../src/vmm-host.glade.h:30
+msgid "Network:"
+msgstr "Mreža:"
+
+#: ../src/vmm-create-net.glade.h:47
+#, fuzzy
+msgid "Physical Network"
+msgstr "Virtualne mreže"
+
+#: ../src/vmm-create-net.glade.h:48
+msgid "Please choose a name for your virtual network:"
+msgstr "Odaberite naziv vaše virtualne mreže:"
+
+#: ../src/vmm-create-net.glade.h:49
+msgid ""
+"Please choose the range of addresses the DHCP server can use to allocate to "
+"guests attached to the virtual network"
+msgstr ""
+"Odaberite opseg adresa koje DHCP poslužitelj može upotrijebiti za "
+"dodjeljivanje gostima pridruženim virtualnoj mreži."
+
+#: ../src/vmm-create-net.glade.h:50
+msgid ""
+"Please indicate whether this virtual network should be connected to the "
+"physical network."
+msgstr ""
+"Naznačite je li potrebna povezanost ove virtualne mreže s fizičkom mrežom."
+
+#: ../src/vmm-create-net.glade.h:51
+#: ../../po/../src/virtManager/createnet.py:156
+msgid "Private"
+msgstr "Privatno"
+
+#: ../src/vmm-create-net.glade.h:52
+msgid "Size:"
+msgstr "Veličina:"
+
+#: ../src/vmm-create-net.glade.h:53 ../src/vmm-host.glade.h:34
+#, fuzzy
+msgid "Start Address"
+msgstr "Početna adresa:"
+
+#: ../src/vmm-create-net.glade.h:54
+msgid "Start address:"
+msgstr "Početna adresa:"
+
+#: ../src/vmm-create-net.glade.h:55
+msgid "Start:"
+msgstr "Početak:"
+
+#: ../src/vmm-create-net.glade.h:56
+msgid ""
+"The <b>address range</b> from which the <b>DHCP</b> server will allocate "
+"addresses for virtual machines"
+msgstr ""
+"<b>Opseg adresa</b> iz kojeg će <b>DHCP</b> poslužitelj dodjeljivati adrese "
+"za virtualna računala."
+
+#: ../src/vmm-create-net.glade.h:57
+msgid "The IPv4 <b>address</b> and <b>netmask</b> to assign"
+msgstr "IPv4 <b>adresa</b> i <b>mrežna maska</b> za dodjeljivanje"
+
+#: ../src/vmm-create-net.glade.h:58
+msgid ""
+"This assistant will guide you through creating a new virtual network. You "
+"will be asked for some information about the virtual network you'd like to "
+"create, such as:"
+msgstr ""
+"Ovaj će vas pomoćnik voditi kroz postupak izrade nove virtualne mreže. Od "
+"vas će biti zatraženi neki podaci o virtualnoj mreži koju želite izraditi, "
+"poput:"
+
+#: ../src/vmm-create-net.glade.h:59
+msgid "Type:"
+msgstr "Vrsta:"
+
+#: ../src/vmm-create-net.glade.h:60
+msgid "Whether to <b>forward</b> traffic to the physical network"
+msgstr "Da li će biti <b>prosljeđivanja</b> prometa prema fizičkoj mreži"
+
+#: ../src/vmm-create-net.glade.h:61
+msgid "You will need to choose an IPv4 address space for the virtual network:"
+msgstr "Potrebno je odabrati IPv4 adresni prostor za virtualnu mrežu:"
+
+#: ../src/vmm-create-net.glade.h:62 ../src/vmm-add-hardware.glade.h:50
+#: ../src/vmm-create.glade.h:122
+msgid "_Finish"
+msgstr "_Završetak"
+
+#: ../src/vmm-create-net.glade.h:63 ../src/vmm-create.glade.h:132
+msgid "demo"
+msgstr "demo"
+
+#: ../src/vmm-host.glade.h:1
+msgid "1.59 GB of 2.2 GB"
+msgstr "1,59 GB od 2,2 GB"
+
+#: ../src/vmm-host.glade.h:2
+msgid "2000 MB"
+msgstr "2000 MB"
+
+#: ../src/vmm-host.glade.h:3
+msgid "4"
+msgstr "4"
+
+#: ../src/vmm-host.glade.h:5
+#, no-c-format
+msgid "60%"
+msgstr "60%"
+
+#: ../src/vmm-host.glade.h:6 ../src/vmm-details.glade.h:10
+msgid "<b>Basic details</b>"
+msgstr "<b>Osnovni detalji</b>"
+
+#: ../src/vmm-host.glade.h:7
+msgid "<b>IPv4 configuration</b>"
+msgstr "<b>IPv4 konfiguracija</b>"
+
+#: ../src/vmm-host.glade.h:8 ../src/vmm-details.glade.h:13
+msgid "<b>Performance</b>"
+msgstr "<B>Performanse</B>"
+
+#: ../src/vmm-host.glade.h:9
+msgid "Architecture:"
+msgstr "Arhitektura:"
+
+#: ../src/vmm-host.glade.h:10
+msgid "Autostart:"
+msgstr "Automatsko pokretanje:"
+
+#: ../src/vmm-host.glade.h:11 ../src/vmm-details.glade.h:20
+msgid "CPU usage:"
+msgstr "CPU iskorištenost:"
+
+#: ../src/vmm-host.glade.h:12
+msgid "DHCP end:"
+msgstr "DHCP završetak:"
+
+#: ../src/vmm-host.glade.h:13
+msgid "DHCP start:"
+msgstr "DHCP početak:"
+
+#: ../src/vmm-host.glade.h:14
+msgid "Device:"
+msgstr "Uređaj:"
+
+#: ../src/vmm-host.glade.h:16
+msgid "Forwarding:"
+msgstr "Prosljeđivanje:"
+
+#: ../src/vmm-host.glade.h:17
+msgid "Host Details"
+msgstr "Detalji udomitelja"
+
+#: ../src/vmm-host.glade.h:18 ../src/vmm-open-connection.glade.h:5
+msgid "Hostname:"
+msgstr "Naziv računala:"
+
+#: ../src/vmm-host.glade.h:19 ../src/vmm-open-connection.glade.h:7
+msgid "Hypervisor:"
+msgstr "Hipervizor:"
+
+#: ../src/vmm-host.glade.h:20
+msgid "Location:"
+msgstr "Lokacija:"
+
+#: ../src/vmm-host.glade.h:21
+msgid "Logical CPUs:"
+msgstr "Logički CPU-i:"
+
+#: ../src/vmm-host.glade.h:22 ../src/vmm-details.glade.h:35
+msgid "Memory usage:"
+msgstr "Upotreba memorije:"
+
+#: ../src/vmm-host.glade.h:23
+msgid "Memory:"
+msgstr "Memorija:"
+
+#: ../src/vmm-host.glade.h:25 ../src/vmm-details.glade.h:37
+msgid "Name:"
+msgstr "Naziv:"
+
+#: ../src/vmm-host.glade.h:26
+#, fuzzy
+msgid "Net Device"
+msgstr "Uređaj:"
+
+#: ../src/vmm-host.glade.h:27
+#, fuzzy
+msgid "Net Name"
+msgstr "_Naziv mreže:"
+
+#: ../src/vmm-host.glade.h:28
+#, fuzzy
+msgid "Net UUID"
+msgstr "UUID:"
+
+#: ../src/vmm-host.glade.h:31 ../src/vmm-details.glade.h:40
+msgid "Overview"
+msgstr "Pregled"
+
+#: ../src/vmm-host.glade.h:32 ../../po/../src/virtManager/domain.py:403
+msgid "Running"
+msgstr "Izvršavanje"
+
+#: ../src/vmm-host.glade.h:33
+msgid "Start"
+msgstr "Početak"
+
+#: ../src/vmm-host.glade.h:35
+msgid "State:"
+msgstr "Stanje:"
+
+#: ../src/vmm-host.glade.h:36
+#, fuzzy
+msgid "Storage Location"
+msgstr "_Lokacija ISO preslike:"
+
+#: ../src/vmm-host.glade.h:37
+#, fuzzy
+msgid "Storage Name"
+msgstr "Skladišta pohranjivanja"
+
+#: ../src/vmm-host.glade.h:38
+msgid "Storage Pools"
+msgstr "Skladišta pohranjivanja"
+
+#: ../src/vmm-host.glade.h:39 ../src/vmm-details.glade.h:57
+msgid "UUID:"
+msgstr "UUID:"
+
+#: ../src/vmm-host.glade.h:40
+msgid "Virtual Networks"
+msgstr "Virtualne mreže"
+
+#: ../src/vmm-host.glade.h:41
+msgid "Xen"
+msgstr "Xen"
+
+#: ../src/vmm-host.glade.h:42 ../../po/../src/vmm-manager.glade:40
+msgid "_File"
+msgstr "_Datoteke"
+
+#: ../src/vmm-host.glade.h:44
+msgid "example.com"
+msgstr "primjer.com"
+
+#: ../src/vmm-host.glade.h:45
+msgid "x86_64"
+msgstr "x86_64"
+
+#: ../src/vmm-modify-file-storage.glade.h:1
+msgid " free"
+msgstr " slobodno"
+
+#: ../src/vmm-modify-file-storage.glade.h:2
+msgid " of "
+msgstr " od "
+
+#: ../src/vmm-modify-file-storage.glade.h:3
+msgid "/tmp"
+msgstr "/tmp"
+
+#: ../src/vmm-modify-file-storage.glade.h:4
+msgid "10 TB"
+msgstr "10 TB"
+
+#: ../src/vmm-modify-file-storage.glade.h:5
+msgid ""
+"<b>Tip:</b> You may only increase the size of file-based storage; you can't "
+"decrease its size."
+msgstr ""
+"<B>Savjet:</B> Možete povećati samo veličinu pohrane zasnovane na datoteci. "
+"Ne možete smanjiti njezinu veličinu."
+
+#: ../src/vmm-modify-file-storage.glade.h:6
+msgid ""
+"MB\n"
+"GB\n"
+"TB"
+msgstr ""
+"MB\n"
+"GB\n"
+"TB"
+
+#: ../src/vmm-modify-file-storage.glade.h:9
+msgid "Modify File Storage"
+msgstr "Uredi pohranu datoteka"
+
+#: ../src/vmm-modify-file-storage.glade.h:10
+#, fuzzy
+msgid "Size Type"
+msgstr "Vrsta OS:"
+
+#: ../src/vmm-modify-file-storage.glade.h:11
+msgid "Storage Size Select"
+msgstr ""
+
+#: ../src/vmm-modify-file-storage.glade.h:12
+msgid "_Mount Point (on virtual system):"
+msgstr "_Točka pristupa (na virtualnom sustavu):"
+
+#: ../src/vmm-modify-file-storage.glade.h:13
+msgid "_Size:"
+msgstr "_Veličina:"
+
+#: ../src/vmm-preferences.glade.h:1
+msgid "<b>Consoles</b>"
+msgstr "<b>Konzole</b>"
+
+#: ../src/vmm-preferences.glade.h:2
+msgid "<b>Status monitoring</b>"
+msgstr "<B>Nadzor stanja</B>"
+
+#: ../src/vmm-preferences.glade.h:3
+msgid "Auto Console"
+msgstr ""
+
+#: ../src/vmm-preferences.glade.h:4
+msgid "Automatically open consoles:"
+msgstr "Automatski otvori konzole:"
+
+#: ../src/vmm-preferences.glade.h:5
+#, fuzzy
+msgid "Grab Keyboard"
+msgstr "Uhvati unos tipkovnice:"
+
+#: ../src/vmm-preferences.glade.h:6
+msgid "Grab keyboard input:"
+msgstr "Uhvati unos tipkovnice:"
+
+#: ../src/vmm-preferences.glade.h:7
+#, fuzzy
+msgid "History Samples"
+msgstr "uzorci"
+
+#: ../src/vmm-preferences.glade.h:8
+msgid "Maintain history of"
+msgstr "Zadrži povijest od"
+
+#: ../src/vmm-preferences.glade.h:9
+msgid ""
+"Never\n"
+"For new domains\n"
+"For all domains"
+msgstr ""
+"Nikad\n"
+"Za nove domene\n"
+"Za sve domene"
+
+#: ../src/vmm-preferences.glade.h:12
+msgid ""
+"Never\n"
+"When fullscreen\n"
+"On mouse over"
+msgstr ""
+"Nikad\n"
+"Kad je preko cijelog zaslona\n"
+"Pri prelasku mišem"
+
+#: ../src/vmm-preferences.glade.h:15
+msgid "Preferences"
+msgstr "Postavke"
+
+#: ../src/vmm-preferences.glade.h:16
+msgid "Status Interval"
+msgstr ""
+
+#: ../src/vmm-preferences.glade.h:17
+msgid "Update status every"
+msgstr "Ažuriraj stanje svakih"
+
+#: ../src/vmm-preferences.glade.h:18
+msgid "samples"
+msgstr "uzorci"
+
+#: ../src/vmm-preferences.glade.h:19
+msgid "seconds"
+msgstr "sekunde"
+
+#: ../src/vmm-add-hardware.glade.h:1 ../src/vmm-create.glade.h:3
+msgid "-"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:4 ../src/vmm-create.glade.h:16
+msgid "<b>Network</b>"
+msgstr "<B>Mreža</B>"
+
+#: ../src/vmm-add-hardware.glade.h:5
+#, fuzzy
+msgid "<b>Source:</b>"
+msgstr "<B>Pohrana</B>"
+
+#: ../src/vmm-add-hardware.glade.h:6 ../src/vmm-create.glade.h:17
+msgid "<b>Storage</b>"
+msgstr "<B>Pohrana</B>"
+
+#: ../src/vmm-add-hardware.glade.h:7
+#, fuzzy
+msgid "<b>Target:</b>"
+msgstr "<B>Pohrana</B>"
+
+#: ../src/vmm-add-hardware.glade.h:8 ../src/vmm-create.glade.h:20
+msgid "<small><b>Example:</b> /dev/hdc2</small>"
+msgstr "<small><B>Primjer:</B> /dev/hdc2</small>"
+
+#: ../src/vmm-add-hardware.glade.h:9 ../src/vmm-create.glade.h:26
+msgid ""
+"<small><b>Tip:</b> Choose this option if your host is disconnected, "
+"connected via wireless, or dynamically configured with NetworkManager.</"
+"small>"
+msgstr ""
+"<small><b>Savjet:</b> Odaberite ovu opciju ako vaš udomitelj nije povezan, "
+"ako je povezan putem bežične mreže ili dinamički konfiguriran pomoću "
+"aplikacije NetworkManager.</small>"
+
+#: ../src/vmm-add-hardware.glade.h:10 ../src/vmm-create.glade.h:27
+msgid ""
+"<small><b>Tip:</b> Choose this option if your host is statically connected "
+"to wired ethernet, to gain the ability to migrate the virtual system.</small>"
+msgstr ""
+"<small><b>Savjet:</b> Odaberite ovu opciju ako vaš udomitelj putem statičke "
+"adrese povezan s kabelskom mrežom, kako biste postigli mogućnost migriranja "
+"virtualnih sustava.</small>"
+
+#: ../src/vmm-add-hardware.glade.h:11 ../src/vmm-create.glade.h:30
+msgid ""
+"<small><b>Warning:</b> If you do not allocate the entire disk at VM "
+"creation, space will be allocated as needed while the guest is running. If "
+"sufficient free space is not available on the host, this may result in data "
+"corruption on the guest.</small>"
+msgstr ""
+"<small><b>Upozorenje:</b> Ako tijekom izrade VM-a ne dodijelite cjelokupni "
+"disk, tijekom rada gostiju prostor će biti dodjeljivan po potrebi. Ako na "
+"računalu udomitelja nema dovoljno prostora na disku, ovo bi moglo "
+"prouzrokovati oštećivanja podataka gosta.</small>"
+
+#: ../src/vmm-add-hardware.glade.h:12
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Adding new "
+"virtual hardware </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Dodavanje novog "
+"virtualnog hardvera</span>"
+
+#: ../src/vmm-add-hardware.glade.h:13 ../src/vmm-create.glade.h:32
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Assigning "
+"storage space</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Dodjeljivanje "
+"prostora za pohranu</span>"
+
+#: ../src/vmm-add-hardware.glade.h:14 ../src/vmm-create.glade.h:34
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Connect to host "
+"network</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Poveži s "
+"glavnom mrežom</span>"
+
+#: ../src/vmm-add-hardware.glade.h:15
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to add "
+"hardware</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Spremnost za "
+"dodavanje hardvera</span>"
+
+#: ../src/vmm-add-hardware.glade.h:16
+msgid "Add new virtual hardware"
+msgstr "Dodaj novi virtualni hardver"
+
+#: ../src/vmm-add-hardware.glade.h:17 ../src/vmm-create.glade.h:40
+msgid "Allocate entire virtual disk now?"
+msgstr "Dodijeliti cjelokupni virtualni disk?"
+
+#: ../src/vmm-add-hardware.glade.h:18 ../src/vmm-create.glade.h:42
+msgid "Browse..."
+msgstr "Pretraži..."
+
+#: ../src/vmm-add-hardware.glade.h:20 ../src/vmm-create.glade.h:46
+msgid "Connection type:"
+msgstr "Vrsta povezivanja:"
+
+#: ../src/vmm-add-hardware.glade.h:21
+msgid "Device Type Field"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:22
+#, fuzzy
+msgid "Device type:"
+msgstr "Uređaj:"
+
+#: ../src/vmm-add-hardware.glade.h:23 ../src/vmm-create.glade.h:48
+#: ../src/vmm-details.glade.h:23
+msgid "Disk"
+msgstr "Disk"
+
+#: ../src/vmm-add-hardware.glade.h:24 ../src/vmm-create.glade.h:49
+msgid "Disk image:"
+msgstr "Preslika diska:"
+
+#: ../src/vmm-add-hardware.glade.h:25 ../src/vmm-create.glade.h:50
+msgid "Disk size:"
+msgstr "Veličina diska:"
+
+#: ../src/vmm-add-hardware.glade.h:26 ../src/vmm-create.glade.h:54
+#, fuzzy
+msgid "File Location Field"
+msgstr "Lokacija datoteke:"
+
+#: ../src/vmm-add-hardware.glade.h:27
+#, fuzzy
+msgid "File Size Field"
+msgstr "Veličina datoteke:"
+
+#: ../src/vmm-add-hardware.glade.h:28 ../src/vmm-create.glade.h:56
+msgid "File _Location:"
+msgstr "Lokacija datoteke:"
+
+#: ../src/vmm-add-hardware.glade.h:29 ../src/vmm-create.glade.h:57
+msgid "File _Size:"
+msgstr "Veličina datoteke:"
+
+#: ../src/vmm-add-hardware.glade.h:30
+#, fuzzy
+msgid "Hardware Type Select"
+msgstr "Potrebna je vrsta hardvera"
+
+#: ../src/vmm-add-hardware.glade.h:31
+msgid "Hardware type:"
+msgstr "Vrsta hardvera:"
+
+#: ../src/vmm-add-hardware.glade.h:33 ../src/vmm-details.glade.h:28
+#, fuzzy
+msgid "MAC Address Field"
+msgstr "MAC adresa:"
+
+#: ../src/vmm-add-hardware.glade.h:34 ../src/vmm-create.glade.h:73
+#: ../src/vmm-details.glade.h:29
+msgid "MAC address:"
+msgstr "MAC adresa:"
+
+#: ../src/vmm-add-hardware.glade.h:35 ../src/vmm-create.glade.h:74
+#: ../src/vmm-details.glade.h:30
+msgid "MB"
+msgstr "MB"
+
+#: ../src/vmm-add-hardware.glade.h:36 ../src/vmm-create.glade.h:81
+#: ../src/vmm-details.glade.h:38
+msgid "Network"
+msgstr "Mreža"
+
+#: ../src/vmm-add-hardware.glade.h:37 ../src/vmm-create.glade.h:82
+msgid "Network Device Select"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:38 ../src/vmm-create.glade.h:84
+msgid "Normal Disk _Partition:"
+msgstr "Normalna particija diska:"
+
+#: ../src/vmm-add-hardware.glade.h:39 ../src/vmm-create.glade.h:91
+msgid "P_artition:"
+msgstr "P_articija:"
+
+#: ../src/vmm-add-hardware.glade.h:40
+msgid "Partition Location Field"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:41
+msgid ""
+"Please indicate how you'd like to assign space on this physical host system "
+"for your new virtual storage device."
+msgstr ""
+"Naznačite na koji biste način željeli dodijeliti prostor na ovom fizičkom "
+"udomitelju za vaš novi virtualni uređaj pohranjivanja."
+
+#: ../src/vmm-add-hardware.glade.h:42
+msgid ""
+"Please indicate how you'd like to connect your new virtual network device to "
+"the host network."
+msgstr ""
+"Naznačite na koji biste način željeli svoj novi virtualni mrežni uređaj "
+"povezati s mrežom udomitelja."
+
+#: ../src/vmm-add-hardware.glade.h:43
+msgid "Set _fixed MAC address for this NIC?"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:44 ../src/vmm-create.glade.h:102
+msgid "Shared Physical Device"
+msgstr "Dijeljeni fizički uređaj"
+
+#: ../src/vmm-add-hardware.glade.h:45 ../src/vmm-create.glade.h:103
+msgid "Simple F_ile:"
+msgstr "Jednostavna _datoteka:"
+
+#: ../src/vmm-add-hardware.glade.h:46 ../src/vmm-create.glade.h:106
+msgid "Target:"
+msgstr "Cilj:"
+
+#: ../src/vmm-add-hardware.glade.h:47
+msgid ""
+"This assistant will guide you through adding a new piece of virtual "
+"hardware. First select what type of hardware you wish to add:"
+msgstr ""
+"Ovaj će vas pomoćnik voditi kroz postupak dodavanja novog virtualnog "
+"hardvera. Prvo odaberite vrstu hardvera kojeg želite dodati:"
+
+#: ../src/vmm-add-hardware.glade.h:48
+#, fuzzy
+msgid "Virtual Network Select"
+msgstr "Virtualne mreže"
+
+#: ../src/vmm-add-hardware.glade.h:49 ../src/vmm-create.glade.h:121
+msgid "_Device:"
+msgstr "_Uređaj:"
+
+#: ../src/vmm-add-hardware.glade.h:51 ../src/vmm-create.glade.h:125
+#, fuzzy
+msgid "_MAC address:"
+msgstr "MAC adresa:"
+
+#: ../src/vmm-add-hardware.glade.h:52 ../src/vmm-create.glade.h:126
+msgid "_Network:"
+msgstr "_Mreža:"
+
+#: ../src/vmm-add-hardware.glade.h:53 ../src/vmm-create.glade.h:129
+msgid "_Shared physical device"
+msgstr "_Dijeljeni fizički uređaj"
+
+#: ../src/vmm-add-hardware.glade.h:54 ../src/vmm-create.glade.h:131
+msgid "_Virtual network"
+msgstr "_Virtualna mreža"
+
+#: ../src/vmm-add-hardware.glade.h:55 ../src/vmm-create.glade.h:133
+msgid "eth0"
+msgstr "eth0"
+
+#: ../src/vmm-create.glade.h:2
+msgid " "
+msgstr " "
+
+#: ../src/vmm-create.glade.h:5 ../src/vmm-details.glade.h:4
+msgid "2 GB"
+msgstr "2 GB"
+
+#: ../src/vmm-create.glade.h:6
+msgid "256\t"
+msgstr "256\t"
+
+#: ../src/vmm-create.glade.h:7
+msgid "400 MB"
+msgstr "400 MB"
+
+#: ../src/vmm-create.glade.h:8
+msgid "5\t"
+msgstr "5\t"
+
+#: ../src/vmm-create.glade.h:10
+msgid "500 MB"
+msgstr "500 MB"
+
+#: ../src/vmm-create.glade.h:11
+msgid "<b>CPUs:</b>"
+msgstr "<b>CPU:</b>"
+
+#: ../src/vmm-create.glade.h:12
+msgid "<b>Example:</b> system1"
+msgstr "<B>Primjer:</B> sustav1"
+
+#: ../src/vmm-create.glade.h:13
+msgid "<b>Install media</b>"
+msgstr "<B>Instalacijski medij</B>"
+
+#: ../src/vmm-create.glade.h:14
+msgid "<b>Memory:</b>"
+msgstr "<B>Memorija:</B>"
+
+#: ../src/vmm-create.glade.h:15
+msgid "<b>Memory</b> and <b>CPU</b> allocation"
+msgstr "Dodjeljivanje <B>memorije</B> i <B>CPU-a</B>"
+
+#: ../src/vmm-create.glade.h:18
+msgid ""
+"<b>Storage</b> details - which disk partitions or files the system should use"
+msgstr ""
+"Detalji <B>pohrane</B> - koje biste particije diska ili datoteke sustava "
+"trebali upotrijebiti"
+
+#: ../src/vmm-create.glade.h:21
+msgid "<small><b>Example:</b> ftp://hostname.example.com/ks/ks.cfg</small>"
+msgstr ""
+"<small><B>Primjer:</B> ftp://nazivračunala.primjer.com/ks/ks.cfg</small>"
+
+#: ../src/vmm-create.glade.h:22
+msgid ""
+"<small><b>Example:</b> http://servername.example.com/distro/i386/tree</small>"
+msgstr ""
+"<small><B>Primjer:</B> http://nazivposlužitelja.primjer.com/distro/i386/"
+"tree</small>"
+
+#: ../src/vmm-create.glade.h:23
+#, fuzzy
+msgid ""
+"<small><b>Example:</b> updates=http://hostname.example.com/updates.img</"
+"small>"
+msgstr ""
+"<small><B>Primjer:</B> ftp://nazivračunala.primjer.com/ks/ks.cfg</small>"
+
+#: ../src/vmm-create.glade.h:24
+msgid ""
+"<small><b>Note:</b> The host CPU(s) in this machine do not have support for "
+"full virtualization.</small>"
+msgstr ""
+"<small><b>Napomena:</b> CPU-i na ovom računalu nemaju podršku za potpunu "
+"virtualizaciju.</small>"
+
+#: ../src/vmm-create.glade.h:25
+msgid ""
+"<small><b>Note:</b> The host CPU(s) in this machine support full "
+"virtualization, but it is not enabled by the BIOS.</small>"
+msgstr ""
+"<small><b>Napomena:</b> CPU-i na ovom računalu imaju podršku za potpunu "
+"virtualizaciju, ali ona nije omogućena u BIOS-u.</small>"
+
+#: ../src/vmm-create.glade.h:28
+msgid ""
+"<small><b>Tip:</b> For best performance, the number of virtual CPUs should "
+"be less than (or equal to) the number of logical CPUs on the host system.</"
+"small>"
+msgstr ""
+"<small><B>Savjet:</B> Za najbolje performanse broj virtualnih CPU-a morao bi "
+"biti manji od (ili jednak) broju logičkih CPU-a na računalu udomitelja "
+"sustava></small>"
+
+#: ../src/vmm-create.glade.h:29
+msgid ""
+"<small><b>Tip:</b> You may add additional storage, including network-mounted "
+"storage, to your virtual system after it has been created using the same "
+"tools you would on a physical system.</small>"
+msgstr ""
+"<small><B>Savjet:</B> Nakon izrade virtualnog sustava možete mu dodati "
+"dodatne lokacije pohrane, uključujući pohranu s mrežnim pristupanjem, "
+"upotrebom istih alata kao i na fizičkom sustavu.</small>"
+
+#: ../src/vmm-create.glade.h:31
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Allocate memory "
+"and CPU</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Dodjeljivanje "
+"memorije i CPU-a</span>"
+
+#: ../src/vmm-create.glade.h:33
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Choosing a "
+"virtualization method</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Odabir načina "
+"virtualizacije</span>"
+
+#: ../src/vmm-create.glade.h:35
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Creating a new "
+"virtual system </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Izrada novog "
+"virtualnog sustava</span>"
+
+#: ../src/vmm-create.glade.h:36
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Locating "
+"installation media</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Pronalaženje "
+"instalacijskog medija</span>"
+
+#: ../src/vmm-create.glade.h:37
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Naming your "
+"virtual system </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Davanje naziva "
+"virtualnom sustavu </span>"
+
+#: ../src/vmm-create.glade.h:38
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to begin "
+"installation</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Spremnost za "
+"započinjanje instalacije</span>"
+
+#: ../src/vmm-create.glade.h:39
+msgid "A <b>name</b> for your new virtual system"
+msgstr "<B>Naziv</B> vašeg novog virtualnog sustava"
+
+#: ../src/vmm-create.glade.h:41
+#, fuzzy
+msgid "Architecture Select"
+msgstr "Arhitektura:"
+
+#: ../src/vmm-create.glade.h:43
+msgid "CPU architecture:"
+msgstr "CPU arhitektura:"
+
+#: ../src/vmm-create.glade.h:44
+msgid "CPU/memory"
+msgstr "CPU/memorija"
+
+#: ../src/vmm-create.glade.h:47
+msgid "Create a new virtual system"
+msgstr "Izradi novi virtualni sustav"
+
+#: ../src/vmm-create.glade.h:51
+msgid "Enable kernel / hardware acceleration"
+msgstr "Omogući kernelsko / hardversko ubrzavanje"
+
+#: ../src/vmm-create.glade.h:52
+msgid "FV install"
+msgstr "Potpuno virtualizirana instalacija"
+
+#: ../src/vmm-create.glade.h:53
+msgid "F_ully Virtualized:"
+msgstr "Potp_uno virtualizirano:"
+
+#: ../src/vmm-create.glade.h:55
+#, fuzzy
+msgid "File Size Select"
+msgstr "Veličina datoteke:"
+
+#: ../src/vmm-create.glade.h:58
+#, fuzzy
+msgid "ISO Location Field"
+msgstr "ISO lokacija:"
+
+#: ../src/vmm-create.glade.h:59
+msgid "ISO _Location:"
+msgstr "ISO lokacija:"
+
+#: ../src/vmm-create.glade.h:60
+msgid "Initial memory:"
+msgstr "Početna memorija:"
+
+#: ../src/vmm-create.glade.h:61
+msgid "Install Media _URL:"
+msgstr "URL instalacijskog medija:"
+
+#: ../src/vmm-create.glade.h:62
+#, fuzzy
+msgid "Install URL Field"
+msgstr "Potreban je instalacijski medij"
+
+#: ../src/vmm-create.glade.h:63
+msgid "Installation source:"
+msgstr "Izvor instalacije:"
+
+#: ../src/vmm-create.glade.h:65
+msgid ""
+"Involves hardware simulation, allowing for a greater range of operating "
+"systems (does not require OS modification). Slower than paravirtualized "
+"systems."
+msgstr ""
+"Podrazumijeva simulaciju hardvera koja dopušta veći raspon operacijskih "
+"sustava (ne zahtijeva preuređivanje OS-a). Sporije od sustava "
+"paravirtualizacije."
+
+#: ../src/vmm-create.glade.h:66
+msgid "Kernel arguments:"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:67
+#, fuzzy
+msgid "Kickstart Field"
+msgstr "Izvor kickstarta:"
+
+#: ../src/vmm-create.glade.h:68
+msgid "Kickstart U_RL:"
+msgstr "URL kickstarta:"
+
+#: ../src/vmm-create.glade.h:69
+msgid "Kickstart source:"
+msgstr "Izvor kickstarta:"
+
+#: ../src/vmm-create.glade.h:70
+msgid ""
+"Lightweight method of virtualizing machines. Limits operating system choices "
+"because the OS must be specially modified to support paravirtualization. "
+"Better performance than fully virtualized systems."
+msgstr ""
+"Lagani način virtualizacije računala. Ograničava odabir operacijskih sustava "
+"jer oni moraju biti posebno prilagođeni radi podržavanje paravirtualizacije. "
+"Bolje performanse u odnosu na potpuno virtualizirane sustave."
+
+#: ../src/vmm-create.glade.h:71
+msgid "Logical host CPUs:"
+msgstr "CPU-i logičkog udomitelja:"
+
+#: ../src/vmm-create.glade.h:72
+msgid "MAC Field"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:75
+msgid "Machine name:"
+msgstr "Naziv računala:"
+
+#: ../src/vmm-create.glade.h:76
+msgid "Max Mem Select"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:77
+msgid "Maximum memory:"
+msgstr "Najviše memorije:"
+
+#: ../src/vmm-create.glade.h:78
+msgid "Media Path Select"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:80 ../src/vmm-details.glade.h:36
+msgid "Name Field"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:83
+#, fuzzy
+msgid "Network Select"
+msgstr "Mreža"
+
+#: ../src/vmm-create.glade.h:85
+#, fuzzy
+msgid "OS Type Select"
+msgstr "Vrsta OS:"
+
+#: ../src/vmm-create.glade.h:86
+#, fuzzy
+msgid "OS Variant Select"
+msgstr "OS _verzija:"
+
+#: ../src/vmm-create.glade.h:87
+msgid "OS _Type:"
+msgstr "Vrsta OS:"
+
+#: ../src/vmm-create.glade.h:88
+msgid "OS _Variant:"
+msgstr "OS _verzija:"
+
+#: ../src/vmm-create.glade.h:89
+msgid "Operating System:"
+msgstr "Operacijski sustav:"
+
+#: ../src/vmm-create.glade.h:90
+msgid "PVinstall"
+msgstr "PVinstall"
+
+#: ../src/vmm-create.glade.h:92
+#, fuzzy
+msgid "Partition Field"
+msgstr "P_articija:"
+
+#: ../src/vmm-create.glade.h:93
+msgid "Please choose a name for your virtual system:"
+msgstr "Odaberite naziv vašeg virtualnog sustava:"
+
+#: ../src/vmm-create.glade.h:94
+msgid ""
+"Please choose the type of guest operating system you will be installing:"
+msgstr ""
+"Odaberite vrstu gostujućeg operacijskog sustava kojeg ćete instalirati:"
+
+#: ../src/vmm-create.glade.h:95
+msgid ""
+"Please enter the memory configuration for this VM. You can specify the "
+"maximum amount of memory the VM should be able to use, and optionally a "
+"lower amount to grab on startup. Warning: setting VM memory too high will "
+"cause out-of-memory errors in your host domain!"
+msgstr ""
+"Unesite memorijsku konfiguraciju za ovaj VM. Možete odrediti najveću "
+"količinu memorije koju će VM imati na raspolaganju i opcionalno manju "
+"količinu memorije koja će biti uhvaćena kod pokretanja. Upozorenje: "
+"Postavljanje prevelikog iznosa memorije za VM prouzrokovat će pogreške izvan "
+"opsega memorije u domeni vašeg računala!"
+
+#: ../src/vmm-create.glade.h:96
+msgid "Please enter the number of virtual CPUs this VM should start up with."
+msgstr ""
+"Unesite broj virtualnih CPU-a s kojima bi ovaj VM trebao biti pokrenut."
+
+#: ../src/vmm-create.glade.h:97
+msgid ""
+"Please indicate how you'd like to assign space on this physical host system "
+"for your new virtual system. This space will be used to install the virtual "
+"system's operating system."
+msgstr ""
+"Naznačite na koji biste način željeli dodijeliti prostor na ovom fizičkom "
+"udomitelju za vaš novi virtualni sustav. Ovaj će prostor biti upotrebljavan "
+"za instaliranje operacijskih sustava virtualnog sustava."
+
+#: ../src/vmm-create.glade.h:98
+msgid ""
+"Please indicate how you'd like to connect your new virtual system to the "
+"host network."
+msgstr ""
+"Naznačite na koji biste način željeli svoj novi virtualni sustav povezati s "
+"mrežom udomitelja."
+
+#: ../src/vmm-create.glade.h:99
+msgid ""
+"Please indicate where installation media is available for the operating "
+"system you would like to install on this <b>fully virtualized</b> virtual "
+"system:"
+msgstr ""
+"Naznačite lokaciju instalacijskog medija za operacijski sustav koji želite "
+"instalirati na ovaj <B>potpuno virtualiziran</B> virtualni sustav:"
+
+#: ../src/vmm-create.glade.h:100
+msgid ""
+"Please indicate where installation media is available for the operating "
+"system you would like to install on this <b>paravirtualized</b> virtual "
+"system. Optionally you can provide the URL for a kickstart file that "
+"describes your system:"
+msgstr ""
+"Naznačite lokaciju instalacijskog medija za operacijski sustav koji želite "
+"instalirati na ovaj <B>paravirtualiziran</B> virtualni sustav. Opcionalno "
+"možete pružiti URL adresu kickstart datoteke koja opisuje vaš sustav:"
+
+#: ../src/vmm-create.glade.h:101
+#, fuzzy
+msgid "Set _fixed MAC address for your virtual system?"
+msgstr "Odaberite naziv vašeg virtualnog sustava:"
+
+#: ../src/vmm-create.glade.h:104
+msgid "Startup Mem Select"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:105
+msgid "System _Name:"
+msgstr "Naziv sustava:"
+
+#: ../src/vmm-create.glade.h:107
+msgid ""
+"The <b>location</b> of the files necessary for installing an operating "
+"system on the virtual system"
+msgstr ""
+"<B>Lokacija</B> datoteka potrebnih za instaliranje operacijskog sustava na "
+"virtualni sustav"
+
+#: ../src/vmm-create.glade.h:108
+msgid ""
+"This assistant will guide you through creating a new virtual system. You "
+"will be asked for some information about the virtual system you'd like to "
+"create, such as:"
+msgstr ""
+"Ovaj će vas pomoćnik voditi kroz postupak izrade novog virtualnog sustava. "
+"Od vas će biti zatraženi neki podaci o virtualnom sustavu koji želite "
+"izraditi, poput:"
+
+#: ../src/vmm-create.glade.h:109 ../src/vmm-details.glade.h:55
+msgid "Total memory on host machine:"
+msgstr "Ukupno memorije na računalu udomitelja:"
+
+#: ../src/vmm-create.glade.h:110
+msgid "Type"
+msgstr "Vrsta"
+
+#: ../src/vmm-create.glade.h:111 ../src/vmm-details.glade.h:58
+msgid "VCPU Select"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:112
+msgid "VM _Max Memory (MB):"
+msgstr "VM _najv memorije (MB):"
+
+#: ../src/vmm-create.glade.h:113
+msgid "VM _Startup Memory (MB):"
+msgstr "VM memorija kod _pokretanja (MB):"
+
+#: ../src/vmm-create.glade.h:114
+msgid "VMS"
+msgstr "VMS"
+
+#: ../src/vmm-create.glade.h:115
+msgid "Virtual CPUs:"
+msgstr "Virtualni CPU-i:"
+
+#: ../src/vmm-create.glade.h:116
+msgid "Virtualization method:"
+msgstr "Način virtualizacije:"
+
+#: ../src/vmm-create.glade.h:117
+msgid ""
+"Whether the system will be <b>fully virtualized</b> or <b>para-virtualized</"
+"b>"
+msgstr ""
+"Hoće li sustav biti <B>potpuno virtualiziran</B> ili <B>paravirtualiziran</B>"
+
+#: ../src/vmm-create.glade.h:118
+msgid "You will need to choose a virtualization method for your new system:"
+msgstr "Potrebno je odabrati način virtualizacije za vaš novi sustav:"
+
+#: ../src/vmm-create.glade.h:119
+msgid "_Browse..."
+msgstr "_Pretraži..."
+
+#: ../src/vmm-create.glade.h:120
+msgid "_CD-ROM or DVD:"
+msgstr "_CD-ROM ili DVD:"
+
+#: ../src/vmm-create.glade.h:123
+msgid "_ISO Image Location:"
+msgstr "_Lokacija ISO preslike:"
+
+#: ../src/vmm-create.glade.h:124
+msgid "_Kernel parameters:"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:127
+msgid "_Paravirtualized:"
+msgstr "_Paravirtualizirano:"
+
+#: ../src/vmm-create.glade.h:128
+msgid "_Path to install media:"
+msgstr "_Putanja do instalacijskog medija:"
+
+#: ../src/vmm-create.glade.h:130
+msgid "_VCPUs:"
+msgstr "_VCPU-i:"
+
+#: ../src/vmm-create.glade.h:134
+msgid "http://"
+msgstr "http://"
+
+#: ../src/vmm-create.glade.h:135
+msgid ""
+"i686\n"
+"x86_64\n"
+"ppc\n"
+"sparc\n"
+"mips\n"
+"mipsel"
+msgstr ""
+"i686\n"
+"x86_64\n"
+"ppc\n"
+"sparc\n"
+"mips\n"
+"mipsel"
+
+#: ../src/vmm-create.glade.h:141
+#, fuzzy
+msgid "ip=192.168.1.1"
+msgstr "192.168.1.1"
+
+#: ../src/vmm-create.glade.h:142
+msgid "kernel-params"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:143
+msgid "para"
+msgstr "para"
+
+#: ../src/vmm-details.glade.h:2
+#, no-c-format
+msgid "18%"
+msgstr "18%"
+
+#: ../src/vmm-details.glade.h:3
+msgid "2"
+msgstr "2"
+
+#: ../src/vmm-details.glade.h:5
+msgid "20 bits/sec"
+msgstr "20 bita/sek"
+
+#: ../src/vmm-details.glade.h:6
+msgid "200 MB"
+msgstr "200 MB"
+
+#: ../src/vmm-details.glade.h:7
+msgid "30 MB of 128 MB"
+msgstr "30 MB od 128 MB"
+
+#: ../src/vmm-details.glade.h:8
+msgid "8"
+msgstr "8"
+
+#: ../src/vmm-details.glade.h:9
+msgid "80 MB of 1 GB"
+msgstr "80 MB od 1 GB"
+
+#: ../src/vmm-details.glade.h:11
+msgid "<b>CPUs</b>"
+msgstr "<b>CPU:</b>"
+
+#: ../src/vmm-details.glade.h:12
+msgid "<b>Memory</b>"
+msgstr "<B>Memorija:</B>"
+
+#: ../src/vmm-details.glade.h:14
+msgid ""
+"<b>Tip:</b> 'Source device' refers to the name of the device as seen from "
+"the host OS."
+msgstr ""
+"<b>Savjet:</b> \"Uređaj izvora\" odnosi se na naziv uređaja kako je prikazan "
+"unutar OS udomitelja."
+
+#: ../src/vmm-details.glade.h:15
+msgid ""
+"<b>Tip:</b> 'source' refers to information seen from the host OS, while "
+"'target' refers to information seen from the guest OS"
+msgstr ""
+"<b>Savjet:</b> \"Izvor\" je informacija vidljiva s OS udomitelja, a \"cilj\" "
+"je informacija vidljiva s gostujućih OS."
+
+#: ../src/vmm-details.glade.h:16
+msgid ""
+"<b>Tip:</b> For best performance, the number of virtual CPUs should be less "
+"than (or equal to) the number of physical CPUs on the host system."
+msgstr ""
+"<B>Savjet:</B> Za najbolje performanse broj virtualnih CPU-a morao bi biti "
+"manji od (ili jednak) broja fizičkih CPU-a na računalu udomitelja sustava."
+
+#: ../src/vmm-details.glade.h:17
+msgid "<b>Virtual Disk</b>"
+msgstr "<B>Virtualnih disk:</B>"
+
+#: ../src/vmm-details.glade.h:18
+msgid "<b>Virtual Network Interface</b>"
+msgstr "<B>Sučelje virtualne mreže</B>"
+
+#: ../src/vmm-details.glade.h:19
+msgid "Block"
+msgstr "Blokiraj"
+
+#: ../src/vmm-details.glade.h:21
+msgid "Change allocation:"
+msgstr "Promijeni dodjelu:"
+
+#: ../src/vmm-details.glade.h:22
+msgid "Current allocation:"
+msgstr "Trenutna dodjela:"
+
+#: ../src/vmm-details.glade.h:24
+msgid "Disk usage:"
+msgstr "Upotreba diska:"
+
+#: ../src/vmm-details.glade.h:25
+msgid "Hardware"
+msgstr "Hardver"
+
+#: ../src/vmm-details.glade.h:26
+#, fuzzy
+msgid "How many virtual CPUs should be allocated for this machine?"
+msgstr "Koliko virtualnih CPU-a želite dodijeliti ovom računalu?"
+
+#: ../src/vmm-details.glade.h:27
+#, fuzzy
+msgid "How much memory should be allocated for this machine?"
+msgstr "Koliko memorije bi trebalo dodijeliti ovom računalu?"
+
+#: ../src/vmm-details.glade.h:31
+msgid "Max Memory Select"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:32
+msgid "Maximum allocation:"
+msgstr "Najveća dodjela:"
+
+#: ../src/vmm-details.glade.h:33
+msgid "Memory"
+msgstr "Memorija"
+
+#: ../src/vmm-details.glade.h:34
+#, fuzzy
+msgid "Memory Select"
+msgstr "Upotreba memorije"
+
+#: ../src/vmm-details.glade.h:39
+msgid "Network usage:"
+msgstr "Upotreba mreže:"
+
+#: ../src/vmm-details.glade.h:42
+msgid "Processor"
+msgstr "Procesor"
+
+#: ../src/vmm-details.glade.h:45
+msgid "Shut down"
+msgstr "Gašenje sustava"
+
+#: ../src/vmm-details.glade.h:47
+msgid "Source device:"
+msgstr "Uređaj izvora:"
+
+#: ../src/vmm-details.glade.h:48
+msgid "Source path:"
+msgstr "Putanja izvora:"
+
+#: ../src/vmm-details.glade.h:49
+msgid "Source type:"
+msgstr "Vrsta izvora:"
+
+#: ../src/vmm-details.glade.h:50
+msgid "Status:"
+msgstr "Stanje:"
+
+#: ../src/vmm-details.glade.h:51
+msgid "Target device:"
+msgstr "Uređaj cilja:"
+
+#: ../src/vmm-details.glade.h:52
+msgid "Target type:"
+msgstr "Vrsta cilja:"
+
+#: ../src/vmm-details.glade.h:54
+msgid "Total CPUs on host machine:"
+msgstr "Ukupno CPU-a na računalu udomitelja:"
+
+#: ../src/vmm-details.glade.h:56
+msgid "UUID Field"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:59
+msgid "Virtual Machine Details"
+msgstr "Detalji virtualnog računala"
+
+#: ../src/vmm-details.glade.h:63
+msgid "_Graphical Console"
+msgstr "_Grafička konzola"
+
+#: ../src/vmm-details.glade.h:70
+msgid "disk\t"
+msgstr "disk\t"
+
+#: ../../po/../src/vmm-manager.glade:49
+msgid "Restore a saved machine from a filesystem image"
+msgstr "Obnovi spremljeno računalo iz preslike datotečnog sustava"
+
+#: ../../po/../src/vmm-manager.glade:50
+msgid "Restore saved machine..."
+msgstr "Obnovi spremljeno računalo..."
+
+#: ../../po/../src/vmm-manager.glade:78
+msgid "Open connection..."
+msgstr "Otvori vezu..."
+
+#: ../../po/../src/vmm-manager.glade:127
+msgid "_Edit"
+msgstr "_Uredi"
+
+#: ../../po/../src/vmm-manager.glade:136
+msgid "Host details..."
+msgstr "Detalji udomitelja..."
+
+#: ../../po/../src/vmm-manager.glade:145
+msgid "Machine details..."
+msgstr "Detalji računala..."
+
+#: ../../po/../src/vmm-manager.glade:166
+msgid "Delete machine"
+msgstr "Izbriši računalo"
+
+#: ../../po/../src/vmm-manager.glade:215
+msgid "Domain ID"
+msgstr "ID domene"
+
+#: ../../po/../src/vmm-manager.glade:225
+#: ../../po/../src/virtManager/manager.py:714
+msgid "Status"
+msgstr "Stanje"
+
+#: ../../po/../src/vmm-manager.glade:235
+#: ../../po/../src/virtManager/manager.py:715
+msgid "CPU usage"
+msgstr "CPU iskorištenost"
+
+#: ../../po/../src/vmm-manager.glade:245
+msgid "Virtual CPUs"
+msgstr "Virtualni CPU-i"
+
+#: ../../po/../src/vmm-manager.glade:255
+#: ../../po/../src/virtManager/manager.py:717
+msgid "Memory usage"
+msgstr "Upotreba memorije"
+
+#: ../../po/../src/vmm-manager.glade:265
+#: ../../po/../src/virtManager/manager.py:718
+msgid "Disk usage"
+msgstr "Upotreba diska"
+
+#: ../../po/../src/vmm-manager.glade:275
+#: ../../po/../src/virtManager/manager.py:719
+msgid "Network traffic"
+msgstr "Mrežni promet"
+
+#: ../../po/../src/vmm-manager.glade:347
+msgid "_View:"
+msgstr "_Prikaz:"
+
+#: ../../po/../src/vmm-manager.glade:372
+msgid ""
+"All virtual machines\n"
+"Active virtual machines\n"
+"Inactive virtual machines"
+msgstr ""
+"Sva virtualna računala\n"
+"Aktivna virtualna računala\n"
+"Neaktivna virtualna računala"
+
+#: ../../po/../src/vmm-manager.glade:378
+msgid "View Select"
+msgstr ""
+
+#: ../../po/../src/vmm-manager.glade:485
+msgid "De_tails"
+msgstr "_Detalji"
+
+#: ../src/vmm-open-connection.glade.h:1
+msgid "Co_nnect"
+msgstr "P_oveži"
+
+#: ../src/vmm-open-connection.glade.h:2
+#, fuzzy
+msgid "Connection Select"
+msgstr "Vrsta povezivanja:"
+
+#: ../src/vmm-open-connection.glade.h:3
+#, fuzzy
+msgid "Connection:"
+msgstr "Vrsta povezivanja:"
+
+#: ../src/vmm-open-connection.glade.h:4
+#, fuzzy
+msgid "Hostname Field"
+msgstr "Naziv računala:"
+
+#: ../src/vmm-open-connection.glade.h:6
+#, fuzzy
+msgid "Hypervisor Select"
+msgstr "Hipervizor:"
+
+#: ../src/vmm-open-connection.glade.h:8
+msgid ""
+"Local\n"
+"Remote SSL/TLS with x509 certificate\n"
+"Remote tunnel over SSH"
+msgstr ""
+
+#: ../src/vmm-open-connection.glade.h:11
+msgid "Open connection"
+msgstr "Otvori vezu"
+
+#: ../src/vmm-open-connection.glade.h:12
+msgid ""
+"Xen\n"
+"QEMU"
+msgstr ""
+"Xen\n"
+"QEMU"
+
+#: ../src/vmm-progress.glade.h:1 ../../po/../src/virtManager/asyncjob.py:38
+msgid "Operation in progress"
+msgstr "Radnja je u tijeku"
+
+#: ../src/vmm-progress.glade.h:2 ../../po/../src/virtManager/asyncjob.py:38
+msgid "Please wait a few moments..."
+msgstr "Pričekajte nekoliko trenutaka..."
+
+#: ../src/vmm-progress.glade.h:3 ../../po/../src/virtManager/asyncjob.py:74
+#: ../../po/../src/virtManager/asyncjob.py:87
+msgid "Processing..."
+msgstr "Obrađivanje..."
+
+#. ...the risk is we catch too much though
+#. Damned if we do, damned if we dont :-)(
+#: ../../po/../src/virt-manager.py.in:74
+msgid "Unable to initialize GTK: "
+msgstr "Inicijalizacija GTK nije moguća: "
+
+#: ../src/virt-manager.schemas.in.h:1
+msgid "Show VCPU count in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:2
+msgid "Show cpu usage in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:3
+msgid "Show disk usage in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:4
+msgid "Show domain id in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:5
+msgid "Show memory usage in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:6
+#, fuzzy
+msgid "Show network traffic in summary"
+msgstr "Mrežni promet"
+
+#: ../src/virt-manager.schemas.in.h:7
+msgid "Show run state in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:8
+msgid "Show the cpu usage field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:9
+msgid "Show the disk usage field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:10
+msgid "Show the domain id field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:11
+msgid "Show the memory usage field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:12
+msgid "Show the network traffic field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:13
+msgid "Show the run state field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:14
+msgid "Show the virtual CPU count field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:15
+msgid "The length of the list of URLs"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:16
+msgid "The number of samples to keep in the statistics history"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:17
+msgid ""
+"The number of urls to keep in the history for the install media address page."
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:18
+msgid "The statistics history length"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:19
+msgid "The statistics update interval"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:20
+msgid "The statistics update interval in seconds"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:21
+msgid "When to grab keyboard input for the console"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:22
+msgid "When to pop up a console for a guest"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:23
+msgid ""
+"Whether to grab keyboard input for a guest console. 0 = never, 1 = only when "
+"in full screen mode, 2 = when mouse is over console"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:24
+msgid ""
+"Whether to pop up a console for a guest. 0 = never, 1 = only on creation of "
+"a new guest, 2 = On creation of any guest"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:25
+msgid "Whether to show notification when grabbing mouse"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:26
+msgid ""
+"Whether to show the notification hint when grabbing the mouse in the console"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:97
+#: ../../po/../src/virtManager/createnet.py:255
+#: ../../po/../src/virtManager/host.py:230
+#, python-format
+msgid "NAT to physical device %s"
+msgstr "NAT prema fizičkom uređaju %s"
+
+#: ../../po/../src/virtManager/createnet.py:152
+#, python-format
+msgid "%d addresses"
+msgstr "%d adresa"
+
+#: ../../po/../src/virtManager/createnet.py:154
+msgid "Public"
+msgstr "Javno"
+
+#: ../../po/../src/virtManager/createnet.py:158
+msgid "Reserved"
+msgstr "Rezervirano"
+
+#: ../../po/../src/virtManager/createnet.py:160
+msgid "Other"
+msgstr "Ostalo"
+
+#: ../../po/../src/virtManager/createnet.py:304
+#: ../../po/../src/virtManager/createnet.py:308
+msgid "Invalid Network Name"
+msgstr "Nepravilan naziv mreže"
+
+#: ../../po/../src/virtManager/createnet.py:305
+msgid "Network name must be non-blank and less than 50 characters"
+msgstr "Naziv mreže ne smije biti prazan i mora biti kraći od 50 znakova"
+
+#: ../../po/../src/virtManager/createnet.py:309
+msgid "Network name may contain alphanumeric and '_' characters only"
+msgstr "Naziv mreže može sadržavati samo alfanumeričke i znakove \"_\"."
+
+#: ../../po/../src/virtManager/createnet.py:316
+#: ../../po/../src/virtManager/createnet.py:321
+#: ../../po/../src/virtManager/createnet.py:326
+msgid "Invalid Network Address"
+msgstr "Nepravilna mrežna adresa"
+
+#: ../../po/../src/virtManager/createnet.py:317
+msgid "The network address could not be understood"
+msgstr "Interpretiranje mrežne adrese nije moguće"
+
+#: ../../po/../src/virtManager/createnet.py:322
+msgid "The network must be an IPv4 address"
+msgstr "Mreža mora imati IPv4 adresu"
+
+#: ../../po/../src/virtManager/createnet.py:327
+msgid "The network prefix must be at least /4 (16 addresses)"
+msgstr "Prefiks mreže mora biti djeljiv najmanje s 4 (16 adresa)"
+
+#: ../../po/../src/virtManager/createnet.py:331
+#, fuzzy
+msgid "Check Network Address"
+msgstr "Nepravilna mrežna adresa"
+
+#: ../../po/../src/virtManager/createnet.py:332
+msgid ""
+"The network should normally use a private IPv4 address. Use this non-private "
+"address anyway?"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:341
+#: ../../po/../src/virtManager/createnet.py:345
+#: ../../po/../src/virtManager/createnet.py:350
+#: ../../po/../src/virtManager/createnet.py:354
+msgid "Invalid DHCP Address"
+msgstr "Nepravilna DHCP adresa"
+
+#: ../../po/../src/virtManager/createnet.py:342
+msgid "The DHCP start address could not be understood"
+msgstr "Početna DHCP adresa nije razumljiva"
+
+#: ../../po/../src/virtManager/createnet.py:346
+msgid "The DHCP end address could not be understood"
+msgstr "Završna DHCP adresa nije razumljiva"
+
+#: ../../po/../src/virtManager/createnet.py:351
+#, python-format
+msgid "The DHCP start address is not with the network %s"
+msgstr "Početna DHCP adresa ne pripada mreži %s"
+
+#: ../../po/../src/virtManager/createnet.py:355
+#, python-format
+msgid "The DHCP end address is not with the network %s"
+msgstr "Završna DHCP adresa ne pripada mreži %s"
+
+#: ../../po/../src/virtManager/createnet.py:361
+msgid "Invalid forwarding mode"
+msgstr "Nepravilan način prosljeđivanja"
+
+#: ../../po/../src/virtManager/createnet.py:362
+msgid "Please select where the traffic should be forwarded"
+msgstr "Odaberite lokaciju prosljeđivanja prometa"
+
+#: ../../po/../src/virtManager/createnet.py:422
+#: ../../po/../src/virtManager/create.py:1064
+#: ../../po/../src/virtManager/create.py:1099
+msgid "No media present"
+msgstr "Medij nije prisutan"
+
+#: ../../po/../src/virtManager/engine.py:103
+msgid ""
+"Unable to open a connection to the Xen hypervisor/daemon.\n"
+"\n"
+msgstr ""
+"Nije moguće otvoriti vezu prema Xen hypervisor/daemon.\n"
+"\n"
+
+#: ../../po/../src/virtManager/engine.py:104
+#: ../../po/../src/virtManager/engine.py:112
+msgid "Verify that:\n"
+msgstr "Provjeri da:\n"
+
+#: ../../po/../src/virtManager/engine.py:105
+msgid " - A Xen host kernel was booted\n"
+msgstr " - Pokrenut je Xen kernel udomitelja\n"
+
+#: ../../po/../src/virtManager/engine.py:106
+msgid " - The Xen service has been started\n"
+msgstr " - Xen usluga je pokrenuta\n"
+
+#: ../../po/../src/virtManager/engine.py:111
+#, fuzzy
+msgid ""
+"Unable to open a connection to the QEMU management daemon.\n"
+"\n"
+msgstr ""
+"Nije moguće otvoriti vezu prema Xen hypervisor/daemon.\n"
+"\n"
+
+#: ../../po/../src/virtManager/engine.py:113
+#, fuzzy
+msgid " - The 'libvirt_qemud' daemon has been started\n"
+msgstr " - Xen usluga je pokrenuta\n"
+
+#: ../../po/../src/virtManager/engine.py:118
+#, python-format
+msgid "Unable to open connection to hypervisor '%s'"
+msgstr "Nije moguće uspostaviti vezu s hipervisorom '%s'"
+
+#: ../../po/../src/virtManager/engine.py:120
+msgid "Virtual Machine Manager Connection Failure"
+msgstr "Pogreška povezivanja upravljača virtualnog računala"
+
+#: ../../po/../src/virtManager/engine.py:359
+msgid "Save Virtual Machine"
+msgstr "Spremi virtualno računalo"
+
+#: ../../po/../src/virtManager/engine.py:373
+msgid "Saving Virtual Machine"
+msgstr "Spremanje virtualnog računala"
+
+#: ../../po/../src/virtManager/engine.py:389
+#, python-format
+msgid "About to destroy virtual machine %s"
+msgstr "Virtualno računalo %s bit će uništeno"
+
+#: ../../po/../src/virtManager/engine.py:390
+msgid ""
+"This will immediately destroy the VM and may corrupt its disk image. Are you "
+"sure?"
+msgstr ""
+"Na ovaj ćete način smjesta uništiti VM i mogli biste oštetiti njegovu "
+"presliku na disku. Jeste li sigurni da želite nastaviti?"
+
+#: ../../po/../src/virtManager/addhardware.py:274
+#: ../../po/../src/virtManager/create.py:478
+msgid "Shared physical device"
+msgstr "Dijeljeni fizički uređaj"
+
+#: ../../po/../src/virtManager/addhardware.py:277
+#: ../../po/../src/virtManager/create.py:481
+msgid "Virtual network"
+msgstr "Virtualna mreža"
+
+#: ../../po/../src/virtManager/addhardware.py:280
+#: ../../po/../src/virtManager/create.py:484
+msgid "Usermode networking"
+msgstr "Korisničko umrežavanje"
+
+#: ../../po/../src/virtManager/addhardware.py:359
+msgid "Invalid storage address"
+msgstr "Nepravilna adresa pohrane"
+
+#: ../../po/../src/virtManager/addhardware.py:387
+msgid "Too many virtual disks"
+msgstr "Prevelik broj virtualnih diskova"
+
+#: ../../po/../src/virtManager/addhardware.py:388
+msgid "There are no more available virtual disk device nodes"
+msgstr "Nema dostupnih čvorova virtualnih disk-uređaja."
+
+#: ../../po/../src/virtManager/addhardware.py:392
+msgid "Creating Storage File"
+msgstr "Izrada datoteke pohrane"
+
+#: ../../po/../src/virtManager/addhardware.py:393
+msgid "Allocation of disk storage may take a few minutes "
+msgstr "Dodjeljivanje prostora na disku može potrajati nekoliko minuta"
+
+#: ../../po/../src/virtManager/addhardware.py:394
+#: ../../po/../src/virtManager/create.py:576
+msgid "to complete."
+msgstr "za dovršetak."
+
+#: ../../po/../src/virtManager/addhardware.py:413
+#: ../../po/../src/virtManager/addhardware.py:432
+#: ../../po/../src/virtManager/create.py:628
+#, python-format
+msgid "Unable to complete install: '%s'"
+msgstr "Dovršavanje instalacije nije moguće: '%s'"
+
+#: ../../po/../src/virtManager/addhardware.py:437
+#: ../../po/../src/virtManager/create.py:662
+msgid "Locate Storage Partition"
+msgstr "Pronađi particiju pohrane"
+
+#: ../../po/../src/virtManager/addhardware.py:444
+#: ../../po/../src/virtManager/create.py:668
+msgid "Locate or Create New Storage File"
+msgstr "Pronađi ili izradi novu datoteku pohrane"
+
+#: ../../po/../src/virtManager/addhardware.py:524
+msgid "Hardware Type Required"
+msgstr "Potrebna je vrsta hardvera"
+
+#: ../../po/../src/virtManager/addhardware.py:525
+msgid "You must specify what type of hardware to add"
+msgstr "Potrebno je odrediti vrstu hardvera kojeg želite dodati"
+
+#: ../../po/../src/virtManager/addhardware.py:530
+#: ../../po/../src/virtManager/create.py:850
+msgid "Storage Address Required"
+msgstr "Potrebna je adresa pohrane"
+
+#: ../../po/../src/virtManager/addhardware.py:531
+#: ../../po/../src/virtManager/create.py:851
+msgid ""
+"You must specify a partition or a file for storage for the guest install"
+msgstr ""
+"Potrebno je odrediti particiju ili datoteku pohrane za potrebe instalacije "
+"gosta"
+
+#: ../../po/../src/virtManager/addhardware.py:536
+msgid "Storage Address Is Directory"
+msgstr "Adresa pohrane je mapa"
+
+#: ../../po/../src/virtManager/addhardware.py:537
+msgid ""
+"You chose 'Simple File' storage for your storage method, but chose a "
+"directory instead of a file. Please enter a new filename or choose an "
+"existing file."
+msgstr ""
+"Za vaš način pohrane odabrali ste \"Jednostavnu datoteku\", ali ste umjesto "
+"datoteke odabrali mapu. Unesite novi naziv datoteke ili odaberite postojeću "
+"datoteku."
+
+#: ../../po/../src/virtManager/addhardware.py:541
+#, fuzzy
+msgid "Target Device Required"
+msgstr "Potreban je fizički uređaj"
+
+#: ../../po/../src/virtManager/addhardware.py:542
+#, fuzzy
+msgid "You must select a target device for the disk"
+msgstr "Potrebno je odabrati jedan od fizičkih uređaja"
+
+#: ../../po/../src/virtManager/addhardware.py:551
+#: ../../po/../src/virtManager/create.py:860
+#, fuzzy
+msgid "Storage Path Does not exist"
+msgstr "Skladišta pohranjivanja"
+
+#: ../../po/../src/virtManager/addhardware.py:552
+#: ../../po/../src/virtManager/create.py:861
+#, python-format
+msgid "The directory %s containing the disk image does not exist"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:560
+#: ../../po/../src/virtManager/addhardware.py:565
+#: ../../po/../src/virtManager/create.py:869
+#: ../../po/../src/virtManager/create.py:874
+msgid "Not Enough Free Space"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:561
+#: ../../po/../src/virtManager/create.py:870
+msgid ""
+"The filesystem will not have enough free space to fully allocate the sparse "
+"file when the guest is running. Use this path anyway?"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:566
+#: ../../po/../src/virtManager/create.py:875
+msgid "There is not enough free space to create the disk"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:581
+#: ../../po/../src/virtManager/create.py:910
+#, python-format
+msgid "Disk \"%s\" is already in use by another guest!"
+msgstr "Disk \"%s\" već upotrebljava neki drugi gost!"
+
+#: ../../po/../src/virtManager/addhardware.py:582
+#: ../../po/../src/virtManager/create.py:910
+msgid "Do you really want to use the disk ?"
+msgstr "Želite li zaista upotrijebiti ovaj disk?"
+
+#: ../../po/../src/virtManager/addhardware.py:587
+#: ../../po/../src/virtManager/create.py:917
+msgid "Virtual Network Required"
+msgstr "Potrebna je virtualna mreža"
+
+#: ../../po/../src/virtManager/addhardware.py:588
+#: ../../po/../src/virtManager/create.py:918
+msgid "You must select one of the virtual networks"
+msgstr "Potrebno je odabrati jednu od virtualnih mreža"
+
+#: ../../po/../src/virtManager/addhardware.py:592
+#: ../../po/../src/virtManager/create.py:922
+msgid "Physical Device Required"
+msgstr "Potreban je fizički uređaj"
+
+#: ../../po/../src/virtManager/addhardware.py:593
+#: ../../po/../src/virtManager/create.py:923
+msgid "You must select one of the physical devices"
+msgstr "Potrebno je odabrati jedan od fizičkih uređaja"
+
+#: ../../po/../src/virtManager/addhardware.py:599
+#: ../../po/../src/virtManager/addhardware.py:603
+#: ../../po/../src/virtManager/create.py:931
+#, fuzzy
+msgid "Invalid MAC address"
+msgstr "Nepravilna DHCP adresa"
+
+#: ../../po/../src/virtManager/addhardware.py:600
+msgid "MAC adrress must be 17 characters"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:604
+msgid ""
+"MAC address must be a form such as AA:BB:CC:DD:EE:FF, and MAC adrress may "
+"contain numeric and alphabet of A-F(a-f) and ':' characters only"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:609
+#: ../../po/../src/virtManager/create.py:944
+#, fuzzy, python-format
+msgid "MAC address \"%s\" is already in use by the host"
+msgstr "Disk \"%s\" već upotrebljava neki drugi gost!"
+
+#: ../../po/../src/virtManager/addhardware.py:610
+#: ../../po/../src/virtManager/addhardware.py:625
+#: ../../po/../src/virtManager/create.py:945
+#: ../../po/../src/virtManager/create.py:978
+msgid "Please enter a different MAC address or select no fixed MAC address"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:624
+#, fuzzy, python-format
+msgid "MAC address \"%s\" is already in use by an active guest"
+msgstr "Disk \"%s\" već upotrebljava neki drugi gost!"
+
+#: ../../po/../src/virtManager/addhardware.py:627
+#: ../../po/../src/virtManager/create.py:980
+#, fuzzy, python-format
+msgid "MAC address \"%s\" is already in use by another inactive guest!"
+msgstr "Disk \"%s\" već upotrebljava neki drugi gost!"
+
+#: ../../po/../src/virtManager/addhardware.py:628
+#: ../../po/../src/virtManager/create.py:981
+#, fuzzy
+msgid "Do you really want to use the MAC address ?"
+msgstr "Želite li zaista upotrijebiti ovaj disk?"
+
+#: ../../po/../src/virtManager/addhardware.py:671
+#: ../../po/../src/virtManager/create.py:1144
+msgid "Bridge"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:673
+#: ../../po/../src/virtManager/create.py:1146
+msgid "Not bridged"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:450
+msgid "Paravirtualized"
+msgstr "Paravirtualizirano"
+
+#: ../../po/../src/virtManager/create.py:454
+msgid "Fully virtualized"
+msgstr "Potpuno virtualizirano"
+
+#: ../../po/../src/virtManager/create.py:517
+msgid "UUID Error"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:522
+msgid "Error Setting up Disk"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:527
+msgid "Error Setting up Network"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:572
+msgid "Creating Virtual Machine"
+msgstr "Izrada virtualnog računala"
+
+#: ../../po/../src/virtManager/create.py:573
+msgid "The virtual machine is now being created. "
+msgstr "Virtualno računalo je izrađeno."
+
+#: ../../po/../src/virtManager/create.py:574
+msgid "Allocation of disk storage and retrieval of "
+msgstr "Dodjeljivanje prostora na disku i dohvaćanje"
+
+#: ../../po/../src/virtManager/create.py:575
+msgid "the installation images may take a few minutes "
+msgstr "instalacijskih preslika moglo bi potrajati nekoliko minuta"
+
+#: ../../po/../src/virtManager/create.py:614
+msgid "Guest installation failed to complete"
+msgstr "Gostujuća instalacija nije dovršena"
+
+#: ../../po/../src/virtManager/create.py:633
+msgid "Locate ISO Image"
+msgstr "Pronađi ISO presliku"
+
+#: ../../po/../src/virtManager/create.py:768
+msgid "Invalid System Name"
+msgstr "Nepravilan naziv sustava"
+
+#: ../../po/../src/virtManager/create.py:792
+msgid "ISO Path Not Found"
+msgstr "ISO putanja nije pronađena"
+
+#: ../../po/../src/virtManager/create.py:800
+msgid "CD-ROM Path Error"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:809
+msgid "Invalid FV OS Type"
+msgstr "Nepravilna vrsta potpuno virtualiziranog OS"
+
+#: ../../po/../src/virtManager/create.py:817
+msgid "Invalid FV OS Variant"
+msgstr "Nepravilna verzija potpuno virtualiziranog OS"
+
+#: ../../po/../src/virtManager/create.py:825
+msgid "Invalid Install URL"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:832
+#, fuzzy
+msgid "Kickstart URL Error"
+msgstr "URL kickstarta:"
+
+#: ../../po/../src/virtManager/create.py:833
+msgid "Kickstart location must be an NFS, HTTP or FTP source"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:905
+#, fuzzy
+msgid "Invalid Storage Address"
+msgstr "Nepravilna adresa pohrane"
+
+#: ../../po/../src/virtManager/create.py:932
+msgid "No MAC address was entered. Please enter a valid MAC address."
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:937
+#, fuzzy
+msgid "Invalid Mac address"
+msgstr "Nepravilna adresa pohrane"
+
+#: ../../po/../src/virtManager/create.py:961
+#, fuzzy
+msgid "Network Parameter Error"
+msgstr "Naziv mreže:"
+
+#: ../../po/../src/virtManager/create.py:977
+#, fuzzy, python-format
+msgid "MAC address \"%s\" is already in use by a active guest"
+msgstr "Disk \"%s\" već upotrebljava neki drugi gost!"
+
+#: ../../po/../src/virtManager/create.py:989
+msgid "VCPU Count Error"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:996
+msgid "Memory Amount Error"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:1003
+msgid "Max Memory Amount Error"
+msgstr ""
+
+#. Expander section with details.
+#: ../../po/../src/virtManager/error.py:33
+msgid "Details"
+msgstr "Detalji"
+
+#: ../../po/../src/virtManager/serialcon.py:35
+msgid "serial console"
+msgstr "serijska konzola"
+
+#: ../../po/../src/virtManager/asyncjob.py:102
+msgid "Completed"
+msgstr "Dovršeno"
+
+#: ../../po/../src/virtManager/console.py:147
+msgid "Press Ctrl+Alt to release pointer."
+msgstr "Da biste oslobodili pokazivač pritisnite CTRL+ALT."
+
+#: ../../po/../src/virtManager/console.py:155
+msgid "Pointer grabbed"
+msgstr "Pokazivač je uhvaćen"
+
+#: ../../po/../src/virtManager/console.py:156
+msgid ""
+"The mouse pointer has been restricted to the virtual console window. To "
+"release the pointer press the key pair Ctrl+Alt"
+msgstr ""
+"Pokazivač miša ograničen je na prozor virtualne konzole. Da biste oslobodili "
+"pokazivač pritisnite tipke CTRL+ALT."
+
+#: ../../po/../src/virtManager/console.py:159
+msgid "Do not show this notification in the future"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:237
+msgid "Console was disconnected from guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:271
+#: ../../po/../src/virtManager/console.py:506
+msgid "Console not available for inactive guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:280
+msgid "Console not configured for guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:288
+msgid "Console not supported for guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:292
+msgid "Console is not yet active for guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:296
+msgid "Connecting to console for guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:325
+msgid "Unsupported console authentication type"
+msgstr ""
+
+#. If someone feels kind they could extend this code to allow
+#. user to choose what image format they'd like to save in....
+#: ../../po/../src/virtManager/console.py:359
+msgid "Save Virtual Machine Screenshot"
+msgstr "Spremi sliku zaslona virtualnog računala"
+
+#: ../../po/../src/virtManager/console.py:388
+#, python-format
+msgid ""
+"The screenshot has been saved to:\n"
+"%s"
+msgstr ""
+"Slika zaslona je spremljena u:\n"
+"%s"
+
+#: ../../po/../src/virtManager/console.py:389
+msgid "Screenshot saved"
+msgstr "Slika zaslona je spremljena"
+
+#: ../../po/../src/virtManager/console.py:529
+msgid "paused"
+msgstr "pauzirano"
+
+#: ../../po/../src/virtManager/console.py:540
+msgid "Console not available while paused"
+msgstr ""
+
+#: ../../po/../src/virtManager/host.py:130
+msgid "Creating new networks on remote connections is not yet supported"
+msgstr ""
+
+#: ../../po/../src/virtManager/host.py:192
+#: ../../po/../src/virtManager/manager.py:500
+msgid "Active"
+msgstr "Aktivan"
+
+#: ../../po/../src/virtManager/host.py:200
+#: ../../po/../src/virtManager/manager.py:990
+msgid "Inactive"
+msgstr "Neaktivan"
+
+#: ../../po/../src/virtManager/host.py:213
+msgid "On boot"
+msgstr "Tijekom pokretanja"
+
+#: ../../po/../src/virtManager/host.py:216
+msgid "Never"
+msgstr "Nikad"
+
+#: ../../po/../src/virtManager/domain.py:405
+msgid "Paused"
+msgstr "Pauzirano"
+
+#: ../../po/../src/virtManager/domain.py:409
+msgid "Shutoff"
+msgstr "Isključeno"
+
+#: ../../po/../src/virtManager/domain.py:411
+msgid "Crashed"
+msgstr "Srušeno"
+
+#: ../../po/../src/virtManager/domain.py:413
+msgid "Unknown status code"
+msgstr "Nepoznata šifra stanja"
+
+#. get filename
+#: ../../po/../src/virtManager/manager.py:271
+msgid "Restore Virtual Machine"
+msgstr "Obnovi virtualno računalo"
+
+#: ../../po/../src/virtManager/manager.py:287
+msgid "Restoring Virtual Machine"
+msgstr "Obnavljanje virtualnog računala"
+
+#: ../../po/../src/virtManager/manager.py:294
+#, python-format
+msgid "The file '%s' does not appear to be a valid saved machine image"
+msgstr "Datoteka '%s' ne izgleda kao valjana spremljena preslika računala."
+
+#: ../../po/../src/virtManager/manager.py:322
+#, python-format
+msgid "Error restoring domain '%s'. Is the domain already running?"
+msgstr "Pogreška pri obnavljanju domene '%s'. Je li domena već pokrenutom?"
+
+#: ../../po/../src/virtManager/manager.py:410
+#, fuzzy
+msgid "Connected"
+msgstr "P_oveži"
+
+#. keep uri and name for connection, so we can reconnect if needed
+#: ../../po/../src/virtManager/manager.py:414
+#: ../../po/../src/virtManager/manager.py:953
+#, fuzzy
+msgid "Disconnected"
+msgstr "P_oveži"
+
+#: ../../po/../src/virtManager/manager.py:642
+#, python-format
+msgid "This will permanently delete the vm \"%s,\" are you sure?"
+msgstr ""
+
+#: ../../po/../src/virtManager/manager.py:674
+msgid "Creating new guests on remote connections is not yet supported"
+msgstr ""
+
+#: ../../po/../src/virtManager/manager.py:684
+#, fuzzy, python-format
+msgid "This will permanently delete the connection \"%s\", are you sure?"
+msgstr ""
+"Na ovaj ćete način smjesta uništiti VM i mogli biste oštetiti njegovu "
+"presliku na disku. Jeste li sigurni da želite nastaviti?"
+
+#: ../../po/../src/virtManager/manager.py:713
+msgid "ID"
+msgstr "ID"
+
+#: ../../po/../src/virtManager/manager.py:716
+msgid "VCPUs"
+msgstr "VCPU"
+
+#~ msgid "VNC"
+#~ msgstr "VNC"
+
+#~ msgid "New machine..."
+#~ msgstr "Novo računalo..."
+
+#~ msgid "_Host:"
+#~ msgstr "_Udomitelj:"
+
+#~ msgid "_Local host"
+#~ msgstr "_Lokalni udomitelj"
+
+#~ msgid "_Port:"
+#~ msgstr "_Port:"
+
+#~ msgid "_Remote host"
+#~ msgstr "_Udaljeni udomitelj"
+
+#~ msgid "The network must be an IPv4 private address"
+#~ msgstr "Mreža mora biti IPv4 privatna adresa"
+
+#, fuzzy
+#~ msgid "MAC adress \"%s\" is already in use by host!"
+#~ msgstr "Disk \"%s\" već upotrebljava neki drugi gost!"
+
+#, fuzzy
+#~ msgid "MAC adress \"%s\" is already in use by another guest!"
+#~ msgstr "Disk \"%s\" već upotrebljava neki drugi gost!"
+
+#~ msgid "Invalid FV media address"
+#~ msgstr "Nepravilna adresa potpuno virtualiziranog medija"
+
+#~ msgid "Invalid PV media address"
+#~ msgstr "Nepravilna adresa PV medija"
+
+#~ msgid "Invalid system name"
+#~ msgstr "Nepravilan naziv sustava"
+
+#~ msgid "Invalid memory setting"
+#~ msgstr "Nepravilna postavka memorije"
+
+#~ msgid "System name must be non-blank and less than 50 characters"
+#~ msgstr "Naziv sustava ne smije biti prazan i mora biti kraći od 50 znakova"
+
+#~ msgid "System name may contain alphanumeric and '_' characters only"
+#~ msgstr "Naziv sustava može sadržavati samo alfanumeričke i znakove \"_\"."
+
+#~ msgid "Hardware Support Required"
+#~ msgstr "Zahtijevana hardverska podrška"
+
+#~ msgid ""
+#~ "Your hardware does not appear to support full virtualization. Only "
+#~ "paravirtualized guests will be available on this hardware."
+#~ msgstr ""
+#~ "Vaš hardver ne podržava potpunu virtualizaciju. Na ovom će hardveru biti "
+#~ "dostupni samo paravirtualizirani gosti."
+
+#~ msgid "ISO Path Required"
+#~ msgstr "Potrebna je ISO putanja"
+
+#~ msgid "You must specify an ISO location for the guest installation"
+#~ msgstr ""
+#~ "Potrebno je navesti lokaciju ISO preslike za potrebe instalacije gosta"
+
+#~ msgid ""
+#~ "You must specify a valid path to the ISO image for guest installation"
+#~ msgstr ""
+#~ "Potrebno je navesti valjanu putanju do ISO preslike za potrebe "
+#~ "instalacije gosta"
+
+#~ msgid "You must select the CDROM install media for guest installation"
+#~ msgstr ""
+#~ "Potrebno je odabrati instalacijski CD medij za potrebe instalacije gosta"
+
+#~ msgid "URL Required"
+#~ msgstr "Potreban je URL"
+
+#~ msgid "You must specify a URL for the install image for the guest install"
+#~ msgstr ""
+#~ "Potrebno je odrediti URL adresu instalacijske preslike za potrebe "
+#~ "instalacije gosta"
+
+#~ msgid "_Read only connection"
+#~ msgstr "Povezivanje _samo za čitanje"

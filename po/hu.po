@@ -1,0 +1,2814 @@
+# translation of hu.po to hu
+# Hungarian translations for virt-manager package.
+# Copyright © 2007 Red Hat, Inc.
+# This file is distributed under the same license as the virt-manager package.
+#
+# Péter Sulyok <peti@sulyok.hu>, 2007.
+# Gábor Szentiványi <szenti@ulx.hu>, 2007.
+msgid ""
+msgstr ""
+"Project-Id-Version: hu\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2007-08-29 16:23-0400\n"
+"PO-Revision-Date: 2007-04-17 18:18+0200\n"
+"Last-Translator: Gábor Szentiványi <szenti@ulx.hu>\n"
+"Language-Team: hu <en@li.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+"X-Generator: KBabel 1.11.2\n"
+
+#: ../src/virt-manager.desktop.in.in.h:1
+#, fuzzy
+msgid "Manage virtual machines"
+msgstr "Virtuális gép mentése"
+
+#: ../src/virt-manager.desktop.in.in.h:2 ../src/vmm-about.glade.h:3
+#: ../../po/../src/vmm-manager.glade:8
+msgid "Virtual Machine Manager"
+msgstr "Virtuális gép igazgatója"
+
+#: ../src/vmm-about.glade.h:1
+msgid "Copyright (C) 2006 Red Hat Inc."
+msgstr "Copyright © 2006 Red Hat Inc."
+
+#: ../src/vmm-about.glade.h:2
+msgid "Powered by libvirt"
+msgstr "Powered by libvirt"
+
+#: ../src/vmm-about.glade.h:4
+msgid "http://virt-manager.et.redhat.com/"
+msgstr "http://virt-manager.et.redhat.com/"
+
+#. TRANSLATORS: Replace this string with your names, one name per line.
+#: ../src/vmm-about.glade.h:6
+msgid "translator-credits"
+msgstr "fordítói elismerések"
+
+#: ../src/vmm-console.glade.h:1
+msgid "<b>The console is currently unavailable</b>"
+msgstr "<b>A konzol jelenleg elérhetetlen</b>"
+
+#: ../src/vmm-console.glade.h:2
+msgid "Auth"
+msgstr "Auth"
+
+#: ../src/vmm-console.glade.h:3
+msgid "Login"
+msgstr "Bejelentkezés"
+
+#: ../src/vmm-console.glade.h:4
+#, fuzzy
+msgid "Password Field"
+msgstr "Jelszó:"
+
+#: ../src/vmm-console.glade.h:5
+msgid "Password:"
+msgstr "Jelszó:"
+
+#: ../src/vmm-console.glade.h:6 ../src/vmm-details.glade.h:41
+msgid "Pause"
+msgstr "Megállítás"
+
+#: ../src/vmm-console.glade.h:7 ../src/vmm-details.glade.h:43
+msgid "Run"
+msgstr "Futás"
+
+#: ../src/vmm-console.glade.h:8 ../src/vmm-details.glade.h:44
+msgid "S_hutdown"
+msgstr "_Leállítás"
+
+#: ../src/vmm-console.glade.h:9
+msgid "Save this password in your keyring"
+msgstr "Jelszó elmentése a kulcstartóra"
+
+#: ../src/vmm-console.glade.h:10
+msgid "Screenshot"
+msgstr "Képernyőkép"
+
+#: ../src/vmm-console.glade.h:11 ../src/vmm-details.glade.h:46
+#: ../../po/../src/virtManager/domain.py:407
+msgid "Shutdown"
+msgstr "Leállás"
+
+#: ../src/vmm-console.glade.h:12 ../src/vmm-details.glade.h:53
+msgid "Toolbar"
+msgstr "Eszköztár"
+
+#: ../src/vmm-console.glade.h:13
+msgid "Unavailable"
+msgstr "Elérhetetlen"
+
+#: ../src/vmm-console.glade.h:14
+msgid "Virtual Machine Console"
+msgstr "Virtuális gép konzolja"
+
+#: ../src/vmm-console.glade.h:15 ../src/vmm-details.glade.h:60
+msgid "Virtual _Machine"
+msgstr "Virtuális _gép"
+
+#: ../src/vmm-console.glade.h:16 ../src/vmm-details.glade.h:61
+#: ../../po/../src/vmm-manager.glade:298
+msgid "_Contents"
+msgstr ""
+
+#: ../src/vmm-console.glade.h:17 ../src/vmm-details.glade.h:62
+msgid "_Destroy"
+msgstr "_Törlés"
+
+#: ../src/vmm-console.glade.h:18
+msgid "_Details"
+msgstr "_Részletek"
+
+#: ../src/vmm-console.glade.h:19
+msgid "_FullScreen"
+msgstr "_Teljes képernyő"
+
+#: ../src/vmm-console.glade.h:20 ../src/vmm-host.glade.h:43
+#: ../src/vmm-details.glade.h:64 ../../po/../src/vmm-manager.glade:289
+msgid "_Help"
+msgstr "_Súgó"
+
+#: ../src/vmm-console.glade.h:21 ../src/vmm-details.glade.h:65
+msgid "_Pause"
+msgstr "_Megállítás"
+
+#: ../src/vmm-console.glade.h:22 ../src/vmm-details.glade.h:66
+msgid "_Run"
+msgstr "_Futtatás"
+
+#: ../src/vmm-console.glade.h:23 ../src/vmm-details.glade.h:67
+msgid "_Save"
+msgstr "_Mentés"
+
+#: ../src/vmm-console.glade.h:24 ../src/vmm-details.glade.h:68
+msgid "_Serial Console"
+msgstr "_Soros konzol"
+
+#: ../src/vmm-console.glade.h:25
+msgid "_Take Screenshot"
+msgstr "Képernyőkép _készítése"
+
+#: ../src/vmm-console.glade.h:26 ../src/vmm-details.glade.h:69
+#: ../../po/../src/vmm-manager.glade:206
+msgid "_View"
+msgstr "_Nézet"
+
+#: ../src/vmm-create-net.glade.h:1 ../src/vmm-create.glade.h:1
+#, fuzzy
+msgid "\t"
+msgstr "5\t"
+
+#: ../src/vmm-create-net.glade.h:2 ../src/vmm-add-hardware.glade.h:2
+#: ../src/vmm-create.glade.h:4
+msgid "/xen/demo.img"
+msgstr "/xen/demo.img"
+
+#: ../src/vmm-create-net.glade.h:3
+msgid "192.168.1.1"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:4
+msgid "192.168.1.255"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:5
+msgid "192.168.10.0/24"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:6
+msgid "192.168.10.254"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:7
+msgid "255.255.255.0"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:8
+#, fuzzy
+msgid "256"
+msgstr "256\t"
+
+#: ../src/vmm-create-net.glade.h:9 ../src/vmm-add-hardware.glade.h:3
+#: ../src/vmm-create.glade.h:9
+msgid "5 GB"
+msgstr "5 GB"
+
+#: ../src/vmm-create-net.glade.h:10
+#, fuzzy
+msgid "<b>DHCP</b>"
+msgstr "<b>CPU-k</b>"
+
+#: ../src/vmm-create-net.glade.h:11
+#, fuzzy
+msgid "<b>Example:</b> network1"
+msgstr "<b>Példa:</b> rendszer1"
+
+#: ../src/vmm-create-net.glade.h:12
+#, fuzzy
+msgid "<b>Forwarding</b>"
+msgstr "<b>Tároló</b>"
+
+#: ../src/vmm-create-net.glade.h:13
+msgid ""
+"<b>Hint:</b> The network should be choosen from one of the IPv4 private "
+"address ranges. eg 10.0.0.0/8,  172.16.0.0/12, or 192.168.0.0/16"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:14
+#, fuzzy
+msgid "<b>IPv4 network</b>"
+msgstr "<b>Hálózat</b>"
+
+#: ../src/vmm-create-net.glade.h:15 ../src/vmm-create.glade.h:19
+#, fuzzy
+msgid "<b>Summary</b>"
+msgstr "<b>Összesen:</b>"
+
+#: ../src/vmm-create-net.glade.h:16
+msgid ""
+"<b>Tip:</b> Unless you wish to reserve some addresses to allow static "
+"network configuration in virtual machines, these parameters can be left with "
+"their default values."
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:17
+#, fuzzy
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Choosing an "
+"IPv4 address space</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Tárhely "
+"hozzárendelése</span>"
+
+#: ../src/vmm-create-net.glade.h:18
+#, fuzzy
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Connecting to "
+"physical network</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Tárhely "
+"hozzárendelése</span>"
+
+#: ../src/vmm-create-net.glade.h:19
+#, fuzzy
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Creating a new "
+"virtual network </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\"> Új virtuális "
+"rendszer teremtése </span>"
+
+#: ../src/vmm-create-net.glade.h:20
+#, fuzzy
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Naming your "
+"virtual network </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">A virtuális "
+"rendszer elnevezése </span>"
+
+#: ../src/vmm-create-net.glade.h:21
+#, fuzzy
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to create "
+"network</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Készen a "
+"telepítés megkezdésére</span>"
+
+#: ../src/vmm-create-net.glade.h:22
+#, fuzzy
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Selecting the "
+"DHCP range</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Tárhely "
+"hozzárendelése</span>"
+
+#: ../src/vmm-create-net.glade.h:23
+#, fuzzy
+msgid "A <b>name</b> for your new virtual network"
+msgstr "Az új virtuális rendszer <b>neve</b>"
+
+#: ../src/vmm-create-net.glade.h:24
+msgid "Broadcast:"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:25 ../src/vmm-add-hardware.glade.h:19
+#: ../src/vmm-create.glade.h:45
+msgid "Complete"
+msgstr "Befejezés"
+
+#: ../src/vmm-create-net.glade.h:26
+#, fuzzy
+msgid "Connectivity:"
+msgstr "_Kapcsolódás"
+
+#: ../src/vmm-create-net.glade.h:27
+#, fuzzy
+msgid "Create a new virtual network"
+msgstr "Új virtuális rendszer teremtése"
+
+#: ../src/vmm-create-net.glade.h:28
+msgid "DHCP"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:29
+#, fuzzy
+msgid "Desination:"
+msgstr "Cél"
+
+#: ../src/vmm-create-net.glade.h:30 ../src/vmm-host.glade.h:15
+#, fuzzy
+msgid "End Address"
+msgstr "MAC-cím"
+
+#: ../src/vmm-create-net.glade.h:31
+#, fuzzy
+msgid "End address:"
+msgstr "MAC-cím"
+
+#: ../src/vmm-create-net.glade.h:32
+msgid "End:"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:33
+msgid "Forwarding"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:34
+msgid "Forwarding to physical network"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:35
+msgid "Gateway:"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:36
+msgid "IPv4"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:37 ../src/vmm-add-hardware.glade.h:32
+#: ../src/vmm-create.glade.h:64
+msgid "Intro"
+msgstr "Bevezető"
+
+#: ../src/vmm-create-net.glade.h:38
+#: ../../po/../src/virtManager/createnet.py:259
+#: ../../po/../src/virtManager/host.py:235
+msgid "Isolated virtual network"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:39 ../src/vmm-host.glade.h:24
+#: ../../po/../src/virtManager/createnet.py:94
+#: ../../po/../src/virtManager/createnet.py:257
+#: ../../po/../src/virtManager/host.py:232
+msgid "NAT to any physical device"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:40 ../src/vmm-create.glade.h:79
+#: ../../po/../src/virtManager/manager.py:712
+msgid "Name"
+msgstr "Név"
+
+#: ../src/vmm-create-net.glade.h:41
+msgid "Net Name Field"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:42
+msgid "Netmask:"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:43 ../src/vmm-host.glade.h:29
+#, fuzzy
+msgid "Network Range"
+msgstr "Hálózathasználat:"
+
+#: ../src/vmm-create-net.glade.h:44
+#, fuzzy
+msgid "Network _Name:"
+msgstr "Hálózathasználat:"
+
+#: ../src/vmm-create-net.glade.h:45
+#, fuzzy
+msgid "Network name:"
+msgstr "Hálózathasználat:"
+
+#: ../src/vmm-create-net.glade.h:46 ../src/vmm-host.glade.h:30
+#, fuzzy
+msgid "Network:"
+msgstr "Hálózat"
+
+#: ../src/vmm-create-net.glade.h:47
+#, fuzzy
+msgid "Physical Network"
+msgstr "Virtuális CPU-k"
+
+#: ../src/vmm-create-net.glade.h:48
+#, fuzzy
+msgid "Please choose a name for your virtual network:"
+msgstr "Válasszon nevet a virtuális rendszernek:"
+
+#: ../src/vmm-create-net.glade.h:49
+msgid ""
+"Please choose the range of addresses the DHCP server can use to allocate to "
+"guests attached to the virtual network"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:50
+msgid ""
+"Please indicate whether this virtual network should be connected to the "
+"physical network."
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:51
+#: ../../po/../src/virtManager/createnet.py:156
+msgid "Private"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:52
+#, fuzzy
+msgid "Size:"
+msgstr "_Méret:"
+
+#: ../src/vmm-create-net.glade.h:53 ../src/vmm-host.glade.h:34
+#, fuzzy
+msgid "Start Address"
+msgstr "MAC-cím"
+
+#: ../src/vmm-create-net.glade.h:54
+#, fuzzy
+msgid "Start address:"
+msgstr "MAC-cím"
+
+#: ../src/vmm-create-net.glade.h:55
+#, fuzzy
+msgid "Start:"
+msgstr "Állapot:"
+
+#: ../src/vmm-create-net.glade.h:56
+msgid ""
+"The <b>address range</b> from which the <b>DHCP</b> server will allocate "
+"addresses for virtual machines"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:57
+msgid "The IPv4 <b>address</b> and <b>netmask</b> to assign"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:58
+#, fuzzy
+msgid ""
+"This assistant will guide you through creating a new virtual network. You "
+"will be asked for some information about the virtual network you'd like to "
+"create, such as:"
+msgstr ""
+"E segéd végigvezeti egy új virtuális rendszer teremtésének folyamatán. "
+"Kérdez néhány információt a kívánt virtuális rendszerről, pl:"
+
+#: ../src/vmm-create-net.glade.h:59
+#, fuzzy
+msgid "Type:"
+msgstr "Típus"
+
+#: ../src/vmm-create-net.glade.h:60
+msgid "Whether to <b>forward</b> traffic to the physical network"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:61
+msgid "You will need to choose an IPv4 address space for the virtual network:"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:62 ../src/vmm-add-hardware.glade.h:50
+#: ../src/vmm-create.glade.h:122
+msgid "_Finish"
+msgstr "_Befejezés"
+
+#: ../src/vmm-create-net.glade.h:63 ../src/vmm-create.glade.h:132
+msgid "demo"
+msgstr "demó"
+
+#: ../src/vmm-host.glade.h:1
+#, fuzzy
+msgid "1.59 GB of 2.2 GB"
+msgstr "80 MB 1 GB-ból"
+
+#: ../src/vmm-host.glade.h:2
+#, fuzzy
+msgid "2000 MB"
+msgstr "200 MB"
+
+#: ../src/vmm-host.glade.h:3
+msgid "4"
+msgstr ""
+
+#: ../src/vmm-host.glade.h:5
+#, no-c-format
+msgid "60%"
+msgstr ""
+
+#: ../src/vmm-host.glade.h:6 ../src/vmm-details.glade.h:10
+msgid "<b>Basic details</b>"
+msgstr "<b>Alapvető részletek</b>"
+
+#: ../src/vmm-host.glade.h:7
+msgid "<b>IPv4 configuration</b>"
+msgstr ""
+
+#: ../src/vmm-host.glade.h:8 ../src/vmm-details.glade.h:13
+msgid "<b>Performance</b>"
+msgstr "<b>Teljesítmény</b>"
+
+#: ../src/vmm-host.glade.h:9
+#, fuzzy
+msgid "Architecture:"
+msgstr "CPU architektúra:"
+
+#: ../src/vmm-host.glade.h:10
+msgid "Autostart:"
+msgstr ""
+
+#: ../src/vmm-host.glade.h:11 ../src/vmm-details.glade.h:20
+msgid "CPU usage:"
+msgstr "CPU-használat:"
+
+#: ../src/vmm-host.glade.h:12
+msgid "DHCP end:"
+msgstr ""
+
+#: ../src/vmm-host.glade.h:13
+msgid "DHCP start:"
+msgstr ""
+
+#: ../src/vmm-host.glade.h:14
+msgid "Device:"
+msgstr ""
+
+#: ../src/vmm-host.glade.h:16
+msgid "Forwarding:"
+msgstr ""
+
+#: ../src/vmm-host.glade.h:17
+#, fuzzy
+msgid "Host Details"
+msgstr "_Részletek"
+
+#: ../src/vmm-host.glade.h:18 ../src/vmm-open-connection.glade.h:5
+#, fuzzy
+msgid "Hostname:"
+msgstr "G_azda:"
+
+#: ../src/vmm-host.glade.h:19 ../src/vmm-open-connection.glade.h:7
+msgid "Hypervisor:"
+msgstr "Felügyelő:"
+
+#: ../src/vmm-host.glade.h:20
+#, fuzzy
+msgid "Location:"
+msgstr "ISO _helye:"
+
+#: ../src/vmm-host.glade.h:21
+#, fuzzy
+msgid "Logical CPUs:"
+msgstr "Logikai gazdarendszer CPU-k:"
+
+#: ../src/vmm-host.glade.h:22 ../src/vmm-details.glade.h:35
+msgid "Memory usage:"
+msgstr "Memóriahasználat:"
+
+#: ../src/vmm-host.glade.h:23
+#, fuzzy
+msgid "Memory:"
+msgstr "Memória"
+
+#: ../src/vmm-host.glade.h:25 ../src/vmm-details.glade.h:37
+msgid "Name:"
+msgstr "Név:"
+
+#: ../src/vmm-host.glade.h:26
+msgid "Net Device"
+msgstr ""
+
+#: ../src/vmm-host.glade.h:27
+#, fuzzy
+msgid "Net Name"
+msgstr "Hálózathasználat:"
+
+#: ../src/vmm-host.glade.h:28
+#, fuzzy
+msgid "Net UUID"
+msgstr "UUID:"
+
+#: ../src/vmm-host.glade.h:31 ../src/vmm-details.glade.h:40
+msgid "Overview"
+msgstr "Áttekintés"
+
+#: ../src/vmm-host.glade.h:32 ../../po/../src/virtManager/domain.py:403
+msgid "Running"
+msgstr "Futás"
+
+#: ../src/vmm-host.glade.h:33
+#, fuzzy
+msgid "Start"
+msgstr "Állapot"
+
+#: ../src/vmm-host.glade.h:35
+#, fuzzy
+msgid "State:"
+msgstr "Állapot:"
+
+#: ../src/vmm-host.glade.h:36
+#, fuzzy
+msgid "Storage Location"
+msgstr "_ISO képmás helye:"
+
+#: ../src/vmm-host.glade.h:37
+#, fuzzy
+msgid "Storage Name"
+msgstr "Rendszer_név:"
+
+#: ../src/vmm-host.glade.h:38
+msgid "Storage Pools"
+msgstr ""
+
+#: ../src/vmm-host.glade.h:39 ../src/vmm-details.glade.h:57
+msgid "UUID:"
+msgstr "UUID:"
+
+#: ../src/vmm-host.glade.h:40
+#, fuzzy
+msgid "Virtual Networks"
+msgstr "Virtuális CPU-k"
+
+#: ../src/vmm-host.glade.h:41
+msgid "Xen"
+msgstr ""
+
+#: ../src/vmm-host.glade.h:42 ../../po/../src/vmm-manager.glade:40
+msgid "_File"
+msgstr "_Fájl"
+
+#: ../src/vmm-host.glade.h:44
+msgid "example.com"
+msgstr ""
+
+#: ../src/vmm-host.glade.h:45
+msgid "x86_64"
+msgstr ""
+
+#: ../src/vmm-modify-file-storage.glade.h:1
+msgid " free"
+msgstr " szabad"
+
+#: ../src/vmm-modify-file-storage.glade.h:2
+msgid " of "
+msgstr " ebből: "
+
+#: ../src/vmm-modify-file-storage.glade.h:3
+msgid "/tmp"
+msgstr "/tmp"
+
+#: ../src/vmm-modify-file-storage.glade.h:4
+msgid "10 TB"
+msgstr "10 TB"
+
+#: ../src/vmm-modify-file-storage.glade.h:5
+msgid ""
+"<b>Tip:</b> You may only increase the size of file-based storage; you can't "
+"decrease its size."
+msgstr ""
+"<b>Tipp:</b> Csak növelni lehet a fájlalapú tárhely méretét; nem lehet "
+"csökkenteni a méretét."
+
+#: ../src/vmm-modify-file-storage.glade.h:6
+msgid ""
+"MB\n"
+"GB\n"
+"TB"
+msgstr ""
+"MB\n"
+"GB\n"
+"TB"
+
+#: ../src/vmm-modify-file-storage.glade.h:9
+msgid "Modify File Storage"
+msgstr "Fájl tároló módosítása"
+
+#: ../src/vmm-modify-file-storage.glade.h:10
+#, fuzzy
+msgid "Size Type"
+msgstr "Operációs rendszer _típusa:"
+
+#: ../src/vmm-modify-file-storage.glade.h:11
+msgid "Storage Size Select"
+msgstr ""
+
+#: ../src/vmm-modify-file-storage.glade.h:12
+msgid "_Mount Point (on virtual system):"
+msgstr "_Csatolási pont (a virtuális rendszerben):"
+
+#: ../src/vmm-modify-file-storage.glade.h:13
+msgid "_Size:"
+msgstr "_Méret:"
+
+#: ../src/vmm-preferences.glade.h:1
+msgid "<b>Consoles</b>"
+msgstr "<b>Konzolok</b>"
+
+#: ../src/vmm-preferences.glade.h:2
+msgid "<b>Status monitoring</b>"
+msgstr "<b>Állapotfigyelés</b>"
+
+#: ../src/vmm-preferences.glade.h:3
+msgid "Auto Console"
+msgstr ""
+
+#: ../src/vmm-preferences.glade.h:4
+msgid "Automatically open consoles:"
+msgstr "Konzolok önműködő megnyitása:"
+
+#: ../src/vmm-preferences.glade.h:5
+#, fuzzy
+msgid "Grab Keyboard"
+msgstr "Billentyűzeti bevitel elfogása:"
+
+#: ../src/vmm-preferences.glade.h:6
+msgid "Grab keyboard input:"
+msgstr "Billentyűzeti bevitel elfogása:"
+
+#: ../src/vmm-preferences.glade.h:7
+#, fuzzy
+msgid "History Samples"
+msgstr "minták"
+
+#: ../src/vmm-preferences.glade.h:8
+msgid "Maintain history of"
+msgstr "Történet fenntartása"
+
+#: ../src/vmm-preferences.glade.h:9
+msgid ""
+"Never\n"
+"For new domains\n"
+"For all domains"
+msgstr ""
+"Soha\n"
+"Új tartományokhoz\n"
+"Minden tartományhoz"
+
+#: ../src/vmm-preferences.glade.h:12
+msgid ""
+"Never\n"
+"When fullscreen\n"
+"On mouse over"
+msgstr ""
+"Soha\n"
+"Teljes képernyőn\n"
+"Egérrel fedve"
+
+#: ../src/vmm-preferences.glade.h:15
+msgid "Preferences"
+msgstr "Beállítások"
+
+#: ../src/vmm-preferences.glade.h:16
+msgid "Status Interval"
+msgstr ""
+
+#: ../src/vmm-preferences.glade.h:17
+msgid "Update status every"
+msgstr "Állapot időszerűsítése minden"
+
+#: ../src/vmm-preferences.glade.h:18
+msgid "samples"
+msgstr "minták"
+
+#: ../src/vmm-preferences.glade.h:19
+msgid "seconds"
+msgstr "másodpercek"
+
+#: ../src/vmm-add-hardware.glade.h:1 ../src/vmm-create.glade.h:3
+msgid "-"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:4 ../src/vmm-create.glade.h:16
+msgid "<b>Network</b>"
+msgstr "<b>Hálózat</b>"
+
+#: ../src/vmm-add-hardware.glade.h:5
+#, fuzzy
+msgid "<b>Source:</b>"
+msgstr "<b>Tároló</b>"
+
+#: ../src/vmm-add-hardware.glade.h:6 ../src/vmm-create.glade.h:17
+msgid "<b>Storage</b>"
+msgstr "<b>Tároló</b>"
+
+#: ../src/vmm-add-hardware.glade.h:7
+#, fuzzy
+msgid "<b>Target:</b>"
+msgstr "<b>Tároló</b>"
+
+#: ../src/vmm-add-hardware.glade.h:8 ../src/vmm-create.glade.h:20
+msgid "<small><b>Example:</b> /dev/hdc2</small>"
+msgstr "<small><b>Példa:</b> /dev/hdc2</small>"
+
+#: ../src/vmm-add-hardware.glade.h:9 ../src/vmm-create.glade.h:26
+msgid ""
+"<small><b>Tip:</b> Choose this option if your host is disconnected, "
+"connected via wireless, or dynamically configured with NetworkManager.</"
+"small>"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:10 ../src/vmm-create.glade.h:27
+msgid ""
+"<small><b>Tip:</b> Choose this option if your host is statically connected "
+"to wired ethernet, to gain the ability to migrate the virtual system.</small>"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:11 ../src/vmm-create.glade.h:30
+msgid ""
+"<small><b>Warning:</b> If you do not allocate the entire disk at VM "
+"creation, space will be allocated as needed while the guest is running. If "
+"sufficient free space is not available on the host, this may result in data "
+"corruption on the guest.</small>"
+msgstr ""
+"<small><b>Figyelem:</b> Ha nem foglalja le a teljes lemezt a virtuális gép "
+"létrehozásakor, akkor a tárhely igény szerint fog lefoglalódni a "
+"vendégrendszer futása közben. Ha nincs elegendő szabad hely a "
+"gazdarendszeren, az a vendégrendszer adatsérülését okozhatja.</small>"
+
+#: ../src/vmm-add-hardware.glade.h:12
+#, fuzzy
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Adding new "
+"virtual hardware </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\"> Új virtuális "
+"rendszer teremtése </span>"
+
+#: ../src/vmm-add-hardware.glade.h:13 ../src/vmm-create.glade.h:32
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Assigning "
+"storage space</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Tárhely "
+"hozzárendelése</span>"
+
+#: ../src/vmm-add-hardware.glade.h:14 ../src/vmm-create.glade.h:34
+#, fuzzy
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Connect to host "
+"network</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Tárhely "
+"hozzárendelése</span>"
+
+#: ../src/vmm-add-hardware.glade.h:15
+#, fuzzy
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to add "
+"hardware</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Készen a "
+"telepítés megkezdésére</span>"
+
+#: ../src/vmm-add-hardware.glade.h:16
+msgid "Add new virtual hardware"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:17 ../src/vmm-create.glade.h:40
+msgid "Allocate entire virtual disk now?"
+msgstr "Lefoglalja a teljes virtuális lemezt?"
+
+#: ../src/vmm-add-hardware.glade.h:18 ../src/vmm-create.glade.h:42
+msgid "Browse..."
+msgstr "Tallózás…"
+
+#: ../src/vmm-add-hardware.glade.h:20 ../src/vmm-create.glade.h:46
+msgid "Connection type:"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:21
+msgid "Device Type Field"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:22
+msgid "Device type:"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:23 ../src/vmm-create.glade.h:48
+#: ../src/vmm-details.glade.h:23
+msgid "Disk"
+msgstr "Lemez"
+
+#: ../src/vmm-add-hardware.glade.h:24 ../src/vmm-create.glade.h:49
+#, fuzzy
+msgid "Disk image:"
+msgstr "Lemezhasználat:"
+
+#: ../src/vmm-add-hardware.glade.h:25 ../src/vmm-create.glade.h:50
+#, fuzzy
+msgid "Disk size:"
+msgstr "Lemezhasználat:"
+
+#: ../src/vmm-add-hardware.glade.h:26 ../src/vmm-create.glade.h:54
+#, fuzzy
+msgid "File Location Field"
+msgstr "Fájl _helye:"
+
+#: ../src/vmm-add-hardware.glade.h:27
+#, fuzzy
+msgid "File Size Field"
+msgstr "Fájl _mérete:"
+
+#: ../src/vmm-add-hardware.glade.h:28 ../src/vmm-create.glade.h:56
+msgid "File _Location:"
+msgstr "Fájl _helye:"
+
+#: ../src/vmm-add-hardware.glade.h:29 ../src/vmm-create.glade.h:57
+msgid "File _Size:"
+msgstr "Fájl _mérete:"
+
+#: ../src/vmm-add-hardware.glade.h:30
+#, fuzzy
+msgid "Hardware Type Select"
+msgstr "Hardvertámogatás szükséges"
+
+#: ../src/vmm-add-hardware.glade.h:31
+#, fuzzy
+msgid "Hardware type:"
+msgstr "Hardver"
+
+#: ../src/vmm-add-hardware.glade.h:33 ../src/vmm-details.glade.h:28
+#, fuzzy
+msgid "MAC Address Field"
+msgstr "MAC-cím"
+
+#: ../src/vmm-add-hardware.glade.h:34 ../src/vmm-create.glade.h:73
+#: ../src/vmm-details.glade.h:29
+#, fuzzy
+msgid "MAC address:"
+msgstr "MAC-cím"
+
+#: ../src/vmm-add-hardware.glade.h:35 ../src/vmm-create.glade.h:74
+#: ../src/vmm-details.glade.h:30
+msgid "MB"
+msgstr "MB"
+
+#: ../src/vmm-add-hardware.glade.h:36 ../src/vmm-create.glade.h:81
+#: ../src/vmm-details.glade.h:38
+msgid "Network"
+msgstr "Hálózat"
+
+#: ../src/vmm-add-hardware.glade.h:37 ../src/vmm-create.glade.h:82
+msgid "Network Device Select"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:38 ../src/vmm-create.glade.h:84
+msgid "Normal Disk _Partition:"
+msgstr "Normál lemez_partíció:"
+
+#: ../src/vmm-add-hardware.glade.h:39 ../src/vmm-create.glade.h:91
+msgid "P_artition:"
+msgstr "P_artíció:"
+
+#: ../src/vmm-add-hardware.glade.h:40
+msgid "Partition Location Field"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:41
+#, fuzzy
+msgid ""
+"Please indicate how you'd like to assign space on this physical host system "
+"for your new virtual storage device."
+msgstr ""
+"Adja meg, hogy hogyan szeretné hozzárendelni a helyet ezen a fizikai "
+"gazdarendszeren az új virtuális rendszerhez. Ezt a helylesz felhasználva a "
+"virtuális rendszer operációs rendszerének telepítésére."
+
+#: ../src/vmm-add-hardware.glade.h:42
+msgid ""
+"Please indicate how you'd like to connect your new virtual network device to "
+"the host network."
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:43
+#, fuzzy
+msgid "Set _fixed MAC address for this NIC?"
+msgstr "Adott MAC-cím:"
+
+#: ../src/vmm-add-hardware.glade.h:44 ../src/vmm-create.glade.h:102
+msgid "Shared Physical Device"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:45 ../src/vmm-create.glade.h:103
+msgid "Simple F_ile:"
+msgstr "Egyszerű _fájl"
+
+#: ../src/vmm-add-hardware.glade.h:46 ../src/vmm-create.glade.h:106
+msgid "Target:"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:47
+#, fuzzy
+msgid ""
+"This assistant will guide you through adding a new piece of virtual "
+"hardware. First select what type of hardware you wish to add:"
+msgstr ""
+"E segéd végigvezeti egy új virtuális rendszer teremtésének folyamatán. "
+"Kérdez néhány információt a kívánt virtuális rendszerről, pl:"
+
+#: ../src/vmm-add-hardware.glade.h:48
+#, fuzzy
+msgid "Virtual Network Select"
+msgstr "Virtuális CPU-k"
+
+#: ../src/vmm-add-hardware.glade.h:49 ../src/vmm-create.glade.h:121
+msgid "_Device:"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:51 ../src/vmm-create.glade.h:125
+#, fuzzy
+msgid "_MAC address:"
+msgstr "MAC-cím"
+
+#: ../src/vmm-add-hardware.glade.h:52 ../src/vmm-create.glade.h:126
+#, fuzzy
+msgid "_Network:"
+msgstr "Hálózat"
+
+#: ../src/vmm-add-hardware.glade.h:53 ../src/vmm-create.glade.h:129
+msgid "_Shared physical device"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:54 ../src/vmm-create.glade.h:131
+#, fuzzy
+msgid "_Virtual network"
+msgstr "Virtuális _gép"
+
+#: ../src/vmm-add-hardware.glade.h:55 ../src/vmm-create.glade.h:133
+msgid "eth0"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:2
+msgid " "
+msgstr " "
+
+#: ../src/vmm-create.glade.h:5 ../src/vmm-details.glade.h:4
+msgid "2 GB"
+msgstr "2 GB"
+
+#: ../src/vmm-create.glade.h:6
+msgid "256\t"
+msgstr "256\t"
+
+#: ../src/vmm-create.glade.h:7
+msgid "400 MB"
+msgstr "400 MB"
+
+#: ../src/vmm-create.glade.h:8
+msgid "5\t"
+msgstr "5\t"
+
+#: ../src/vmm-create.glade.h:10
+msgid "500 MB"
+msgstr "500 MB"
+
+#: ../src/vmm-create.glade.h:11
+msgid "<b>CPUs:</b>"
+msgstr "<b>CPU-k:</b>"
+
+#: ../src/vmm-create.glade.h:12
+msgid "<b>Example:</b> system1"
+msgstr "<b>Példa:</b> rendszer1"
+
+#: ../src/vmm-create.glade.h:13
+#, fuzzy
+msgid "<b>Install media</b>"
+msgstr "<b>Kezdeti memória:</b>"
+
+#: ../src/vmm-create.glade.h:14
+msgid "<b>Memory:</b>"
+msgstr "<b>Memória:</b>"
+
+#: ../src/vmm-create.glade.h:15
+msgid "<b>Memory</b> and <b>CPU</b> allocation"
+msgstr "<b>Memória</b> ás <b>CPU</b> foglalása"
+
+#: ../src/vmm-create.glade.h:18
+msgid ""
+"<b>Storage</b> details - which disk partitions or files the system should use"
+msgstr ""
+"<b>Tároló</b> részletek – melyik lemezpartíciót vagy fájlt használja a "
+"rendszer"
+
+#: ../src/vmm-create.glade.h:21
+msgid "<small><b>Example:</b> ftp://hostname.example.com/ks/ks.cfg</small>"
+msgstr "<small><b>Példa:</b> ftp://hostnev.pelda.hu/ks/ks.cfg</small>"
+
+#: ../src/vmm-create.glade.h:22
+msgid ""
+"<small><b>Example:</b> http://servername.example.com/distro/i386/tree</small>"
+msgstr "<small><b>Példa:</b> http://kiszolgalo.pelda.hu/distro/i386/fa</small>"
+
+#: ../src/vmm-create.glade.h:23
+#, fuzzy
+msgid ""
+"<small><b>Example:</b> updates=http://hostname.example.com/updates.img</"
+"small>"
+msgstr "<small><b>Példa:</b> ftp://hostnev.pelda.hu/ks/ks.cfg</small>"
+
+#: ../src/vmm-create.glade.h:24
+msgid ""
+"<small><b>Note:</b> The host CPU(s) in this machine do not have support for "
+"full virtualization.</small>"
+msgstr ""
+"<small><b>Megjegyzés:</b> A gazdarendszer CPU-ja ezen a gépen nem támogatja "
+"a teljes virtualizációt.</small>"
+
+#: ../src/vmm-create.glade.h:25
+msgid ""
+"<small><b>Note:</b> The host CPU(s) in this machine support full "
+"virtualization, but it is not enabled by the BIOS.</small>"
+msgstr ""
+"<small><b>Megjegyzés:</b> A gazdarendszer CPU-ja ezen a gépen támogatja a "
+"teljes virtualizációt, de az nem engedélyezett a BIOS-ban.</small>"
+
+#: ../src/vmm-create.glade.h:28
+msgid ""
+"<small><b>Tip:</b> For best performance, the number of virtual CPUs should "
+"be less than (or equal to) the number of logical CPUs on the host system.</"
+"small>"
+msgstr ""
+"<small><b>Tipp:</b> A legnagyobb teljesítményhez a virtuális CPU-k számának "
+"kisebbnek vagy egyenlőnek kell lennie a gazdarendszer fizikai CPU-inak "
+"számával.</small>"
+
+#: ../src/vmm-create.glade.h:29
+msgid ""
+"<small><b>Tip:</b> You may add additional storage, including network-mounted "
+"storage, to your virtual system after it has been created using the same "
+"tools you would on a physical system.</small>"
+msgstr ""
+"<small><b>Példa:</b> </small> További tárhelyeket, beleértve a hálózati "
+"csatolt tárolókat, adhat hozzá a virtuális rendszerhez miután az elkészült "
+"ugyanazokkal az eszközökkel, amiket a fizikai rendszeren használnának."
+
+#: ../src/vmm-create.glade.h:31
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Allocate memory "
+"and CPU</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Memória- és CPU-"
+"foglalás </span>"
+
+#: ../src/vmm-create.glade.h:33
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Choosing a "
+"virtualization method</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Virtualizáció "
+"módjának kiválasztása</span>"
+
+#: ../src/vmm-create.glade.h:35
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Creating a new "
+"virtual system </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\"> Új virtuális "
+"rendszer teremtése </span>"
+
+#: ../src/vmm-create.glade.h:36
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Locating "
+"installation media</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Telepítőlemez "
+"keresése</span>"
+
+#: ../src/vmm-create.glade.h:37
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Naming your "
+"virtual system </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">A virtuális "
+"rendszer elnevezése </span>"
+
+#: ../src/vmm-create.glade.h:38
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to begin "
+"installation</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Készen a "
+"telepítés megkezdésére</span>"
+
+#: ../src/vmm-create.glade.h:39
+msgid "A <b>name</b> for your new virtual system"
+msgstr "Az új virtuális rendszer <b>neve</b>"
+
+#: ../src/vmm-create.glade.h:41
+#, fuzzy
+msgid "Architecture Select"
+msgstr "CPU architektúra:"
+
+#: ../src/vmm-create.glade.h:43
+msgid "CPU architecture:"
+msgstr "CPU architektúra:"
+
+#: ../src/vmm-create.glade.h:44
+msgid "CPU/memory"
+msgstr "CPU/memória"
+
+#: ../src/vmm-create.glade.h:47
+msgid "Create a new virtual system"
+msgstr "Új virtuális rendszer teremtése"
+
+#: ../src/vmm-create.glade.h:51
+msgid "Enable kernel / hardware acceleration"
+msgstr "Rendszermag / hardver gyorsítás engedélyezése:"
+
+#: ../src/vmm-create.glade.h:52
+msgid "FV install"
+msgstr "TV telepítés"
+
+#: ../src/vmm-create.glade.h:53
+msgid "F_ully Virtualized:"
+msgstr "Teljesen virtuális:"
+
+#: ../src/vmm-create.glade.h:55
+#, fuzzy
+msgid "File Size Select"
+msgstr "Fájl _mérete:"
+
+#: ../src/vmm-create.glade.h:58
+#, fuzzy
+msgid "ISO Location Field"
+msgstr "ISO _helye:"
+
+#: ../src/vmm-create.glade.h:59
+msgid "ISO _Location:"
+msgstr "ISO _helye:"
+
+#: ../src/vmm-create.glade.h:60
+#, fuzzy
+msgid "Initial memory:"
+msgstr "<b>Kezdeti memória:</b>"
+
+#: ../src/vmm-create.glade.h:61
+msgid "Install Media _URL:"
+msgstr "Telepítőlemez _URL:"
+
+#: ../src/vmm-create.glade.h:62
+#, fuzzy
+msgid "Install URL Field"
+msgstr "Telepítőlemez szükséges"
+
+#: ../src/vmm-create.glade.h:63
+#, fuzzy
+msgid "Installation source:"
+msgstr "<b>Telepítés forrása:</b>"
+
+#: ../src/vmm-create.glade.h:65
+msgid ""
+"Involves hardware simulation, allowing for a greater range of operating "
+"systems (does not require OS modification). Slower than paravirtualized "
+"systems."
+msgstr ""
+"Hardverszimulációt tartalmaz, megengedve operációs rendszerek szélesebb "
+"skáláját (nem szükséges OR módosítása). Lassabb, mint a paravirtuális "
+"rendszerek."
+
+#: ../src/vmm-create.glade.h:66
+msgid "Kernel arguments:"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:67
+#, fuzzy
+msgid "Kickstart Field"
+msgstr "<b>Beindító forrás:</b>"
+
+#: ../src/vmm-create.glade.h:68
+msgid "Kickstart U_RL:"
+msgstr "Beindító U_RL:"
+
+#: ../src/vmm-create.glade.h:69
+#, fuzzy
+msgid "Kickstart source:"
+msgstr "<b>Beindító forrás:</b>"
+
+#: ../src/vmm-create.glade.h:70
+msgid ""
+"Lightweight method of virtualizing machines. Limits operating system choices "
+"because the OS must be specially modified to support paravirtualization. "
+"Better performance than fully virtualized systems."
+msgstr ""
+"Gépek virtualizációjának pehelysúlyú módja. Korlátozza az operációs "
+"rendszerek választékát, mert az OR-t egyedileg kell módosítani a "
+"paravirtualizáció támogatására. Jobb teljesítményt nyújt, mint a teljesen "
+"virtualizált rendszerek."
+
+#: ../src/vmm-create.glade.h:71
+msgid "Logical host CPUs:"
+msgstr "Logikai gazdarendszer CPU-k:"
+
+#: ../src/vmm-create.glade.h:72
+msgid "MAC Field"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:75
+#, fuzzy
+msgid "Machine name:"
+msgstr "<b>Gépnév:</b>"
+
+#: ../src/vmm-create.glade.h:76
+msgid "Max Mem Select"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:77
+#, fuzzy
+msgid "Maximum memory:"
+msgstr "<b>Maximális memória:</b>"
+
+#: ../src/vmm-create.glade.h:78
+msgid "Media Path Select"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:80 ../src/vmm-details.glade.h:36
+msgid "Name Field"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:83
+#, fuzzy
+msgid "Network Select"
+msgstr "Hálózat"
+
+#: ../src/vmm-create.glade.h:85
+#, fuzzy
+msgid "OS Type Select"
+msgstr "Operációs rendszer _típusa:"
+
+#: ../src/vmm-create.glade.h:86
+#, fuzzy
+msgid "OS Variant Select"
+msgstr "OS variáns:"
+
+#: ../src/vmm-create.glade.h:87
+msgid "OS _Type:"
+msgstr "Operációs rendszer _típusa:"
+
+#: ../src/vmm-create.glade.h:88
+msgid "OS _Variant:"
+msgstr "OS variáns:"
+
+#: ../src/vmm-create.glade.h:89
+#, fuzzy
+msgid "Operating System:"
+msgstr "<b>Operációs rendszer:</b>"
+
+#: ../src/vmm-create.glade.h:90
+msgid "PVinstall"
+msgstr "PV telepítés"
+
+#: ../src/vmm-create.glade.h:92
+#, fuzzy
+msgid "Partition Field"
+msgstr "P_artíció:"
+
+#: ../src/vmm-create.glade.h:93
+msgid "Please choose a name for your virtual system:"
+msgstr "Válasszon nevet a virtuális rendszernek:"
+
+#: ../src/vmm-create.glade.h:94
+msgid ""
+"Please choose the type of guest operating system you will be installing:"
+msgstr "Kérem, válassza ki a telepítendő vendég operációs rendszer típusát:"
+
+#: ../src/vmm-create.glade.h:95
+msgid ""
+"Please enter the memory configuration for this VM. You can specify the "
+"maximum amount of memory the VM should be able to use, and optionally a "
+"lower amount to grab on startup. Warning: setting VM memory too high will "
+"cause out-of-memory errors in your host domain!"
+msgstr ""
+"Kérem, adja meg ennek a virtuális gépnek a memóriabeállítását. Megadhatja a "
+"maximális memóriaméretet, amit a VM használhat, valamint opcionálisan egy "
+"kisebb méretet, ami induláskor lesz lefoglalva. Figyelem: a túl magasra "
+"állított VM memóriaméret a gazdarendszeren a memória elfogyását "
+"eredményezheti!"
+
+#: ../src/vmm-create.glade.h:96
+msgid "Please enter the number of virtual CPUs this VM should start up with."
+msgstr "Adja meg a virtuális CPU-k számát, amivel a VG indul!"
+
+#: ../src/vmm-create.glade.h:97
+msgid ""
+"Please indicate how you'd like to assign space on this physical host system "
+"for your new virtual system. This space will be used to install the virtual "
+"system's operating system."
+msgstr ""
+"Adja meg, hogy hogyan szeretné hozzárendelni a helyet ezen a fizikai "
+"gazdarendszeren az új virtuális rendszerhez. Ezt a helylesz felhasználva a "
+"virtuális rendszer operációs rendszerének telepítésére."
+
+#: ../src/vmm-create.glade.h:98
+msgid ""
+"Please indicate how you'd like to connect your new virtual system to the "
+"host network."
+msgstr ""
+
+#: ../src/vmm-create.glade.h:99
+msgid ""
+"Please indicate where installation media is available for the operating "
+"system you would like to install on this <b>fully virtualized</b> virtual "
+"system:"
+msgstr ""
+"Adja meg, hol érhető el az erre a <b>teljesen virtuális</b> rendszerre "
+"telepítendő operációs rendszer telepítőlemeze!"
+
+#: ../src/vmm-create.glade.h:100
+msgid ""
+"Please indicate where installation media is available for the operating "
+"system you would like to install on this <b>paravirtualized</b> virtual "
+"system. Optionally you can provide the URL for a kickstart file that "
+"describes your system:"
+msgstr ""
+"Adja meg, hol érhető el az erre a <b>paravirtuális</b> rendszerre "
+"telepítendő operációs rendszer telepítőlemeze! Esetleg megadhat URL-t a "
+"beindító fájlhoz, ami leírja ezt a rendszert:"
+
+#: ../src/vmm-create.glade.h:101
+#, fuzzy
+msgid "Set _fixed MAC address for your virtual system?"
+msgstr "Válasszon nevet a virtuális rendszernek:"
+
+#: ../src/vmm-create.glade.h:104
+msgid "Startup Mem Select"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:105
+msgid "System _Name:"
+msgstr "Rendszer_név:"
+
+#: ../src/vmm-create.glade.h:107
+msgid ""
+"The <b>location</b> of the files necessary for installing an operating "
+"system on the virtual system"
+msgstr ""
+"A virtuális rendszerre telepítendő operációs rendszerhez szükséges fájlok "
+"<b>helye</b>."
+
+#: ../src/vmm-create.glade.h:108
+msgid ""
+"This assistant will guide you through creating a new virtual system. You "
+"will be asked for some information about the virtual system you'd like to "
+"create, such as:"
+msgstr ""
+"E segéd végigvezeti egy új virtuális rendszer teremtésének folyamatán. "
+"Kérdez néhány információt a kívánt virtuális rendszerről, pl:"
+
+#: ../src/vmm-create.glade.h:109 ../src/vmm-details.glade.h:55
+msgid "Total memory on host machine:"
+msgstr "Teljes memória a gazdarendszeren:"
+
+#: ../src/vmm-create.glade.h:110
+msgid "Type"
+msgstr "Típus"
+
+#: ../src/vmm-create.glade.h:111 ../src/vmm-details.glade.h:58
+msgid "VCPU Select"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:112
+msgid "VM _Max Memory (MB):"
+msgstr "VM _maximális memória (MB):"
+
+#: ../src/vmm-create.glade.h:113
+msgid "VM _Startup Memory (MB):"
+msgstr "VM _induló memória (MB):"
+
+#: ../src/vmm-create.glade.h:114
+msgid "VMS"
+msgstr "VMS"
+
+#: ../src/vmm-create.glade.h:115
+#, fuzzy
+msgid "Virtual CPUs:"
+msgstr "Virtuális CPU-k"
+
+#: ../src/vmm-create.glade.h:116
+#, fuzzy
+msgid "Virtualization method:"
+msgstr "<b>Virtualizáció módja:</b>"
+
+#: ../src/vmm-create.glade.h:117
+msgid ""
+"Whether the system will be <b>fully virtualized</b> or <b>para-virtualized</"
+"b>"
+msgstr ""
+"<b>Teljesen virtuális</b> vagy <b>paravirtuális</b> legyen-e a rendszer"
+
+#: ../src/vmm-create.glade.h:118
+msgid "You will need to choose a virtualization method for your new system:"
+msgstr "Ki kell választania az új rendszer virtualizációjának módját:"
+
+#: ../src/vmm-create.glade.h:119
+msgid "_Browse..."
+msgstr "_Tallózás…"
+
+#: ../src/vmm-create.glade.h:120
+msgid "_CD-ROM or DVD:"
+msgstr "_CD-ROM vagy DVD:"
+
+#: ../src/vmm-create.glade.h:123
+msgid "_ISO Image Location:"
+msgstr "_ISO képmás helye:"
+
+#: ../src/vmm-create.glade.h:124
+msgid "_Kernel parameters:"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:127
+msgid "_Paravirtualized:"
+msgstr "_Paravirtuális:"
+
+#: ../src/vmm-create.glade.h:128
+msgid "_Path to install media:"
+msgstr "A telepítőlemez _elérési útja:"
+
+#: ../src/vmm-create.glade.h:130
+msgid "_VCPUs:"
+msgstr "_VCPU-k:"
+
+#: ../src/vmm-create.glade.h:134
+msgid "http://"
+msgstr "http://"
+
+#: ../src/vmm-create.glade.h:135
+msgid ""
+"i686\n"
+"x86_64\n"
+"ppc\n"
+"sparc\n"
+"mips\n"
+"mipsel"
+msgstr ""
+"i686\n"
+"x86_64\n"
+"ppc\n"
+"sparc\n"
+"mips\n"
+"mipsel"
+
+#: ../src/vmm-create.glade.h:141
+msgid "ip=192.168.1.1"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:142
+msgid "kernel-params"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:143
+msgid "para"
+msgstr "para"
+
+#: ../src/vmm-details.glade.h:2
+#, no-c-format
+msgid "18%"
+msgstr "18%"
+
+#: ../src/vmm-details.glade.h:3
+msgid "2"
+msgstr "2"
+
+#: ../src/vmm-details.glade.h:5
+msgid "20 bits/sec"
+msgstr "20 bit/sec"
+
+#: ../src/vmm-details.glade.h:6
+msgid "200 MB"
+msgstr "200 MB"
+
+#: ../src/vmm-details.glade.h:7
+msgid "30 MB of 128 MB"
+msgstr "30 MB 128 MB-ból"
+
+#: ../src/vmm-details.glade.h:8
+msgid "8"
+msgstr "8"
+
+#: ../src/vmm-details.glade.h:9
+msgid "80 MB of 1 GB"
+msgstr "80 MB 1 GB-ból"
+
+#: ../src/vmm-details.glade.h:11
+msgid "<b>CPUs</b>"
+msgstr "<b>CPU-k</b>"
+
+#: ../src/vmm-details.glade.h:12
+msgid "<b>Memory</b>"
+msgstr "<b>Memória</b>"
+
+#: ../src/vmm-details.glade.h:14
+msgid ""
+"<b>Tip:</b> 'Source device' refers to the name of the device as seen from "
+"the host OS."
+msgstr ""
+
+#: ../src/vmm-details.glade.h:15
+msgid ""
+"<b>Tip:</b> 'source' refers to information seen from the host OS, while "
+"'target' refers to information seen from the guest OS"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:16
+msgid ""
+"<b>Tip:</b> For best performance, the number of virtual CPUs should be less "
+"than (or equal to) the number of physical CPUs on the host system."
+msgstr ""
+"<b>Tipp:</b> A legnagyobb teljesítményért, a virtuális CPU-k száma legyen "
+"kisebb vagy egyenlő a gazdarendszer fizikai CPU-i számával."
+
+#: ../src/vmm-details.glade.h:17
+#, fuzzy
+msgid "<b>Virtual Disk</b>"
+msgstr "<b>Virtuális CPU-s:</b>"
+
+#: ../src/vmm-details.glade.h:18
+#, fuzzy
+msgid "<b>Virtual Network Interface</b>"
+msgstr "<b>Hálózat</b>"
+
+#: ../src/vmm-details.glade.h:19
+msgid "Block"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:21
+msgid "Change allocation:"
+msgstr "Foglalás megváltoztatása:"
+
+#: ../src/vmm-details.glade.h:22
+msgid "Current allocation:"
+msgstr "Jelenlegi foglalás:"
+
+#: ../src/vmm-details.glade.h:24
+msgid "Disk usage:"
+msgstr "Lemezhasználat:"
+
+#: ../src/vmm-details.glade.h:25
+msgid "Hardware"
+msgstr "Hardver"
+
+#: ../src/vmm-details.glade.h:26
+#, fuzzy
+msgid "How many virtual CPUs should be allocated for this machine?"
+msgstr "Hány virtuális CPU-t foglaljon ez a gép?"
+
+#: ../src/vmm-details.glade.h:27
+#, fuzzy
+msgid "How much memory should be allocated for this machine?"
+msgstr "Mekkora memóriát foglaljon ez a gép?"
+
+#: ../src/vmm-details.glade.h:31
+msgid "Max Memory Select"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:32
+msgid "Maximum allocation:"
+msgstr "Legnagyobb foglalás:"
+
+#: ../src/vmm-details.glade.h:33
+msgid "Memory"
+msgstr "Memória"
+
+#: ../src/vmm-details.glade.h:34
+#, fuzzy
+msgid "Memory Select"
+msgstr "Memóriahasználat"
+
+#: ../src/vmm-details.glade.h:39
+msgid "Network usage:"
+msgstr "Hálózathasználat:"
+
+#: ../src/vmm-details.glade.h:42
+msgid "Processor"
+msgstr "Processzor"
+
+#: ../src/vmm-details.glade.h:45
+msgid "Shut down"
+msgstr "Leállítás"
+
+#: ../src/vmm-details.glade.h:47
+msgid "Source device:"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:48
+msgid "Source path:"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:49
+msgid "Source type:"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:50
+msgid "Status:"
+msgstr "Állapot:"
+
+#: ../src/vmm-details.glade.h:51
+msgid "Target device:"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:52
+msgid "Target type:"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:54
+msgid "Total CPUs on host machine:"
+msgstr "Összes CPU a gazdarendszeren:"
+
+#: ../src/vmm-details.glade.h:56
+msgid "UUID Field"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:59
+msgid "Virtual Machine Details"
+msgstr "Virtuális gép részletei"
+
+#: ../src/vmm-details.glade.h:63
+msgid "_Graphical Console"
+msgstr "_Grafikus konzol"
+
+#: ../src/vmm-details.glade.h:70
+#, fuzzy
+msgid "disk\t"
+msgstr "Lemez"
+
+#: ../../po/../src/vmm-manager.glade:49
+msgid "Restore a saved machine from a filesystem image"
+msgstr "Elmentett gép visszaállítása fájlrendszer képmásból"
+
+#: ../../po/../src/vmm-manager.glade:50
+msgid "Restore saved machine..."
+msgstr "Elmentett gép visszaállítása…"
+
+#: ../../po/../src/vmm-manager.glade:78
+msgid "Open connection..."
+msgstr "Kapcsolat nyitása…"
+
+#: ../../po/../src/vmm-manager.glade:127
+msgid "_Edit"
+msgstr "S_zerkesztés"
+
+#: ../../po/../src/vmm-manager.glade:136
+#, fuzzy
+msgid "Host details..."
+msgstr "Gép részletei…"
+
+#: ../../po/../src/vmm-manager.glade:145
+msgid "Machine details..."
+msgstr "Gép részletei…"
+
+#: ../../po/../src/vmm-manager.glade:166
+msgid "Delete machine"
+msgstr "Gép törlése"
+
+#: ../../po/../src/vmm-manager.glade:215
+msgid "Domain ID"
+msgstr "Tartományazonosító"
+
+#: ../../po/../src/vmm-manager.glade:225
+#: ../../po/../src/virtManager/manager.py:714
+msgid "Status"
+msgstr "Állapot"
+
+#: ../../po/../src/vmm-manager.glade:235
+#: ../../po/../src/virtManager/manager.py:715
+msgid "CPU usage"
+msgstr "CPU-használat"
+
+#: ../../po/../src/vmm-manager.glade:245
+msgid "Virtual CPUs"
+msgstr "Virtuális CPU-k"
+
+#: ../../po/../src/vmm-manager.glade:255
+#: ../../po/../src/virtManager/manager.py:717
+msgid "Memory usage"
+msgstr "Memóriahasználat"
+
+#: ../../po/../src/vmm-manager.glade:265
+#: ../../po/../src/virtManager/manager.py:718
+msgid "Disk usage"
+msgstr "Lemezhasználat"
+
+#: ../../po/../src/vmm-manager.glade:275
+#: ../../po/../src/virtManager/manager.py:719
+msgid "Network traffic"
+msgstr "Hálózati forgalom"
+
+#: ../../po/../src/vmm-manager.glade:347
+msgid "_View:"
+msgstr "_Nézet:"
+
+#: ../../po/../src/vmm-manager.glade:372
+msgid ""
+"All virtual machines\n"
+"Active virtual machines\n"
+"Inactive virtual machines"
+msgstr ""
+"Minden virtuális gép\n"
+"Aktív virtuális gép\n"
+"Inaktív virtuális gép"
+
+#: ../../po/../src/vmm-manager.glade:378
+msgid "View Select"
+msgstr ""
+
+#: ../../po/../src/vmm-manager.glade:485
+msgid "De_tails"
+msgstr "_Részletek"
+
+#: ../src/vmm-open-connection.glade.h:1
+msgid "Co_nnect"
+msgstr "_Kapcsolódás"
+
+#: ../src/vmm-open-connection.glade.h:2
+#, fuzzy
+msgid "Connection Select"
+msgstr "_Kapcsolódás"
+
+#: ../src/vmm-open-connection.glade.h:3
+#, fuzzy
+msgid "Connection:"
+msgstr "_Kapcsolódás"
+
+#: ../src/vmm-open-connection.glade.h:4
+#, fuzzy
+msgid "Hostname Field"
+msgstr "G_azda:"
+
+#: ../src/vmm-open-connection.glade.h:6
+#, fuzzy
+msgid "Hypervisor Select"
+msgstr "Felügyelő:"
+
+#: ../src/vmm-open-connection.glade.h:8
+msgid ""
+"Local\n"
+"Remote SSL/TLS with x509 certificate\n"
+"Remote tunnel over SSH"
+msgstr ""
+
+#: ../src/vmm-open-connection.glade.h:11
+msgid "Open connection"
+msgstr "Kapcsolat nyitása"
+
+#: ../src/vmm-open-connection.glade.h:12
+msgid ""
+"Xen\n"
+"QEMU"
+msgstr ""
+"Xen\n"
+"QEMU"
+
+#: ../src/vmm-progress.glade.h:1 ../../po/../src/virtManager/asyncjob.py:38
+msgid "Operation in progress"
+msgstr "Művelet folyamatban"
+
+#: ../src/vmm-progress.glade.h:2 ../../po/../src/virtManager/asyncjob.py:38
+msgid "Please wait a few moments..."
+msgstr "Kérem várjon egy pillanatot ..."
+
+#: ../src/vmm-progress.glade.h:3 ../../po/../src/virtManager/asyncjob.py:74
+#: ../../po/../src/virtManager/asyncjob.py:87
+msgid "Processing..."
+msgstr "Feldolgozás..."
+
+#. ...the risk is we catch too much though
+#. Damned if we do, damned if we dont :-)(
+#: ../../po/../src/virt-manager.py.in:74
+msgid "Unable to initialize GTK: "
+msgstr "GTK-t nem lehet inicializálni: "
+
+#: ../src/virt-manager.schemas.in.h:1
+msgid "Show VCPU count in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:2
+msgid "Show cpu usage in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:3
+msgid "Show disk usage in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:4
+msgid "Show domain id in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:5
+msgid "Show memory usage in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:6
+#, fuzzy
+msgid "Show network traffic in summary"
+msgstr "Hálózati forgalom"
+
+#: ../src/virt-manager.schemas.in.h:7
+msgid "Show run state in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:8
+msgid "Show the cpu usage field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:9
+msgid "Show the disk usage field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:10
+msgid "Show the domain id field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:11
+msgid "Show the memory usage field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:12
+msgid "Show the network traffic field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:13
+msgid "Show the run state field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:14
+msgid "Show the virtual CPU count field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:15
+msgid "The length of the list of URLs"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:16
+msgid "The number of samples to keep in the statistics history"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:17
+msgid ""
+"The number of urls to keep in the history for the install media address page."
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:18
+msgid "The statistics history length"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:19
+msgid "The statistics update interval"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:20
+msgid "The statistics update interval in seconds"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:21
+msgid "When to grab keyboard input for the console"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:22
+msgid "When to pop up a console for a guest"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:23
+msgid ""
+"Whether to grab keyboard input for a guest console. 0 = never, 1 = only when "
+"in full screen mode, 2 = when mouse is over console"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:24
+msgid ""
+"Whether to pop up a console for a guest. 0 = never, 1 = only on creation of "
+"a new guest, 2 = On creation of any guest"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:25
+msgid "Whether to show notification when grabbing mouse"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:26
+msgid ""
+"Whether to show the notification hint when grabbing the mouse in the console"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:97
+#: ../../po/../src/virtManager/createnet.py:255
+#: ../../po/../src/virtManager/host.py:230
+#, python-format
+msgid "NAT to physical device %s"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:152
+#, fuzzy, python-format
+msgid "%d addresses"
+msgstr "MAC-cím"
+
+#: ../../po/../src/virtManager/createnet.py:154
+msgid "Public"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:158
+msgid "Reserved"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:160
+msgid "Other"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:304
+#: ../../po/../src/virtManager/createnet.py:308
+#, fuzzy
+msgid "Invalid Network Name"
+msgstr "Érvénytelen rendszernév"
+
+#: ../../po/../src/virtManager/createnet.py:305
+#, fuzzy
+msgid "Network name must be non-blank and less than 50 characters"
+msgstr "Rendszernév nem lehet üres, 50 betűnél hosszabb"
+
+#: ../../po/../src/virtManager/createnet.py:309
+#, fuzzy
+msgid "Network name may contain alphanumeric and '_' characters only"
+msgstr "A rendszernév csak alfanumerikus és '_' jelet tartalmazhat"
+
+#: ../../po/../src/virtManager/createnet.py:316
+#: ../../po/../src/virtManager/createnet.py:321
+#: ../../po/../src/virtManager/createnet.py:326
+#, fuzzy
+msgid "Invalid Network Address"
+msgstr "Érvénytelen tárcím"
+
+#: ../../po/../src/virtManager/createnet.py:317
+msgid "The network address could not be understood"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:322
+msgid "The network must be an IPv4 address"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:327
+msgid "The network prefix must be at least /4 (16 addresses)"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:331
+#, fuzzy
+msgid "Check Network Address"
+msgstr "Érvénytelen tárcím"
+
+#: ../../po/../src/virtManager/createnet.py:332
+msgid ""
+"The network should normally use a private IPv4 address. Use this non-private "
+"address anyway?"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:341
+#: ../../po/../src/virtManager/createnet.py:345
+#: ../../po/../src/virtManager/createnet.py:350
+#: ../../po/../src/virtManager/createnet.py:354
+#, fuzzy
+msgid "Invalid DHCP Address"
+msgstr "Érvénytelen PV médiacím"
+
+#: ../../po/../src/virtManager/createnet.py:342
+msgid "The DHCP start address could not be understood"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:346
+msgid "The DHCP end address could not be understood"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:351
+#, python-format
+msgid "The DHCP start address is not with the network %s"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:355
+#, python-format
+msgid "The DHCP end address is not with the network %s"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:361
+#, fuzzy
+msgid "Invalid forwarding mode"
+msgstr "Érvénytelen tárcím"
+
+#: ../../po/../src/virtManager/createnet.py:362
+msgid "Please select where the traffic should be forwarded"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:422
+#: ../../po/../src/virtManager/create.py:1064
+#: ../../po/../src/virtManager/create.py:1099
+msgid "No media present"
+msgstr "Nincs bent lemez"
+
+#: ../../po/../src/virtManager/engine.py:103
+msgid ""
+"Unable to open a connection to the Xen hypervisor/daemon.\n"
+"\n"
+msgstr ""
+"Nem lehet kapcsolatba lépni a Xen felügyelővel/szolgáltatással.\n"
+"\n"
+
+#: ../../po/../src/virtManager/engine.py:104
+#: ../../po/../src/virtManager/engine.py:112
+msgid "Verify that:\n"
+msgstr "Ellenőrizze:\n"
+
+#: ../../po/../src/virtManager/engine.py:105
+msgid " - A Xen host kernel was booted\n"
+msgstr " - Xen gazdakernel működik.\n"
+
+#: ../../po/../src/virtManager/engine.py:106
+msgid " - The Xen service has been started\n"
+msgstr " - A Xen szolgáltatás elindult.\n"
+
+#: ../../po/../src/virtManager/engine.py:111
+#, fuzzy
+msgid ""
+"Unable to open a connection to the QEMU management daemon.\n"
+"\n"
+msgstr ""
+"Nem lehet kapcsolatba lépni a Xen felügyelővel/szolgáltatással.\n"
+"\n"
+
+#: ../../po/../src/virtManager/engine.py:113
+#, fuzzy
+msgid " - The 'libvirt_qemud' daemon has been started\n"
+msgstr " - A Xen szolgáltatás elindult.\n"
+
+#: ../../po/../src/virtManager/engine.py:118
+#, python-format
+msgid "Unable to open connection to hypervisor '%s'"
+msgstr "Nem lehet kapcsolatba lépni „%s” felügyelővel."
+
+#: ../../po/../src/virtManager/engine.py:120
+msgid "Virtual Machine Manager Connection Failure"
+msgstr "Virtuális gépigazgató kapcsolati hiba"
+
+#: ../../po/../src/virtManager/engine.py:359
+msgid "Save Virtual Machine"
+msgstr "Virtuális gép mentése"
+
+#: ../../po/../src/virtManager/engine.py:373
+msgid "Saving Virtual Machine"
+msgstr "Virtuális gép mentése"
+
+#: ../../po/../src/virtManager/engine.py:389
+#, python-format
+msgid "About to destroy virtual machine %s"
+msgstr "A(z) %s virtuális gépet szándékozik törölni"
+
+#: ../../po/../src/virtManager/engine.py:390
+msgid ""
+"This will immediately destroy the VM and may corrupt its disk image. Are you "
+"sure?"
+msgstr ""
+"Ez azonnal törli a virtuális gépet és a lemezképmását tönkreteheti. Biztos "
+"benne?"
+
+#: ../../po/../src/virtManager/addhardware.py:274
+#: ../../po/../src/virtManager/create.py:478
+msgid "Shared physical device"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:277
+#: ../../po/../src/virtManager/create.py:481
+#, fuzzy
+msgid "Virtual network"
+msgstr "Virtuális _gép"
+
+#: ../../po/../src/virtManager/addhardware.py:280
+#: ../../po/../src/virtManager/create.py:484
+msgid "Usermode networking"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:359
+msgid "Invalid storage address"
+msgstr "Érvénytelen tárcím"
+
+#: ../../po/../src/virtManager/addhardware.py:387
+msgid "Too many virtual disks"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:388
+msgid "There are no more available virtual disk device nodes"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:392
+#, fuzzy
+msgid "Creating Storage File"
+msgstr "Új tárolófájl létrehozása vagy kiválasztása"
+
+#: ../../po/../src/virtManager/addhardware.py:393
+#, fuzzy
+msgid "Allocation of disk storage may take a few minutes "
+msgstr "Lemez tárhely lefoglalása és a következő kiolvasása: "
+
+#: ../../po/../src/virtManager/addhardware.py:394
+#: ../../po/../src/virtManager/create.py:576
+msgid "to complete."
+msgstr "míg befejeződik."
+
+#: ../../po/../src/virtManager/addhardware.py:413
+#: ../../po/../src/virtManager/addhardware.py:432
+#: ../../po/../src/virtManager/create.py:628
+#, python-format
+msgid "Unable to complete install: '%s'"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:437
+#: ../../po/../src/virtManager/create.py:662
+msgid "Locate Storage Partition"
+msgstr "Tárpartíció kiválasztása"
+
+#: ../../po/../src/virtManager/addhardware.py:444
+#: ../../po/../src/virtManager/create.py:668
+msgid "Locate or Create New Storage File"
+msgstr "Új tárolófájl létrehozása vagy kiválasztása"
+
+#: ../../po/../src/virtManager/addhardware.py:524
+#, fuzzy
+msgid "Hardware Type Required"
+msgstr "Hardvertámogatás szükséges"
+
+#: ../../po/../src/virtManager/addhardware.py:525
+msgid "You must specify what type of hardware to add"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:530
+#: ../../po/../src/virtManager/create.py:850
+msgid "Storage Address Required"
+msgstr "Tárcím szükséges"
+
+#: ../../po/../src/virtManager/addhardware.py:531
+#: ../../po/../src/virtManager/create.py:851
+msgid ""
+"You must specify a partition or a file for storage for the guest install"
+msgstr ""
+"Meg kell adni egy partíciót vagy egy fájlt a vendégtelepítés tárolásához"
+
+#: ../../po/../src/virtManager/addhardware.py:536
+msgid "Storage Address Is Directory"
+msgstr "A tárcím könyvtár"
+
+#: ../../po/../src/virtManager/addhardware.py:537
+msgid ""
+"You chose 'Simple File' storage for your storage method, but chose a "
+"directory instead of a file. Please enter a new filename or choose an "
+"existing file."
+msgstr ""
+"A tárolás módszereként 'Egyszerű fájl'-t választott, de könyvtárt jelölt ki "
+"fájl helyett. Kérem, adjon meg egy új fájlnevet vagy válasszon egy létező "
+"fájlt."
+
+#: ../../po/../src/virtManager/addhardware.py:541
+#, fuzzy
+msgid "Target Device Required"
+msgstr "Telepítőlemez szükséges"
+
+#: ../../po/../src/virtManager/addhardware.py:542
+msgid "You must select a target device for the disk"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:551
+#: ../../po/../src/virtManager/create.py:860
+msgid "Storage Path Does not exist"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:552
+#: ../../po/../src/virtManager/create.py:861
+#, python-format
+msgid "The directory %s containing the disk image does not exist"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:560
+#: ../../po/../src/virtManager/addhardware.py:565
+#: ../../po/../src/virtManager/create.py:869
+#: ../../po/../src/virtManager/create.py:874
+msgid "Not Enough Free Space"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:561
+#: ../../po/../src/virtManager/create.py:870
+msgid ""
+"The filesystem will not have enough free space to fully allocate the sparse "
+"file when the guest is running. Use this path anyway?"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:566
+#: ../../po/../src/virtManager/create.py:875
+msgid "There is not enough free space to create the disk"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:581
+#: ../../po/../src/virtManager/create.py:910
+#, python-format
+msgid "Disk \"%s\" is already in use by another guest!"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:582
+#: ../../po/../src/virtManager/create.py:910
+msgid "Do you really want to use the disk ?"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:587
+#: ../../po/../src/virtManager/create.py:917
+msgid "Virtual Network Required"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:588
+#: ../../po/../src/virtManager/create.py:918
+msgid "You must select one of the virtual networks"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:592
+#: ../../po/../src/virtManager/create.py:922
+#, fuzzy
+msgid "Physical Device Required"
+msgstr "Telepítőlemez szükséges"
+
+#: ../../po/../src/virtManager/addhardware.py:593
+#: ../../po/../src/virtManager/create.py:923
+msgid "You must select one of the physical devices"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:599
+#: ../../po/../src/virtManager/addhardware.py:603
+#: ../../po/../src/virtManager/create.py:931
+#, fuzzy
+msgid "Invalid MAC address"
+msgstr "Érvénytelen PV médiacím"
+
+#: ../../po/../src/virtManager/addhardware.py:600
+msgid "MAC adrress must be 17 characters"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:604
+msgid ""
+"MAC address must be a form such as AA:BB:CC:DD:EE:FF, and MAC adrress may "
+"contain numeric and alphabet of A-F(a-f) and ':' characters only"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:609
+#: ../../po/../src/virtManager/create.py:944
+#, python-format
+msgid "MAC address \"%s\" is already in use by the host"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:610
+#: ../../po/../src/virtManager/addhardware.py:625
+#: ../../po/../src/virtManager/create.py:945
+#: ../../po/../src/virtManager/create.py:978
+msgid "Please enter a different MAC address or select no fixed MAC address"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:624
+#, python-format
+msgid "MAC address \"%s\" is already in use by an active guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:627
+#: ../../po/../src/virtManager/create.py:980
+#, python-format
+msgid "MAC address \"%s\" is already in use by another inactive guest!"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:628
+#: ../../po/../src/virtManager/create.py:981
+msgid "Do you really want to use the MAC address ?"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:671
+#: ../../po/../src/virtManager/create.py:1144
+msgid "Bridge"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:673
+#: ../../po/../src/virtManager/create.py:1146
+msgid "Not bridged"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:450
+msgid "Paravirtualized"
+msgstr "Paravirtualizált"
+
+#: ../../po/../src/virtManager/create.py:454
+msgid "Fully virtualized"
+msgstr "Teljesen virtualizált"
+
+#: ../../po/../src/virtManager/create.py:517
+msgid "UUID Error"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:522
+msgid "Error Setting up Disk"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:527
+msgid "Error Setting up Network"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:572
+msgid "Creating Virtual Machine"
+msgstr "Virtuális gép létrehozása"
+
+#: ../../po/../src/virtManager/create.py:573
+msgid "The virtual machine is now being created. "
+msgstr "A virtuális gép most jön létre."
+
+#: ../../po/../src/virtManager/create.py:574
+msgid "Allocation of disk storage and retrieval of "
+msgstr "Lemez tárhely lefoglalása és a következő kiolvasása: "
+
+#: ../../po/../src/virtManager/create.py:575
+#, fuzzy
+msgid "the installation images may take a few minutes "
+msgstr "A képmások telepítése eltarthat egy ideig"
+
+#: ../../po/../src/virtManager/create.py:614
+msgid "Guest installation failed to complete"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:633
+msgid "Locate ISO Image"
+msgstr "ISO képmás kiválasztása"
+
+#: ../../po/../src/virtManager/create.py:768
+msgid "Invalid System Name"
+msgstr "Érvénytelen rendszernév"
+
+#: ../../po/../src/virtManager/create.py:792
+msgid "ISO Path Not Found"
+msgstr "Az ISO elérési útja nem található"
+
+#: ../../po/../src/virtManager/create.py:800
+msgid "CD-ROM Path Error"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:809
+msgid "Invalid FV OS Type"
+msgstr "Érvénytelen FV OS típus"
+
+#: ../../po/../src/virtManager/create.py:817
+msgid "Invalid FV OS Variant"
+msgstr "Érvénytelen FV OS variáns"
+
+#: ../../po/../src/virtManager/create.py:825
+msgid "Invalid Install URL"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:832
+#, fuzzy
+msgid "Kickstart URL Error"
+msgstr "Beindító U_RL:"
+
+#: ../../po/../src/virtManager/create.py:833
+msgid "Kickstart location must be an NFS, HTTP or FTP source"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:905
+#, fuzzy
+msgid "Invalid Storage Address"
+msgstr "Érvénytelen tárcím"
+
+#: ../../po/../src/virtManager/create.py:932
+msgid "No MAC address was entered. Please enter a valid MAC address."
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:937
+#, fuzzy
+msgid "Invalid Mac address"
+msgstr "Érvénytelen tárcím"
+
+#: ../../po/../src/virtManager/create.py:961
+#, fuzzy
+msgid "Network Parameter Error"
+msgstr "Hálózathasználat:"
+
+#: ../../po/../src/virtManager/create.py:977
+#, python-format
+msgid "MAC address \"%s\" is already in use by a active guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:989
+msgid "VCPU Count Error"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:996
+msgid "Memory Amount Error"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:1003
+msgid "Max Memory Amount Error"
+msgstr ""
+
+#. Expander section with details.
+#: ../../po/../src/virtManager/error.py:33
+#, fuzzy
+msgid "Details"
+msgstr "_Részletek"
+
+#: ../../po/../src/virtManager/serialcon.py:35
+msgid "serial console"
+msgstr "soros konzol"
+
+#: ../../po/../src/virtManager/asyncjob.py:102
+msgid "Completed"
+msgstr "Befejezve"
+
+#: ../../po/../src/virtManager/console.py:147
+msgid "Press Ctrl+Alt to release pointer."
+msgstr "Nyomja meg a Ctrl+Alt kombinációt a mutató elengedéséhez."
+
+#: ../../po/../src/virtManager/console.py:155
+msgid "Pointer grabbed"
+msgstr "Mutató bezárva"
+
+#: ../../po/../src/virtManager/console.py:156
+msgid ""
+"The mouse pointer has been restricted to the virtual console window. To "
+"release the pointer press the key pair Ctrl+Alt"
+msgstr ""
+"Az egérmutató a virtuális konzol ablakára van korlátozva. A mutató "
+"elengedéséhez nyomja meg a Crtl+Alt billentyűkombinációt."
+
+#: ../../po/../src/virtManager/console.py:159
+msgid "Do not show this notification in the future"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:237
+msgid "Console was disconnected from guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:271
+#: ../../po/../src/virtManager/console.py:506
+msgid "Console not available for inactive guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:280
+msgid "Console not configured for guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:288
+msgid "Console not supported for guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:292
+msgid "Console is not yet active for guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:296
+msgid "Connecting to console for guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:325
+msgid "Unsupported console authentication type"
+msgstr ""
+
+#. If someone feels kind they could extend this code to allow
+#. user to choose what image format they'd like to save in....
+#: ../../po/../src/virtManager/console.py:359
+msgid "Save Virtual Machine Screenshot"
+msgstr "Virtuális gép képernyőképének mentése"
+
+#: ../../po/../src/virtManager/console.py:388
+#, python-format
+msgid ""
+"The screenshot has been saved to:\n"
+"%s"
+msgstr ""
+"A képernyőkép ide került:\n"
+"%s"
+
+#: ../../po/../src/virtManager/console.py:389
+msgid "Screenshot saved"
+msgstr "Képernyőkép mentve"
+
+#: ../../po/../src/virtManager/console.py:529
+msgid "paused"
+msgstr "megállítva"
+
+#: ../../po/../src/virtManager/console.py:540
+msgid "Console not available while paused"
+msgstr ""
+
+#: ../../po/../src/virtManager/host.py:130
+msgid "Creating new networks on remote connections is not yet supported"
+msgstr ""
+
+#: ../../po/../src/virtManager/host.py:192
+#: ../../po/../src/virtManager/manager.py:500
+msgid "Active"
+msgstr ""
+
+#: ../../po/../src/virtManager/host.py:200
+#: ../../po/../src/virtManager/manager.py:990
+msgid "Inactive"
+msgstr ""
+
+#: ../../po/../src/virtManager/host.py:213
+msgid "On boot"
+msgstr ""
+
+#: ../../po/../src/virtManager/host.py:216
+msgid "Never"
+msgstr ""
+
+#: ../../po/../src/virtManager/domain.py:405
+msgid "Paused"
+msgstr "Megállítva"
+
+#: ../../po/../src/virtManager/domain.py:409
+msgid "Shutoff"
+msgstr "Lekapcsolás"
+
+#: ../../po/../src/virtManager/domain.py:411
+msgid "Crashed"
+msgstr "Összeomlás"
+
+#: ../../po/../src/virtManager/domain.py:413
+msgid "Unknown status code"
+msgstr "Ismeretlen állapotkód"
+
+#. get filename
+#: ../../po/../src/virtManager/manager.py:271
+msgid "Restore Virtual Machine"
+msgstr "Virtuális gép visszaállítása"
+
+#: ../../po/../src/virtManager/manager.py:287
+msgid "Restoring Virtual Machine"
+msgstr "Virtuális gép visszaállítása"
+
+#: ../../po/../src/virtManager/manager.py:294
+#, python-format
+msgid "The file '%s' does not appear to be a valid saved machine image"
+msgstr "A(z) '%s' fájl nem tűnik egy érvényes, mentett virtuálisgép-képmásnak"
+
+#: ../../po/../src/virtManager/manager.py:322
+#, python-format
+msgid "Error restoring domain '%s'. Is the domain already running?"
+msgstr "Hiba „%s” tartomány visszaállításakor. Fut már a tartomány?"
+
+#: ../../po/../src/virtManager/manager.py:410
+#, fuzzy
+msgid "Connected"
+msgstr "_Kapcsolódás"
+
+#. keep uri and name for connection, so we can reconnect if needed
+#: ../../po/../src/virtManager/manager.py:414
+#: ../../po/../src/virtManager/manager.py:953
+#, fuzzy
+msgid "Disconnected"
+msgstr "_Kapcsolódás"
+
+#: ../../po/../src/virtManager/manager.py:642
+#, python-format
+msgid "This will permanently delete the vm \"%s,\" are you sure?"
+msgstr ""
+
+#: ../../po/../src/virtManager/manager.py:674
+msgid "Creating new guests on remote connections is not yet supported"
+msgstr ""
+
+#: ../../po/../src/virtManager/manager.py:684
+#, fuzzy, python-format
+msgid "This will permanently delete the connection \"%s\", are you sure?"
+msgstr ""
+"Ez azonnal törli a virtuális gépet és a lemezképmását tönkreteheti. Biztos "
+"benne?"
+
+#: ../../po/../src/virtManager/manager.py:713
+msgid "ID"
+msgstr "AZ"
+
+#: ../../po/../src/virtManager/manager.py:716
+msgid "VCPUs"
+msgstr "VCPU-k"
+
+#~ msgid "VNC"
+#~ msgstr "VNC"
+
+#~ msgid "New machine..."
+#~ msgstr "Új gép…"
+
+#~ msgid "_Host:"
+#~ msgstr "G_azda:"
+
+#~ msgid "_Local host"
+#~ msgstr "_Helyi gazdarendszer"
+
+#~ msgid "_Port:"
+#~ msgstr "_Kapu:"
+
+#~ msgid "_Remote host"
+#~ msgstr "_Távoli gazdarendszer"
+
+#~ msgid "Invalid FV media address"
+#~ msgstr "Érvénytelen TV médiacím"
+
+#~ msgid "Invalid PV media address"
+#~ msgstr "Érvénytelen PV médiacím"
+
+#~ msgid "Invalid system name"
+#~ msgstr "Érvénytelen rendszernév"
+
+#~ msgid "Invalid memory setting"
+#~ msgstr "Érvénytelen memóriabeállítás"
+
+#~ msgid "System name must be non-blank and less than 50 characters"
+#~ msgstr "Rendszernév nem lehet üres, 50 betűnél hosszabb"
+
+#~ msgid "System name may contain alphanumeric and '_' characters only"
+#~ msgstr "A rendszernév csak alfanumerikus és '_' jelet tartalmazhat"
+
+#~ msgid "Hardware Support Required"
+#~ msgstr "Hardvertámogatás szükséges"
+
+#~ msgid ""
+#~ "Your hardware does not appear to support full virtualization. Only "
+#~ "paravirtualized guests will be available on this hardware."
+#~ msgstr ""
+#~ "Úgy tűnik ez a hardver nem támogatja a teljes virtualizációt. Csak "
+#~ "paravirtualizált vendégek érhetők el ezen a hardveren."
+
+#~ msgid "ISO Path Required"
+#~ msgstr "Az ISO elérési út megadása szükséges"
+
+#~ msgid "You must specify an ISO location for the guest installation"
+#~ msgstr "Meg kell az ISO helyét a vendégrendszer telepítéséhez"
+
+#~ msgid ""
+#~ "You must specify a valid path to the ISO image for guest installation"
+#~ msgstr ""
+#~ "Érvényes elérési utat kell megadni az ISO képmásnak a vendégrendszer "
+#~ "telepítéséhez"
+
+#~ msgid "You must select the CDROM install media for guest installation"
+#~ msgstr "A CDROM telepítőlemezt kell választani vendég telepítéséhez"
+
+#~ msgid "URL Required"
+#~ msgstr "URL szükséges"
+
+#~ msgid "You must specify a URL for the install image for the guest install"
+#~ msgstr "Meg kell adni egy URL-t a telepítő képmásnak a vendég telepítéséhez"
+
+#~ msgid "_Read only connection"
+#~ msgstr "_Csak olvasható kapcsolat"
+
+#~ msgid "Guest Install Error"
+#~ msgstr "Vendégtelepítő hiba"
+
+#~ msgid "00:16:3e:"
+#~ msgstr "00:16:3e:"
+
+#~ msgid ":"
+#~ msgstr ":"
+
+#~ msgid ""
+#~ "<b>Tip:</b> Acceptable values for hex digits are the numbers 0-9 and the "
+#~ "letters A-F"
+#~ msgstr ""
+#~ "<b>Tipp:</b> Hexadecimális értékként elfogadhatók 0-9 számjegyek és A-F "
+#~ "betűk"
+
+#~ msgid "Add Virtual NIC"
+#~ msgstr "Virtuális NIC hozzáadása"
+
+#~ msgid "Add virtual NIC with:"
+#~ msgstr "Virtuális NIC hozzáadása ezzel:"
+
+#~ msgid "Randomly generated MAC address"
+#~ msgstr "Véletlenül készített MAC-címek"
+
+#~ msgid "mac-addr-random"
+#~ msgstr "veletlen-mac-cim"
+
+#~ msgid "<b>Disk image:</b>"
+#~ msgstr "<b>Lemezképmás:</b>"
+
+#~ msgid "<b>Disk size:</b>"
+#~ msgstr "<b>Lemezméret:</b>"
+
+#~ msgid ""
+#~ "Press finish to create a new virtual machine with\n"
+#~ "this configuration."
+#~ msgstr ""
+#~ "Kattintson a befejezésre az új virtuális gép létrehozásához\n"
+#~ "evvel a beállítással."
+
+#~ msgid ""
+#~ "<b>Tip:</b> File location paths are as seen from the physical host. Mount "
+#~ "points are as seen from the virtual machine."
+#~ msgstr ""
+#~ "<b>Tipp:</b> Fáljelhelyezési útvonalak, ahogy a fizikai gazdáról "
+#~ "látszanak. Csatolási pontok, ahogy a virtuális gépről látszanak."

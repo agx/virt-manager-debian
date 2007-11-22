@@ -1,0 +1,2738 @@
+# translation of virt-manager.pot to Bulgarian
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+#
+# Doncho N. Gunchev <gunchev@gmail.com>, 2007.
+msgid ""
+msgstr ""
+"Project-Id-Version: virt-manager\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2007-08-29 16:23-0400\n"
+"PO-Revision-Date: 2007-05-15 03:00+0300\n"
+"Last-Translator: Doncho N. Gunchev <gunchev@gmail.com>\n"
+"Language-Team: Bulgarian <dict@fsa-bg.org>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Generator: KBabel 1.11.4\n"
+
+#: ../src/virt-manager.desktop.in.in.h:1
+#, fuzzy
+msgid "Manage virtual machines"
+msgstr "Записване на виртуалната машина"
+
+#: ../src/virt-manager.desktop.in.in.h:2 ../src/vmm-about.glade.h:3
+#: ../../po/../src/vmm-manager.glade:8
+msgid "Virtual Machine Manager"
+msgstr "Мениджър на виртуални машини"
+
+#: ../src/vmm-about.glade.h:1
+msgid "Copyright (C) 2006 Red Hat Inc."
+msgstr "Copyright (C) 2006 Red Hat Inc."
+
+#: ../src/vmm-about.glade.h:2
+msgid "Powered by libvirt"
+msgstr "Изградено с libvirt"
+
+#: ../src/vmm-about.glade.h:4
+msgid "http://virt-manager.et.redhat.com/"
+msgstr "http://virt-manager.et.redhat.com/"
+
+#. TRANSLATORS: Replace this string with your names, one name per line.
+#: ../src/vmm-about.glade.h:6
+msgid "translator-credits"
+msgstr "Doncho N. Gunchev <gunchev@gmail.com>, 2007."
+
+#: ../src/vmm-console.glade.h:1
+msgid "<b>The console is currently unavailable</b>"
+msgstr "<b>Конзолата в момента е недостъпна</b>"
+
+#: ../src/vmm-console.glade.h:2
+msgid "Auth"
+msgstr "Удост"
+
+#: ../src/vmm-console.glade.h:3
+msgid "Login"
+msgstr "Вход"
+
+#: ../src/vmm-console.glade.h:4
+#, fuzzy
+msgid "Password Field"
+msgstr "Парола:"
+
+#: ../src/vmm-console.glade.h:5
+msgid "Password:"
+msgstr "Парола:"
+
+#: ../src/vmm-console.glade.h:6 ../src/vmm-details.glade.h:41
+msgid "Pause"
+msgstr "Пауза"
+
+#: ../src/vmm-console.glade.h:7 ../src/vmm-details.glade.h:43
+msgid "Run"
+msgstr "Старт"
+
+#: ../src/vmm-console.glade.h:8 ../src/vmm-details.glade.h:44
+msgid "S_hutdown"
+msgstr "_Изключване"
+
+#: ../src/vmm-console.glade.h:9
+msgid "Save this password in your keyring"
+msgstr "Запис на паролата във Вашия набор ключове"
+
+#: ../src/vmm-console.glade.h:10
+msgid "Screenshot"
+msgstr "Снимка на екрана"
+
+#: ../src/vmm-console.glade.h:11 ../src/vmm-details.glade.h:46
+#: ../../po/../src/virtManager/domain.py:407
+msgid "Shutdown"
+msgstr "Изключване"
+
+#: ../src/vmm-console.glade.h:12 ../src/vmm-details.glade.h:53
+msgid "Toolbar"
+msgstr "Лента с инструменти"
+
+#: ../src/vmm-console.glade.h:13
+msgid "Unavailable"
+msgstr "Недостъпно"
+
+#: ../src/vmm-console.glade.h:14
+msgid "Virtual Machine Console"
+msgstr "Конзола на виртуалната машина"
+
+#: ../src/vmm-console.glade.h:15 ../src/vmm-details.glade.h:60
+msgid "Virtual _Machine"
+msgstr "Виртуална _Машина"
+
+#: ../src/vmm-console.glade.h:16 ../src/vmm-details.glade.h:61
+#: ../../po/../src/vmm-manager.glade:298
+msgid "_Contents"
+msgstr ""
+
+#: ../src/vmm-console.glade.h:17 ../src/vmm-details.glade.h:62
+msgid "_Destroy"
+msgstr "_Унищожаване"
+
+#: ../src/vmm-console.glade.h:18
+msgid "_Details"
+msgstr "_Детайли"
+
+#: ../src/vmm-console.glade.h:19
+msgid "_FullScreen"
+msgstr "_Цял екран"
+
+#: ../src/vmm-console.glade.h:20 ../src/vmm-host.glade.h:43
+#: ../src/vmm-details.glade.h:64 ../../po/../src/vmm-manager.glade:289
+msgid "_Help"
+msgstr "_Помощ"
+
+#: ../src/vmm-console.glade.h:21 ../src/vmm-details.glade.h:65
+msgid "_Pause"
+msgstr "_Пауза"
+
+#: ../src/vmm-console.glade.h:22 ../src/vmm-details.glade.h:66
+msgid "_Run"
+msgstr "_Старт"
+
+#: ../src/vmm-console.glade.h:23 ../src/vmm-details.glade.h:67
+msgid "_Save"
+msgstr "_Запис"
+
+#: ../src/vmm-console.glade.h:24 ../src/vmm-details.glade.h:68
+msgid "_Serial Console"
+msgstr "_Серийна конзола"
+
+#: ../src/vmm-console.glade.h:25
+msgid "_Take Screenshot"
+msgstr "_Снимане"
+
+#: ../src/vmm-console.glade.h:26 ../src/vmm-details.glade.h:69
+#: ../../po/../src/vmm-manager.glade:206
+msgid "_View"
+msgstr "_Преглед"
+
+#: ../src/vmm-create-net.glade.h:1 ../src/vmm-create.glade.h:1
+msgid "\t"
+msgstr "\t"
+
+#: ../src/vmm-create-net.glade.h:2 ../src/vmm-add-hardware.glade.h:2
+#: ../src/vmm-create.glade.h:4
+msgid "/xen/demo.img"
+msgstr "/xen/demo.img"
+
+#: ../src/vmm-create-net.glade.h:3
+msgid "192.168.1.1"
+msgstr "192.168.1.1"
+
+#: ../src/vmm-create-net.glade.h:4
+msgid "192.168.1.255"
+msgstr "192.168.1.255"
+
+#: ../src/vmm-create-net.glade.h:5
+msgid "192.168.10.0/24"
+msgstr "192.168.10.0/24"
+
+#: ../src/vmm-create-net.glade.h:6
+msgid "192.168.10.254"
+msgstr "192.168.10.254"
+
+#: ../src/vmm-create-net.glade.h:7
+msgid "255.255.255.0"
+msgstr "255.255.255.0"
+
+#: ../src/vmm-create-net.glade.h:8
+msgid "256"
+msgstr "256"
+
+#: ../src/vmm-create-net.glade.h:9 ../src/vmm-add-hardware.glade.h:3
+#: ../src/vmm-create.glade.h:9
+msgid "5 GB"
+msgstr "5 ГБ"
+
+#: ../src/vmm-create-net.glade.h:10
+msgid "<b>DHCP</b>"
+msgstr "<b>DHCP</b>"
+
+#: ../src/vmm-create-net.glade.h:11
+msgid "<b>Example:</b> network1"
+msgstr "<b>Пример:</b> network1"
+
+#: ../src/vmm-create-net.glade.h:12
+msgid "<b>Forwarding</b>"
+msgstr "<b>Препращане</b>"
+
+#: ../src/vmm-create-net.glade.h:13
+msgid ""
+"<b>Hint:</b> The network should be choosen from one of the IPv4 private "
+"address ranges. eg 10.0.0.0/8,  172.16.0.0/12, or 192.168.0.0/16"
+msgstr ""
+"<b>Подсказка:</b> Мрежата трябва да бъде избрана от една от частните IPv4 "
+"адресни области. т.е. 10.0.0.0/8,  172.16.0.0/12, или 192.168.0.0/16"
+
+#: ../src/vmm-create-net.glade.h:14
+msgid "<b>IPv4 network</b>"
+msgstr "<b>IPv4 мрежа</b>"
+
+#: ../src/vmm-create-net.glade.h:15 ../src/vmm-create.glade.h:19
+msgid "<b>Summary</b>"
+msgstr "<b>Кратки данни</b>"
+
+#: ../src/vmm-create-net.glade.h:16
+msgid ""
+"<b>Tip:</b> Unless you wish to reserve some addresses to allow static "
+"network configuration in virtual machines, these parameters can be left with "
+"their default values."
+msgstr ""
+"<b>Подсказка:</b> Освен ако не искате да резервирате някои адреси за "
+"статични мрежови конфигурации на виртуални машини, можете да оставите тези "
+"параметри както са."
+
+#: ../src/vmm-create-net.glade.h:17
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Choosing an "
+"IPv4 address space</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Избор на IPv4 "
+"адресно пространство</span>"
+
+#: ../src/vmm-create-net.glade.h:18
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Connecting to "
+"physical network</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Свързване към "
+"физическата мрежа</span>"
+
+#: ../src/vmm-create-net.glade.h:19
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Creating a new "
+"virtual network </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Създаване на "
+"нова виртуална мрежа </span>"
+
+#: ../src/vmm-create-net.glade.h:20
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Naming your "
+"virtual network </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Наименуване на "
+"виртуалната мрежа </span>"
+
+#: ../src/vmm-create-net.glade.h:21
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to create "
+"network</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Готово за "
+"създаване на мрежа</span>"
+
+#: ../src/vmm-create-net.glade.h:22
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Selecting the "
+"DHCP range</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Избор на DHCP "
+"адресно пространство</span>"
+
+#: ../src/vmm-create-net.glade.h:23
+msgid "A <b>name</b> for your new virtual network"
+msgstr "<b>Име</b> за новата виртуална мрежа"
+
+#: ../src/vmm-create-net.glade.h:24
+msgid "Broadcast:"
+msgstr "Разпръскване:"
+
+#: ../src/vmm-create-net.glade.h:25 ../src/vmm-add-hardware.glade.h:19
+#: ../src/vmm-create.glade.h:45
+msgid "Complete"
+msgstr "Готово"
+
+#: ../src/vmm-create-net.glade.h:26
+msgid "Connectivity:"
+msgstr "Свързаност:"
+
+#: ../src/vmm-create-net.glade.h:27
+msgid "Create a new virtual network"
+msgstr "Създаване на нова виртуална мрежа"
+
+#: ../src/vmm-create-net.glade.h:28
+msgid "DHCP"
+msgstr "DHCP"
+
+#: ../src/vmm-create-net.glade.h:29
+msgid "Desination:"
+msgstr "Назначение:"
+
+#: ../src/vmm-create-net.glade.h:30 ../src/vmm-host.glade.h:15
+#, fuzzy
+msgid "End Address"
+msgstr "Краен адрес:"
+
+#: ../src/vmm-create-net.glade.h:31
+msgid "End address:"
+msgstr "Краен адрес:"
+
+#: ../src/vmm-create-net.glade.h:32
+msgid "End:"
+msgstr "Край:"
+
+#: ../src/vmm-create-net.glade.h:33
+msgid "Forwarding"
+msgstr "Препращане"
+
+#: ../src/vmm-create-net.glade.h:34
+msgid "Forwarding to physical network"
+msgstr "Препращане към физическа мрежа"
+
+#: ../src/vmm-create-net.glade.h:35
+msgid "Gateway:"
+msgstr "Шлюз:"
+
+#: ../src/vmm-create-net.glade.h:36
+msgid "IPv4"
+msgstr "IPv4"
+
+#: ../src/vmm-create-net.glade.h:37 ../src/vmm-add-hardware.glade.h:32
+#: ../src/vmm-create.glade.h:64
+msgid "Intro"
+msgstr "Увод"
+
+#: ../src/vmm-create-net.glade.h:38
+#: ../../po/../src/virtManager/createnet.py:259
+#: ../../po/../src/virtManager/host.py:235
+msgid "Isolated virtual network"
+msgstr "Изолирана виртуална мрежа"
+
+#: ../src/vmm-create-net.glade.h:39 ../src/vmm-host.glade.h:24
+#: ../../po/../src/virtManager/createnet.py:94
+#: ../../po/../src/virtManager/createnet.py:257
+#: ../../po/../src/virtManager/host.py:232
+msgid "NAT to any physical device"
+msgstr "NAT към всички физически устройства"
+
+#: ../src/vmm-create-net.glade.h:40 ../src/vmm-create.glade.h:79
+#: ../../po/../src/virtManager/manager.py:712
+msgid "Name"
+msgstr "Име"
+
+#: ../src/vmm-create-net.glade.h:41
+msgid "Net Name Field"
+msgstr ""
+
+#: ../src/vmm-create-net.glade.h:42
+msgid "Netmask:"
+msgstr "Мрежова маска:"
+
+#: ../src/vmm-create-net.glade.h:43 ../src/vmm-host.glade.h:29
+#, fuzzy
+msgid "Network Range"
+msgstr "Ползване на мрежа:"
+
+#: ../src/vmm-create-net.glade.h:44
+msgid "Network _Name:"
+msgstr "_Име на мрежа:"
+
+#: ../src/vmm-create-net.glade.h:45
+msgid "Network name:"
+msgstr "Име на мрежа:"
+
+#: ../src/vmm-create-net.glade.h:46 ../src/vmm-host.glade.h:30
+msgid "Network:"
+msgstr "Мрежа:"
+
+#: ../src/vmm-create-net.glade.h:47
+#, fuzzy
+msgid "Physical Network"
+msgstr "Виртуални мрежи"
+
+#: ../src/vmm-create-net.glade.h:48
+msgid "Please choose a name for your virtual network:"
+msgstr "Моля изберете име за новата виртуална мрежа:"
+
+#: ../src/vmm-create-net.glade.h:49
+msgid ""
+"Please choose the range of addresses the DHCP server can use to allocate to "
+"guests attached to the virtual network"
+msgstr ""
+"Моля изберете област от адреси, които DHCP сървъра може да ползва за "
+"отдаване на закачените към виртуалната мрежа гости"
+
+#: ../src/vmm-create-net.glade.h:50
+#, fuzzy
+msgid ""
+"Please indicate whether this virtual network should be connected to the "
+"physical network."
+msgstr ""
+"Моля укажете, дали тази виртуална мрежа да се свърже към физическата мрежа."
+
+#: ../src/vmm-create-net.glade.h:51
+#: ../../po/../src/virtManager/createnet.py:156
+msgid "Private"
+msgstr "Частно"
+
+#: ../src/vmm-create-net.glade.h:52
+msgid "Size:"
+msgstr "Размер:"
+
+#: ../src/vmm-create-net.glade.h:53 ../src/vmm-host.glade.h:34
+#, fuzzy
+msgid "Start Address"
+msgstr "Начален адрес:"
+
+#: ../src/vmm-create-net.glade.h:54
+msgid "Start address:"
+msgstr "Начален адрес:"
+
+#: ../src/vmm-create-net.glade.h:55
+msgid "Start:"
+msgstr "Начало:"
+
+#: ../src/vmm-create-net.glade.h:56
+msgid ""
+"The <b>address range</b> from which the <b>DHCP</b> server will allocate "
+"addresses for virtual machines"
+msgstr ""
+"<b>Адресната област</b>, от която <b>DHCP</b> сървъра ще отдава адреси на "
+"виртуалните машини"
+
+#: ../src/vmm-create-net.glade.h:57
+msgid "The IPv4 <b>address</b> and <b>netmask</b> to assign"
+msgstr "IPv4 <b>адреси</b> и <b>мрежова маска</b> за отдаване"
+
+#: ../src/vmm-create-net.glade.h:58
+msgid ""
+"This assistant will guide you through creating a new virtual network. You "
+"will be asked for some information about the virtual network you'd like to "
+"create, such as:"
+msgstr ""
+"Този асистент ще ви ръководи при създаването на нова виртуална мрежа. Ще "
+"бъдете питани за определена информация за виртуалната мрежа, която искате да "
+"създадете, например като:"
+
+#: ../src/vmm-create-net.glade.h:59
+msgid "Type:"
+msgstr "Тип:"
+
+#: ../src/vmm-create-net.glade.h:60
+msgid "Whether to <b>forward</b> traffic to the physical network"
+msgstr "Дали да се <b>препраща</b> трафик към физическата мрежа"
+
+#: ../src/vmm-create-net.glade.h:61
+msgid "You will need to choose an IPv4 address space for the virtual network:"
+msgstr "Ще трябва да изберете IPv4 адресно пространство за виртуалната мрежа:"
+
+#: ../src/vmm-create-net.glade.h:62 ../src/vmm-add-hardware.glade.h:50
+#: ../src/vmm-create.glade.h:122
+msgid "_Finish"
+msgstr "_Край"
+
+#: ../src/vmm-create-net.glade.h:63 ../src/vmm-create.glade.h:132
+msgid "demo"
+msgstr "демонстрация"
+
+#: ../src/vmm-host.glade.h:1
+msgid "1.59 GB of 2.2 GB"
+msgstr "1.59 ГБ от 2.2 ГБ"
+
+#: ../src/vmm-host.glade.h:2
+msgid "2000 MB"
+msgstr "2000 МБ"
+
+#: ../src/vmm-host.glade.h:3
+msgid "4"
+msgstr "4"
+
+#: ../src/vmm-host.glade.h:5
+#, no-c-format
+msgid "60%"
+msgstr "60%"
+
+#: ../src/vmm-host.glade.h:6 ../src/vmm-details.glade.h:10
+msgid "<b>Basic details</b>"
+msgstr "<b>Базови детайли</b>"
+
+#: ../src/vmm-host.glade.h:7
+msgid "<b>IPv4 configuration</b>"
+msgstr "<b>IPv4 конфигурация</b>"
+
+#: ../src/vmm-host.glade.h:8 ../src/vmm-details.glade.h:13
+msgid "<b>Performance</b>"
+msgstr "<b>Производителност</b>"
+
+#: ../src/vmm-host.glade.h:9
+msgid "Architecture:"
+msgstr "Архитектура:"
+
+#: ../src/vmm-host.glade.h:10
+msgid "Autostart:"
+msgstr "Авто-стартиране:"
+
+#: ../src/vmm-host.glade.h:11 ../src/vmm-details.glade.h:20
+msgid "CPU usage:"
+msgstr "Употреба на процесор:"
+
+#: ../src/vmm-host.glade.h:12
+msgid "DHCP end:"
+msgstr "DHCP край:"
+
+#: ../src/vmm-host.glade.h:13
+msgid "DHCP start:"
+msgstr "DHCP начало:"
+
+#: ../src/vmm-host.glade.h:14
+msgid "Device:"
+msgstr "Устройство:"
+
+#: ../src/vmm-host.glade.h:16
+msgid "Forwarding:"
+msgstr "Препращане:"
+
+#: ../src/vmm-host.glade.h:17
+msgid "Host Details"
+msgstr "Детайли на физ.машина"
+
+#: ../src/vmm-host.glade.h:18 ../src/vmm-open-connection.glade.h:5
+msgid "Hostname:"
+msgstr "Име на машина:"
+
+#: ../src/vmm-host.glade.h:19 ../src/vmm-open-connection.glade.h:7
+msgid "Hypervisor:"
+msgstr "_Хипервайзор:"
+
+#: ../src/vmm-host.glade.h:20
+msgid "Location:"
+msgstr "Местоположение:"
+
+#: ../src/vmm-host.glade.h:21
+msgid "Logical CPUs:"
+msgstr "Логически ЦП:"
+
+#: ../src/vmm-host.glade.h:22 ../src/vmm-details.glade.h:35
+msgid "Memory usage:"
+msgstr "Ползване на паметта:"
+
+#: ../src/vmm-host.glade.h:23
+msgid "Memory:"
+msgstr "Памет:"
+
+#: ../src/vmm-host.glade.h:25 ../src/vmm-details.glade.h:37
+msgid "Name:"
+msgstr "Име:"
+
+#: ../src/vmm-host.glade.h:26
+#, fuzzy
+msgid "Net Device"
+msgstr "Устройство:"
+
+#: ../src/vmm-host.glade.h:27
+#, fuzzy
+msgid "Net Name"
+msgstr "_Име на мрежа:"
+
+#: ../src/vmm-host.glade.h:28
+#, fuzzy
+msgid "Net UUID"
+msgstr "UUID:"
+
+#: ../src/vmm-host.glade.h:31 ../src/vmm-details.glade.h:40
+msgid "Overview"
+msgstr "Общ преглед"
+
+#: ../src/vmm-host.glade.h:32 ../../po/../src/virtManager/domain.py:403
+msgid "Running"
+msgstr "Работи"
+
+#: ../src/vmm-host.glade.h:33
+msgid "Start"
+msgstr "Старт"
+
+#: ../src/vmm-host.glade.h:35
+msgid "State:"
+msgstr "Статус:"
+
+#: ../src/vmm-host.glade.h:36
+#, fuzzy
+msgid "Storage Location"
+msgstr "Място на _ISO образа:"
+
+#: ../src/vmm-host.glade.h:37
+#, fuzzy
+msgid "Storage Name"
+msgstr "Места за съхранение"
+
+#: ../src/vmm-host.glade.h:38
+msgid "Storage Pools"
+msgstr "Места за съхранение"
+
+#: ../src/vmm-host.glade.h:39 ../src/vmm-details.glade.h:57
+msgid "UUID:"
+msgstr "UUID:"
+
+#: ../src/vmm-host.glade.h:40
+msgid "Virtual Networks"
+msgstr "Виртуални мрежи"
+
+#: ../src/vmm-host.glade.h:41
+msgid "Xen"
+msgstr "Xen"
+
+#: ../src/vmm-host.glade.h:42 ../../po/../src/vmm-manager.glade:40
+msgid "_File"
+msgstr "_Файл"
+
+#: ../src/vmm-host.glade.h:44
+msgid "example.com"
+msgstr "example.com"
+
+#: ../src/vmm-host.glade.h:45
+msgid "x86_64"
+msgstr "x86_64"
+
+#: ../src/vmm-modify-file-storage.glade.h:1
+msgid " free"
+msgstr " свободни"
+
+#: ../src/vmm-modify-file-storage.glade.h:2
+msgid " of "
+msgstr " от "
+
+#: ../src/vmm-modify-file-storage.glade.h:3
+msgid "/tmp"
+msgstr "/tmp"
+
+#: ../src/vmm-modify-file-storage.glade.h:4
+msgid "10 TB"
+msgstr "10 ТБ"
+
+#: ../src/vmm-modify-file-storage.glade.h:5
+msgid ""
+"<b>Tip:</b> You may only increase the size of file-based storage; you can't "
+"decrease its size."
+msgstr ""
+"<b>Съвет:</b> Може само да се увеличава обема на мястото за съхранение "
+"ползващо файлове, не може да се намалява."
+
+#: ../src/vmm-modify-file-storage.glade.h:6
+msgid ""
+"MB\n"
+"GB\n"
+"TB"
+msgstr ""
+"МБ\n"
+"ГБ\n"
+"ТБ"
+
+#: ../src/vmm-modify-file-storage.glade.h:9
+msgid "Modify File Storage"
+msgstr "Промяна мястото за съхранение"
+
+#: ../src/vmm-modify-file-storage.glade.h:10
+#, fuzzy
+msgid "Size Type"
+msgstr "_Тип ОС:"
+
+#: ../src/vmm-modify-file-storage.glade.h:11
+msgid "Storage Size Select"
+msgstr ""
+
+#: ../src/vmm-modify-file-storage.glade.h:12
+msgid "_Mount Point (on virtual system):"
+msgstr "_Точка на монтиране (на виртуалната система):"
+
+#: ../src/vmm-modify-file-storage.glade.h:13
+msgid "_Size:"
+msgstr "_Размер:"
+
+#: ../src/vmm-preferences.glade.h:1
+msgid "<b>Consoles</b>"
+msgstr "<b>Конзоли</b>"
+
+#: ../src/vmm-preferences.glade.h:2
+msgid "<b>Status monitoring</b>"
+msgstr "<b>Наблюдение на състоянието</b>"
+
+#: ../src/vmm-preferences.glade.h:3
+msgid "Auto Console"
+msgstr ""
+
+#: ../src/vmm-preferences.glade.h:4
+msgid "Automatically open consoles:"
+msgstr "Автоматично отваряне на конзоли:"
+
+#: ../src/vmm-preferences.glade.h:5
+#, fuzzy
+msgid "Grab Keyboard"
+msgstr "Сграбчване клавиатурния вход:"
+
+#: ../src/vmm-preferences.glade.h:6
+msgid "Grab keyboard input:"
+msgstr "Сграбчване клавиатурния вход:"
+
+#: ../src/vmm-preferences.glade.h:7
+#, fuzzy
+msgid "History Samples"
+msgstr "примери"
+
+#: ../src/vmm-preferences.glade.h:8
+msgid "Maintain history of"
+msgstr "Поддържане на история от"
+
+#: ../src/vmm-preferences.glade.h:9
+msgid ""
+"Never\n"
+"For new domains\n"
+"For all domains"
+msgstr ""
+"Никога\n"
+"За нови домейни\n"
+"За всички домейни"
+
+#: ../src/vmm-preferences.glade.h:12
+msgid ""
+"Never\n"
+"When fullscreen\n"
+"On mouse over"
+msgstr ""
+"Никога\n"
+"При цял екран\n"
+"При посочване с мишката"
+
+#: ../src/vmm-preferences.glade.h:15
+msgid "Preferences"
+msgstr "Настройки"
+
+#: ../src/vmm-preferences.glade.h:16
+msgid "Status Interval"
+msgstr ""
+
+#: ../src/vmm-preferences.glade.h:17
+msgid "Update status every"
+msgstr "Обновяване състоянието всеки"
+
+#: ../src/vmm-preferences.glade.h:18
+msgid "samples"
+msgstr "примери"
+
+#: ../src/vmm-preferences.glade.h:19
+msgid "seconds"
+msgstr "секунди"
+
+#: ../src/vmm-add-hardware.glade.h:1 ../src/vmm-create.glade.h:3
+msgid "-"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:4 ../src/vmm-create.glade.h:16
+msgid "<b>Network</b>"
+msgstr "<b>Мрежа</b>"
+
+#: ../src/vmm-add-hardware.glade.h:5
+#, fuzzy
+msgid "<b>Source:</b>"
+msgstr "<b>Съхранение</b>"
+
+#: ../src/vmm-add-hardware.glade.h:6 ../src/vmm-create.glade.h:17
+msgid "<b>Storage</b>"
+msgstr "<b>Съхранение</b>"
+
+#: ../src/vmm-add-hardware.glade.h:7
+#, fuzzy
+msgid "<b>Target:</b>"
+msgstr "<b>Съхранение</b>"
+
+#: ../src/vmm-add-hardware.glade.h:8 ../src/vmm-create.glade.h:20
+msgid "<small><b>Example:</b> /dev/hdc2</small>"
+msgstr "<small><b>Пример:</b> /dev/hdc2</small>"
+
+#: ../src/vmm-add-hardware.glade.h:9 ../src/vmm-create.glade.h:26
+msgid ""
+"<small><b>Tip:</b> Choose this option if your host is disconnected, "
+"connected via wireless, or dynamically configured with NetworkManager.</"
+"small>"
+msgstr ""
+"<small><b>Съвет:</b> Изберете тази възможност, ако вашата машина не е "
+"свързана, свързана е с безжична мрежа или е динамично конфигурирана от "
+"NetworkManager.</small>"
+
+#: ../src/vmm-add-hardware.glade.h:10 ../src/vmm-create.glade.h:27
+msgid ""
+"<small><b>Tip:</b> Choose this option if your host is statically connected "
+"to wired ethernet, to gain the ability to migrate the virtual system.</small>"
+msgstr ""
+"<small><b>Съвет:</b> Изберете тази възможност, ако вашата машина е статично "
+"свързана към ethernet, за да получите възможността за мигриране на "
+"виртуалната система.</small>"
+
+#: ../src/vmm-add-hardware.glade.h:11 ../src/vmm-create.glade.h:30
+msgid ""
+"<small><b>Warning:</b> If you do not allocate the entire disk at VM "
+"creation, space will be allocated as needed while the guest is running. If "
+"sufficient free space is not available on the host, this may result in data "
+"corruption on the guest.</small>"
+msgstr ""
+"<small><b>Внимание:</b> Ако не заделите целия диск при създаване на ВМ, "
+"дисковото място ще се заделя по време на работа на госта. Ако няма "
+"достатъчно дисково пространство на реалната машина, може да се стигне до "
+"загуби на данни или повреди във госта.</small>"
+
+#: ../src/vmm-add-hardware.glade.h:12
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Adding new "
+"virtual hardware </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Добавяне на нов "
+"виртуален хардуер</span>"
+
+#: ../src/vmm-add-hardware.glade.h:13 ../src/vmm-create.glade.h:32
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Assigning "
+"storage space</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Назначаване на "
+"място за съхранение</span>"
+
+#: ../src/vmm-add-hardware.glade.h:14 ../src/vmm-create.glade.h:34
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Connect to host "
+"network</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Свързване към "
+"мрежата на машината</span>"
+
+#: ../src/vmm-add-hardware.glade.h:15
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to add "
+"hardware</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Готово за "
+"добавяне на хардуер</span>"
+
+#: ../src/vmm-add-hardware.glade.h:16
+msgid "Add new virtual hardware"
+msgstr "Добавяне на нов виртуален хардуер"
+
+#: ../src/vmm-add-hardware.glade.h:17 ../src/vmm-create.glade.h:40
+msgid "Allocate entire virtual disk now?"
+msgstr "Заделяне на целия виртуален диск сега?"
+
+#: ../src/vmm-add-hardware.glade.h:18 ../src/vmm-create.glade.h:42
+msgid "Browse..."
+msgstr "Избор..."
+
+#: ../src/vmm-add-hardware.glade.h:20 ../src/vmm-create.glade.h:46
+msgid "Connection type:"
+msgstr "Тип връзка:"
+
+#: ../src/vmm-add-hardware.glade.h:21
+msgid "Device Type Field"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:22
+#, fuzzy
+msgid "Device type:"
+msgstr "Устройство:"
+
+#: ../src/vmm-add-hardware.glade.h:23 ../src/vmm-create.glade.h:48
+#: ../src/vmm-details.glade.h:23
+msgid "Disk"
+msgstr "Диск"
+
+#: ../src/vmm-add-hardware.glade.h:24 ../src/vmm-create.glade.h:49
+msgid "Disk image:"
+msgstr "Дисков образ:"
+
+#: ../src/vmm-add-hardware.glade.h:25 ../src/vmm-create.glade.h:50
+msgid "Disk size:"
+msgstr "Дисков размер:"
+
+#: ../src/vmm-add-hardware.glade.h:26 ../src/vmm-create.glade.h:54
+#, fuzzy
+msgid "File Location Field"
+msgstr "_Място на файла:"
+
+#: ../src/vmm-add-hardware.glade.h:27
+#, fuzzy
+msgid "File Size Field"
+msgstr "_Размер на файла:"
+
+#: ../src/vmm-add-hardware.glade.h:28 ../src/vmm-create.glade.h:56
+msgid "File _Location:"
+msgstr "_Място на файла:"
+
+#: ../src/vmm-add-hardware.glade.h:29 ../src/vmm-create.glade.h:57
+msgid "File _Size:"
+msgstr "_Размер на файла:"
+
+#: ../src/vmm-add-hardware.glade.h:30
+#, fuzzy
+msgid "Hardware Type Select"
+msgstr "Изисква се тип хардуер"
+
+#: ../src/vmm-add-hardware.glade.h:31
+msgid "Hardware type:"
+msgstr "Тип хардуер:"
+
+#: ../src/vmm-add-hardware.glade.h:33 ../src/vmm-details.glade.h:28
+#, fuzzy
+msgid "MAC Address Field"
+msgstr "MAC адрес:"
+
+#: ../src/vmm-add-hardware.glade.h:34 ../src/vmm-create.glade.h:73
+#: ../src/vmm-details.glade.h:29
+msgid "MAC address:"
+msgstr "MAC адрес:"
+
+#: ../src/vmm-add-hardware.glade.h:35 ../src/vmm-create.glade.h:74
+#: ../src/vmm-details.glade.h:30
+msgid "MB"
+msgstr "МБ"
+
+#: ../src/vmm-add-hardware.glade.h:36 ../src/vmm-create.glade.h:81
+#: ../src/vmm-details.glade.h:38
+msgid "Network"
+msgstr "Мрежа"
+
+#: ../src/vmm-add-hardware.glade.h:37 ../src/vmm-create.glade.h:82
+msgid "Network Device Select"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:38 ../src/vmm-create.glade.h:84
+msgid "Normal Disk _Partition:"
+msgstr "Нормален дисков _дял:"
+
+#: ../src/vmm-add-hardware.glade.h:39 ../src/vmm-create.glade.h:91
+msgid "P_artition:"
+msgstr "_Дял:"
+
+#: ../src/vmm-add-hardware.glade.h:40
+msgid "Partition Location Field"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:41
+msgid ""
+"Please indicate how you'd like to assign space on this physical host system "
+"for your new virtual storage device."
+msgstr ""
+"Моля укажете начина на заделяне на място на тази физическа машина за новите "
+"виртуални устройства за съхранение."
+
+#: ../src/vmm-add-hardware.glade.h:42
+msgid ""
+"Please indicate how you'd like to connect your new virtual network device to "
+"the host network."
+msgstr ""
+"Моля укажете как бихте искали да свържете новото виртуално мрежово "
+"устройство към мрежата на машината."
+
+#: ../src/vmm-add-hardware.glade.h:43
+msgid "Set _fixed MAC address for this NIC?"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:44 ../src/vmm-create.glade.h:102
+msgid "Shared Physical Device"
+msgstr "Споделено физическо устройство"
+
+#: ../src/vmm-add-hardware.glade.h:45 ../src/vmm-create.glade.h:103
+msgid "Simple F_ile:"
+msgstr "Прост _Файл:"
+
+#: ../src/vmm-add-hardware.glade.h:46 ../src/vmm-create.glade.h:106
+msgid "Target:"
+msgstr "Цел:"
+
+#: ../src/vmm-add-hardware.glade.h:47
+msgid ""
+"This assistant will guide you through adding a new piece of virtual "
+"hardware. First select what type of hardware you wish to add:"
+msgstr ""
+"Този асистент ще ви ръководи при добавянето на нов виртуален хардуер. Първо "
+"изберете какъв тип хардуер искате да добавите:"
+
+#: ../src/vmm-add-hardware.glade.h:48
+#, fuzzy
+msgid "Virtual Network Select"
+msgstr "Виртуални мрежи"
+
+#: ../src/vmm-add-hardware.glade.h:49 ../src/vmm-create.glade.h:121
+msgid "_Device:"
+msgstr "_Устройство:"
+
+#: ../src/vmm-add-hardware.glade.h:51 ../src/vmm-create.glade.h:125
+#, fuzzy
+msgid "_MAC address:"
+msgstr "MAC адрес:"
+
+#: ../src/vmm-add-hardware.glade.h:52 ../src/vmm-create.glade.h:126
+msgid "_Network:"
+msgstr "_Мрежа:"
+
+#: ../src/vmm-add-hardware.glade.h:53 ../src/vmm-create.glade.h:129
+msgid "_Shared physical device"
+msgstr "_Споделено физическо устройство"
+
+#: ../src/vmm-add-hardware.glade.h:54 ../src/vmm-create.glade.h:131
+msgid "_Virtual network"
+msgstr "_Виртуална мрежа"
+
+#: ../src/vmm-add-hardware.glade.h:55 ../src/vmm-create.glade.h:133
+msgid "eth0"
+msgstr "eth0"
+
+#: ../src/vmm-create.glade.h:2
+msgid " "
+msgstr " "
+
+#: ../src/vmm-create.glade.h:5 ../src/vmm-details.glade.h:4
+msgid "2 GB"
+msgstr "2 ГБ"
+
+#: ../src/vmm-create.glade.h:6
+msgid "256\t"
+msgstr "256\t"
+
+#: ../src/vmm-create.glade.h:7
+msgid "400 MB"
+msgstr "400 МБ"
+
+#: ../src/vmm-create.glade.h:8
+msgid "5\t"
+msgstr "5\t"
+
+#: ../src/vmm-create.glade.h:10
+msgid "500 MB"
+msgstr "500 МБ"
+
+#: ../src/vmm-create.glade.h:11
+msgid "<b>CPUs:</b>"
+msgstr "<b>Процесори:</b>"
+
+#: ../src/vmm-create.glade.h:12
+msgid "<b>Example:</b> system1"
+msgstr "<b>Пример:</b> система1"
+
+#: ../src/vmm-create.glade.h:13
+msgid "<b>Install media</b>"
+msgstr "<b>Инсталационен носител</b>"
+
+#: ../src/vmm-create.glade.h:14
+msgid "<b>Memory:</b>"
+msgstr "<b>Памет:</b>"
+
+#: ../src/vmm-create.glade.h:15
+msgid "<b>Memory</b> and <b>CPU</b> allocation"
+msgstr "Заделяне на <b>памет</b> и <b>Процесор</b>"
+
+#: ../src/vmm-create.glade.h:18
+msgid ""
+"<b>Storage</b> details - which disk partitions or files the system should use"
+msgstr ""
+"<b>Съхранение</b>, детайли - кои дискови дялове или файлове в системата да "
+"ползва"
+
+#: ../src/vmm-create.glade.h:21
+msgid "<small><b>Example:</b> ftp://hostname.example.com/ks/ks.cfg</small>"
+msgstr "<small><b>Пример:</b> ftp://hostname.example.com/ks/ks.cfg</small>"
+
+#: ../src/vmm-create.glade.h:22
+msgid ""
+"<small><b>Example:</b> http://servername.example.com/distro/i386/tree</small>"
+msgstr ""
+"<small><b>Пример:</b> http://servername.example.com/distro/i386/tree</small>"
+
+#: ../src/vmm-create.glade.h:23
+#, fuzzy
+msgid ""
+"<small><b>Example:</b> updates=http://hostname.example.com/updates.img</"
+"small>"
+msgstr "<small><b>Пример:</b> ftp://hostname.example.com/ks/ks.cfg</small>"
+
+#: ../src/vmm-create.glade.h:24
+msgid ""
+"<small><b>Note:</b> The host CPU(s) in this machine do not have support for "
+"full virtualization.</small>"
+msgstr ""
+"<small><b>Бележка:</b> Физическите процесори в тази машина нямат поддръжка "
+"за пълна виртуализация.</small>"
+
+#: ../src/vmm-create.glade.h:25
+msgid ""
+"<small><b>Note:</b> The host CPU(s) in this machine support full "
+"virtualization, but it is not enabled by the BIOS.</small>"
+msgstr ""
+"<small><b>Бележка:</b> Физическите процесори в тази машина поддържат пълна "
+"виртуализация, но тя не е разрешена в BIOS.</small>"
+
+#: ../src/vmm-create.glade.h:28
+msgid ""
+"<small><b>Tip:</b> For best performance, the number of virtual CPUs should "
+"be less than (or equal to) the number of logical CPUs on the host system.</"
+"small>"
+msgstr ""
+"<small><b>Съвет:</b> За по-добра производителност, броя виртуални процесори "
+"следва да е по-малък от (или равен на) броят физически такива.</small>"
+
+#: ../src/vmm-create.glade.h:29
+msgid ""
+"<small><b>Tip:</b> You may add additional storage, including network-mounted "
+"storage, to your virtual system after it has been created using the same "
+"tools you would on a physical system.</small>"
+msgstr ""
+"<small><b>Съвет:</b> Може да се добавя допълнително място, включително "
+"мрежово-монтирано такова, към виртуалните системи след инсталацията им чрез "
+"същите инструменти, с които това става на физическа система.</small>"
+
+#: ../src/vmm-create.glade.h:31
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Allocate memory "
+"and CPU</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Заделяне на "
+"памет и процесор</span>"
+
+#: ../src/vmm-create.glade.h:33
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Choosing a "
+"virtualization method</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Избор на "
+"виртуализационен метод</span>"
+
+#: ../src/vmm-create.glade.h:35
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Creating a new "
+"virtual system </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Създаване на "
+"нова виртуална система </span>"
+
+#: ../src/vmm-create.glade.h:36
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Locating "
+"installation media</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Търсене на "
+"инсталационен носител</span>"
+
+#: ../src/vmm-create.glade.h:37
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Naming your "
+"virtual system </span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Именоване на "
+"виртуалната система </span>"
+
+#: ../src/vmm-create.glade.h:38
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to begin "
+"installation</span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Готово за "
+"начало на инсталация</span>"
+
+#: ../src/vmm-create.glade.h:39
+msgid "A <b>name</b> for your new virtual system"
+msgstr "<b>Име</b> за новата виртуална система"
+
+#: ../src/vmm-create.glade.h:41
+#, fuzzy
+msgid "Architecture Select"
+msgstr "Архитектура:"
+
+#: ../src/vmm-create.glade.h:43
+msgid "CPU architecture:"
+msgstr "Архитектура на централния процесор (ЦП):"
+
+#: ../src/vmm-create.glade.h:44
+msgid "CPU/memory"
+msgstr "Процесор/памет"
+
+#: ../src/vmm-create.glade.h:47
+msgid "Create a new virtual system"
+msgstr "Създаване на нова виртуална система"
+
+#: ../src/vmm-create.glade.h:51
+msgid "Enable kernel / hardware acceleration"
+msgstr "Включване ускоряването за ядрото / хардуера"
+
+#: ../src/vmm-create.glade.h:52
+msgid "FV install"
+msgstr "ИВ инсталация"
+
+#: ../src/vmm-create.glade.h:53
+msgid "F_ully Virtualized:"
+msgstr "_Напълно виртуализирана:"
+
+#: ../src/vmm-create.glade.h:55
+#, fuzzy
+msgid "File Size Select"
+msgstr "_Размер на файла:"
+
+#: ../src/vmm-create.glade.h:58
+#, fuzzy
+msgid "ISO Location Field"
+msgstr "Място на ISO файла:"
+
+#: ../src/vmm-create.glade.h:59
+msgid "ISO _Location:"
+msgstr "Място на ISO файла:"
+
+#: ../src/vmm-create.glade.h:60
+msgid "Initial memory:"
+msgstr "начален обем памет:"
+
+#: ../src/vmm-create.glade.h:61
+msgid "Install Media _URL:"
+msgstr "_URL на инсталационния носител:"
+
+#: ../src/vmm-create.glade.h:62
+#, fuzzy
+msgid "Install URL Field"
+msgstr "Изисква се инсталационен носител"
+
+#: ../src/vmm-create.glade.h:63
+msgid "Installation source:"
+msgstr "Инсталационен носител:"
+
+#: ../src/vmm-create.glade.h:65
+msgid ""
+"Involves hardware simulation, allowing for a greater range of operating "
+"systems (does not require OS modification). Slower than paravirtualized "
+"systems."
+msgstr ""
+"Включва емулация на хардуер, което позволява повече операционни системи (не "
+"се изискват модификации в ОС). По-бавна е от паравиртуализираните системи."
+
+#: ../src/vmm-create.glade.h:66
+msgid "Kernel arguments:"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:67
+#, fuzzy
+msgid "Kickstart Field"
+msgstr "Kickstart адрес:"
+
+#: ../src/vmm-create.glade.h:68
+msgid "Kickstart U_RL:"
+msgstr "Kickstart U_RL:"
+
+#: ../src/vmm-create.glade.h:69
+msgid "Kickstart source:"
+msgstr "Kickstart адрес:"
+
+#: ../src/vmm-create.glade.h:70
+msgid ""
+"Lightweight method of virtualizing machines. Limits operating system choices "
+"because the OS must be specially modified to support paravirtualization. "
+"Better performance than fully virtualized systems."
+msgstr ""
+"Лек метод за виртуализация на машини. Ограничава избора на операционна "
+"система защото тя трябва да бъде специално променена за да поддържа "
+"паравиртуализация. Има по-добра производителност от пълната виртуализация."
+
+#: ../src/vmm-create.glade.h:71
+msgid "Logical host CPUs:"
+msgstr "Процесори на локалната машина:"
+
+#: ../src/vmm-create.glade.h:72
+msgid "MAC Field"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:75
+msgid "Machine name:"
+msgstr "Име на машината:"
+
+#: ../src/vmm-create.glade.h:76
+msgid "Max Mem Select"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:77
+msgid "Maximum memory:"
+msgstr "Максимална памет:"
+
+#: ../src/vmm-create.glade.h:78
+msgid "Media Path Select"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:80 ../src/vmm-details.glade.h:36
+msgid "Name Field"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:83
+#, fuzzy
+msgid "Network Select"
+msgstr "Мрежа"
+
+#: ../src/vmm-create.glade.h:85
+#, fuzzy
+msgid "OS Type Select"
+msgstr "_Тип ОС:"
+
+#: ../src/vmm-create.glade.h:86
+#, fuzzy
+msgid "OS Variant Select"
+msgstr "_Вариант на ОС:"
+
+#: ../src/vmm-create.glade.h:87
+msgid "OS _Type:"
+msgstr "_Тип ОС:"
+
+#: ../src/vmm-create.glade.h:88
+msgid "OS _Variant:"
+msgstr "_Вариант на ОС:"
+
+#: ../src/vmm-create.glade.h:89
+msgid "Operating System:"
+msgstr "Операционна система:"
+
+#: ../src/vmm-create.glade.h:90
+msgid "PVinstall"
+msgstr "ПВ инсталация"
+
+#: ../src/vmm-create.glade.h:92
+#, fuzzy
+msgid "Partition Field"
+msgstr "_Дял:"
+
+#: ../src/vmm-create.glade.h:93
+msgid "Please choose a name for your virtual system:"
+msgstr "Избор на име за новата система:"
+
+#: ../src/vmm-create.glade.h:94
+msgid ""
+"Please choose the type of guest operating system you will be installing:"
+msgstr ""
+"Моля изберете типа на операционната система гост, която ще инсталирате:"
+
+#: ../src/vmm-create.glade.h:95
+msgid ""
+"Please enter the memory configuration for this VM. You can specify the "
+"maximum amount of memory the VM should be able to use, and optionally a "
+"lower amount to grab on startup. Warning: setting VM memory too high will "
+"cause out-of-memory errors in your host domain!"
+msgstr ""
+"Въвеждане настройките за памет за тази виртуална машина(ВМ). Може да се "
+"укаже максималния обем памет, който тази ВМ ще може да ползва, и опционално "
+"по-малко количество, което да се заделя при стартиране. Внимание: задаването "
+"на твърде много ВМ памет ще предизвика грешки за свършване на паметта в "
+"реалната машина."
+
+#: ../src/vmm-create.glade.h:96
+msgid "Please enter the number of virtual CPUs this VM should start up with."
+msgstr "Въвеждане броя виртуални процесори с които тази ВМ да стартира."
+
+#: ../src/vmm-create.glade.h:97
+msgid ""
+"Please indicate how you'd like to assign space on this physical host system "
+"for your new virtual system. This space will be used to install the virtual "
+"system's operating system."
+msgstr ""
+"Указване начина на заделяне на място на тази физическа машина за новите "
+"виртуални. Това място се ползва за инсталация операционната система на "
+"новата виртуална машина."
+
+#: ../src/vmm-create.glade.h:98
+msgid ""
+"Please indicate how you'd like to connect your new virtual system to the "
+"host network."
+msgstr ""
+"Моля укажете как бихте искали да свържете новата виртуална система с мрежата "
+"на физическата машина."
+
+#: ../src/vmm-create.glade.h:99
+msgid ""
+"Please indicate where installation media is available for the operating "
+"system you would like to install on this <b>fully virtualized</b> virtual "
+"system:"
+msgstr ""
+"Указване инсталационния носител на операционната система, която ще се "
+"инсталира, в тази <b>изцяло виртуална</b> машина:"
+
+#: ../src/vmm-create.glade.h:100
+msgid ""
+"Please indicate where installation media is available for the operating "
+"system you would like to install on this <b>paravirtualized</b> virtual "
+"system. Optionally you can provide the URL for a kickstart file that "
+"describes your system:"
+msgstr ""
+"Указване инсталационния носител на операционната система, която ще се "
+"инсталира, в тази <b>паравиртуална</b> машина. Допълнително може да се укаже "
+"адрес (URL) на kickstart файл, който описва системата:"
+
+#: ../src/vmm-create.glade.h:101
+#, fuzzy
+msgid "Set _fixed MAC address for your virtual system?"
+msgstr "Избор на име за новата система:"
+
+#: ../src/vmm-create.glade.h:104
+msgid "Startup Mem Select"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:105
+msgid "System _Name:"
+msgstr "_Име на системата:"
+
+#: ../src/vmm-create.glade.h:107
+msgid ""
+"The <b>location</b> of the files necessary for installing an operating "
+"system on the virtual system"
+msgstr ""
+"<b>Мястото</b> на файловете необходими за инсталиране на операционна система "
+"на виртуалната система"
+
+#: ../src/vmm-create.glade.h:108
+msgid ""
+"This assistant will guide you through creating a new virtual system. You "
+"will be asked for some information about the virtual system you'd like to "
+"create, such as:"
+msgstr ""
+"Този асистент ще ви ръководи при създаването на новата виртуална система. Ще "
+"трябва да въведете определена информация за новата виртуална система, която "
+"искате да създадете, като:"
+
+#: ../src/vmm-create.glade.h:109 ../src/vmm-details.glade.h:55
+msgid "Total memory on host machine:"
+msgstr "Общо памет във физическата машина:"
+
+#: ../src/vmm-create.glade.h:110
+msgid "Type"
+msgstr "Тип"
+
+#: ../src/vmm-create.glade.h:111 ../src/vmm-details.glade.h:58
+msgid "VCPU Select"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:112
+msgid "VM _Max Memory (MB):"
+msgstr "_Максимална памет (МБ) за ВМ:"
+
+#: ../src/vmm-create.glade.h:113
+msgid "VM _Startup Memory (MB):"
+msgstr "_Начална памет (МБ) за ВМ:"
+
+#: ../src/vmm-create.glade.h:114
+msgid "VMS"
+msgstr "VMS"
+
+#: ../src/vmm-create.glade.h:115
+msgid "Virtual CPUs:"
+msgstr "Виртуални процесори:"
+
+#: ../src/vmm-create.glade.h:116
+msgid "Virtualization method:"
+msgstr "Метод на виртуализация:"
+
+#: ../src/vmm-create.glade.h:117
+msgid ""
+"Whether the system will be <b>fully virtualized</b> or <b>para-virtualized</"
+"b>"
+msgstr ""
+"Дали системата ще бъде <b>изцяло виртуализирана</b> или <b>пара-"
+"виртуализирана</b>"
+
+#: ../src/vmm-create.glade.h:118
+msgid "You will need to choose a virtualization method for your new system:"
+msgstr ""
+"За тази нова виртуална машина трябва да се избере метод на виртуализация:"
+
+#: ../src/vmm-create.glade.h:119
+msgid "_Browse..."
+msgstr "_Избор..."
+
+#: ../src/vmm-create.glade.h:120
+msgid "_CD-ROM or DVD:"
+msgstr "_CD-ROM или DVD:"
+
+#: ../src/vmm-create.glade.h:123
+msgid "_ISO Image Location:"
+msgstr "Място на _ISO образа:"
+
+#: ../src/vmm-create.glade.h:124
+msgid "_Kernel parameters:"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:127
+msgid "_Paravirtualized:"
+msgstr "_Паравиртуализирана:"
+
+#: ../src/vmm-create.glade.h:128
+msgid "_Path to install media:"
+msgstr "_Път до инсталационния носител:"
+
+#: ../src/vmm-create.glade.h:130
+msgid "_VCPUs:"
+msgstr "_Виртуални ЦП:"
+
+#: ../src/vmm-create.glade.h:134
+msgid "http://"
+msgstr "http://"
+
+#: ../src/vmm-create.glade.h:135
+msgid ""
+"i686\n"
+"x86_64\n"
+"ppc\n"
+"sparc\n"
+"mips\n"
+"mipsel"
+msgstr ""
+"i686\n"
+"x86_64\n"
+"ppc\n"
+"sparc\n"
+"mips\n"
+"mipsel"
+
+#: ../src/vmm-create.glade.h:141
+#, fuzzy
+msgid "ip=192.168.1.1"
+msgstr "192.168.1.1"
+
+#: ../src/vmm-create.glade.h:142
+msgid "kernel-params"
+msgstr ""
+
+#: ../src/vmm-create.glade.h:143
+msgid "para"
+msgstr "пара"
+
+#: ../src/vmm-details.glade.h:2
+#, no-c-format
+msgid "18%"
+msgstr "18%"
+
+#: ../src/vmm-details.glade.h:3
+msgid "2"
+msgstr "2"
+
+#: ../src/vmm-details.glade.h:5
+msgid "20 bits/sec"
+msgstr "20 бита/сек"
+
+#: ../src/vmm-details.glade.h:6
+msgid "200 MB"
+msgstr "200 МБ"
+
+#: ../src/vmm-details.glade.h:7
+msgid "30 MB of 128 MB"
+msgstr "30 MB от 128 MB"
+
+#: ../src/vmm-details.glade.h:8
+msgid "8"
+msgstr "8"
+
+#: ../src/vmm-details.glade.h:9
+msgid "80 MB of 1 GB"
+msgstr "80 MB от 1 GB"
+
+#: ../src/vmm-details.glade.h:11
+msgid "<b>CPUs</b>"
+msgstr "<b>Процесори</b>"
+
+#: ../src/vmm-details.glade.h:12
+msgid "<b>Memory</b>"
+msgstr "<b>Памет</b>"
+
+#: ../src/vmm-details.glade.h:14
+#, fuzzy
+msgid ""
+"<b>Tip:</b> 'Source device' refers to the name of the device as seen from "
+"the host OS."
+msgstr ""
+"<b>Подсказка:</b> 'източник' се отнася за информацията виждана от ОС на "
+"физическата машина, докато 'цел' се отнася за информацията виждана от ОС на "
+"госта"
+
+#: ../src/vmm-details.glade.h:15
+msgid ""
+"<b>Tip:</b> 'source' refers to information seen from the host OS, while "
+"'target' refers to information seen from the guest OS"
+msgstr ""
+"<b>Подсказка:</b> 'източник' се отнася за информацията виждана от ОС на "
+"физическата машина, докато 'цел' се отнася за информацията виждана от ОС на "
+"госта"
+
+#: ../src/vmm-details.glade.h:16
+msgid ""
+"<b>Tip:</b> For best performance, the number of virtual CPUs should be less "
+"than (or equal to) the number of physical CPUs on the host system."
+msgstr ""
+"<b>Съвет:</b> За по-добра производителност, броя виртуални процесори следва "
+"да е по-малък от (или равен на) броят физическите такива."
+
+#: ../src/vmm-details.glade.h:17
+msgid "<b>Virtual Disk</b>"
+msgstr "<b>Виртуален диск</b>"
+
+#: ../src/vmm-details.glade.h:18
+msgid "<b>Virtual Network Interface</b>"
+msgstr "<b>Виртуален мрежов интерфейс</b>"
+
+#: ../src/vmm-details.glade.h:19
+msgid "Block"
+msgstr "Блок"
+
+#: ../src/vmm-details.glade.h:21
+msgid "Change allocation:"
+msgstr "Промяна на заделянето:"
+
+#: ../src/vmm-details.glade.h:22
+msgid "Current allocation:"
+msgstr "Текущо разпределение:"
+
+#: ../src/vmm-details.glade.h:24
+msgid "Disk usage:"
+msgstr "Дискова употреба:"
+
+#: ../src/vmm-details.glade.h:25
+msgid "Hardware"
+msgstr "Хардуер"
+
+#: ../src/vmm-details.glade.h:26
+#, fuzzy
+msgid "How many virtual CPUs should be allocated for this machine?"
+msgstr "Колко процесора да се заделят за тази машина?"
+
+#: ../src/vmm-details.glade.h:27
+#, fuzzy
+msgid "How much memory should be allocated for this machine?"
+msgstr "Колко памет да се задели за тази машина?"
+
+#: ../src/vmm-details.glade.h:31
+msgid "Max Memory Select"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:32
+msgid "Maximum allocation:"
+msgstr "Максимално заделяне:"
+
+#: ../src/vmm-details.glade.h:33
+msgid "Memory"
+msgstr "Памет"
+
+#: ../src/vmm-details.glade.h:34
+#, fuzzy
+msgid "Memory Select"
+msgstr "Употреба на памет"
+
+#: ../src/vmm-details.glade.h:39
+msgid "Network usage:"
+msgstr "Ползване на мрежа:"
+
+#: ../src/vmm-details.glade.h:42
+msgid "Processor"
+msgstr "Процесор"
+
+#: ../src/vmm-details.glade.h:45
+msgid "Shut down"
+msgstr "Изключване"
+
+#: ../src/vmm-details.glade.h:47
+msgid "Source device:"
+msgstr "Устройство източник:"
+
+#: ../src/vmm-details.glade.h:48
+msgid "Source path:"
+msgstr "Път източник:"
+
+#: ../src/vmm-details.glade.h:49
+msgid "Source type:"
+msgstr "Тип източник:"
+
+#: ../src/vmm-details.glade.h:50
+msgid "Status:"
+msgstr "Статус:"
+
+#: ../src/vmm-details.glade.h:51
+msgid "Target device:"
+msgstr "Устройство цел:"
+
+#: ../src/vmm-details.glade.h:52
+msgid "Target type:"
+msgstr "Тип цел:"
+
+#: ../src/vmm-details.glade.h:54
+msgid "Total CPUs on host machine:"
+msgstr "Общо процесори на физическата машина:"
+
+#: ../src/vmm-details.glade.h:56
+msgid "UUID Field"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:59
+msgid "Virtual Machine Details"
+msgstr "Детайли за виртуалната машина"
+
+#: ../src/vmm-details.glade.h:63
+msgid "_Graphical Console"
+msgstr "_Графична конзола"
+
+#: ../src/vmm-details.glade.h:70
+msgid "disk\t"
+msgstr "диск\t"
+
+#: ../../po/../src/vmm-manager.glade:49
+msgid "Restore a saved machine from a filesystem image"
+msgstr "Възстановяване на запазена машина от образ в файловата система"
+
+#: ../../po/../src/vmm-manager.glade:50
+msgid "Restore saved machine..."
+msgstr "Възстановяване записана машина..."
+
+#: ../../po/../src/vmm-manager.glade:78
+msgid "Open connection..."
+msgstr "Отваряне на връзка..."
+
+#: ../../po/../src/vmm-manager.glade:127
+msgid "_Edit"
+msgstr "_Редакция"
+
+#: ../../po/../src/vmm-manager.glade:136
+msgid "Host details..."
+msgstr "Детайли на физ.машина..."
+
+#: ../../po/../src/vmm-manager.glade:145
+msgid "Machine details..."
+msgstr "Детайли на машината..."
+
+#: ../../po/../src/vmm-manager.glade:166
+msgid "Delete machine"
+msgstr "Изтриване на машина"
+
+#: ../../po/../src/vmm-manager.glade:215
+msgid "Domain ID"
+msgstr "ID на домейн"
+
+#: ../../po/../src/vmm-manager.glade:225
+#: ../../po/../src/virtManager/manager.py:714
+msgid "Status"
+msgstr "Състояние"
+
+#: ../../po/../src/vmm-manager.glade:235
+#: ../../po/../src/virtManager/manager.py:715
+msgid "CPU usage"
+msgstr "Употреба на процесор"
+
+#: ../../po/../src/vmm-manager.glade:245
+msgid "Virtual CPUs"
+msgstr "Виртуални процесори"
+
+#: ../../po/../src/vmm-manager.glade:255
+#: ../../po/../src/virtManager/manager.py:717
+msgid "Memory usage"
+msgstr "Употреба на памет"
+
+#: ../../po/../src/vmm-manager.glade:265
+#: ../../po/../src/virtManager/manager.py:718
+msgid "Disk usage"
+msgstr "Употреба на диска"
+
+#: ../../po/../src/vmm-manager.glade:275
+#: ../../po/../src/virtManager/manager.py:719
+msgid "Network traffic"
+msgstr "Мрежов трафик"
+
+#: ../../po/../src/vmm-manager.glade:347
+msgid "_View:"
+msgstr "_Преглед:"
+
+#: ../../po/../src/vmm-manager.glade:372
+msgid ""
+"All virtual machines\n"
+"Active virtual machines\n"
+"Inactive virtual machines"
+msgstr ""
+"Всички виртуални машини\n"
+"Активни виртуални машини\n"
+"Неактивни виртуални машини"
+
+#: ../../po/../src/vmm-manager.glade:378
+msgid "View Select"
+msgstr ""
+
+#: ../../po/../src/vmm-manager.glade:485
+msgid "De_tails"
+msgstr "_Детайли"
+
+#: ../src/vmm-open-connection.glade.h:1
+msgid "Co_nnect"
+msgstr "_Свързване"
+
+#: ../src/vmm-open-connection.glade.h:2
+#, fuzzy
+msgid "Connection Select"
+msgstr "Тип връзка:"
+
+#: ../src/vmm-open-connection.glade.h:3
+#, fuzzy
+msgid "Connection:"
+msgstr "Тип връзка:"
+
+#: ../src/vmm-open-connection.glade.h:4
+#, fuzzy
+msgid "Hostname Field"
+msgstr "Име на машина:"
+
+#: ../src/vmm-open-connection.glade.h:6
+#, fuzzy
+msgid "Hypervisor Select"
+msgstr "_Хипервайзор:"
+
+#: ../src/vmm-open-connection.glade.h:8
+msgid ""
+"Local\n"
+"Remote SSL/TLS with x509 certificate\n"
+"Remote tunnel over SSH"
+msgstr ""
+
+#: ../src/vmm-open-connection.glade.h:11
+msgid "Open connection"
+msgstr "Отваряне на връзка"
+
+#: ../src/vmm-open-connection.glade.h:12
+msgid ""
+"Xen\n"
+"QEMU"
+msgstr ""
+"Xen\n"
+"QEMU"
+
+#: ../src/vmm-progress.glade.h:1 ../../po/../src/virtManager/asyncjob.py:38
+msgid "Operation in progress"
+msgstr "Операцията се изпълнява"
+
+#: ../src/vmm-progress.glade.h:2 ../../po/../src/virtManager/asyncjob.py:38
+msgid "Please wait a few moments..."
+msgstr "Моля изчакайте..."
+
+#: ../src/vmm-progress.glade.h:3 ../../po/../src/virtManager/asyncjob.py:74
+#: ../../po/../src/virtManager/asyncjob.py:87
+msgid "Processing..."
+msgstr "Работи..."
+
+#. ...the risk is we catch too much though
+#. Damned if we do, damned if we dont :-)(
+#: ../../po/../src/virt-manager.py.in:74
+msgid "Unable to initialize GTK: "
+msgstr "Не може да се инициализира GTK: "
+
+#: ../src/virt-manager.schemas.in.h:1
+msgid "Show VCPU count in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:2
+msgid "Show cpu usage in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:3
+msgid "Show disk usage in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:4
+msgid "Show domain id in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:5
+msgid "Show memory usage in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:6
+#, fuzzy
+msgid "Show network traffic in summary"
+msgstr "Мрежов трафик"
+
+#: ../src/virt-manager.schemas.in.h:7
+msgid "Show run state in summary"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:8
+msgid "Show the cpu usage field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:9
+msgid "Show the disk usage field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:10
+msgid "Show the domain id field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:11
+msgid "Show the memory usage field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:12
+msgid "Show the network traffic field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:13
+msgid "Show the run state field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:14
+msgid "Show the virtual CPU count field in the domain list summary view"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:15
+msgid "The length of the list of URLs"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:16
+msgid "The number of samples to keep in the statistics history"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:17
+msgid ""
+"The number of urls to keep in the history for the install media address page."
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:18
+msgid "The statistics history length"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:19
+msgid "The statistics update interval"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:20
+msgid "The statistics update interval in seconds"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:21
+msgid "When to grab keyboard input for the console"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:22
+msgid "When to pop up a console for a guest"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:23
+msgid ""
+"Whether to grab keyboard input for a guest console. 0 = never, 1 = only when "
+"in full screen mode, 2 = when mouse is over console"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:24
+msgid ""
+"Whether to pop up a console for a guest. 0 = never, 1 = only on creation of "
+"a new guest, 2 = On creation of any guest"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:25
+msgid "Whether to show notification when grabbing mouse"
+msgstr ""
+
+#: ../src/virt-manager.schemas.in.h:26
+msgid ""
+"Whether to show the notification hint when grabbing the mouse in the console"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:97
+#: ../../po/../src/virtManager/createnet.py:255
+#: ../../po/../src/virtManager/host.py:230
+#, python-format
+msgid "NAT to physical device %s"
+msgstr "NAT към физическо устройство %s"
+
+#: ../../po/../src/virtManager/createnet.py:152
+#, python-format
+msgid "%d addresses"
+msgstr "%d адреси"
+
+#: ../../po/../src/virtManager/createnet.py:154
+msgid "Public"
+msgstr "Публично"
+
+#: ../../po/../src/virtManager/createnet.py:158
+msgid "Reserved"
+msgstr "Резервирано"
+
+#: ../../po/../src/virtManager/createnet.py:160
+msgid "Other"
+msgstr "Друго"
+
+#: ../../po/../src/virtManager/createnet.py:304
+#: ../../po/../src/virtManager/createnet.py:308
+msgid "Invalid Network Name"
+msgstr "Невалидно име на мрежа"
+
+#: ../../po/../src/virtManager/createnet.py:305
+msgid "Network name must be non-blank and less than 50 characters"
+msgstr "Името на мрежата не трябва да е празно и по-малко от 50 знака"
+
+#: ../../po/../src/virtManager/createnet.py:309
+msgid "Network name may contain alphanumeric and '_' characters only"
+msgstr "Името на мрежата може да съдържа само букви, цифри и знака '_'"
+
+#: ../../po/../src/virtManager/createnet.py:316
+#: ../../po/../src/virtManager/createnet.py:321
+#: ../../po/../src/virtManager/createnet.py:326
+msgid "Invalid Network Address"
+msgstr "Невалидни мрежови адреси"
+
+#: ../../po/../src/virtManager/createnet.py:317
+msgid "The network address could not be understood"
+msgstr "Не може да бъде разбран мрежовия адрес"
+
+#: ../../po/../src/virtManager/createnet.py:322
+msgid "The network must be an IPv4 address"
+msgstr "Мрежата трябва да бъде IPv4 адрес"
+
+#: ../../po/../src/virtManager/createnet.py:327
+msgid "The network prefix must be at least /4 (16 addresses)"
+msgstr "Мрежовият префикс трябва да е поне /4 (16 адреса)"
+
+#: ../../po/../src/virtManager/createnet.py:331
+#, fuzzy
+msgid "Check Network Address"
+msgstr "Невалидни мрежови адреси"
+
+#: ../../po/../src/virtManager/createnet.py:332
+msgid ""
+"The network should normally use a private IPv4 address. Use this non-private "
+"address anyway?"
+msgstr ""
+
+#: ../../po/../src/virtManager/createnet.py:341
+#: ../../po/../src/virtManager/createnet.py:345
+#: ../../po/../src/virtManager/createnet.py:350
+#: ../../po/../src/virtManager/createnet.py:354
+msgid "Invalid DHCP Address"
+msgstr "Невалиден DHCP адрес"
+
+#: ../../po/../src/virtManager/createnet.py:342
+msgid "The DHCP start address could not be understood"
+msgstr "Началния DHCP адрес не може да бъде разбран"
+
+#: ../../po/../src/virtManager/createnet.py:346
+msgid "The DHCP end address could not be understood"
+msgstr "Крайния DHCP адрес не може да бъде разбран"
+
+#: ../../po/../src/virtManager/createnet.py:351
+#, python-format
+msgid "The DHCP start address is not with the network %s"
+msgstr "Началния DHCP адрес не е от мрежа %s"
+
+#: ../../po/../src/virtManager/createnet.py:355
+#, python-format
+msgid "The DHCP end address is not with the network %s"
+msgstr "Крайния DHCP адрес не е от мрежа %s"
+
+#: ../../po/../src/virtManager/createnet.py:361
+msgid "Invalid forwarding mode"
+msgstr "Невалиден режим на препращане"
+
+#: ../../po/../src/virtManager/createnet.py:362
+msgid "Please select where the traffic should be forwarded"
+msgstr "Моля укажете къде следва да се препраща трафика"
+
+#: ../../po/../src/virtManager/createnet.py:422
+#: ../../po/../src/virtManager/create.py:1064
+#: ../../po/../src/virtManager/create.py:1099
+msgid "No media present"
+msgstr "Няма носител"
+
+#: ../../po/../src/virtManager/engine.py:103
+msgid ""
+"Unable to open a connection to the Xen hypervisor/daemon.\n"
+"\n"
+msgstr ""
+"Не може да се отвори връзка към Xen хипервайзора/демона.\n"
+"\n"
+
+#: ../../po/../src/virtManager/engine.py:104
+#: ../../po/../src/virtManager/engine.py:112
+msgid "Verify that:\n"
+msgstr "Проверете дали:\n"
+
+#: ../../po/../src/virtManager/engine.py:105
+msgid " - A Xen host kernel was booted\n"
+msgstr " - Е заредено Xen ядро на основната система\n"
+
+#: ../../po/../src/virtManager/engine.py:106
+msgid " - The Xen service has been started\n"
+msgstr " - Услугата Xen е стартирана\n"
+
+#: ../../po/../src/virtManager/engine.py:111
+#, fuzzy
+msgid ""
+"Unable to open a connection to the QEMU management daemon.\n"
+"\n"
+msgstr ""
+"Не може да се отвори връзка към Xen хипервайзора/демона.\n"
+"\n"
+
+#: ../../po/../src/virtManager/engine.py:113
+#, fuzzy
+msgid " - The 'libvirt_qemud' daemon has been started\n"
+msgstr " - Услугата Xen е стартирана\n"
+
+#: ../../po/../src/virtManager/engine.py:118
+#, python-format
+msgid "Unable to open connection to hypervisor '%s'"
+msgstr "Не може да се отвори връзка до хипервайзор '%s'"
+
+#: ../../po/../src/virtManager/engine.py:120
+msgid "Virtual Machine Manager Connection Failure"
+msgstr "Неуспех при връзка към мениджъра на виртуални машини"
+
+#: ../../po/../src/virtManager/engine.py:359
+msgid "Save Virtual Machine"
+msgstr "Запис на виртуалната машина"
+
+#: ../../po/../src/virtManager/engine.py:373
+msgid "Saving Virtual Machine"
+msgstr "Записване на виртуалната машина"
+
+#: ../../po/../src/virtManager/engine.py:389
+#, python-format
+msgid "About to destroy virtual machine %s"
+msgstr "В процес на унищожаване на виртуалната машина %s"
+
+#: ../../po/../src/virtManager/engine.py:390
+msgid ""
+"This will immediately destroy the VM and may corrupt its disk image. Are you "
+"sure?"
+msgstr ""
+"Това незабавно ще унищожи ВМ и може да повреди дисковия й образ. Сигурни ли "
+"сте?"
+
+#: ../../po/../src/virtManager/addhardware.py:274
+#: ../../po/../src/virtManager/create.py:478
+msgid "Shared physical device"
+msgstr "Споделено физическо устройство"
+
+#: ../../po/../src/virtManager/addhardware.py:277
+#: ../../po/../src/virtManager/create.py:481
+msgid "Virtual network"
+msgstr "Виртуална мрежа"
+
+#: ../../po/../src/virtManager/addhardware.py:280
+#: ../../po/../src/virtManager/create.py:484
+msgid "Usermode networking"
+msgstr "Мрежа в потребителски режим"
+
+#: ../../po/../src/virtManager/addhardware.py:359
+msgid "Invalid storage address"
+msgstr "Невалиден адрес за съхранение"
+
+#: ../../po/../src/virtManager/addhardware.py:387
+msgid "Too many virtual disks"
+msgstr "Твърде много виртуални дискове"
+
+#: ../../po/../src/virtManager/addhardware.py:388
+msgid "There are no more available virtual disk device nodes"
+msgstr "Няма повече свободни виртуални дискови възли"
+
+#: ../../po/../src/virtManager/addhardware.py:392
+msgid "Creating Storage File"
+msgstr "Създаване на файл за съхранение"
+
+#: ../../po/../src/virtManager/addhardware.py:393
+msgid "Allocation of disk storage may take a few minutes "
+msgstr "Заделянето на дисковото пространство може да отнеме няколко минути"
+
+#: ../../po/../src/virtManager/addhardware.py:394
+#: ../../po/../src/virtManager/create.py:576
+msgid "to complete."
+msgstr "да приключи."
+
+#: ../../po/../src/virtManager/addhardware.py:413
+#: ../../po/../src/virtManager/addhardware.py:432
+#: ../../po/../src/virtManager/create.py:628
+#, python-format
+msgid "Unable to complete install: '%s'"
+msgstr "Не може да се завърши инсталацията: '%s'"
+
+#: ../../po/../src/virtManager/addhardware.py:437
+#: ../../po/../src/virtManager/create.py:662
+msgid "Locate Storage Partition"
+msgstr "Локален дял за съхранение"
+
+#: ../../po/../src/virtManager/addhardware.py:444
+#: ../../po/../src/virtManager/create.py:668
+msgid "Locate or Create New Storage File"
+msgstr "Намиране или създаване на нов файл за съхранение"
+
+#: ../../po/../src/virtManager/addhardware.py:524
+msgid "Hardware Type Required"
+msgstr "Изисква се тип хардуер"
+
+#: ../../po/../src/virtManager/addhardware.py:525
+msgid "You must specify what type of hardware to add"
+msgstr "Трябва да укажете какъв тип хардуер да се добави"
+
+#: ../../po/../src/virtManager/addhardware.py:530
+#: ../../po/../src/virtManager/create.py:850
+msgid "Storage Address Required"
+msgstr "Необходим е адрес за съхранение"
+
+#: ../../po/../src/virtManager/addhardware.py:531
+#: ../../po/../src/virtManager/create.py:851
+msgid ""
+"You must specify a partition or a file for storage for the guest install"
+msgstr "Трябва да се укаже дял или файл за съхранение на инсталацията гост"
+
+#: ../../po/../src/virtManager/addhardware.py:536
+msgid "Storage Address Is Directory"
+msgstr "Адрес за съхранение е директория"
+
+#: ../../po/../src/virtManager/addhardware.py:537
+msgid ""
+"You chose 'Simple File' storage for your storage method, but chose a "
+"directory instead of a file. Please enter a new filename or choose an "
+"existing file."
+msgstr ""
+"Избрали сте 'прост файл' като метод за дисково пространство , но сте избрали "
+"директория вместо файл. Моля въведете име на нов файл или изберете "
+"съществуващ."
+
+#: ../../po/../src/virtManager/addhardware.py:541
+#, fuzzy
+msgid "Target Device Required"
+msgstr "Изисква се физическо устройство"
+
+#: ../../po/../src/virtManager/addhardware.py:542
+#, fuzzy
+msgid "You must select a target device for the disk"
+msgstr "Следва да изберете едно от физическите устройства"
+
+#: ../../po/../src/virtManager/addhardware.py:551
+#: ../../po/../src/virtManager/create.py:860
+#, fuzzy
+msgid "Storage Path Does not exist"
+msgstr "Места за съхранение"
+
+#: ../../po/../src/virtManager/addhardware.py:552
+#: ../../po/../src/virtManager/create.py:861
+#, python-format
+msgid "The directory %s containing the disk image does not exist"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:560
+#: ../../po/../src/virtManager/addhardware.py:565
+#: ../../po/../src/virtManager/create.py:869
+#: ../../po/../src/virtManager/create.py:874
+msgid "Not Enough Free Space"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:561
+#: ../../po/../src/virtManager/create.py:870
+msgid ""
+"The filesystem will not have enough free space to fully allocate the sparse "
+"file when the guest is running. Use this path anyway?"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:566
+#: ../../po/../src/virtManager/create.py:875
+msgid "There is not enough free space to create the disk"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:581
+#: ../../po/../src/virtManager/create.py:910
+#, python-format
+msgid "Disk \"%s\" is already in use by another guest!"
+msgstr "Диска \"%s\" вече се ползва от друг гост!"
+
+#: ../../po/../src/virtManager/addhardware.py:582
+#: ../../po/../src/virtManager/create.py:910
+msgid "Do you really want to use the disk ?"
+msgstr "Наистина ли искате да ползвате диска?"
+
+#: ../../po/../src/virtManager/addhardware.py:587
+#: ../../po/../src/virtManager/create.py:917
+msgid "Virtual Network Required"
+msgstr "Изисква се виртуална мрежа"
+
+#: ../../po/../src/virtManager/addhardware.py:588
+#: ../../po/../src/virtManager/create.py:918
+msgid "You must select one of the virtual networks"
+msgstr "Трябва да изберете една от виртуалните мрежи"
+
+#: ../../po/../src/virtManager/addhardware.py:592
+#: ../../po/../src/virtManager/create.py:922
+msgid "Physical Device Required"
+msgstr "Изисква се физическо устройство"
+
+#: ../../po/../src/virtManager/addhardware.py:593
+#: ../../po/../src/virtManager/create.py:923
+msgid "You must select one of the physical devices"
+msgstr "Следва да изберете едно от физическите устройства"
+
+#: ../../po/../src/virtManager/addhardware.py:599
+#: ../../po/../src/virtManager/addhardware.py:603
+#: ../../po/../src/virtManager/create.py:931
+#, fuzzy
+msgid "Invalid MAC address"
+msgstr "Невалиден DHCP адрес"
+
+#: ../../po/../src/virtManager/addhardware.py:600
+msgid "MAC adrress must be 17 characters"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:604
+msgid ""
+"MAC address must be a form such as AA:BB:CC:DD:EE:FF, and MAC adrress may "
+"contain numeric and alphabet of A-F(a-f) and ':' characters only"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:609
+#: ../../po/../src/virtManager/create.py:944
+#, fuzzy, python-format
+msgid "MAC address \"%s\" is already in use by the host"
+msgstr "Диска \"%s\" вече се ползва от друг гост!"
+
+#: ../../po/../src/virtManager/addhardware.py:610
+#: ../../po/../src/virtManager/addhardware.py:625
+#: ../../po/../src/virtManager/create.py:945
+#: ../../po/../src/virtManager/create.py:978
+msgid "Please enter a different MAC address or select no fixed MAC address"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:624
+#, fuzzy, python-format
+msgid "MAC address \"%s\" is already in use by an active guest"
+msgstr "Диска \"%s\" вече се ползва от друг гост!"
+
+#: ../../po/../src/virtManager/addhardware.py:627
+#: ../../po/../src/virtManager/create.py:980
+#, fuzzy, python-format
+msgid "MAC address \"%s\" is already in use by another inactive guest!"
+msgstr "Диска \"%s\" вече се ползва от друг гост!"
+
+#: ../../po/../src/virtManager/addhardware.py:628
+#: ../../po/../src/virtManager/create.py:981
+#, fuzzy
+msgid "Do you really want to use the MAC address ?"
+msgstr "Наистина ли искате да ползвате диска?"
+
+#: ../../po/../src/virtManager/addhardware.py:671
+#: ../../po/../src/virtManager/create.py:1144
+msgid "Bridge"
+msgstr ""
+
+#: ../../po/../src/virtManager/addhardware.py:673
+#: ../../po/../src/virtManager/create.py:1146
+msgid "Not bridged"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:450
+msgid "Paravirtualized"
+msgstr "Паравиртуализирана"
+
+#: ../../po/../src/virtManager/create.py:454
+msgid "Fully virtualized"
+msgstr "Изцяло виртуализирана"
+
+#: ../../po/../src/virtManager/create.py:517
+msgid "UUID Error"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:522
+msgid "Error Setting up Disk"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:527
+msgid "Error Setting up Network"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:572
+msgid "Creating Virtual Machine"
+msgstr "Създаване на виртуална машина"
+
+#: ../../po/../src/virtManager/create.py:573
+msgid "The virtual machine is now being created. "
+msgstr "Създава се виртуалната машина. "
+
+#: ../../po/../src/virtManager/create.py:574
+msgid "Allocation of disk storage and retrieval of "
+msgstr "Заделяне на дисково пространство и извличане на "
+
+#: ../../po/../src/virtManager/create.py:575
+msgid "the installation images may take a few minutes "
+msgstr "инсталационните образи може да отнемат няколко минути "
+
+#: ../../po/../src/virtManager/create.py:614
+msgid "Guest installation failed to complete"
+msgstr "Инсталацията на госта не успя да завърши"
+
+#: ../../po/../src/virtManager/create.py:633
+msgid "Locate ISO Image"
+msgstr "Локален ISO образ"
+
+#: ../../po/../src/virtManager/create.py:768
+msgid "Invalid System Name"
+msgstr "Невалидно системно име"
+
+#: ../../po/../src/virtManager/create.py:792
+msgid "ISO Path Not Found"
+msgstr "Пътя до ISO файла не е намерен"
+
+#: ../../po/../src/virtManager/create.py:800
+msgid "CD-ROM Path Error"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:809
+msgid "Invalid FV OS Type"
+msgstr "Невалиден тип ИВ ОС"
+
+#: ../../po/../src/virtManager/create.py:817
+msgid "Invalid FV OS Variant"
+msgstr "Невалиден ИВ ОС тип"
+
+#: ../../po/../src/virtManager/create.py:825
+msgid "Invalid Install URL"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:832
+#, fuzzy
+msgid "Kickstart URL Error"
+msgstr "Kickstart U_RL:"
+
+#: ../../po/../src/virtManager/create.py:833
+msgid "Kickstart location must be an NFS, HTTP or FTP source"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:905
+#, fuzzy
+msgid "Invalid Storage Address"
+msgstr "Невалиден адрес за съхранение"
+
+#: ../../po/../src/virtManager/create.py:932
+msgid "No MAC address was entered. Please enter a valid MAC address."
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:937
+#, fuzzy
+msgid "Invalid Mac address"
+msgstr "Невалиден адрес за съхранение"
+
+#: ../../po/../src/virtManager/create.py:961
+#, fuzzy
+msgid "Network Parameter Error"
+msgstr "Име на мрежа:"
+
+#: ../../po/../src/virtManager/create.py:977
+#, fuzzy, python-format
+msgid "MAC address \"%s\" is already in use by a active guest"
+msgstr "Диска \"%s\" вече се ползва от друг гост!"
+
+#: ../../po/../src/virtManager/create.py:989
+msgid "VCPU Count Error"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:996
+msgid "Memory Amount Error"
+msgstr ""
+
+#: ../../po/../src/virtManager/create.py:1003
+msgid "Max Memory Amount Error"
+msgstr ""
+
+#. Expander section with details.
+#: ../../po/../src/virtManager/error.py:33
+msgid "Details"
+msgstr "Детайли"
+
+#: ../../po/../src/virtManager/serialcon.py:35
+msgid "serial console"
+msgstr "серийна конзола"
+
+#: ../../po/../src/virtManager/asyncjob.py:102
+msgid "Completed"
+msgstr "Готово"
+
+#: ../../po/../src/virtManager/console.py:147
+msgid "Press Ctrl+Alt to release pointer."
+msgstr "Натиснете Ctrl+Alt за освобождаване на мишката."
+
+#: ../../po/../src/virtManager/console.py:155
+msgid "Pointer grabbed"
+msgstr "Мишката е прихваната"
+
+#: ../../po/../src/virtManager/console.py:156
+msgid ""
+"The mouse pointer has been restricted to the virtual console window. To "
+"release the pointer press the key pair Ctrl+Alt"
+msgstr ""
+"Курсора на мишката бе ограничен в прозореца на виртуалната конзола. За да "
+"освободите курсора натиснете едновременно Ctrl+Alt"
+
+#: ../../po/../src/virtManager/console.py:159
+msgid "Do not show this notification in the future"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:237
+msgid "Console was disconnected from guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:271
+#: ../../po/../src/virtManager/console.py:506
+msgid "Console not available for inactive guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:280
+msgid "Console not configured for guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:288
+msgid "Console not supported for guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:292
+msgid "Console is not yet active for guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:296
+msgid "Connecting to console for guest"
+msgstr ""
+
+#: ../../po/../src/virtManager/console.py:325
+msgid "Unsupported console authentication type"
+msgstr ""
+
+#. If someone feels kind they could extend this code to allow
+#. user to choose what image format they'd like to save in....
+#: ../../po/../src/virtManager/console.py:359
+msgid "Save Virtual Machine Screenshot"
+msgstr "Запис на снимка на екранна на виртуалната машина"
+
+#: ../../po/../src/virtManager/console.py:388
+#, python-format
+msgid ""
+"The screenshot has been saved to:\n"
+"%s"
+msgstr ""
+"Снимката на екрана бе записана като:\n"
+"%s"
+
+#: ../../po/../src/virtManager/console.py:389
+msgid "Screenshot saved"
+msgstr "Снимката на екрана бе записана"
+
+#: ../../po/../src/virtManager/console.py:529
+msgid "paused"
+msgstr "в пауза"
+
+#: ../../po/../src/virtManager/console.py:540
+msgid "Console not available while paused"
+msgstr ""
+
+#: ../../po/../src/virtManager/host.py:130
+msgid "Creating new networks on remote connections is not yet supported"
+msgstr ""
+
+#: ../../po/../src/virtManager/host.py:192
+#: ../../po/../src/virtManager/manager.py:500
+msgid "Active"
+msgstr "Активна"
+
+#: ../../po/../src/virtManager/host.py:200
+#: ../../po/../src/virtManager/manager.py:990
+msgid "Inactive"
+msgstr "Неактивна"
+
+#: ../../po/../src/virtManager/host.py:213
+msgid "On boot"
+msgstr "При зареждане"
+
+#: ../../po/../src/virtManager/host.py:216
+msgid "Never"
+msgstr "Никога"
+
+#: ../../po/../src/virtManager/domain.py:405
+msgid "Paused"
+msgstr "В пауза"
+
+#: ../../po/../src/virtManager/domain.py:409
+msgid "Shutoff"
+msgstr "Спряна"
+
+#: ../../po/../src/virtManager/domain.py:411
+msgid "Crashed"
+msgstr "Забила"
+
+#: ../../po/../src/virtManager/domain.py:413
+msgid "Unknown status code"
+msgstr "Неизвестен код за състояние"
+
+#. get filename
+#: ../../po/../src/virtManager/manager.py:271
+msgid "Restore Virtual Machine"
+msgstr "Възстановка на виртуалната машина"
+
+#: ../../po/../src/virtManager/manager.py:287
+msgid "Restoring Virtual Machine"
+msgstr "Възстановяване на виртуалната машина"
+
+#: ../../po/../src/virtManager/manager.py:294
+#, python-format
+msgid "The file '%s' does not appear to be a valid saved machine image"
+msgstr ""
+"Файла '%s' не изглежда да е валиден образ на записано състояние на машината"
+
+#: ../../po/../src/virtManager/manager.py:322
+#, python-format
+msgid "Error restoring domain '%s'. Is the domain already running?"
+msgstr "Грешка при възстановяване на домейн '%s'. Работи ли вече домейна?"
+
+#: ../../po/../src/virtManager/manager.py:410
+#, fuzzy
+msgid "Connected"
+msgstr "_Свързване"
+
+#. keep uri and name for connection, so we can reconnect if needed
+#: ../../po/../src/virtManager/manager.py:414
+#: ../../po/../src/virtManager/manager.py:953
+#, fuzzy
+msgid "Disconnected"
+msgstr "_Свързване"
+
+#: ../../po/../src/virtManager/manager.py:642
+#, python-format
+msgid "This will permanently delete the vm \"%s,\" are you sure?"
+msgstr ""
+
+#: ../../po/../src/virtManager/manager.py:674
+msgid "Creating new guests on remote connections is not yet supported"
+msgstr ""
+
+#: ../../po/../src/virtManager/manager.py:684
+#, fuzzy, python-format
+msgid "This will permanently delete the connection \"%s\", are you sure?"
+msgstr ""
+"Това незабавно ще унищожи ВМ и може да повреди дисковия й образ. Сигурни ли "
+"сте?"
+
+#: ../../po/../src/virtManager/manager.py:713
+msgid "ID"
+msgstr "ID"
+
+#: ../../po/../src/virtManager/manager.py:716
+msgid "VCPUs"
+msgstr "В.ЦП"
+
+#~ msgid "VNC"
+#~ msgstr "VNC"
+
+#~ msgid "New machine..."
+#~ msgstr "Нова машина..."
+
+#~ msgid "_Host:"
+#~ msgstr "_Име на машина:"
+
+#~ msgid "_Local host"
+#~ msgstr "_Локална машина"
+
+#~ msgid "_Port:"
+#~ msgstr "_Порт:"
+
+#~ msgid "_Remote host"
+#~ msgstr "_Отдалечена машина"
+
+#~ msgid "The network must be an IPv4 private address"
+#~ msgstr "Мрежата трябва да бъде от частните IPv4 адреси"
+
+#, fuzzy
+#~ msgid "MAC adress \"%s\" is already in use by host!"
+#~ msgstr "Диска \"%s\" вече се ползва от друг гост!"
+
+#, fuzzy
+#~ msgid "MAC adress \"%s\" is already in use by another guest!"
+#~ msgstr "Диска \"%s\" вече се ползва от друг гост!"
+
+#~ msgid "Invalid FV media address"
+#~ msgstr "Невалиден адрес на ИВ носител"
+
+#~ msgid "Invalid PV media address"
+#~ msgstr "Невалиден адрес на ПВ носител"
+
+#~ msgid "Invalid system name"
+#~ msgstr "Невалидно системно име"
+
+#~ msgid "Invalid memory setting"
+#~ msgstr "Невалидна настройка за памет"
+
+#~ msgid "System name must be non-blank and less than 50 characters"
+#~ msgstr "Името на системата не трябва да е празно и по-малко от 50 знака"
+
+#~ msgid "System name may contain alphanumeric and '_' characters only"
+#~ msgstr "Името на системата може да съдържа само букви, цифри и знака '_'"
+
+#~ msgid "Hardware Support Required"
+#~ msgstr "Необходима е хардуерна поддръжка"
+
+#~ msgid ""
+#~ "Your hardware does not appear to support full virtualization. Only "
+#~ "paravirtualized guests will be available on this hardware."
+#~ msgstr ""
+#~ "Вашия хардуер изглежда няма поддръжка за пълна виртуализация. Само "
+#~ "паравиртуални гости ще бъдат достъпни за този хардуер."
+
+#~ msgid "ISO Path Required"
+#~ msgstr "Необходим е път до ISO файла"
+
+#~ msgid "You must specify an ISO location for the guest installation"
+#~ msgstr ""
+#~ "Трябва да бъде указано местоположението на ISO файла за инсталация на "
+#~ "госта"
+
+#~ msgid ""
+#~ "You must specify a valid path to the ISO image for guest installation"
+#~ msgstr ""
+#~ "Трябва да бъде указано валидно местоположението на ISO файла за "
+#~ "инсталация на госта"
+
+#~ msgid "You must select the CDROM install media for guest installation"
+#~ msgstr ""
+#~ "Трябва да бъде избран инсталационния CDROM носител за инсталация на гост"
+
+#~ msgid "URL Required"
+#~ msgstr "Изисква се URL"
+
+#~ msgid "You must specify a URL for the install image for the guest install"
+#~ msgstr ""
+#~ "Трябва да се укаже URL за инсталационния образ за инсталацията на госта"
+
+#~ msgid "_Read only connection"
+#~ msgstr "Връзка само за _четене"

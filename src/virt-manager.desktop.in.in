@@ -1,0 +1,9 @@
+[Desktop Entry]
+_Name=Virtual Machine Manager
+_Comment=Manage virtual machines
+Icon=::ICONDIR::/::PACKAGE::-icon.svg
+Exec=::PACKAGE::
+Type=Application
+Terminal=false
+Encoding=UTF-8
+Categories=System;

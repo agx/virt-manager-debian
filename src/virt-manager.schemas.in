@@ -1,0 +1,173 @@
+<gconfschemafile>
+  <schemalist>
+    <schema>
+      <key>/schemas/apps/::PACKAGE::/vmlist-fields/domain_id</key>
+      <applyto>/apps/::PACKAGE::/vmlist-fields/domain_id</applyto>
+      <owner>::PACKAGE::</owner>
+      <type>bool</type>
+      <default>1</default>
+
+      <locale name="C">
+        <short>Show domain id in summary</short>
+        <long>Show the domain id field in the domain list summary view</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/::PACKAGE::/vmlist-fields/status</key>
+      <applyto>/apps/::PACKAGE::/vmlist-fields/status</applyto>
+      <owner>::PACKAGE::</owner>
+      <type>bool</type>
+      <default>1</default>
+
+      <locale name="C">
+        <short>Show run state in summary</short>
+        <long>Show the run state field in the domain list summary view</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/::PACKAGE::/vmlist-fields/cpu_usage</key>
+      <applyto>/apps/::PACKAGE::/vmlist-fields/cpu_usage</applyto>
+      <owner>::PACKAGE::</owner>
+      <type>bool</type>
+      <default>1</default>
+
+      <locale name="C">
+        <short>Show cpu usage in summary</short>
+        <long>Show the cpu usage field in the domain list summary view</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/::PACKAGE::/vmlist-fields/virtual_cpus</key>
+      <applyto>/apps/::PACKAGE::/vmlist-fields/virtual_cpus</applyto>
+      <owner>::PACKAGE::</owner>
+      <type>bool</type>
+      <default>0</default>
+
+      <locale name="C">
+        <short>Show VCPU count in summary</short>
+        <long>Show the virtual CPU count field in the domain list summary view</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/::PACKAGE::/vmlist-fields/memory_usage</key>
+      <applyto>/apps/::PACKAGE::/vmlist-fields/memory_usage</applyto>
+      <owner>::PACKAGE::</owner>
+      <type>bool</type>
+      <default>1</default>
+
+      <locale name="C">
+        <short>Show memory usage in summary</short>
+        <long>Show the memory usage field in the domain list summary view</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/::PACKAGE::/vmlist-fields/disk_usage</key>
+      <applyto>/apps/::PACKAGE::/vmlist-fields/disk_usage</applyto>
+      <owner>::PACKAGE::</owner>
+      <type>bool</type>
+      <default>0</default>
+
+      <locale name="C">
+        <short>Show disk usage in summary</short>
+        <long>Show the disk usage field in the domain list summary view</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/::PACKAGE::/vmlist-fields/network_traffic</key>
+      <applyto>/apps/::PACKAGE::/vmlist-fields/network_traffic</applyto>
+      <owner>::PACKAGE::</owner>
+      <type>bool</type>
+      <default>0</default>
+
+      <locale name="C">
+        <short>Show network traffic in summary</short>
+        <long>Show the network traffic field in the domain list summary view</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/::PACKAGE::/stats/update-interval</key>
+      <applyto>/apps/::PACKAGE::/stats/update-interval</applyto>
+      <owner>::PACKAGE::</owner>
+      <type>int</type>
+      <default>1</default>
+
+      <locale name="C">
+        <short>The statistics update interval</short>
+        <long>The statistics update interval in seconds</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/::PACKAGE::/stats/history-length</key>
+      <applyto>/apps/::PACKAGE::/stats/history-length</applyto>
+      <owner>::PACKAGE::</owner>
+      <type>int</type>
+      <default>120</default>
+
+      <locale name="C">
+        <short>The statistics history length</short>
+        <long>The number of samples to keep in the statistics history</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/::PACKAGE::/urls/url-list-length</key>
+      <applyto>/apps/::PACKAGE::/urls/url-list-length</applyto>
+      <owner>::PACKAGE::</owner>
+      <type>int</type>
+      <default>10</default>
+
+      <locale name="C">
+        <short>The length of the list of URLs</short>
+        <long>The number of urls to keep in the history for the install media address page.</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/::PACKAGE::/console/popup</key>
+      <applyto>/apps/::PACKAGE::/console/popup</applyto>
+      <owner>::PACKAGE::</owner>
+      <type>int</type>
+      <default>1</default>
+
+      <locale name="C">
+        <short>When to pop up a console for a guest</short>
+        <long>Whether to pop up a console for a guest. 0 = never, 1 = only on creation of a new guest, 2 = On creation of any guest</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/::PACKAGE::/console/keygrab</key>
+      <applyto>/apps/::PACKAGE::/console/keygrab</applyto>
+      <owner>::PACKAGE::</owner>
+      <type>int</type>
+      <default>2</default>
+
+      <locale name="C">
+        <short>When to grab keyboard input for the console</short>
+        <long>Whether to grab keyboard input for a guest console. 0 = never, 1 = only when in full screen mode, 2 = when mouse is over console</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/::PACKAGE::/console/grab-notify</key>
+      <applyto>/apps/::PACKAGE::/console/grab-notify</applyto>
+      <owner>::PACKAGE::</owner>
+      <type>bool</type>
+      <default>1</default>
+
+      <locale name="C">
+        <short>Whether to show notification when grabbing mouse</short>
+        <long>Whether to show the notification hint when grabbing the mouse in the console</long>
+      </locale>
+    </schema>
+
+  </schemalist>
+</gconfschemafile>
