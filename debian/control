@@ -1,12 +1,12 @@
 Source: virt-manager
-Section: universe/admin
+Section: admin
 Priority: optional
-Maintainer: Ubuntu MOTU Developers <ubuntu-motu@lists.ubuntu.com>
+Maintainer: Guido Guenther <agx@sigxcpu.org>
 Standards-Version: 3.7.2
 Build-Depends: debhelper (>= 4.2.28), dpatch, python-dev, python-gtk2-dev, scrollkeeper, python-central (>= 0.5), cdbs
 
 Package: virt-manager
-Section: universe/admin
+Section: admin
 Priority: optional
 Architecture: any
 Depends: ${shlibs:Depends}, ${python:Depends}, python-gtk2, python-glade2, python-gnome2, python-dbus, python-urlgrabber, python-vte, librsvg2-common, python-libvirt, virtinst, python-gtk-vnc
