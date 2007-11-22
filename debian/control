@@ -3,7 +3,7 @@ Section: admin
 Priority: optional
 Maintainer: Guido Guenther <agx@sigxcpu.org>
 Standards-Version: 3.7.2
-Build-Depends: debhelper (>= 4.2.28), dpatch, python-dev, python-gtk2-dev, scrollkeeper, python-central (>= 0.5), cdbs
+Build-Depends: debhelper (>= 5), dpatch, python-dev, python-gtk2-dev, scrollkeeper, python-central (>= 0.5), cdbs
 
 Package: virt-manager
 Section: admin
