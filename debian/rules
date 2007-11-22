@@ -1,0 +1,21 @@
+#!/usr/bin/make -f
+
+# Uncomment this to turn on verbose mode.
+export DH_VERBOSE=1
+
+
+DEB_PYTHON_SYSTEM=pycentral
+DEB_DH_INSTALL_SOURCEDIR = debian/tmp
+
+
+include /usr/share/cdbs/1/class/autotools.mk
+include /usr/share/cdbs/1/rules/debhelper.mk
+include /usr/share/cdbs/1/rules/dpatch.mk
+include /usr/share/cdbs/1/class/makefile.mk
+
+#export CFLAGS += -fno-stack-protector
+
+DEB_CONFIGURE_EXTRA_FLAGS := --prefix=/usr
+
+binary-install/python-libvirt::
+	dh_pycentral -ppython-libvirt -ppython-virtinst

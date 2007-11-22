@@ -1,0 +1,48 @@
+;; -*- scheme -*-
+; object definitions ...
+(define-object CellRendererSparkline
+  (in-module "Gtk")
+  (parent "GtkCellRenderer")
+  (c-name "GtkCellRendererSparkline")
+  (gtype-id "GTK_TYPE_CELL_RENDERER_SPARKLINE")
+)
+
+(define-object Sparkline
+  (in-module "Gtk")
+  (parent "GtkDrawingArea")
+  (c-name "GtkSparkline")
+  (gtype-id "GTK_TYPE_SPARKLINE")
+)
+
+;; Enumerations and flags ...
+
+
+;; From sparkline.h
+
+(define-function gtk_sparkline_get_type
+  (c-name "gtk_sparkline_get_type")
+  (return-type "GType")
+)
+
+(define-function gtk_sparkline_new
+  (c-name "gtk_sparkline_new")
+  (is-constructor-of "GtkSparkline")
+  (return-type "GtkWidget*")
+)
+
+
+
+;; From cellrenderersparkline.h
+
+(define-function gtk_cell_renderer_sparkline_get_type
+  (c-name "gtk_cell_renderer_sparkline_get_type")
+  (return-type "GType")
+)
+
+(define-function gtk_cell_renderer_sparkline_new
+  (c-name "gtk_cell_renderer_sparkline_new")
+  (is-constructor-of "GtkCellRendererSparkline")
+  (return-type "GtkCellRenderer*")
+)
+
+

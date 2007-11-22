@@ -1,0 +1,20 @@
+Source: virt-manager
+Section: universe/admin
+Priority: optional
+Maintainer: Ubuntu MOTU Developers <ubuntu-motu@lists.ubuntu.com>
+Standards-Version: 3.7.2
+Build-Depends: debhelper (>= 4.2.28), dpatch, python-dev, python-gtk2-dev, scrollkeeper, python-central (>= 0.5), cdbs
+
+Package: virt-manager
+Section: universe/admin
+Priority: optional
+Architecture: any
+Depends: ${shlibs:Depends}, ${python:Depends}, python-gtk2, python-glade2, python-gnome2, python-dbus, python-urlgrabber, python-vte, librsvg2-common, python-libvirt, virtinst, python-gtk-vnc
+Description: virt-manager is a desktop application for managing virtual machines.
+ It presents a summary view of running domains and their live performance & resource 
+ utilization statistics. A detailed view presents graphs showing performance & 
+ utilization over time. Ultimately it will allow creation of new domains, and 
+ configuration & adjustment of a domain's resource allocation & virtual hardware. 
+ Finally an embedded VNC client viewer presents a full graphical console to the guest domain.
+ .
+ NOTE: the GUI is still considered experimental.

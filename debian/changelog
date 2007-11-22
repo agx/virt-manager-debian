@@ -1,0 +1,29 @@
+virt-manager (0.5.0-0ubuntu0~ppa2) feisty; urgency=low
+
+  * debian/patches:
+    - 01_vnc_connect_localhost.dpatch
+    - 02-fixed_call_to_get_local_hostname.dpatch
+    - 03-console_connection_retries_more_robust.dpatch
+  * Remove various Build-deps
+
+ -- Marcelo Boveto Shima <marceloshima@gmail.com>  Sat, 15 Sep 2007 01:27:27 -0300
+
+virt-manager (0.5.0-0ubuntu0~ppa1) feisty; urgency=low
+
+  * New upstream release.
+  * Depends on python-libvirt, virtinst, python-gtk-vnc.
+
+ -- Marcelo Boveto Shima <marceloshima@gmail.com>  Fri, 14 Sep 2007 18:53:12 -0300
+
+virt-manager (0.4.0-0ubuntu0~ppa2) feisty; urgency=low
+
+  * Change Architecture from all to any.
+
+ -- Marcelo Boveto Shima <marceloshima@gmail.com>  Fri, 14 Sep 2007 16:05:12 -0300
+
+virt-manager (0.4.0-0ubuntu0~ppa1) feisty; urgency=low
+
+  * Initial release based on xenbr packages.
+
+ -- Marcelo Boveto Shima <marceloshima@gmail.com>  Thu,  7 Jun 2007 01:08:24 -0300
+
