@@ -1,3 +1,9 @@
+virt-manager (0.5.2-2) experimental; urgency=low
+
+  * update debian/copyright (help/, src/grpahWidgets)
+
+ -- Guido Guenther <agx@sigxcpu.org>  Fri, 23 Nov 2007 22:56:47 +0100
+
 virt-manager (0.5.2-1) experimental; urgency=low
 
   * New Upstream Version
