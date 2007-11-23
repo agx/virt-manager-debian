@@ -10,11 +10,13 @@ Section: admin
 Priority: optional
 Architecture: any
 Depends: ${shlibs:Depends}, ${python:Depends}, python-gtk2, python-glade2, python-gnome2, python-dbus, python-urlgrabber, python-vte, librsvg2-common, python-libvirt, virtinst, python-gtk-vnc
-Description: virt-manager is a desktop application for managing virtual machines.
- It presents a summary view of running domains and their live performance & resource 
- utilization statistics. A detailed view presents graphs showing performance & 
- utilization over time. Ultimately it will allow creation of new domains, and 
- configuration & adjustment of a domain's resource allocation & virtual hardware. 
- Finally an embedded VNC client viewer presents a full graphical console to the guest domain.
+Suggests: virt-viewer
+Description: desktop application for managing virtual machines
+ It presents a summary view of running domains and their live performance &
+ resource utilization statistics. A detailed view presents graphs showing
+ performance & utilization over time. Ultimately it will allow creation of new
+ domains, and configuration & adjustment of a domain's resource allocation &
+ virtual hardware.  Finally an embedded VNC client viewer presents a full
+ graphical console to the guest domain.
  .
  NOTE: the GUI is still considered experimental.
