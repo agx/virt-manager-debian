@@ -1,3 +1,13 @@
+virt-manager (0.5.2-1~pre0) unstable; urgency=low
+
+  * UNRELEASED
+  * New Upstream Version
+  * first upload to Debian (Closes: #384443)
+  * disable Ubuntu patches for now
+  * Thanks to Marcello for packaging this up!
+
+ -- Guido Guenther <agx@sigxcpu.org>  Thu, 22 Nov 2007 18:10:33 +0100
+
 virt-manager (0.5.0-0ubuntu0~ppa2) feisty; urgency=low
 
   * debian/patches:
