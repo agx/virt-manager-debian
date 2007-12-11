@@ -7,7 +7,7 @@ Index: virt-manager/src/Makefile.am
  dbus_DATA = $(PACKAGE).service
  
 -schemadir = $(sysconfdir)/gconf/schemas
-+schemadir = $(datarootdir)/gconf/schemas
++schemadir = $(datadir)/gconf/schemas
  schema_SOURCES = $(PACKAGE).schemas.in
  schema_DATA = $(PACKAGE).schemas
  
