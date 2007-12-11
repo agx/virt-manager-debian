@@ -1,3 +1,13 @@
+virt-manager (0.5.2-3) unstable; urgency=low
+
+  * gconf-dir.diff: fix typo in datadir
+  * recommend hal for network device detection
+  * move to team maintenance
+  * drop ubuntu patches
+  * add a watch file
+
+ -- Guido Guenther <agx@sigxcpu.org>  Tue, 11 Dec 2007 12:54:04 +0100
+
 virt-manager (0.5.2-2) experimental; urgency=low
 
   * update debian/copyright (help/, src/grpahWidgets)
