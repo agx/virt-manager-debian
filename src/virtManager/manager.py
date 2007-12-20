@@ -14,7 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA 02110-1301 USA.
 #
 
 import gobject
@@ -23,6 +24,7 @@ import gtk.glade
 import threading
 import logging
 import sys
+import traceback
 
 import sparkline
 import libvirt
@@ -80,6 +82,14 @@ class vmmManager(gobject.GObject):
                                     gobject.TYPE_NONE, []),
         "action-show-create": (gobject.SIGNAL_RUN_FIRST,
                                gobject.TYPE_NONE, [str]),
+        "action-suspend-domain": (gobject.SIGNAL_RUN_FIRST,
+                                  gobject.TYPE_NONE, (str, str)),
+        "action-resume-domain": (gobject.SIGNAL_RUN_FIRST,
+                                 gobject.TYPE_NONE, (str, str)),
+        "action-run-domain": (gobject.SIGNAL_RUN_FIRST,
+                              gobject.TYPE_NONE, (str, str)),
+        "action-shutdown-domain": (gobject.SIGNAL_RUN_FIRST,
+                                   gobject.TYPE_NONE, (str, str)),
         "action-connect": (gobject.SIGNAL_RUN_FIRST,
                            gobject.TYPE_NONE, [str]),
         "action-show-help": (gobject.SIGNAL_RUN_FIRST,
@@ -711,9 +721,12 @@ class vmmManager(gobject.GObject):
         if result == gtk.RESPONSE_NO:
             return
         conn = vm.get_connection()
-        vm.delete()
+        try:
+            vm.delete()
+        except Exception, e:
+            self._err_dialog(_("Error deleting domain: %s" % str(e)),\
+                        "".join(traceback.format_exc()))
         conn.tick(noStatsUpdate=True)
-
 
     def show_about(self, src):
         self.emit("action-show-about")
@@ -928,22 +941,22 @@ class vmmManager(gobject.GObject):
     def start_vm(self, ignore):
         vm = self.current_vm()
         if vm is not None:
-            vm.startup()
+            self.emit("action-run-domain", vm.get_connection().get_uri(), vm.get_uuid())
 
     def stop_vm(self, ignore):
         vm = self.current_vm()
         if vm is not None:
-            vm.shutdown()
+            self.emit("action-shutdown-domain", vm.get_connection().get_uri(), vm.get_uuid())
 
     def pause_vm(self, ignore):
         vm = self.current_vm()
         if vm is not None:
-            vm.suspend()
+            self.emit("action-suspend-domain", vm.get_connection().get_uri(), vm.get_uuid())
 
     def resume_vm(self, ignore):
         vm = self.current_vm()
         if vm is not None:
-            vm.resume()
+            self.emit("action-resume-domain", vm.get_connection().get_uri(), vm.get_uuid())
 
     def _add_connection(self, engine, conn):
         conn.connect("vm-added", self.vm_added)
@@ -1000,5 +1013,11 @@ class vmmManager(gobject.GObject):
         dg.hide()
         dg.destroy()
 
+    def _err_dialog(self, summary, details):
+        dg = vmmErrorDialog(None, 0, gtk.MESSAGE_ERROR, 
+                            gtk.BUTTONS_CLOSE, summary, details)
+        dg.run()
+        dg.hide()
+        dg.destroy()
 
 gobject.type_register(vmmManager)
