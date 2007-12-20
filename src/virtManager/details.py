@@ -14,7 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA 02110-1301 USA.
 #
 
 import gobject
@@ -24,6 +25,7 @@ import libvirt
 import sparkline
 import logging
 import traceback
+import sys
 
 from virtManager.error import vmmErrorDialog
 from virtManager.addhardware import vmmAddHardware
@@ -58,6 +60,14 @@ class vmmDetails(gobject.GObject):
                                  gobject.TYPE_NONE, (str,str)),
         "action-destroy-domain": (gobject.SIGNAL_RUN_FIRST,
                                  gobject.TYPE_NONE, (str,str)),
+        "action-suspend-domain": (gobject.SIGNAL_RUN_FIRST,
+                                  gobject.TYPE_NONE, (str, str)),
+        "action-resume-domain": (gobject.SIGNAL_RUN_FIRST,
+                                 gobject.TYPE_NONE, (str, str)),
+        "action-run-domain": (gobject.SIGNAL_RUN_FIRST,
+                              gobject.TYPE_NONE, (str, str)),
+        "action-shutdown-domain": (gobject.SIGNAL_RUN_FIRST,
+                                   gobject.TYPE_NONE, (str, str)),
         "action-show-help": (gobject.SIGNAL_RUN_FIRST,
                                gobject.TYPE_NONE, [str]),
         }
@@ -216,58 +226,22 @@ class vmmDetails(gobject.GObject):
             selection.select_path(0)
             self.window.get_widget("hw-panel").set_current_page(0)
 
-    def control_vm_run(self, src):
-        status = self.vm.status()
-        if status != libvirt.VIR_DOMAIN_SHUTOFF:
-            pass
-        else:
-            try:
-                self.vm.startup()
-            except:
-                (type, value, stacktrace) = sys.exc_info ()
-
-                # Detailed error message, in English so it can be Googled.
-                details = \
-                        "Unable to start virtual machine '%s'" % \
-                        (str(type) + " " + str(value) + "\n" + \
-                         traceback.format_exc (stacktrace))
-
-                dg = vmmErrorDialog(None, 0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
-                                    str(value),
-                                    details)
-                dg.run()
-                dg.hide()
-                dg.destroy()
-
-
-    def control_vm_shutdown(self, src):
-        status = self.vm.status()
-        if not(status in [ libvirt.VIR_DOMAIN_SHUTDOWN, libvirt.VIR_DOMAIN_SHUTOFF, libvirt.VIR_DOMAIN_CRASHED ]):
-            self.vm.shutdown()
-        else:
-            logging.warning("Shutdown requested, but machine is already shutting down / shutoff")
-
     def control_vm_pause(self, src):
         if self.ignorePause:
             return
 
-        status = self.vm.status()
-        if status in [ libvirt.VIR_DOMAIN_SHUTDOWN, libvirt.VIR_DOMAIN_SHUTOFF, libvirt.VIR_DOMAIN_CRASHED ]:
-            logging.warning("Pause/resume requested, but machine is shutdown / shutoff")
+        if src.get_active():
+            self.emit("action-suspend-domain", self.vm.get_connection().get_uri(), self.vm.get_uuid())
         else:
-            if status in [ libvirt.VIR_DOMAIN_PAUSED ]:
-                if not src.get_active():
-                    self.vm.resume()
-                else:
-                    logging.warning("Pause requested, but machine is already paused")
-            else:
-                if src.get_active():
-                    self.vm.suspend()
-                else:
-                    logging.warning("Resume requested, but machine is already running")
+            self.emit("action-resume-domain", self.vm.get_connection().get_uri(), self.vm.get_uuid())
 
-        self.window.get_widget("control-pause").set_active(src.get_active())
-        self.window.get_widget("details-menu-pause").set_active(src.get_active())
+        self.update_widget_states(self.vm, self.vm.status())
+
+    def control_vm_run(self, src):
+        self.emit("action-run-domain", self.vm.get_connection().get_uri(), self.vm.get_uuid())
+
+    def control_vm_shutdown(self, src):
+        self.emit("action-shutdown-domain", self.vm.get_connection().get_uri(), self.vm.get_uuid())     
 
     def control_vm_terminal(self, src):
         self.emit("action-show-terminal", self.vm.get_connection().get_uri(), self.vm.get_uuid())
@@ -428,6 +402,13 @@ class vmmDetails(gobject.GObject):
             self.window.get_widget("disk-source-path").set_text(diskinfo[1])
             self.window.get_widget("disk-target-type").set_text(diskinfo[2])
             self.window.get_widget("disk-target-device").set_text(diskinfo[3])
+            if diskinfo[4] == True:
+                perms = "Readonly"
+            else:
+                perms = "Read/Write"
+            if diskinfo[5] == True:
+                perms += ", Sharable"
+            self.window.get_widget("disk-permissions").set_text(perms)
             button = self.window.get_widget("config-cdrom-connect")
             if diskinfo[2] == "cdrom":
                 if diskinfo[1] == "-":
@@ -553,14 +534,7 @@ class vmmDetails(gobject.GObject):
         active = selection.get_selected()
         if active[1] != None:
             diskinfo = active[0].get_value(active[1], HW_LIST_COL_DEVICE)
-            if diskinfo[1] == "-":
-                path = None
-            else:
-                path = diskinfo[1]
-            vbd = virtinst.VirtualDisk(path=path, type=diskinfo[0], device=diskinfo[2])
-            xml = vbd.get_xml_config(diskinfo[3])
-
-            self.vm.remove_device(xml)
+            self.remove_device(self.vm.get_disk_xml(diskinfo[3]))
             self.refresh_resources()
 
     def remove_network(self, src):
@@ -571,15 +545,20 @@ class vmmDetails(gobject.GObject):
             netinfo = active[0].get_value(active[1], HW_LIST_COL_DEVICE)
 
             vnic = None
-            if netinfo[0] == "bridge":
-                vnic = virtinst.VirtualNetworkInterface(type=netinfo[0], bridge=netinfo[1], macaddr=netinfo[3])
-            elif netinfo[0] == "network":
-                vnic = virtinst.VirtualNetworkInterface(type=netinfo[0], network=netinfo[1], macaddr=netinfo[3])
-            else:
-                vnic = virtinst.VirtualNetworkInterface(type=netinfo[0], macaddr=netinfo[3])
+            try:
+                if netinfo[0] == "bridge":
+                    vnic = virtinst.VirtualNetworkInterface(type=netinfo[0], bridge=netinfo[1], macaddr=netinfo[3])
+                elif netinfo[0] == "network":
+                    vnic = virtinst.VirtualNetworkInterface(type=netinfo[0], network=netinfo[1], macaddr=netinfo[3])
+                else:
+                    vnic = virtinst.VirtualNetworkInterface(type=netinfo[0], macaddr=netinfo[3])
+            except ValueError, e:
+                self.err_dialog(_("Error Removing Network: %s" % str(e)),
+                            "".join(traceback.format_exc()))
+                return
 
             xml = vnic.get_xml_config()
-            self.vm.remove_device(xml)
+            self.remove_device(xml)
             self.refresh_resources()
 
     def remove_input(self, src):
@@ -590,7 +569,7 @@ class vmmDetails(gobject.GObject):
             inputinfo = active[0].get_value(active[1], HW_LIST_COL_DEVICE)
 
             xml = "<input type='%s' bus='%s'/>" % (inputinfo[0], inputinfo[1])
-            self.vm.remove_device(xml)
+            self.remove_device(xml)
             self.refresh_resources()
 
     def remove_graphics(self, src):
@@ -601,7 +580,7 @@ class vmmDetails(gobject.GObject):
             inputinfo = active[0].get_value(active[1], HW_LIST_COL_DEVICE)
 
             xml = "<graphics type='%s'/>" % inputinfo[0]
-            self.vm.remove_device(xml)
+            self.remove_device(xml)
             self.refresh_resources()
 
     def prepare_hw_list(self):
@@ -760,7 +739,13 @@ class vmmDetails(gobject.GObject):
     def toggle_cdrom(self, src):
         if src.get_label() == gtk.STOCK_DISCONNECT:
             #disconnect the cdrom
-            self.vm.disconnect_cdrom_device(self.window.get_widget("disk-target-device").get_text())
+            try:
+                self.vm.disconnect_cdrom_device(self.window.get_widget("disk-target-device").get_text())
+            except Exception, e:
+                self._err_dialog(_("Error Removing CDROM: %s" % str(e)),
+                                 "".join(traceback.format_exc()))
+                return
+                
         else:
             # connect a new cdrom
             if self.choose_cd is None:
@@ -771,6 +756,24 @@ class vmmDetails(gobject.GObject):
             self.choose_cd.show()
 
     def connect_cdrom(self, src, type, source, target):
-        self.vm.connect_cdrom_device(type, source, target)
+        try:
+            self.vm.connect_cdrom_device(type, source, target)
+        except Exception, e:            
+            self._err_dialog(_("Error Connecting CDROM: %s" % str(e)),
+                               "".join(traceback.format_exc()))
 
+    def remove_device(self, xml):
+        try:
+            self.vm.remove_device(xml)
+        except Exception, e:
+            self._err_dialog(_("Error Removing Device: %s" % str(e)),
+                             "".join(traceback.format_exc()))
+
+    def _err_dialog(self, summary, details):
+        dg = vmmErrorDialog(None, 0, gtk.MESSAGE_ERROR, 
+                            gtk.BUTTONS_CLOSE, summary, details)
+        dg.run()
+        dg.hide()
+        dg.destroy()
+    
 gobject.type_register(vmmDetails)

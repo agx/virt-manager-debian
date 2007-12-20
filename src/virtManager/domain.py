@@ -14,7 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA 02110-1301 USA.
 #
 
 import gobject
@@ -23,6 +24,7 @@ import libxml2
 import os
 import sys
 import logging
+import copy
 
 
 class vmmDomain(gobject.GObject):
@@ -480,6 +482,8 @@ class vmmDomain(gobject.GObject):
                 type = node.prop("type")
                 srcpath = None
                 devdst = None
+                readonly = False
+                sharable = False
                 devtype = node.prop("device")
                 if devtype == None:
                     devtype = "disk"
@@ -493,6 +497,11 @@ class vmmDomain(gobject.GObject):
                             type = "-"
                     elif child.name == "target":
                         devdst = child.prop("dev")
+                    elif child.name == "readonly":
+                        readonly = True
+                    elif child.name == "sharable":
+                        sharable = True
+                        
                 if srcpath == None:
                     if devtype == "cdrom":
                         srcpath = "-"
@@ -502,7 +511,8 @@ class vmmDomain(gobject.GObject):
                 if devdst == None:
                     raise RuntimeError("missing destination device")
 
-                disks.append([type, srcpath, devtype, devdst])
+                disks.append([type, srcpath, devtype, devdst, readonly, \
+                              sharable])
 
         finally:
             if ctx != None:
@@ -510,24 +520,53 @@ class vmmDomain(gobject.GObject):
             if doc != None:
                 doc.freeDoc()
         return disks
-
-    def add_disk_device(self, xml):
-        self.vm.attachDevice(xml)
-
-    def connect_cdrom_device(self, type, source, target):
+    
+    def get_disk_xml(self, target):
+        """Returns device xml in string form for passed disk target"""
         xml = self.get_xml()
         doc = None
+        ctx = None
         try:
             doc = libxml2.parseDoc(xml)
-        except:
-            return []
-        ctx = doc.xpathNewContext()
-        try:
-            disk_fragment = ctx.xpathEval("/domain/devices/disk[@device='cdrom' and target/@dev='%s']" % target)
+            ctx = doc.xpathNewContext()
+            disk_fragment = ctx.xpathEval("/domain/devices/disk[target/@dev='%s']" % target)
             if len(disk_fragment) == 0:
-                raise RuntimeError("Attmpted to connect cdrom device to %s, but %s does not exist" % (target,target))
+                raise RuntimeError("Attmpted to parse disk device %s, but %s does not exist" % (target,target))
             if len(disk_fragment) > 1:
-                raise RuntimeError("Found multiple cdrom devices named %s. This domain's XML is malformed." % target)
+                raise RuntimeError("Found multiple disk devices named %s. This domain's XML is malformed." % target)
+            result = disk_fragment[0].serialize()
+        finally:
+            if ctx != None:
+                ctx.xpathFreeContext()
+            if doc != None:
+                doc.freeDoc()
+        return result
+
+    def _change_cdrom(self, newxml, origxml):
+        # If vm is shutoff, remove device, and redefine with media
+        if not self.is_active():
+            self.remove_device(origxml)
+            try:
+                self.add_device(newxml)
+            except Exception, e1:
+                try:
+                    self.add_device(origxml) # Try to re-add original
+                except:
+                    raise e1
+        else:
+            self.vm.attachDevice(newxml)
+            vmxml = self.vm.XMLDesc(0)
+            self.get_connection().define_domain(vmxml)
+
+    def connect_cdrom_device(self, type, source, target): 
+        xml = self.get_disk_xml(target)
+        doc = None
+        ctx = None
+        try:
+            doc = libxml2.parseDoc(xml)
+            ctx = doc.xpathNewContext()
+            disk_fragment = ctx.xpathEval("/disk")
+            origdisk = disk_fragment[0].serialize()
             disk_fragment[0].setProp("type", type)
             elem = disk_fragment[0].newChild(None, "source", None)
             if type == "file":
@@ -541,22 +580,17 @@ class vmmDomain(gobject.GObject):
                 ctx.xpathFreeContext()
             if doc != None:
                 doc.freeDoc()
-        self.add_disk_device(result)
+        self._change_cdrom(result, origdisk)
 
     def disconnect_cdrom_device(self, target):
-        xml = self.get_xml()
+        xml = self.get_disk_xml(target)
         doc = None
+        ctx = None
         try:
             doc = libxml2.parseDoc(xml)
-        except:
-            return []
-        ctx = doc.xpathNewContext()
-        try:
-            disk_fragment = ctx.xpathEval("/domain/devices/disk[@device='cdrom' and target/@dev='%s']" % target)
-            if len(disk_fragment) == 0:
-                raise RuntimeError("Attmpted to disconnect cdrom device from %s, but %s does not exist" % (target,target))
-            if len(disk_fragment) > 1:
-                raise RuntimeError("Found multiple cdrom devices named %s. This domain's XML is malformed." % target)
+            ctx = doc.xpathNewContext()
+            disk_fragment = ctx.xpathEval("/disk")
+            origdisk = disk_fragment[0].serialize()
             sourcenode = None
             for child in disk_fragment[0].children:
                 if child.name == "source":
@@ -573,7 +607,7 @@ class vmmDomain(gobject.GObject):
                 ctx.xpathFreeContext()
             if doc != None:
                 doc.freeDoc()
-        self.add_disk_device(result)
+        self._change_cdrom(result, origdisk)
 
     def get_network_devices(self):
         xml = self.get_xml()
@@ -681,7 +715,7 @@ class vmmDomain(gobject.GObject):
         try:
             if self.is_active():
                 self.vm.attachDevice(xml)
-        except libvirtError, e:
+        except libvirt.libvirtError, e:
             device_exception = str(e)
 
         index = vmxml.find("</devices>")
@@ -703,7 +737,7 @@ class vmmDomain(gobject.GObject):
         if self.is_active():
             try:
                 self.vm.detachDevice(dev_xml)
-            except libvirtError, e:
+            except libvirt.libvirtError, e:
                 device_exception = str(e)
 
         # then the stored XML

@@ -14,7 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA 02110-1301 USA.
 #
 
 import gobject
@@ -257,8 +258,8 @@ class vmmCreate(gobject.GObject):
         self.window.get_widget("storage-partition-address").set_text("")
         self.window.get_widget("storage-file-address").set_text("")
         self.window.get_widget("storage-file-size").set_value(2000)
-        self.window.get_widget("create-memory-max").set_value(500)
-        self.window.get_widget("create-memory-startup").set_value(500)
+        self.window.get_widget("create-memory-max").set_value(512)
+        self.window.get_widget("create-memory-startup").set_value(512)
         self.window.get_widget("create-vcpus").set_value(1)
         self.window.get_widget("create-vcpus").get_adjustment().upper = self.connection.get_max_vcpus()
         self.window.get_widget("non-sparse").set_active(True)
@@ -369,7 +370,7 @@ class vmmCreate(gobject.GObject):
             return self.window.get_widget("storage-file-address").get_text()
 
     def get_config_disk_size(self):
-        if self.window.get_widget("storage-partition").get_active():
+        if not self.window.get_widget("storage-file-size").get_editable():
             return None
         else:
             return self.window.get_widget("storage-file-size").get_value()
@@ -520,15 +521,8 @@ class vmmCreate(gobject.GObject):
         except ValueError, E:
             self._validation_error_box(_("UUID Error"), str(e))
 
-        try:
-            guest.disks.append(self._disk)
-        except ValueError, e:
-            self._validation_error_box(_("Error Setting up Disk"), str(e))
-        
-        try:
-            guest.nics.append(self._net)
-        except ValueError, e:
-            self._validation_error_box(_("Error Setting up Network"), str(e))
+        guest.disks = [self._disk]
+        guest.nics = [self._net]
             
         # set up the graphics to use SDL
         import keytable
@@ -940,12 +934,6 @@ class vmmCreate(gobject.GObject):
                 if mac is None or len(mac) == 0:
                     self._validation_error_box(_("Invalid MAC address"), \
                                                _("No MAC address was entered. Please enter a valid MAC address."))
-                    return False
-                try:
-                    self._guest.mac = mac
-                except ValueError, e:
-                    self._validation_error_box(_("Invalid Mac address"), \
-                                                str(e))
                     return False
             
                 hostdevs = virtinst.util.get_host_network_devices()

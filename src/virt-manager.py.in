@@ -15,7 +15,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA 02110-1301 USA.
 #
 
 import os
@@ -123,6 +124,14 @@ def setup_logging():
     fileHandler.setFormatter(logging.Formatter(FILE_FORMAT, DATEFMT))
     rootLogger.addHandler(fileHandler)
     logging.info("Application startup")
+
+    # Log uncaught exceptions
+    def exception_log(type, val, tb):
+        import traceback
+        str = traceback.format_exception(type, val, tb)
+        logging.exception("".join(str))
+        sys.__excepthook__(type, val, tb)
+    sys.excepthook = exception_log
 
 def parse_commandline():
     optParser = OptionParser()
