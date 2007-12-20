@@ -1,3 +1,10 @@
+virt-manager (0.5.2+hg071220-1) experimental; urgency=low
+
+  * new upstream version
+  * run autogen.sh 
+
+ -- Guido Guenther <agx@sigxcpu.org>  Thu, 20 Dec 2007 19:32:56 +0100
+
 virt-manager (0.5.2-3) unstable; urgency=low
 
   * gconf-dir.diff: fix typo in datadir
