@@ -1,3 +1,10 @@
+virt-manager (0.5.2+hg071220-2) experimental; urgency=low
+
+  * build-depend on intltool (Closes: #457735)
+  * bump standards version
+
+ -- Guido Guenther <agx@sigxcpu.org>  Tue, 25 Dec 2007 16:26:05 +0100
+
 virt-manager (0.5.2+hg071220-1) experimental; urgency=low
 
   * new upstream version
