@@ -1,3 +1,9 @@
+virt-manager (0.5.2-3~bpo40+1) etch-backports; urgency=low
+
+  * Rebuild for Etch backports.
+
+ -- Guido Guenther <agx@sigxcpu.org>  Thu, 27 Dec 2007 19:54:20 +0100
+
 virt-manager (0.5.2-3) unstable; urgency=low
 
   * gconf-dir.diff: fix typo in datadir
