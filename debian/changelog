@@ -1,3 +1,10 @@
+virt-manager (0.5.3-1) experimental; urgency=low
+
+  * New Upstream Version
+  * disable autogen.sh since it's a released version
+
+ -- Guido Guenther <agx@sigxcpu.org>  Wed, 16 Jan 2008 11:11:35 +0100
+
 virt-manager (0.5.2+hg071220-2) experimental; urgency=low
 
   * build-depend on intltool (Closes: #457735)
