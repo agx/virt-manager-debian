@@ -75,6 +75,8 @@ class vmmConsole(gobject.GObject):
         self.gtk_settings_accel = None
 
         self.vncViewer = gtkvnc.Display()
+        self.window.get_widget("console-vnc-align").add(self.vncViewer)
+        self.vncViewer.realize()
         self.vncTunnel = None
         if self.config.get_console_keygrab() == 2:
             self.vncViewer.set_keyboard_grab(True)
@@ -87,8 +89,6 @@ class vmmConsole(gobject.GObject):
         self.vncViewer.connect("vnc-pointer-grab", self.notify_grabbed)
         self.vncViewer.connect("vnc-pointer-ungrab", self.notify_ungrabbed)
 
-        self.window.get_widget("console-vnc-align").add(self.vncViewer)
-        self.vncViewer.realize()
         self.vncViewer.show()
         self.vncViewerRetriesScheduled = 0
         self.vncViewerRetryDelay = 125
@@ -135,6 +135,18 @@ class vmmConsole(gobject.GObject):
 
             "on_console_auth_login_clicked": self.set_password,
             "on_console_help_activate": self.show_help,
+
+            "on_menu_send_cad_activate": self.send_key,
+            "on_menu_send_cab_activate": self.send_key,
+            "on_menu_send_caf1_activate": self.send_key,
+            "on_menu_send_caf2_activate": self.send_key,
+            "on_menu_send_caf3_activate": self.send_key,
+            "on_menu_send_caf4_activate": self.send_key,
+            "on_menu_send_caf5_activate": self.send_key,
+            "on_menu_send_caf6_activate": self.send_key,
+            "on_menu_send_caf7_activate": self.send_key,
+            "on_menu_send_caf8_activate": self.send_key,
+            "on_menu_send_printscreen_activate": self.send_key,
             })
 
         self.vm.connect("status-changed", self.update_widget_states)
@@ -164,14 +176,12 @@ class vmmConsole(gobject.GObject):
 
         maxw = rootw - 100 - padx
         maxh = rooth - 100 - pady
+        self.window.get_widget("console-vnc-viewport").set_size_request(w, h)
+        self.window.get_widget("console-screenshot-viewport").set_size_request(w, h)
         if w > maxw or h > maxh:
-            self.window.get_widget("console-vnc-viewport").set_size_request(maxw, maxh)
-            self.window.get_widget("console-screenshot-viewport").set_size_request(maxw, maxh)
             self.window.get_widget("console-vnc-scroll").set_policy(gtk.POLICY_ALWAYS, gtk.POLICY_ALWAYS)
             self.window.get_widget("console-screenshot-scroll").set_policy(gtk.POLICY_ALWAYS, gtk.POLICY_ALWAYS)
         else:
-            self.window.get_widget("console-vnc-viewport").set_size_request(w, h)
-            self.window.get_widget("console-screenshot-viewport").set_size_request(w, h)
             self.window.get_widget("console-vnc-scroll").set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)
             self.window.get_widget("console-screenshot-scroll").set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)
 
@@ -191,6 +201,33 @@ class vmmConsole(gobject.GObject):
 
         self.window.get_widget("console-vnc-vp").set_size_request(vncWidth+2, vncHeight+2)
 
+    def send_key(self, src):
+        keys = None
+        if src.get_name() == "menu-send-cad":
+            keys = ["Control_L", "Alt_L", "Del"]
+        elif src.get_name() == "menu-send-cab":
+            keys = ["Control_L", "Alt_L", "BackSpace"]
+        elif src.get_name() == "menu-send-caf1":
+            keys = ["Control_L", "Alt_L", "F1"]
+        elif src.get_name() == "menu-send-caf2":
+            keys = ["Control_L", "Alt_L", "F2"]
+        elif src.get_name() == "menu-send-caf3":
+            keys = ["Control_L", "Alt_L", "F3"]
+        elif src.get_name() == "menu-send-caf4":
+            keys = ["Control_L", "Alt_L", "F4"]
+        elif src.get_name() == "menu-send-caf5":
+            keys = ["Control_L", "Alt_L", "F5"]
+        elif src.get_name() == "menu-send-caf6":
+            keys = ["Control_L", "Alt_L", "F6"]
+        elif src.get_name() == "menu-send-caf7":
+            keys = ["Control_L", "Alt_L", "F7"]
+        elif src.get_name() == "menu-send-caf8":
+            keys = ["Control_L", "Alt_L", "F8"]
+        elif src.get_name() == "menu-send-printscreen":
+            keys = ["PrintScreen"]
+
+        if keys != None:
+            self.vncViewer.send_keys(keys)
 
     def _disable_modifiers(self, ignore=None):
         topwin = self.window.get_widget("vmm-console")
