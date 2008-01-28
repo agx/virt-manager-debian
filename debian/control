@@ -3,8 +3,8 @@ Section: admin
 Priority: optional
 Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
 Uploaders: Guido Guenther <agx@sigxcpu.org>
-Standards-Version: 3.7.2
-Build-Depends: debhelper (>= 5), python-dev, python-gtk2-dev, scrollkeeper, python-central (>= 0.5), cdbs, autotools-dev, quilt
+Standards-Version: 3.7.3
+Build-Depends: debhelper (>= 5), python-dev, python-gtk2-dev, scrollkeeper, python-central (>= 0.5), cdbs, autotools-dev, quilt, intltool, automake, autoconf, libtool
 
 Package: virt-manager
 Section: admin

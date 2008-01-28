@@ -1,0 +1,19 @@
+diff --git a/autogen.sh b/autogen.sh
+index d9846ef..cda869c 100755
+--- a/autogen.sh
++++ b/autogen.sh
+@@ -11,12 +11,6 @@ intltoolize --automake --copy --force
+ perl -i -p -e 's,^DATADIRNAME.*$,DATADIRNAME = share,' po/Makefile.in.in
+ perl -i -p -e 's,^GETTEXT_PACKAGE.*$,GETTEXT_PACKAGE = virt-manager,' po/Makefile.in.in
+ aclocal -I m4
+-libtoolize
+-automake -a
++libtoolize --copy
++automake -a --copy
+ autoconf
+-
+-test -d build && rm -rf build
+-mkdir build
+-cd build
+-../configure $@ 
+-

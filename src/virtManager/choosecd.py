@@ -14,11 +14,13 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA 02110-1301 USA.
 #
 import gtk.glade
 import gobject
 import logging
+import virtinst
 from virtManager.opticalhelper import vmmOpticalDriveHelper
 
 class vmmChooseCD(gobject.GObject):
@@ -42,7 +44,7 @@ class vmmChooseCD(gobject.GObject):
             "on_cancel_clicked": self.cancel,
             })
 
-        self.window.get_widget("physical-media").set_active(True)
+        self.window.get_widget("iso-image").set_active(True)
 
         # set up the list for the cd-path widget
         cd_list = self.window.get_widget("cd-path")
@@ -78,11 +80,24 @@ class vmmChooseCD(gobject.GObject):
 
     def ok(self,ignore1=None, ignore2=None):
         if self.window.get_widget("iso-image").get_active():
-            self.emit("cdrom-chosen", "file", self.window.get_widget("iso-path").get_text(), self.target)
+            path = self.window.get_widget("iso-path").get_text()
         else:
             cd = self.window.get_widget("cd-path")
             model = cd.get_model()
-            self.emit("cdrom-chosen", "block", model.get_value(cd.get_active_iter(), 0), self.target)
+            path = model.get_value(cd.get_active_iter(), 0)
+
+        if path == "" or path == None: 
+            self._validation_error_box(_("Invalid Media Path"), \
+                                       _("A media path must be specified."))
+            return
+
+        try:
+            disk = virtinst.VirtualDisk(path=path, device=virtinst.VirtualDisk.DEVICE_CDROM, readOnly=True)
+        except Exception, e:
+           self._validation_error_box(_("Invalid Media Path"), str(e))
+           return
+            
+        self.emit("cdrom-chosen", disk.type, disk.path, self.target)   
         self.close()
 
     def media_toggled(self, ignore1=None, ignore2=None):
@@ -126,5 +141,16 @@ class vmmChooseCD(gobject.GObject):
         else:
             fcdialog.destroy()
             return None
-
+    
+    def _validation_error_box(self, text1, text2=None):
+        message_box = gtk.MessageDialog(self.window.get_widget("vmm-choosecd"), \
+                                                0, \
+                                                gtk.MESSAGE_ERROR, \
+                                                gtk.BUTTONS_OK, \
+                                                text1)
+        if text2 != None:
+            message_box.format_secondary_text(text2)
+        message_box.run()
+        message_box.destroy()
+    
 gobject.type_register(vmmChooseCD)

@@ -4,7 +4,7 @@
 
 
 
-#line 3 "./pysparklinemodule.override"
+#line 3 "../../../src/graphWidgets/pysparklinemodule.override"
 #include <Python.h>               
 #include "pygobject.h"
 #include "sparkline.h"

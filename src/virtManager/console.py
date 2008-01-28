@@ -14,7 +14,8 @@
 #
 # You should have received a copy of the GNU General Public License
 # along with this program; if not, write to the Free Software
-# Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA 02110-1301 USA.
 #
 
 import gobject
@@ -47,7 +48,15 @@ class vmmConsole(gobject.GObject):
         "action-show-help": (gobject.SIGNAL_RUN_FIRST,
                                gobject.TYPE_NONE, [str]),
         "action-destroy-domain": (gobject.SIGNAL_RUN_FIRST,
-                                 gobject.TYPE_NONE, (str,str))
+                                 gobject.TYPE_NONE, (str,str)),
+        "action-suspend-domain": (gobject.SIGNAL_RUN_FIRST,
+                                  gobject.TYPE_NONE, (str, str)),
+        "action-resume-domain": (gobject.SIGNAL_RUN_FIRST,
+                                 gobject.TYPE_NONE, (str, str)),
+        "action-run-domain": (gobject.SIGNAL_RUN_FIRST,
+                              gobject.TYPE_NONE, (str, str)),
+        "action-shutdown-domain": (gobject.SIGNAL_RUN_FIRST,
+                                   gobject.TYPE_NONE, (str, str)),
         }
     def __init__(self, config, vm):
         self.__gobject_init__()
@@ -66,6 +75,8 @@ class vmmConsole(gobject.GObject):
         self.gtk_settings_accel = None
 
         self.vncViewer = gtkvnc.Display()
+        self.window.get_widget("console-vnc-align").add(self.vncViewer)
+        self.vncViewer.realize()
         self.vncTunnel = None
         if self.config.get_console_keygrab() == 2:
             self.vncViewer.set_keyboard_grab(True)
@@ -78,8 +89,6 @@ class vmmConsole(gobject.GObject):
         self.vncViewer.connect("vnc-pointer-grab", self.notify_grabbed)
         self.vncViewer.connect("vnc-pointer-ungrab", self.notify_ungrabbed)
 
-        self.window.get_widget("console-vnc-align").add(self.vncViewer)
-        self.vncViewer.realize()
         self.vncViewer.show()
         self.vncViewerRetriesScheduled = 0
         self.vncViewerRetryDelay = 125
@@ -126,6 +135,18 @@ class vmmConsole(gobject.GObject):
 
             "on_console_auth_login_clicked": self.set_password,
             "on_console_help_activate": self.show_help,
+
+            "on_menu_send_cad_activate": self.send_key,
+            "on_menu_send_cab_activate": self.send_key,
+            "on_menu_send_caf1_activate": self.send_key,
+            "on_menu_send_caf2_activate": self.send_key,
+            "on_menu_send_caf3_activate": self.send_key,
+            "on_menu_send_caf4_activate": self.send_key,
+            "on_menu_send_caf5_activate": self.send_key,
+            "on_menu_send_caf6_activate": self.send_key,
+            "on_menu_send_caf7_activate": self.send_key,
+            "on_menu_send_caf8_activate": self.send_key,
+            "on_menu_send_printscreen_activate": self.send_key,
             })
 
         self.vm.connect("status-changed", self.update_widget_states)
@@ -155,14 +176,12 @@ class vmmConsole(gobject.GObject):
 
         maxw = rootw - 100 - padx
         maxh = rooth - 100 - pady
+        self.window.get_widget("console-vnc-viewport").set_size_request(w, h)
+        self.window.get_widget("console-screenshot-viewport").set_size_request(w, h)
         if w > maxw or h > maxh:
-            self.window.get_widget("console-vnc-viewport").set_size_request(maxw, maxh)
-            self.window.get_widget("console-screenshot-viewport").set_size_request(maxw, maxh)
             self.window.get_widget("console-vnc-scroll").set_policy(gtk.POLICY_ALWAYS, gtk.POLICY_ALWAYS)
             self.window.get_widget("console-screenshot-scroll").set_policy(gtk.POLICY_ALWAYS, gtk.POLICY_ALWAYS)
         else:
-            self.window.get_widget("console-vnc-viewport").set_size_request(w, h)
-            self.window.get_widget("console-screenshot-viewport").set_size_request(w, h)
             self.window.get_widget("console-vnc-scroll").set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)
             self.window.get_widget("console-screenshot-scroll").set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)
 
@@ -182,6 +201,33 @@ class vmmConsole(gobject.GObject):
 
         self.window.get_widget("console-vnc-vp").set_size_request(vncWidth+2, vncHeight+2)
 
+    def send_key(self, src):
+        keys = None
+        if src.get_name() == "menu-send-cad":
+            keys = ["Control_L", "Alt_L", "Del"]
+        elif src.get_name() == "menu-send-cab":
+            keys = ["Control_L", "Alt_L", "BackSpace"]
+        elif src.get_name() == "menu-send-caf1":
+            keys = ["Control_L", "Alt_L", "F1"]
+        elif src.get_name() == "menu-send-caf2":
+            keys = ["Control_L", "Alt_L", "F2"]
+        elif src.get_name() == "menu-send-caf3":
+            keys = ["Control_L", "Alt_L", "F3"]
+        elif src.get_name() == "menu-send-caf4":
+            keys = ["Control_L", "Alt_L", "F4"]
+        elif src.get_name() == "menu-send-caf5":
+            keys = ["Control_L", "Alt_L", "F5"]
+        elif src.get_name() == "menu-send-caf6":
+            keys = ["Control_L", "Alt_L", "F6"]
+        elif src.get_name() == "menu-send-caf7":
+            keys = ["Control_L", "Alt_L", "F7"]
+        elif src.get_name() == "menu-send-caf8":
+            keys = ["Control_L", "Alt_L", "F8"]
+        elif src.get_name() == "menu-send-printscreen":
+            keys = ["PrintScreen"]
+
+        if keys != None:
+            self.vncViewer.send_keys(keys)
 
     def _disable_modifiers(self, ignore=None):
         topwin = self.window.get_widget("vmm-console")
@@ -435,7 +481,7 @@ class vmmConsole(gobject.GObject):
             if credList[i] == gtkvnc.CREDENTIAL_PASSWORD:
                 self.activate_auth_page()
             elif credList[i] == gtkvnc.CREDENTIAL_CLIENTNAME:
-                self.vncViewer.set_credential(credList[i], "libvirt")
+                self.vncViewer.set_credential(credList[i], "libvirt-vnc")
             else:
                 # Force it to stop re-trying
                 self.vncViewerRetriesScheduled = 10
@@ -511,59 +557,22 @@ class vmmConsole(gobject.GObject):
             fcdialog.hide()
         fcdialog.destroy()
 
-    def control_vm_run(self, src):
-        status = self.vm.status()
-        if status != libvirt.VIR_DOMAIN_SHUTOFF:
-            pass
-        else:
-            try:
-                self.vm.startup()
-            except:
-                (type, value, stacktrace) = sys.exc_info ()
-
-                # Detailed error message, in English so it can be Googled.
-                details = \
-                        "Unable to start virtual machine '%s'" % \
-                        (str(type) + " " + str(value) + "\n" + \
-                         traceback.format_exc (stacktrace))
-
-                dg = vmmErrorDialog(None, 0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
-                                    str(value),
-                                    details)
-                dg.run()
-                dg.hide()
-                dg.destroy()
-
-
-
-    def control_vm_shutdown(self, src):
-        status = self.vm.status()
-        if not(status in [ libvirt.VIR_DOMAIN_SHUTDOWN, libvirt.VIR_DOMAIN_SHUTOFF, libvirt.VIR_DOMAIN_CRASHED ]):
-            self.vm.shutdown()
-        else:
-            logging.warning("Shutdown requested, but machine is already shutting down / shutoff")
-
     def control_vm_pause(self, src):
         if self.ignorePause:
             return
 
-        status = self.vm.status()
-        if status in [ libvirt.VIR_DOMAIN_SHUTDOWN, libvirt.VIR_DOMAIN_SHUTOFF, libvirt.VIR_DOMAIN_CRASHED ]:
-            logging.warning("Pause/resume requested, but machine is shutdown / shutoff")
+        if src.get_active():
+            self.emit("action-suspend-domain", self.vm.get_connection().get_uri(), self.vm.get_uuid())
         else:
-            if status in [ libvirt.VIR_DOMAIN_PAUSED ]:
-                if not src.get_active():
-                    self.vm.resume()
-                else:
-                    logging.warning("Pause requested, but machine is already paused")
-            else:
-                if src.get_active():
-                    self.vm.suspend()
-                else:
-                    logging.warning("Resume requested, but machine is already running")
+            self.emit("action-resume-domain", self.vm.get_connection().get_uri(), self.vm.get_uuid())
 
-        self.window.get_widget("control-pause").set_active(src.get_active())
-        self.window.get_widget("menu-vm-pause").set_active(src.get_active())
+        self.update_widget_states(self.vm, self.vm.status())
+
+    def control_vm_run(self, src):
+        self.emit("action-run-domain", self.vm.get_connection().get_uri(), self.vm.get_uuid())
+
+    def control_vm_shutdown(self, src):
+        self.emit("action-shutdown-domain", self.vm.get_connection().get_uri(), self.vm.get_uuid())
 
     def control_vm_terminal(self, src):
         self.emit("action-show-terminal", self.vm.get_connection().get_uri(), self.vm.get_uuid())

@@ -12,3 +12,5 @@ include /usr/share/cdbs/1/rules/patchsys-quilt.mk
 
 DEB_CONFIGURE_EXTRA_FLAGS := --prefix=/usr
 
+#post-patches::
+#	./autogen.sh
