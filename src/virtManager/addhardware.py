@@ -122,12 +122,12 @@ class vmmAddHardware(gobject.GObject):
         network_list.add_attribute(text, 'text', 1)
 
         device_list = self.window.get_widget("net-device")
-        device_model = gtk.ListStore(str, bool)
+        device_model = gtk.ListStore(str, str, bool)
         device_list.set_model(device_model)
         text = gtk.CellRendererText()
         device_list.pack_start(text, True)
-        device_list.add_attribute(text, 'text', 0)
-        device_list.add_attribute(text, 'sensitive', 1)
+        device_list.add_attribute(text, 'text', 1)
+        device_list.add_attribute(text, 'sensitive', 2)
 
         target_list = self.window.get_widget("target-device")
         target_model = gtk.ListStore(str, int, str, str, str)
@@ -210,10 +210,11 @@ class vmmAddHardware(gobject.GObject):
         model = self.window.get_widget("hardware-type").get_model()
         model.clear()
         model.append(["Storage device", gtk.STOCK_HARDDISK, PAGE_DISK])
-        # User mode networking only allows a single card for now
-        if (self.vm.get_connection().get_type().lower() == "qemu" and \
-            os.getuid() == 0) or \
-            self.vm.get_connection().get_type().lower() == "xen":
+        # Can't use shared or virtual networking as regular user
+        # Can only have one usermode network device
+        if (os.getuid() == 0 or
+            (self.vm.get_connection().get_type().lower() == "qemu" and
+             len(self.vm.get_network_devices()) == 0)):
             model.append(["Network card", gtk.STOCK_NETWORK, PAGE_NETWORK])
 
         # Can only customize HVM guests, no Xen PV
@@ -222,14 +223,15 @@ class vmmAddHardware(gobject.GObject):
         model.append(["Graphics device", gtk.STOCK_SELECT_COLOR, PAGE_GRAPHICS])
 
 
-
     def forward(self, ignore=None):
         notebook = self.window.get_widget("create-pages")
         if(self.validate(notebook.get_current_page()) != True):
             return
 
-        if notebook.get_current_page() == PAGE_INTRO:
-            notebook.set_current_page(self.get_config_hardware_type())
+        hwtype = self.get_config_hardware_type()
+        if notebook.get_current_page() == PAGE_INTRO and \
+           (hwtype != PAGE_NETWORK or os.getuid() == 0):
+            notebook.set_current_page(hwtype)
         else:
             notebook.set_current_page(PAGE_SUMMARY)
             self.window.get_widget("create-finish").show()
@@ -240,7 +242,11 @@ class vmmAddHardware(gobject.GObject):
         notebook = self.window.get_widget("create-pages")
 
         if notebook.get_current_page() == PAGE_SUMMARY:
-            notebook.set_current_page(self.get_config_hardware_type())
+            hwtype = self.get_config_hardware_type()
+            if hwtype == PAGE_NETWORK and os.getuid() != 0:
+                notebook.set_current_page(PAGE_INTRO)
+            else:
+                notebook.set_current_page(hwtype)
             self.window.get_widget("create-finish").hide()
         else:
             notebook.set_current_page(PAGE_INTRO)
@@ -436,6 +442,8 @@ class vmmAddHardware(gobject.GObject):
         self.close()
 
     def add_network(self):
+        if self._net is None and os.getuid() != 0:
+            self._net = virtinst.VirtualNetworkInterface(type="user")
         self._net.setup(self.vm.get_connection().vmm)
         self.add_device(self._net.get_xml_config())
 
@@ -539,7 +547,6 @@ class vmmAddHardware(gobject.GObject):
             self.window.get_widget("storage-partition-address").set_text(part)
 
     def browse_storage_file_address(self, src, ignore=None):
-        self.window.get_widget("storage-file-size").set_sensitive(True)
         folder = self.config.get_default_image_dir(self.vm.get_connection())
         file = self._browse_file(_("Locate or Create New Storage File"), \
                                  folder=folder, confirm_overwrite=True)
@@ -701,7 +708,7 @@ class vmmAddHardware(gobject.GObject):
                                                   device=device)
                 if self._disk.type == virtinst.VirtualDisk.TYPE_FILE and \
                    not self.vm.is_hvm() and virtinst.util.is_blktap_capable():
-                        disk.driver_name = virtinst.VirtualDisk.DRIVER_TAP
+                    self._disk.driver_name = virtinst.VirtualDisk.DRIVER_TAP
             except ValueError, e:
                 self._validation_error_box(_("Invalid Storage Parameters"), \
                                             str(e))
@@ -820,9 +827,9 @@ class vmmAddHardware(gobject.GObject):
             net = self.vm.get_connection().get_net_device(name)
             if net.is_shared():
                 hasShared = True
-                model.append(["%s (%s %s)" % (net.get_name(), _("Bridge"), net.get_bridge()), True])
+                model.append([net.get_bridge(), "%s (%s %s)" % (net.get_name(), _("Bridge"), net.get_bridge()), True])
             else:
-                model.append(["%s (%s)" % (net.get_name(), _("Not bridged")), False])
+                model.append([net.get_bridge(), "%s (%s)" % (net.get_name(), _("Not bridged")), False])
         return hasShared
 
     def populate_target_device_model(self, model):
@@ -831,8 +838,8 @@ class vmmAddHardware(gobject.GObject):
             model.append(["hd", 4, virtinst.VirtualDisk.DEVICE_DISK, gtk.STOCK_HARDDISK, "IDE disk"])
             model.append(["hd", 4, virtinst.VirtualDisk.DEVICE_CDROM, gtk.STOCK_CDROM, "IDE cdrom"])
             model.append(["fd", 2, virtinst.VirtualDisk.DEVICE_FLOPPY, gtk.STOCK_FLOPPY, "Floppy disk"])
-            model.append(["sd", 7, virtinst.VirtualDisk.DEVICE_DISK, gtk.STOCK_HARDDISK, "SCSI disk"])
             if self.vm.get_connection().get_type().lower() == "xen":
+                model.append(["sd", 7, virtinst.VirtualDisk.DEVICE_DISK, gtk.STOCK_HARDDISK, "SCSI disk"])
                 model.append(["xvd", 26, virtinst.VirtualDisk.DEVICE_DISK, gtk.STOCK_HARDDISK, "Virtual disk"])
             #model.append(["usb", virtinst.VirtualDisk.DEVICE_DISK, gtk.STOCK_HARDDISK, "USB disk"])
         else:

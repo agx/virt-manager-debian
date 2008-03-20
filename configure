@@ -2332,7 +2332,7 @@ fi
 
 # Define the identity of the package.
  PACKAGE=virt-manager
- VERSION=0.5.3
+ VERSION=0.5.4
 
 
 cat >>confdefs.h <<_ACEOF

@@ -398,7 +398,7 @@ class vmmManager(gobject.GObject):
         logging.debug("VM %s started" % vm.get_name())
         if self.config.get_console_popup() == 2 and not vm.is_management_domain():
             # user has requested consoles on all vms
-            (gtype, host, port, transport) = vm.get_graphics_console()
+            (gtype, host, port, transport, username) = vm.get_graphics_console()
             if gtype == "vnc":
                 self.emit("action-show-console", uri, vmuuid)
             elif not connect.is_remote():
@@ -500,6 +500,15 @@ class vmmManager(gobject.GObject):
         row[ROW_MEM] = vm.get_memory_pretty()
         row[ROW_MEM_USAGE] = vm.current_memory_percentage()
         model.row_changed(row.path, row.iter)
+
+        if vm == self.current_vm():
+            if vm.is_active():
+                self.window.get_widget("vm-delete").set_sensitive(False)
+                self.window.get_widget("menu_edit_delete").set_sensitive(False)
+            else:
+                self.window.get_widget("vm-delete").set_sensitive(True)
+                self.window.get_widget("menu_edit_delete").set_sensitive(True)
+
 
     def conn_state_changed(self, conn):
         self.conn_refresh_resources(conn)

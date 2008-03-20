@@ -23,6 +23,8 @@ import os
 import os.path
 import sys
 
+import libvirt
+
 import locale
 import gettext
 import logging
@@ -125,6 +127,13 @@ def setup_logging():
     rootLogger.addHandler(fileHandler)
     logging.info("Application startup")
 
+    # Register libvirt handler
+    def libvirt_callback(ctx, err):
+        if err[3] != libvirt.VIR_ERR_ERROR:
+            # Don't log libvirt errors: global error handler will do that
+            logging.warn("Non-error from libvirt: '%s'" % err[2])
+    libvirt.registerErrorHandler(f=libvirt_callback, ctx=None)
+
     # Log uncaught exceptions
     def exception_log(type, val, tb):
         import traceback
@@ -172,12 +181,9 @@ def show_engine(engine, show, uri, uuid):
         if engine.config.get_connections() is None or len(engine.config.get_connections()) == 0:
             tryuri = None
             if os.path.exists("/var/lib/xend") and os.path.exists("/proc/xen"):
-                tryuri = "xen"
+                tryuri = "xen:///"
             elif os.path.exists("/usr/bin/qemu"):
-                if os.getuid() == 0:
-                    tryuri = "qemu:///system"
-                else:
-                    tryuri = "qemu:///session"
+                tryuri = "qemu:///system"
             if tryuri is not None:
                 conn = engine.add_connection(tryuri)
         engine.show_manager()

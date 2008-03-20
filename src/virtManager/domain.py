@@ -462,9 +462,9 @@ class vmmDomain(gobject.GObject):
             # reliably resolve 'localhost' into 127.0.0.1, either returning
             # the public IP, or an IPv6 addr. Neither work since QEMU only
             # listens on 127.0.0.1 for VNC.
-            return [type, "127.0.0.1", port, None]
+            return [type, "127.0.0.1", port, None, None]
         else:
-            return [type, self.connection.get_hostname(), port, transport]
+            return [type, self.connection.get_hostname(), port, transport, username]
 
 
     def get_disk_devices(self):
@@ -545,14 +545,18 @@ class vmmDomain(gobject.GObject):
     def _change_cdrom(self, newxml, origxml):
         # If vm is shutoff, remove device, and redefine with media
         if not self.is_active():
+            logging.debug("_change_cdrom: removing original xml")
             self.remove_device(origxml)
             try:
+                logging.debug("_change_cdrom: adding new xml")
                 self.add_device(newxml)
             except Exception, e1:
+                logging.debug("_change_cdrom: adding new xml failed. attempting to readd original device")
                 try:
                     self.add_device(origxml) # Try to re-add original
-                except:
-                    raise e1
+                except Exception, e2:
+                    raise RuntimeError(_("Failed to change cdrom and re-add original device. Exceptions were: \n%s\n%s") % (str(e1), str(e2)))
+                raise e1
         else:
             self.vm.attachDevice(newxml)
             vmxml = self.vm.XMLDesc(0)
@@ -823,7 +827,10 @@ class vmmDomain(gobject.GObject):
 
     def set_memory(self, memory):
         memory = int(memory)
-        if (memory > self.maximum_memory()):
+        # capture updated information due to failing to get proper maxmem setting
+        # if both current & max allocation are set simultaneously
+        maxmem = self.vm.info()
+        if (memory > maxmem[1]):
             logging.warning("Requested memory " + str(memory) + " over maximum " + str(self.maximum_memory()))
             memory = self.maximum_memory()
         self.vm.setMemory(memory)
@@ -831,5 +838,65 @@ class vmmDomain(gobject.GObject):
     def set_max_memory(self, memory):
         memory = int(memory)
         self.vm.setMaxMemory(memory)
+
+    def get_autostart(self):
+        return self.vm.autostart()
+
+    def set_autostart(self, val):
+        if self.get_autostart() != val:
+            self.vm.setAutostart(val)
+
+    def get_boot_device(self):
+        xml = self.get_xml()
+        doc = None
+        try:
+            doc = libxml2.parseDoc(xml)
+        except:
+            return []
+        ctx = doc.xpathNewContext()
+        graphics = []
+        dev = None
+        try:
+            ret = ctx.xpathEval("/domain/os/boot[1]")
+            for node in ret:
+                dev = node.prop("dev")
+        finally:
+            if ctx != None:
+                ctx.xpathFreeContext()
+            if doc != None:
+                doc.freeDoc()
+        return dev
+
+    def set_boot_device(self, boot_type):
+        logging.debug("Setting boot device to type: %s" % boot_type)
+        xml = self.get_xml()
+        doc = None
+        try:
+            doc = libxml2.parseDoc(xml)
+        except:
+            return []
+        ctx = doc.xpathNewContext()
+        graphics = []
+        dev = None
+        try:
+            ret = ctx.xpathEval("/domain/os/boot[1]")
+            if len(ret) > 0:
+                ret[0].unlinkNode()
+                ret[0].freeNode()
+            emptyxml=doc.serialize()
+            index = emptyxml.find("</os>")
+            newxml = emptyxml[0:index] + \
+                     "<boot dev=\"" + boot_type + "\"/>\n" + \
+                     emptyxml[index:]
+            logging.debug("New boot device, redefining with: " + newxml)
+            self.get_connection().define_domain(newxml)
+        finally:
+            if ctx != None:
+                ctx.xpathFreeContext()
+            if doc != None:
+                doc.freeDoc()
+
+        # Invalidate cached xml
+        self.xml = None
 
 gobject.type_register(vmmDomain)
