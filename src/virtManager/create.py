@@ -49,17 +49,22 @@ VM_INSTALL_FROM_CD = 2
 VM_STORAGE_PARTITION = 1
 VM_STORAGE_FILE = 2
 
+VM_INST_LOCAL = 1
+VM_INST_TREE = 2
+VM_INST_PXE = 3
+
 DEFAULT_STORAGE_FILE_SIZE = 500
 
 PAGE_INTRO = 0
 PAGE_NAME = 1
 PAGE_TYPE = 2
-PAGE_FVINST = 3
-PAGE_PVINST = 4
-PAGE_DISK = 5
-PAGE_NETWORK = 6
-PAGE_CPUMEM = 7
-PAGE_SUMMARY = 8
+PAGE_INST = 3
+PAGE_INST_LOCAL = 4
+PAGE_INST_TREE = 5
+PAGE_DISK = 6
+PAGE_NETWORK = 7
+PAGE_CPUMEM = 8
+PAGE_SUMMARY = 9
 
 KEYBOARD_DIR = "/etc/sysconfig/keyboard"
 
@@ -103,6 +108,7 @@ class vmmCreate(gobject.GObject):
             "on_create_help_clicked": self.show_help,
             })
 
+        self.caps = self.connection.get_capabilities()
         self.set_initial_state()
 
         # Guest to fill in with values along the way
@@ -139,15 +145,13 @@ class vmmCreate(gobject.GObject):
         cd_list.add_attribute(text, 'sensitive', 2)
         try:
             self.optical_helper = vmmOpticalDriveHelper(self.window.get_widget("cd-path"))
-            self.optical_helper.populate_opt_media()
             self.window.get_widget("media-physical").set_sensitive(True)
         except Exception, e:
             logging.error("Unable to create optical-helper widget: '%s'", e)
             self.window.get_widget("media-physical").set_sensitive(False)
 
-        if os.getuid() != 0:
-            self.window.get_widget("media-physical").set_sensitive(False)
-            self.window.get_widget("storage-partition").set_sensitive(False)
+        self.window.get_widget("media-physical").set_sensitive(True)
+        self.window.get_widget("storage-partition").set_sensitive(True)
 
         # set up the lists for the url widgets
         media_url_list = self.window.get_widget("pv-media-url")
@@ -196,18 +200,13 @@ class vmmCreate(gobject.GObject):
         self.window.get_widget("create-host-memory").set_text(self.pretty_memory(memory))
         self.window.get_widget("create-memory-max").set_range(50, memory/1024)
 
-        if self.connection.get_type() == "QEMU":
-            if os.uname()[4] == "x86_64":
-                self.window.get_widget("cpu-architecture").set_active(1)
-            else:
-                self.window.get_widget("cpu-architecture").set_active(0)
-        else:
-            self.window.get_widget("cpu-architecture").set_active(-1)
+        archModel = gtk.ListStore(str)
+        archList = self.window.get_widget("cpu-architecture")
+        archList.set_model(archModel)
 
-        self.window.get_widget("cpu-architecture").set_sensitive(False)
-        self.window.get_widget("cpu-accelerate").set_sensitive(False)
-        self.change_virt_method()
-
+        hyperModel = gtk.ListStore(str)
+        hyperList = self.window.get_widget("hypervisor")
+        hyperList.set_model(hyperModel)
 
     def reset_state(self):
         notebook = self.window.get_widget("create-pages")
@@ -220,29 +219,29 @@ class vmmCreate(gobject.GObject):
 
         # If we don't have full-virt support disable the choice, and
         # display a message telling the user why it is not working
-        if self.connection.get_type().lower() == "qemu":
-            self.window.get_widget("virt-method-pv").set_sensitive(False)
-            self.window.get_widget("virt-method-fv").set_active(True)
+        has_pv = False
+        has_fv = False
+
+        for guest in self.caps.guests:
+            if guest.os_type in ["xen", "linux"]:
+                has_pv = True
+            elif guest.os_type == "hvm":
+                has_fv = True
+
+        self.window.get_widget("virt-method-pv").set_sensitive(has_pv)
+        self.window.get_widget("virt-method-fv").set_active(has_fv)
+
+        if has_fv:
             self.window.get_widget("virt-method-fv-unsupported").hide()
             self.window.get_widget("virt-method-fv-disabled").hide()
         else:
-            self.window.get_widget("virt-method-pv").set_sensitive(True)
-            self.window.get_widget("virt-method-pv").set_active(True)
-            if virtinst.util.is_hvm_capable():
-                self.window.get_widget("virt-method-fv").set_sensitive(True)
-                self.window.get_widget("virt-method-fv-unsupported").hide()
-                self.window.get_widget("virt-method-fv-disabled").hide()
+            self.window.get_widget("virt-method-fv-unsupported").show()
+            flags = self.caps.host.features.names()
+            if "vmx" in flags or "svm" in flags:
+                self.window.get_widget("virt-method-fv-disabled").show()
             else:
-                self.window.get_widget("virt-method-fv").set_sensitive(False)
-                flags = virtinst.util.get_cpu_flags()
-                if "vmx" in flags or "svm" in flags:
-                    # Host has support, but disabled in bios
-                    self.window.get_widget("virt-method-fv-unsupported").hide()
-                    self.window.get_widget("virt-method-fv-disabled").show()
-                else:
-                    # Host has no support
-                    self.window.get_widget("virt-method-fv-unsupported").show()
-                    self.window.get_widget("virt-method-fv-disabled").hide()
+                self.window.get_widget("virt-method-fv-disabled").hide()
+
 
         self.change_media_type()
         self.change_storage_type()
@@ -251,10 +250,7 @@ class vmmCreate(gobject.GObject):
         self.window.get_widget("create-vm-name").set_text("")
         self.window.get_widget("media-iso-image").set_active(True)
         self.window.get_widget("fv-iso-location").set_text("")
-        if os.getuid() == 0:
-            self.window.get_widget("storage-partition").set_active(True)
-        else:
-            self.window.get_widget("storage-file-backed").set_active(True)
+        self.window.get_widget("storage-file-backed").set_active(True)
         self.window.get_widget("storage-partition-address").set_text("")
         self.window.get_widget("storage-file-address").set_text("")
         self.window.get_widget("storage-file-size").set_value(2000)
@@ -295,11 +291,18 @@ class vmmCreate(gobject.GObject):
         if(self.validate(notebook.get_current_page()) != True):
             return
 
-        if (notebook.get_current_page() == PAGE_TYPE and self.get_config_method() == VM_PARA_VIRT):
-            notebook.set_current_page(PAGE_PVINST)
-        elif (notebook.get_current_page() == PAGE_FVINST and self.get_config_method() == VM_FULLY_VIRT):
+        if notebook.get_current_page() == PAGE_INST:
+            if self.get_config_install_method() == VM_INST_LOCAL:
+                notebook.set_current_page(PAGE_INST_LOCAL)
+            elif self.get_config_install_method() == VM_INST_TREE:
+                notebook.set_current_page(PAGE_INST_TREE)
+            else:
+                # No config for PXE needed (yet)
+                notebook.set_current_page(PAGE_DISK)
+        elif notebook.get_current_page() in [PAGE_INST_TREE, PAGE_INST_LOCAL]:
             notebook.set_current_page(PAGE_DISK)
-        elif (notebook.get_current_page() == PAGE_DISK and os.getuid() != 0):
+        elif notebook.get_current_page() == PAGE_DISK and self.connection.get_uri() == "qemu:///session":
+            # Skip network for non-root
             notebook.set_current_page(PAGE_CPUMEM)
         else:
             notebook.next_page()
@@ -309,11 +312,18 @@ class vmmCreate(gobject.GObject):
         # do this always, since there's no "leaving a notebook page" event.
         self.window.get_widget("create-finish").hide()
         self.window.get_widget("create-forward").show()
-        if notebook.get_current_page() == PAGE_PVINST and self.get_config_method() == VM_PARA_VIRT:
-            notebook.set_current_page(PAGE_TYPE)
-        elif notebook.get_current_page() == PAGE_DISK and self.get_config_method() == VM_FULLY_VIRT:
-            notebook.set_current_page(PAGE_FVINST)
-        elif notebook.get_current_page() == PAGE_CPUMEM and os.getuid() != 0:
+        if notebook.get_current_page() in [PAGE_INST_TREE, PAGE_INST_LOCAL]:
+            notebook.set_current_page(PAGE_INST)
+        elif notebook.get_current_page() == PAGE_DISK:
+            if self.get_config_install_method() == VM_INST_LOCAL:
+                notebook.set_current_page(PAGE_INST_LOCAL)
+            elif self.get_config_install_method() == VM_INST_TREE:
+                notebook.set_current_page(PAGE_INST_TREE)
+            else:
+                # No config for PXE needed (yet)
+                notebook.set_current_page(PAGE_INST)
+        elif notebook.get_current_page() == PAGE_CPUMEM and self.connection.get_uri() == "qemu:///session":
+            # Skip network for non-root
             notebook.set_current_page(PAGE_DISK)
         else:
             notebook.prev_page()
@@ -330,31 +340,31 @@ class vmmCreate(gobject.GObject):
             return VM_PARA_VIRT
 
     def get_config_install_source(self):
-        if self.get_config_method() == VM_PARA_VIRT:
+        if self.get_config_install_method() == VM_INST_TREE:
             widget = self.window.get_widget("pv-media-url")
             url= widget.child.get_text()
             # Add the URL to the list, if it's different
             self.config.add_media_url(url)
             self.populate_url_model(widget.get_model(), self.config.get_media_urls())
             return url
-        else:
+        elif self.get_config_install_method() == VM_INST_LOCAL:
             if self.window.get_widget("media-iso-image").get_active():
                 return self.window.get_widget("fv-iso-location").get_text()
-            elif self.window.get_widget("media-physical").get_active():
+            else:
                 cd = self.window.get_widget("cd-path")
                 model = cd.get_model()
                 return model.get_value(cd.get_active_iter(), 0)
-            else:
-                return "PXE"
-
-    def get_config_installer(self, type):
-        if self.get_config_method() == VM_FULLY_VIRT and self.window.get_widget("media-network").get_active():
-            return virtinst.PXEInstaller(type = type)
         else:
-            return virtinst.DistroInstaller(type = type)
+            return "PXE"
+
+    def get_config_installer(self, type, os_type):
+        if self.get_config_install_method() == VM_INST_PXE:
+            return virtinst.PXEInstaller(type = type, os_type = os_type)
+        else:
+            return virtinst.DistroInstaller(type = type, os_type = os_type)
 
     def get_config_kickstart_source(self):
-        if self.get_config_method() == VM_PARA_VIRT:
+        if self.get_config_install_method() == VM_INST_TREE:
             widget = self.window.get_widget("pv-ks-url")
             url = widget.child.get_text()
             self.config.add_kickstart_url(url)
@@ -379,7 +389,7 @@ class vmmCreate(gobject.GObject):
 	return self.window.get_widget("kernel-params").get_text()
 
     def get_config_network(self):
-        if os.getuid() != 0:
+        if self.connection.get_uri() == "qemu:///session":
             return ["user"]
 
         if self.window.get_widget("net-type-network").get_active():
@@ -405,6 +415,14 @@ class vmmCreate(gobject.GObject):
 
     def get_config_virtual_cpus(self):
         return self.window.get_widget("create-vcpus").get_value()
+
+    def get_config_install_method(self):
+        if self.window.get_widget("method-local").get_active():
+            return VM_INST_LOCAL
+        elif self.window.get_widget("method-tree").get_active():
+            return VM_INST_TREE
+        else:
+            return VM_INST_PXE
 
     def get_config_os_type(self):
         type = self.window.get_widget("os-type")
@@ -438,9 +456,19 @@ class vmmCreate(gobject.GObject):
             name_widget.grab_focus()
         elif page_number == PAGE_TYPE:
             pass
-        elif page_number == PAGE_FVINST:
-            pass
-        elif page_number == PAGE_PVINST:
+        elif page_number == PAGE_INST:
+            if self.get_config_method() == VM_PARA_VIRT:
+                # Xen can't PXE or CDROM install :-(
+                self.window.get_widget("method-local").set_sensitive(False)
+                self.window.get_widget("method-pxe").set_sensitive(False)
+                self.window.get_widget("method-tree").set_active(True)
+            else:
+                self.window.get_widget("method-local").set_sensitive(True)
+                self.window.get_widget("method-pxe").set_sensitive(True)
+        elif page_number == PAGE_INST_TREE:
+            url_widget = self.window.get_widget("pv-media-url")
+            url_widget.grab_focus()
+        elif page_number == PAGE_INST_LOCAL:
             url_widget = self.window.get_widget("pv-media-url")
             url_widget.grab_focus()
         elif page_number == PAGE_DISK:
@@ -521,11 +549,22 @@ class vmmCreate(gobject.GObject):
         except ValueError, E:
             self._validation_error_box(_("UUID Error"), str(e))
 
+        # HACK: If usermode, and no nic is setup, use usermode networking
+        if self.connection.get_uri() == "qemu:///session":
+            try:
+                self._net = virtinst.VirtualNetworkInterface(type="user")
+            except ValueError, e:
+                self._validation_error_box(_("Failed to set up usermode networking"), str(e))
+
         if self._disk is not None:
             guest.disks = [self._disk]
+        else:
+            logging.debug('No guest disks found in install phase.')
         if self._net is not None:
             guest.nics = [self._net]
-            
+        else:
+            logging.debug('No guest nics found in install phase.')
+
         # set up the graphics to use SDL
         import keytable
         keymap = None
@@ -598,7 +637,7 @@ class vmmCreate(gobject.GObject):
         if self.config.get_console_popup() == 1:
             # user has requested console on new created vms only
             vm = self.connection.get_vm(guest.uuid)
-            (gtype, host, port, transport) = vm.get_graphics_console()
+            (gtype, host, port, transport, username) = vm.get_graphics_console()
             if gtype == "vnc":
                 self.emit("action-show-console", self.connection.get_uri(), guest.uuid)
             else:
@@ -664,7 +703,6 @@ class vmmCreate(gobject.GObject):
             self.window.get_widget("storage-partition-address").set_text(part)
 
     def browse_storage_file_address(self, src, ignore=None):
-        self.window.get_widget("storage-file-size").set_sensitive(True)
         fcdialog = gtk.FileChooserDialog(_("Locate or Create New Storage File"),
                                          self.window.get_widget("vmm-create"),
                                          gtk.FILE_CHOOSER_ACTION_SAVE,
@@ -781,31 +819,16 @@ class vmmCreate(gobject.GObject):
                 self._guest = virtinst.FullVirtGuest(type=self.get_domain_type(),
                                                      arch=self.get_domain_arch(),
                                                      hypervisorURI=self.connection.get_uri())
-            
+
             self._guest.name = name # Transfer name over
 
-        elif page_num == PAGE_FVINST:
-            self._guest.installer = self.get_config_installer(self.get_domain_type())
-
-            if self.window.get_widget("media-iso-image").get_active():
-
-                src = self.get_config_install_source()
-                try:
-                    self._guest.cdrom = src
-                except ValueError, e:
-                    self._validation_error_box(_("ISO Path Not Found"), str(e))
-                    return False
-            elif  self.window.get_widget("media-physical").get_active():
-                cdlist = self.window.get_widget("cd-path")
-                src = self.get_config_install_source()
-                try:
-                    self._guest.cdrom = src
-                except ValueError, e:
-                    self._validation_error_box(_("CD-ROM Path Error"), str(e))
-                    return False
+        elif page_num == PAGE_INST:
+            if self.get_config_method() == VM_PARA_VIRT:
+                os_type = "xen"
             else:
-                pass # No checks for PXE
-            
+                os_type = "hvm"
+            self._guest.installer = self.get_config_installer(self.get_domain_type(), os_type)
+
             try:
                 if self.get_config_os_type() is not None \
                    and self.get_config_os_type() != "generic":
@@ -822,7 +845,30 @@ class vmmCreate(gobject.GObject):
             except ValueError, e:
                 self._validation_error_box(_("Invalid FV OS Variant"), str(e))
                 return False
-        elif page_num == PAGE_PVINST:
+        elif page_num == PAGE_INST_LOCAL:
+            if self.get_config_method() == VM_PARA_VIRT:
+                os_type = "xen"
+            else:
+                os_type = "hvm"
+            self._guest.installer = self.get_config_installer(self.get_domain_type(), os_type)
+
+            if self.window.get_widget("media-iso-image").get_active():
+
+                src = self.get_config_install_source()
+                try:
+                    self._guest.cdrom = src
+                except ValueError, e:
+                    self._validation_error_box(_("ISO Path Not Found"), str(e))
+                    return False
+            else:
+                cdlist = self.window.get_widget("cd-path")
+                src = self.get_config_install_source()
+                try:
+                    self._guest.cdrom = src
+                except ValueError, e:
+                    self._validation_error_box(_("CD-ROM Path Error"), str(e))
+                    return False
+        elif page_num == PAGE_INST_TREE:
 
             src = self.get_config_install_source()
             try:
@@ -1087,29 +1133,31 @@ class vmmCreate(gobject.GObject):
 
     def change_virt_method(self, ignore=None):
         arch = self.window.get_widget("cpu-architecture")
-        if self.connection.get_type() != "QEMU" or self.window.get_widget("virt-method-pv").get_active():
-            arch.set_sensitive(False)
+
+        if self.get_config_method() == VM_PARA_VIRT:
+            nativeArch = self.repopulate_cpu_arch(arch.get_model(), ["xen", "linux"])
         else:
-            arch.set_sensitive(True)
-        self.change_cpu_arch(arch)
+            nativeArch = self.repopulate_cpu_arch(arch.get_model(), ["hvm"])
+        arch.set_active(nativeArch)
+        self.change_cpu_arch()
 
-    def change_cpu_arch(self, src):
-        model = src.get_model()
-        active = src.get_active()
-        canAccel = False
-        if active != -1 and src.get_property("sensitive") and \
-               (virtinst.util.is_kvm_capable() or virtinst.util.is_kqemu_capable()):
-            if os.uname()[4] == "i686" and model[active][0] == "i686":
-                canAccel = True
-            elif os.uname()[4] == "x86_64" and model[active][0] in ("i686", "x86_64"):
-                canAccel = True
+    def change_cpu_arch(self, ignore=None):
+        hypervisor = self.window.get_widget("hypervisor")
+        arch = self.get_domain_arch()
 
-        self.window.get_widget("cpu-accelerate").set_sensitive(canAccel)
-        self.window.get_widget("cpu-accelerate").set_active(canAccel)
+        if arch is None:
+            hypervisor.set_active(-1)
+            hypervisor.set_sensitive(False)
+            return
+
+        hypervisor.set_sensitive(True)
+        if self.get_config_method() == VM_PARA_VIRT:
+            bestHyper = self.repopulate_hypervisor(hypervisor.get_model(), ["xen", "linux"], arch)
+        else:
+            bestHyper = self.repopulate_hypervisor(hypervisor.get_model(), ["hvm"], arch)
+        hypervisor.set_active(bestHyper)
 
     def get_domain_arch(self):
-        if self.connection.get_type() != "QEMU":
-            return None
         arch = self.window.get_widget("cpu-architecture")
         if arch.get_active() == -1:
             return None
@@ -1128,15 +1176,41 @@ class vmmCreate(gobject.GObject):
             return True
 
     def get_domain_type(self):
-        if self.connection.get_type() == "QEMU":
-            if self.window.get_widget("cpu-accelerate").get_active():
-                if virtinst.util.is_kvm_capable():
-                    return "kvm"
-                elif virtinst.util.is_kqemu_capable():
-                    return "kqemu"
-            return "qemu"
-        else:
-            return "xen"
+        hypervisor = self.window.get_widget("hypervisor")
+
+        if hypervisor.get_active() == -1:
+            return None
+
+        return hypervisor.get_model()[hypervisor.get_active()][0]
+
+    def repopulate_cpu_arch(self, model, ostype):
+        model.clear()
+        i = 0
+        native = -1
+        for guest in self.caps.guests:
+            if guest.os_type not in ostype:
+                continue
+
+            model.append([guest.arch])
+            if guest.arch == self.caps.host.arch:
+                native = i
+            i = i + 1
+
+        return native
+
+
+    def repopulate_hypervisor(self, model, ostype, arch):
+        model.clear()
+        i = -1
+        for guest in self.caps.guests:
+            if guest.os_type not in ostype or guest.arch != arch:
+                continue
+
+            for domain in guest.domains:
+                model.append([domain.hypervisor_type])
+                i = i + 1
+
+        return i
 
     def show_help(self, src):
         # help to show depends on the notebook page, yahoo
@@ -1147,10 +1221,12 @@ class vmmCreate(gobject.GObject):
             self.emit("action-show-help", "virt-manager-system-name")
         elif page == PAGE_TYPE:
             self.emit("action-show-help", "virt-manager-virt-method")
-        elif page == PAGE_FVINST:
-            self.emit("action-show-help", "virt-manager-installation-media-full-virt")
-        elif page == PAGE_PVINST:
-            self.emit("action-show-help", "virt-manager-installation-media-paravirt")
+        elif page == PAGE_INST:
+            self.emit("action-show-help", "virt-manager-installation-media")
+        elif page == PAGE_INST_LOCAL:
+            self.emit("action-show-help", "virt-manager-installation-media-local")
+        elif page == PAGE_INST_TREE:
+            self.emit("action-show-help", "virt-manager-installation-media-tree")
         elif page == PAGE_DISK:
             self.emit("action-show-help", "virt-manager-storage-space")
         elif page == PAGE_NETWORK:

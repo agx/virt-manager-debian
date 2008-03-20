@@ -30,8 +30,8 @@ from virtManager.createnet import vmmCreateNetwork
 
 class vmmHost(gobject.GObject):
     __gsignals__ = {
-        "action-show-help": (gobject.SIGNAL_RUN_FIRST,
-                               gobject.TYPE_NONE, [str]),
+        "action-show-about": (gobject.SIGNAL_RUN_FIRST,
+                               gobject.TYPE_NONE, []),
         }
     def __init__(self, config, conn):
         self.__gobject_init__()
@@ -81,14 +81,15 @@ class vmmHost(gobject.GObject):
         self.conn.connect("net-removed", self.repopulate_networks)
 
         # XXX not technically correct once we enable remote management
-        if os.getuid() != 0 and not self.conn.is_remote():
+        if (os.getuid() != 0 and not self.conn.is_remote()) \
+           or self.conn.get_state() is self.conn.STATE_DISCONNECTED:
             self.window.get_widget("net-add").set_sensitive(False)
 
 
         self.window.signal_autoconnect({
             "on_menu_file_close_activate": self.close,
             "on_vmm_host_delete_event": self.close,
-            "on_menu_help_about_activate": self.show_help,
+            "on_menu_help_about_activate": self.show_about,
             "on_net_add_clicked": self.add_network,
             "on_net_delete_clicked": self.delete_network,
             "on_net_stop_clicked": self.stop_network,
@@ -142,6 +143,9 @@ class vmmHost(gobject.GObject):
     def show_help(self, src):
         # From the Details window, show the help document from the Details page
         self.emit("action-show-help", "virt-manager-host-window")
+
+    def show_about(self, src):
+        self.emit("action-show-about")
 
     def close(self,ignore1=None,ignore2=None):
         self.window.get_widget("vmm-host").hide()
