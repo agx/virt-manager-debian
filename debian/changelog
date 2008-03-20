@@ -1,3 +1,9 @@
+virt-manager (0.5.4-1) unstable; urgency=low
+
+  * New Upstream Version
+
+ -- Guido Guenther <agx@sigxcpu.org>  Thu, 20 Mar 2008 13:21:00 +0100
+
 virt-manager (0.5.3-2) unstable; urgency=low
 
   * upload to unstable
