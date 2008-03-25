@@ -6,7 +6,7 @@ Uploaders: Guido Guenther <agx@sigxcpu.org>
 Standards-Version: 3.7.3
 Vcs-Git: git://git.debian.org/git/pkg-libvirt/virt-manager.git
 Vcs-Browser: http://git.debian.org/?p=pkg-libvirt/virt-manager.git
-Homepage: http://libvirt.org/
+Homepage: http://virt-manager.et.redhat.com/
 Build-Depends: debhelper (>= 5), python-dev, python-gtk2-dev, scrollkeeper, python-central (>= 0.5), cdbs, autotools-dev, quilt, intltool, automake, autoconf, libtool
 
 Package: virt-manager
