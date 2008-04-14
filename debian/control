@@ -13,7 +13,7 @@ Package: virt-manager
 Section: admin
 Priority: optional
 Architecture: any
-Depends: ${shlibs:Depends}, ${python:Depends}, python-gtk2, python-glade2, python-gnome2, python-dbus, python-urlgrabber, python-vte, librsvg2-common, python-libvirt, virtinst, python-gtk-vnc
+Depends: ${shlibs:Depends}, ${python:Depends}, python-gtk2, python-glade2, python-gnome2, python-dbus, python-urlgrabber, python-vte, librsvg2-common, python-libvirt, virtinst (>= 0.300.3), python-gtk-vnc (>= 0.3.5)
 Recommends: hal
 Suggests: virt-viewer
 Description: desktop application for managing virtual machines
