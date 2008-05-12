@@ -1,3 +1,15 @@
+virt-manager (0.5.4-2) unstable; urgency=low
+
+  * add XS-Python-Version and XB-Python-Version fields so we don't
+    escape another python transition  (Closes: #480738) - thanks to
+    Andreas B. Mundt
+  * depend on recent virtinst (API change) and python-gtk-vnc for
+    scaling
+  * fix homepage URL
+  * add Vcs-{Git,Browser} and Homepage fields
+
+ -- Guido Guenther <agx@sigxcpu.org>  Mon, 12 May 2008 18:39:34 +0200
+
 virt-manager (0.5.4-1) unstable; urgency=low
 
   * New Upstream Version
