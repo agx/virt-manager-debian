@@ -4,15 +4,20 @@ Priority: optional
 Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
 Uploaders: Guido Guenther <agx@sigxcpu.org>
 Standards-Version: 3.7.3
+XS-Python-Version: current
+Vcs-Git: git://git.debian.org/git/pkg-libvirt/virt-manager.git
+Vcs-Browser: http://git.debian.org/?p=pkg-libvirt/virt-manager.git
+Homepage: http://virt-manager.et.redhat.com/
 Build-Depends: debhelper (>= 5), python-dev, python-gtk2-dev, scrollkeeper, python-central (>= 0.5), cdbs, autotools-dev, quilt, intltool, automake, autoconf, libtool
 
 Package: virt-manager
 Section: admin
 Priority: optional
 Architecture: any
-Depends: ${shlibs:Depends}, ${python:Depends}, python-gtk2, python-glade2, python-gnome2, python-dbus, python-urlgrabber, python-vte, librsvg2-common, python-libvirt, virtinst, python-gtk-vnc
-Recommends: hal
+Depends: ${shlibs:Depends}, ${python:Depends}, python-gtk2, python-glade2, python-gnome2, python-dbus, python-urlgrabber, python-vte, librsvg2-common, python-libvirt, virtinst (>= 0.300.3), python-gtk-vnc (>= 0.3.5)
+Recommends: hal, libvirt-bin
 Suggests: virt-viewer
+XB-Python-Version: ${python:Versions}
 Description: desktop application for managing virtual machines
  It presents a summary view of running domains and their live performance &
  resource utilization statistics. A detailed view presents graphs showing

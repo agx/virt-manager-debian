@@ -22,6 +22,7 @@ import gobject
 import libvirt
 import logging
 import os, sys
+import glob
 import traceback
 from time import time
 import logging
@@ -29,10 +30,14 @@ from socket import gethostbyaddr, gethostname
 import dbus
 import threading
 import gtk
+import string
+import virtinst
 
 from virtManager.domain import vmmDomain
 from virtManager.network import vmmNetwork
 from virtManager.netdev import vmmNetDevice
+
+LIBVIRT_POLICY_FILE = "/usr/share/PolicyKit/policy/libvirtd.policy"
 
 def get_local_hostname():
     try:
@@ -111,13 +116,17 @@ class vmmConnection(gobject.GObject):
     def __init__(self, config, uri, readOnly = None):
         self.__gobject_init__()
         self.config = config
-        self.readOnly = readOnly
 
         self.connectThread = None
         self.connectError = None
         self.uri = uri
         if self.uri is None or self.uri.lower() == "xen":
             self.uri = "xen:///"
+
+        self.readOnly = readOnly
+        if not self.is_remote() and os.getuid() != 0 and self.uri != "qemu:///session":
+            if not os.path.exists(LIBVIRT_POLICY_FILE):
+                self.readOnly = True
 
         self.state = self.STATE_DISCONNECTED
         self.vmm = None
@@ -134,9 +143,7 @@ class vmmConnection(gobject.GObject):
         self.record = []
         self.hostinfo = None
 
-        self.detect_network_devices()
-
-    def detect_network_devices(self):
+        # Probe for network devices
         try:
             # Get a connection to the SYSTEM bus
             self.bus = dbus.SystemBus()
@@ -145,12 +152,24 @@ class vmmConnection(gobject.GObject):
             self.hal_iface = dbus.Interface(hal_object, 'org.freedesktop.Hal.Manager')
 
             # Track device add/removes so we can detect newly inserted CD media
-            self.hal_iface.connect_to_signal("DeviceAdded", self._device_added)
-            self.hal_iface.connect_to_signal("DeviceRemoved", self._device_removed)
+            self.hal_iface.connect_to_signal("DeviceAdded", self._net_phys_device_added)
+            self.hal_iface.connect_to_signal("DeviceRemoved", self._net_phys_device_removed)
 
-            # Find info about all current present media
+            # find all bonding master devices and register them
+            # XXX bonding stuff is linux specific
+            bondMasters = self._net_get_bonding_masters()
+            if bondMasters is not None:
+                for bond in bondMasters:
+                    sysfspath = "/sys/class/net/" + bond
+                    mac = self._net_get_mac_address(bond, sysfspath)
+                    self._net_device_added(bond, mac, sysfspath)
+                    # Add any associated VLANs
+                    self._net_tag_device_added(bond, sysfspath)
+
+            # Find info about all current present physical net devices
+            # This is OS portable...
             for path in self.hal_iface.FindDeviceByCapability("net"):
-                self._device_added(path)
+                self._net_phys_device_added(path)
         except:
             (type, value, stacktrace) = sys.exc_info ()
             logging.error("Unable to connect to HAL to list network devices: '%s'" + \
@@ -159,56 +178,75 @@ class vmmConnection(gobject.GObject):
             self.bus = None
             self.hal_iface = None
 
-    def _device_added(self, path):
+    def _net_phys_device_added(self, path):
+        logging.debug("Got physical device %s" % path)
         obj = self.bus.get_object("org.freedesktop.Hal", path)
-        if obj.QueryCapability("net"):
-            name = obj.GetPropertyString("net.interface")
-            mac = obj.GetPropertyString("net.address")
+        objif = dbus.Interface(obj, "org.freedesktop.Hal.Device")
+        if objif.QueryCapability("net"):
+            name = objif.GetPropertyString("net.interface")
+            # XXX ...but this is Linux specific again - patches welcomed
+            #sysfspath = objif.GetPropertyString("linux.sysfs_path")
+            # XXX hal gives back paths to /sys/devices/pci0000:00/0000:00:1e.0/0000:01:00.0/net/eth0
+            # which doesnt' work so well - we want this:
+            sysfspath = "/sys/class/net/" + name
 
-            # Now magic to determine if the device is part of a bridge
-            shared = False
-            bridge = None
-            try:
-                # XXX Linux specific - needs porting for other OS - patches
-                # welcomed...
-                sysfspath = obj.GetPropertyString("linux.sysfs_path")
+            # If running a device in bridged mode, there's a reasonable
+            # chance that the actual ethernet device has been renamed to
+            # something else. ethN -> pethN
+            psysfspath = sysfspath[0:len(sysfspath)-len(name)] + "p" + name
+            if os.path.exists(psysfspath):
+                logging.debug("Device %s named to p%s" % (name, name))
+                name = "p" + name
+                sysfspath = psysfspath
 
-                # If running a device in bridged mode, there's a reasonable
-                # chance that the actual ethernet device has been renamed to
-                # something else. ethN -> pethN
-                psysfspath = sysfspath[0:len(sysfspath)-len(name)] + "p" + name
-                if os.path.exists(psysfspath):
-                    name = "p" + name
-                    sysfspath = psysfspath
+            # Ignore devices that are slaves of a bond
+            if self._net_is_bonding_slave(name, sysfspath):
+                logging.debug("Skipping device %s in bonding slave" % name)
+                return
 
-                brportpath = os.path.join(sysfspath, "brport")
+            mac = objif.GetPropertyString("net.address")
 
-                if os.path.exists(brportpath):
-                    shared = True
-                    brlinkpath = os.path.join(brportpath, "bridge")
-                    dest = os.readlink(brlinkpath)
-                    (head,tail) = os.path.split(dest)
-                    bridge = tail
-            except:
-                (type, value, stacktrace) = sys.exc_info ()
-                logging.error("Unable to determine if device is shared:" +
-                              str(type) + " " + str(value) + "\n" + \
-                              traceback.format_exc (stacktrace))
+            # Add the main NIC
+            self._net_device_added(name, mac, sysfspath)
 
-            if self.netdevs.has_key(path):
-                currDev = self.netdevs[path]
-                if currDev.get_info() == (name, mac, shared, bridge):
-                    return
-                del self.netdevs[path]
-            dev = vmmNetDevice(self.config, self, name, mac, shared, bridge)
-            self.netdevs[path] = dev
-            self.emit("netdev-added", dev.get_name())
+            # Add any associated VLANs
+            self._net_tag_device_added(name, sysfspath)
 
-    def _device_removed(self, path):
-        if self.netdevs.has_key(path):
-            dev = self.netdevs[path]
+    def _net_tag_device_added(self, name, sysfspath):
+        logging.debug("Checking for VLANs on %s" % sysfspath)
+        for vlanpath in glob.glob(sysfspath + ".*"):
+            if os.path.exists(vlanpath):
+                logging.debug("Process VLAN %s" % vlanpath)
+                vlanmac = self._net_get_mac_address(name, vlanpath)
+                (ignore,vlanname) = os.path.split(vlanpath)
+                self._net_device_added(vlanname, vlanmac, vlanpath)
+
+    def _net_device_added(self, name, mac, sysfspath):
+        # Race conditions mean we can occassionally see device twice
+        if self.netdevs.has_key(name):
+            return
+
+        bridge = self._net_get_bridge_owner(name, sysfspath)
+        shared = False
+        if bridge is not None:
+            shared = True
+
+        logging.debug("Adding net device %s %s %s bridge %s" % (name, mac, sysfspath, str(bridge)))
+
+        dev = vmmNetDevice(self.config, self, name, mac, shared, bridge)
+        self.netdevs[name] = dev
+        self.emit("netdev-added", dev.get_name())
+
+    def _net_phys_device_removed(self, path):
+        obj = self.bus.get_object("org.freedesktop.Hal", path)
+        objif = dbus.Interface(obj, "org.freedesktop.Hal.Device")
+        if objif.QueryCapability("net"):
+            name = objif.GetPropertyString("net.interface")
+
+        if self.netdevs.has_key(name):
+            dev = self.netdevs[name]
             self.emit("netdev-removed", dev.get_name())
-            del self.netdevs[path]
+            del self.netdevs[name]
 
     def is_read_only(self):
         return self.readOnly
@@ -261,6 +299,9 @@ class vmmConnection(gobject.GObject):
             pass
         return "xen"
 
+    def get_capabilities(self):
+        return virtinst.CapabilitiesParser.parse(self.vmm.getCapabilities())
+
     def is_remote(self):
         try:
             (scheme, username, netloc, path, query, fragment) = uri_split(self.uri)
@@ -294,22 +335,97 @@ class vmmConnection(gobject.GObject):
         self.connectThread.setDaemon(True)
         self.connectThread.start()
 
+    def _do_creds_polkit(self, action):
+        logging.debug("Doing policykit for %s" % action)
+        bus = dbus.SessionBus()
+        obj = bus.get_object("org.gnome.PolicyKit", "/org/gnome/PolicyKit/Manager")
+        pkit = dbus.Interface(obj, "org.gnome.PolicyKit.Manager")
+        pkit.ShowDialog(action, 0)
+        return 0
+
+    def _do_creds_dialog(self, creds):
+        try:
+            gtk.gdk.threads_enter()
+            return self._do_creds_dialog_main(creds)
+        finally:
+            gtk.gdk.threads_leave()
+
+    def _do_creds_dialog_main(self, creds):
+        dialog = gtk.Dialog("Authentication required", None, 0, (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
+        label = []
+        entry = []
+
+        box = gtk.Table(2, len(creds))
+
+        row = 0
+        for cred in creds:
+            if cred[0] == libvirt.VIR_CRED_AUTHNAME or cred[0] == libvirt.VIR_CRED_PASSPHRASE:
+                label.append(gtk.Label(cred[1]))
+            else:
+                return -1
+
+            ent = gtk.Entry()
+            if cred[0] == libvirt.VIR_CRED_PASSPHRASE:
+                ent.set_visibility(False)
+            entry.append(ent)
+
+            box.attach(label[row], 0, 1, row, row+1, 0, 0, 3, 3)
+            box.attach(entry[row], 1, 2, row, row+1, 0, 0, 3, 3)
+            row = row + 1
+
+        vbox = dialog.get_child()
+        vbox.add(box)
+
+        dialog.show_all()
+        res = dialog.run()
+        dialog.hide()
+
+        if res == gtk.RESPONSE_OK:
+            row = 0
+            for cred in creds:
+                cred[4] = entry[row].get_text()
+                row = row + 1
+            dialog.destroy()
+            return 0
+        else:
+            dialog.destroy()
+            return -1
+
+    def _do_creds(self, creds, cbdata):
+        try:
+            if len(creds) == 1 and creds[0][0] == libvirt.VIR_CRED_EXTERNAL and creds[0][2] == "PolicyKit":
+                return self._do_creds_polkit(creds[0][1])
+
+            for cred in creds:
+                if cred[0] == libvirt.VIR_CRED_EXTERNAL:
+                    return -1
+
+            return self._do_creds_dialog(creds)
+        except:
+            (type, value, stacktrace) = sys.exc_info ()
+            # Detailed error message, in English so it can be Googled.
+            self.connectError = \
+                ("Failed to get credentials '%s':\n" %
+                 str(self.uri)) + \
+                 str(type) + " " + str(value) + "\n" + \
+                 traceback.format_exc (stacktrace)
+            logging.error(self.connectError)
+            return -1
 
     def _open_thread(self):
         logging.debug("Background thread is running")
         try:
-            if self.readOnly is None:
-                try:
-                    self.vmm = libvirt.open(self.uri)
-                    self.readOnly = False
-                except:
-                    self.vmm = libvirt.openReadOnly(self.uri)
-                    self.readOnly = True
-            else:
-                if self.readOnly:
-                    self.vmm = libvirt.openReadOnly(self.uri)
-                else:
-                    self.vmm = libvirt.open(self.uri)
+            flags = 0
+            if self.readOnly:
+                flags = libvirt.VIR_CONNECT_RO
+
+            self.vmm = libvirt.openAuth(self.uri,
+                                        [[libvirt.VIR_CRED_AUTHNAME,
+                                          libvirt.VIR_CRED_PASSPHRASE,
+                                          libvirt.VIR_CRED_EXTERNAL],
+                                         self._do_creds,
+                                         None], flags)
+
             self.state = self.STATE_ACTIVE
         except:
             self.state = self.STATE_DISCONNECTED
@@ -386,11 +502,7 @@ class vmmConnection(gobject.GObject):
         return self.hostinfo
 
     def get_max_vcpus(self):
-        try:
-            return self.vmm.getMaxVcpus(self.get_type())
-        except Exception, e:
-            logging.debug('Unable to get max vcpu')
-            return 32;
+        return virtinst.util.get_max_vcpus(self.vmm)
 
     def connect(self, name, callback):
         handle_id = gobject.GObject.connect(self, name, callback)
@@ -470,13 +582,6 @@ class vmmConnection(gobject.GObject):
             newInactiveNetNames = self.vmm.listDefinedNetworks()
         except:
             logging.warn("Unable to list inactive networks")
-
-        # check of net devices
-        newPaths = []
-        if self.hal_iface:
-            newPaths = self.hal_iface.FindDeviceByCapability("net")
-        for newPath in newPaths:
-            self._device_added(newPath)
 
         for name in newActiveNetNames:
             net = self.vmm.networkLookupByName(name)
@@ -771,6 +876,52 @@ class vmmConnection(gobject.GObject):
             return _("Inactive")
         else:
             return _("Unknown")
+
+    def _net_get_bridge_owner(self, name, sysfspath):
+        # Now magic to determine if the device is part of a bridge
+        brportpath = os.path.join(sysfspath, "brport")
+        try:
+            if os.path.exists(brportpath):
+                brlinkpath = os.path.join(brportpath, "bridge")
+                dest = os.readlink(brlinkpath)
+                (ignore,bridge) = os.path.split(dest)
+                return bridge
+        except:
+            (type, value, stacktrace) = sys.exc_info ()
+            logging.error("Unable to determine if device is shared:" +
+                            str(type) + " " + str(value) + "\n" + \
+                            traceback.format_exc (stacktrace))
+
+        return None
+
+    def _net_get_mac_address(self, name, sysfspath):
+        mac = None
+        addrpath = sysfspath + "/address"
+        if os.path.exists(addrpath):
+            df = open(addrpath, 'r')
+            mac = df.readline()
+            df.close()
+        return mac.strip(" \n\t")
+
+    def _net_get_bonding_masters(self):
+        masters = []
+        if os.path.exists("/sys/class/net/bonding_masters"):
+            f = open("/sys/class/net/bonding_masters")
+            while True:
+                rline = f.readline()
+                if not rline: break
+                if rline == "\x00": continue
+                rline = rline.strip("\n\t")
+                masters = rline[:-1].split(' ')
+            return masters
+        else:
+            return None
+
+    def _net_is_bonding_slave(self, name, sysfspath):
+        masterpath = sysfspath + "/master"
+        if os.path.exists(masterpath):
+            return True
+        return False
 
 gobject.type_register(vmmConnection)
 
