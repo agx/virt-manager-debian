@@ -1,4 +1,4 @@
-virt-manager (0.5.4-2~bpo40+1) etch-backports; urgency=low
+virt-manager (0.5.4-1~bpo40+1) etch-backports; urgency=low
 
   * Rebuild for etch-backports.
 
