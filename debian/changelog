@@ -1,3 +1,10 @@
+virt-manager (0.5.4-4) unstable; urgency=low
+
+  * [10da8e8] fix ctrl-alt-delete (Closes: #495290) - thanks to Per
+    Andersson
+
+ -- Guido Guenther <agx@sigxcpu.org>  Sat, 30 Aug 2008 00:09:16 +0200
+
 virt-manager (0.5.4-3) unstable; urgency=low
 
   * [a45b8b5] Recommend libvirt-bin (Closes: #487872)
