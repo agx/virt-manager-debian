@@ -1,0 +1,13 @@
+diff --git a/src/virtManager/console.py b/src/virtManager/console.py
+index 93a35ea..ac7b372 100644
+--- a/src/virtManager/console.py
++++ b/src/virtManager/console.py
+@@ -194,7 +194,7 @@ class vmmConsole(gobject.GObject):
+     def send_key(self, src):
+         keys = None
+         if src.get_name() == "menu-send-cad":
+-            keys = ["Control_L", "Alt_L", "Del"]
++            keys = ["Control_L", "Alt_L", "Delete"]
+         elif src.get_name() == "menu-send-cab":
+             keys = ["Control_L", "Alt_L", "BackSpace"]
+         elif src.get_name() == "menu-send-caf1":
