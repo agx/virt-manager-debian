@@ -1,3 +1,13 @@
+virt-manager (0.6.0-1) experimental; urgency=low
+
+  * [67d97e5] Imported Upstream version 0.6.0
+  * [03a49b9] uses virtinst (>= 0.400.0)
+  * [b59c12f] depend on python-gtk-vnc that hat the focus bugs fixed
+  * [b1d46cd] refresh gconf-dir patch
+  * [0b2b50f] drop ctrl_alt_del.diff - fixed upstream
+
+ -- Guido Guenther <agx@sigxcpu.org>  Thu, 18 Sep 2008 23:23:11 +0200
+
 virt-manager (0.5.4-4) unstable; urgency=low
 
   * [10da8e8] fix ctrl-alt-delete (Closes: #495290) - thanks to Per
