@@ -37,6 +37,9 @@ CONSOLE_KEYGRAB_MOUSEOVER = 2
 DEFAULT_XEN_IMAGE_DIR = "/var/lib/xen/images"
 DEFAULT_XEN_SAVE_DIR = "/var/lib/xen/dump"
 
+DEFAULT_VIRT_IMAGE_DIR = "/var/lib/libvirt/images"
+DEFAULT_VIRT_SAVE_DIR = "/var/lib/libvirt"
+
 class vmmConfig:
     def __init__(self, appname, appversion, gconf_dir, glade_dir, icon_dir, data_dir):
         self.appname = appname
@@ -216,6 +219,26 @@ class vmmConfig:
     def set_console_grab_notify(self, state):
         self.conf.set_bool(self.conf_dir + "/console/grab-notify", state)
 
+    def get_details_show_toolbar(self):
+        res = self.conf.get_bool(self.conf_dir + "/details/show-toolbar")
+        if res == None:
+            res = True
+        return res
+
+    def set_details_show_toolbar(self, state):
+        self.conf.set_bool(self.conf_dir + "/details/show-toolbar", state)
+
+    def get_local_sound(self):
+        return self.conf.get_bool(self.conf_dir + "/new-vm/local-sound")
+
+    def get_remote_sound(self):
+        return self.conf.get_bool(self.conf_dir + "/new-vm/remote-sound")
+
+    def set_local_sound(self, state):
+        self.conf.set_bool(self.conf_dir + "/new-vm/local-sound", state)
+
+    def set_remote_sound(self, state):
+        self.conf.set_bool(self.conf_dir + "/new-vm/remote-sound", state)
 
     def get_secret_name(self, vm):
         return "vm-console-" + vm.get_uuid()
@@ -311,7 +334,7 @@ class vmmConfig:
             # the url isn't already in the list, so add it
             uris.insert(len(uris) - 1,uri)
             self.conf.set_list(self.conf_dir + "/connections/uris", gconf.VALUE_STRING, uris)
-        
+
     def remove_connection(self, uri):
         uris = self.conf.get_list(self.conf_dir + "/connections/uris", gconf.VALUE_STRING)
         if uris == None:
@@ -319,6 +342,31 @@ class vmmConfig:
         if uris.count(uri) != 0:
             uris.remove(uri)
             self.conf.set_list(self.conf_dir + "/connections/uris", gconf.VALUE_STRING, uris)
+        if self.get_conn_autoconnect(uri):
+            uris = self.conf.get_list(self.conf_dir + \
+                                      "/connections/autoconnect",\
+                                      gconf.VALUE_STRING)
+            uris.remove(uri)
+            self.conf.set_list(self.conf_dir + "/connections/autoconnect", \
+                               gconf.VALUE_STRING, uris)
+
+
+    def get_conn_autoconnect(self, uri):
+        uris = self.conf.get_list(self.conf_dir + "/connections/autoconnect",\
+                                  gconf.VALUE_STRING)
+        return ((uris is not None) and (uri in uris))
+
+    def toggle_conn_autoconnect(self, uri):
+        uris = self.conf.get_list(self.conf_dir + "/connections/autoconnect",\
+                                  gconf.VALUE_STRING)
+        if uris is None:
+            uris = []
+        if uri in uris:
+            uris.remove(uri)
+        else:
+            uris.append(uri)
+        self.conf.set_list(self.conf_dir + "/connections/autoconnect", \
+                           gconf.VALUE_STRING, uris)
 
     def get_media_urls(self):
         return self.conf.get_list(self.conf_dir + "/urls/media", gconf.VALUE_STRING)
@@ -332,12 +380,20 @@ class vmmConfig:
     def get_default_image_dir(self, connection):
         if connection.get_type() == "Xen":
             return DEFAULT_XEN_IMAGE_DIR
-        else:
-            return os.getcwd()
+        #elif os.access(DEFAULT_VIRT_IMAGE_DIR, os.W_OK):
+        #    return DEFAULT_VIRT_IMAGE_DIR
+        #else:
+        #    return os.getcwd()
+
+        # Just return the default dir since the intention is that it
+        # is a managed pool and the user will be able to install to it.
+        return DEFAULT_VIRT_IMAGE_DIR
 
     def get_default_save_dir(self, connection):
         if connection.get_type() == "Xen":
             return DEFAULT_XEN_SAVE_DIR
+        elif os.access(DEFAULT_VIRT_SAVE_DIR, os.W_OK):
+            return DEFAULT_VIRT_SAVE_DIR
         else:
             return os.getcwd()
 

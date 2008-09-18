@@ -22,18 +22,24 @@ import gobject
 import logging
 import virtinst
 from virtManager.opticalhelper import vmmOpticalDriveHelper
+from virtManager.error import vmmErrorDialog
 
 class vmmChooseCD(gobject.GObject):
     __gsignals__ = {"cdrom-chosen": (gobject.SIGNAL_RUN_FIRST,
                            gobject.TYPE_NONE,
                            (str, str, str)), # type, source, target
 }
-    def __init__(self, config, target):
+    def __init__(self, config, target, connection):
         self.__gobject_init__()
         self.window = gtk.glade.XML(config.get_glade_dir() + "/vmm-choose-cd.glade", "vmm-choose-cd", domain="virt-manager")
+        self.err = vmmErrorDialog(self.window.get_widget("vmm-choose-cd"),
+                                  0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
+                                  _("Unexpected Error"),
+                                  _("An unexpected error occurred"))
         self.config = config
         self.window.get_widget("vmm-choose-cd").hide()
         self.target = target
+        self.conn = connection
 
         self.window.signal_autoconnect({
             "on_media_toggled": self.media_toggled,
@@ -56,13 +62,8 @@ class vmmChooseCD(gobject.GObject):
         cd_list.pack_start(text, True)
         cd_list.add_attribute(text, 'text', 1)
         cd_list.add_attribute(text, 'sensitive', 2)
-        try:
-            self.optical_helper = vmmOpticalDriveHelper(self.window.get_widget("cd-path"))
-            self.optical_helper.populate_opt_media()
-            self.window.get_widget("physical-media").set_sensitive(True)
-        except Exception, e:
-            logging.error("Unable to create optical-helper widget: '%s'", e)
-            self.window.get_widget("physical-media").set_sensitive(False)
+
+        self.reset_state()
 
     def set_target(self, target):
         self.target=target
@@ -72,11 +73,22 @@ class vmmChooseCD(gobject.GObject):
         return 1
 
     def cancel(self,ignore1=None,ignore2=None):
-        self.close()
+        self.window.get_widget("vmm-choose-cd").hide()
 
     def show(self):
         win = self.window.get_widget("vmm-choose-cd")
+        self.reset_state()
         win.show()
+
+    def reset_state(self):
+        if self.conn.is_remote():
+            self.window.get_widget("physical-media").set_sensitive(False)
+            self.window.get_widget("iso-image").set_active(True)
+            self.window.get_widget("cd-path").set_active(-1)
+            self.window.get_widget("iso-file-chooser").set_sensitive(False)
+        else:
+            self.window.get_widget("physical-media").set_sensitive(True)
+            self.window.get_widget("iso-file-chooser").set_sensitive(True)
 
     def ok(self,ignore1=None, ignore2=None):
         if self.window.get_widget("iso-image").get_active():
@@ -87,18 +99,18 @@ class vmmChooseCD(gobject.GObject):
             path = model.get_value(cd.get_active_iter(), 0)
 
         if path == "" or path == None: 
-            self._validation_error_box(_("Invalid Media Path"), \
-                                       _("A media path must be specified."))
-            return
+            return self.err.val_err(_("Invalid Media Path"), \
+                                    _("A media path must be specified."))
 
         try:
-            disk = virtinst.VirtualDisk(path=path, device=virtinst.VirtualDisk.DEVICE_CDROM, readOnly=True)
+            disk = virtinst.VirtualDisk(path=path,
+                                        device=virtinst.VirtualDisk.DEVICE_CDROM, 
+                                        readOnly=True,
+                                        conn=self.conn.vmm)
         except Exception, e:
-           self._validation_error_box(_("Invalid Media Path"), str(e))
-           return
-            
-        self.emit("cdrom-chosen", disk.type, disk.path, self.target)   
-        self.close()
+           return self.err.val_err(_("Invalid Media Path"), str(e))
+        self.emit("cdrom-chosen", disk.type, disk.path, self.target)
+        self.cancel()
 
     def media_toggled(self, ignore1=None, ignore2=None):
         if self.window.get_widget("physical-media").get_active():
@@ -109,6 +121,7 @@ class vmmChooseCD(gobject.GObject):
             self.window.get_widget("cd-path").set_sensitive(False)
             self.window.get_widget("iso-path").set_sensitive(True)
             self.window.get_widget("iso-file-chooser").set_sensitive(True)
+            self.populate_opt_media()
 
     def change_cd_path(self, ignore1=None, ignore2=None):
         pass
@@ -118,6 +131,15 @@ class vmmChooseCD(gobject.GObject):
         if file != None:
             self.window.get_widget("iso-path").set_text(file)
 
+    def populate_opt_media(self):
+        try:
+            self.optical_helper = vmmOpticalDriveHelper(self.window.get_widget("cd-path"))
+            self.optical_helper.populate_opt_media()
+            self.window.get_widget("physical-media").set_sensitive(True)
+        except Exception, e:
+            logging.error("Unable to create optical-helper widget: '%s'", e)
+            self.window.get_widget("physical-media").set_sensitive(False)
+
     def _browse_file(self, dialog_name, folder=None, type=None):
         # user wants to browse for an ISO
         fcdialog = gtk.FileChooserDialog(dialog_name,
@@ -126,6 +148,7 @@ class vmmChooseCD(gobject.GObject):
                                          (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
                                           gtk.STOCK_OPEN, gtk.RESPONSE_ACCEPT),
                                          None)
+        fcdialog.set_default_response(gtk.RESPONSE_ACCEPT)
         if type != None:
             f = gtk.FileFilter()
             f.add_pattern("*." + type)
@@ -141,16 +164,5 @@ class vmmChooseCD(gobject.GObject):
         else:
             fcdialog.destroy()
             return None
-    
-    def _validation_error_box(self, text1, text2=None):
-        message_box = gtk.MessageDialog(self.window.get_widget("vmm-choosecd"), \
-                                                0, \
-                                                gtk.MESSAGE_ERROR, \
-                                                gtk.BUTTONS_OK, \
-                                                text1)
-        if text2 != None:
-            message_box.format_secondary_text(text2)
-        message_box.run()
-        message_box.destroy()
-    
+
 gobject.type_register(vmmChooseCD)

@@ -36,8 +36,12 @@ import virtinst
 from virtManager.domain import vmmDomain
 from virtManager.network import vmmNetwork
 from virtManager.netdev import vmmNetDevice
+from virtManager.storagepool import vmmStoragePool
 
-LIBVIRT_POLICY_FILE = "/usr/share/PolicyKit/policy/libvirtd.policy"
+LIBVIRT_POLICY_FILES = [
+    "/usr/share/PolicyKit/policy/libvirtd.policy",
+    "/usr/share/PolicyKit/policy/org.libvirt.unix.policy"
+]
 
 def get_local_hostname():
     try:
@@ -80,6 +84,7 @@ def _splitnetloc(url, start=0):
         delim = len(url)
     return url[start:delim], url[delim:]
 
+
 class vmmConnection(gobject.GObject):
     __gsignals__ = {
         "vm-added": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
@@ -96,6 +101,14 @@ class vmmConnection(gobject.GObject):
                         [str, str]),
         "net-stopped": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
                         [str, str]),
+        "pool-added": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
+                       [str, str]),
+        "pool-removed": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
+                         [str, str]),
+        "pool-started": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
+                         [str, str]),
+        "pool-stopped": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
+                         [str, str]),
         "netdev-added": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
                          [str]),
         "netdev-removed": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
@@ -118,6 +131,8 @@ class vmmConnection(gobject.GObject):
         self.config = config
 
         self.connectThread = None
+        self.connectThreadEvent = threading.Event()
+        self.connectThreadEvent.set()
         self.connectError = None
         self.uri = uri
         if self.uri is None or self.uri.lower() == "xen":
@@ -125,12 +140,20 @@ class vmmConnection(gobject.GObject):
 
         self.readOnly = readOnly
         if not self.is_remote() and os.getuid() != 0 and self.uri != "qemu:///session":
-            if not os.path.exists(LIBVIRT_POLICY_FILE):
+            hasPolkit = False
+            for f in LIBVIRT_POLICY_FILES:
+                if os.path.exists(f):
+                    hasPolkit = True
+
+            if not hasPolkit:
                 self.readOnly = True
 
         self.state = self.STATE_DISCONNECTED
         self.vmm = None
+        self.storage_capable = None
 
+        # Connection Storage pools: UUID -> vmmStoragePool
+        self.pools = {}
         # Host network devices. name -> vmmNetDevice object
         self.netdevs = {}
         # Virtual networks UUUID -> vmmNetwork object
@@ -142,6 +165,7 @@ class vmmConnection(gobject.GObject):
         # Resource utilization statistics
         self.record = []
         self.hostinfo = None
+        self.autoconnect = self.config.get_conn_autoconnect(self.get_uri())
 
         # Probe for network devices
         try:
@@ -158,10 +182,11 @@ class vmmConnection(gobject.GObject):
             # find all bonding master devices and register them
             # XXX bonding stuff is linux specific
             bondMasters = self._net_get_bonding_masters()
-            if bondMasters is not None:
-                for bond in bondMasters:
-                    sysfspath = "/sys/class/net/" + bond
-                    mac = self._net_get_mac_address(bond, sysfspath)
+            logging.debug("Bonding masters are: %s" % bondMasters)
+            for bond in bondMasters:
+                sysfspath = "/sys/class/net/" + bond
+                mac = self._net_get_mac_address(bond, sysfspath)
+                if mac:
                     self._net_device_added(bond, mac, sysfspath)
                     # Add any associated VLANs
                     self._net_tag_device_added(bond, sysfspath)
@@ -218,8 +243,18 @@ class vmmConnection(gobject.GObject):
             if os.path.exists(vlanpath):
                 logging.debug("Process VLAN %s" % vlanpath)
                 vlanmac = self._net_get_mac_address(name, vlanpath)
-                (ignore,vlanname) = os.path.split(vlanpath)
-                self._net_device_added(vlanname, vlanmac, vlanpath)
+                if vlanmac:
+                    (ignore,vlanname) = os.path.split(vlanpath)
+
+                    # If running a device in bridged mode, there's areasonable
+                    # chance that the actual ethernet device has beenrenamed to
+                    # something else. ethN -> pethN
+                    pvlanpath = vlanpath[0:len(vlanpath)-len(vlanname)] + "p" + vlanname
+                    if os.path.exists(pvlanpath):
+                        logging.debug("Device %s named to p%s" % (vlanname, vlanname))
+                        vlanname = "p" + vlanname
+                        vlanpath = pvlanpath
+                    self._net_device_added(vlanname, vlanmac, vlanpath)
 
     def _net_device_added(self, name, mac, sysfspath):
         # Race conditions mean we can occassionally see device twice
@@ -231,7 +266,7 @@ class vmmConnection(gobject.GObject):
         if bridge is not None:
             shared = True
 
-        logging.debug("Adding net device %s %s %s bridge %s" % (name, mac, sysfspath, str(bridge)))
+        logging.debug("Adding net device %s %s %s (bridge: %s)" % (name, mac, sysfspath, str(bridge)))
 
         dev = vmmNetDevice(self.config, self, name, mac, shared, bridge)
         self.netdevs[name] = dev
@@ -243,10 +278,11 @@ class vmmConnection(gobject.GObject):
         if objif.QueryCapability("net"):
             name = objif.GetPropertyString("net.interface")
 
-        if self.netdevs.has_key(name):
-            dev = self.netdevs[name]
-            self.emit("netdev-removed", dev.get_name())
-            del self.netdevs[name]
+            if self.netdevs.has_key(name):
+                logging.debug("Removing physical net device %s from list." % name)
+                dev = self.netdevs[name]
+                self.emit("netdev-removed", dev.get_name())
+                del self.netdevs[name]
 
     def is_read_only(self):
         return self.readOnly
@@ -323,6 +359,9 @@ class vmmConnection(gobject.GObject):
     def get_net_device(self, path):
         return self.netdevs[path]
 
+    def get_pool(self, uuid):
+        return self.pools[uuid]
+
     def open(self):
         if self.state != self.STATE_DISCONNECTED:
             return
@@ -331,6 +370,7 @@ class vmmConnection(gobject.GObject):
         self.emit("state-changed")
 
         logging.debug("Scheduling background open thread for " + self.uri)
+        self.connectThreadEvent.clear()
         self.connectThread = threading.Thread(target = self._open_thread, name="Connect " + self.uri)
         self.connectThread.setDaemon(True)
         self.connectThread.start()
@@ -338,9 +378,21 @@ class vmmConnection(gobject.GObject):
     def _do_creds_polkit(self, action):
         logging.debug("Doing policykit for %s" % action)
         bus = dbus.SessionBus()
-        obj = bus.get_object("org.gnome.PolicyKit", "/org/gnome/PolicyKit/Manager")
-        pkit = dbus.Interface(obj, "org.gnome.PolicyKit.Manager")
-        pkit.ShowDialog(action, 0)
+
+        try:
+            # First try to use org.freedesktop.PolicyKit.AuthenticationAgent
+            # which is introduced with PolicyKit-0.7
+            obj = bus.get_object("org.freedesktop.PolicyKit.AuthenticationAgent", "/")
+            pkit = dbus.Interface(obj, "org.freedesktop.PolicyKit.AuthenticationAgent")
+            pkit.ObtainAuthorization(action, 0, os.getpid())
+        except dbus.exceptions.DBusException, e:
+            if e.get_dbus_name() != "org.freedesktop.DBus.Error.ServiceUnknown":
+                raise e
+            logging.debug("Falling back to org.gnome.PolicyKit")
+            # If PolicyKit < 0.7, fallback to org.gnome.PolicyKit
+            obj = bus.get_object("org.gnome.PolicyKit", "/org/gnome/PolicyKit/Manager")
+            pkit = dbus.Interface(obj, "org.gnome.PolicyKit.Manager")
+            pkit.ShowDialog(action, 0)
         return 0
 
     def _do_creds_dialog(self, creds):
@@ -417,6 +469,7 @@ class vmmConnection(gobject.GObject):
         try:
             flags = 0
             if self.readOnly:
+                logging.info("Caller requested read only connection")
                 flags = libvirt.VIR_CONNECT_RO
 
             self.vmm = libvirt.openAuth(self.uri,
@@ -461,6 +514,7 @@ class vmmConnection(gobject.GObject):
                 self.emit("connect-error", self.connectError)
                 self.connectError = None
         finally:
+            self.connectThreadEvent.set()
             gtk.gdk.threads_leave()
 
 
@@ -483,6 +537,7 @@ class vmmConnection(gobject.GObject):
         #self.vmm.close()
         self.vmm = None
         self.nets = {}
+        self.pools = {}
         self.vms = {}
         self.activeUUIDs = []
         self.record = []
@@ -498,11 +553,23 @@ class vmmConnection(gobject.GObject):
     def list_net_device_paths(self):
         return self.netdevs.keys()
 
+    def list_pool_uuids(self):
+        return self.pools.keys()
+
     def get_host_info(self):
         return self.hostinfo
 
-    def get_max_vcpus(self):
-        return virtinst.util.get_max_vcpus(self.vmm)
+    def get_max_vcpus(self, type=None):
+        return virtinst.util.get_max_vcpus(self.vmm, type)
+
+    def get_autoconnect(self):
+        # Use a local variable to cache autoconnect so we don't repeatedly
+        # have to poll gconf
+        return self.autoconnect
+
+    def toggle_autoconnect(self):
+        self.config.toggle_conn_autoconnect(self.get_uri())
+        self.autoconnect = (not self.autoconnect)
 
     def connect(self, name, callback):
         handle_id = gobject.GObject.connect(self, name, callback)
@@ -563,15 +630,14 @@ class vmmConnection(gobject.GObject):
             os.remove(frm)
         return status
 
-    def tick(self, noStatsUpdate=False):
-        if self.state != self.STATE_ACTIVE:
-            return
+    def _update_nets(self):
+        """Return lists of start/stopped/new networks"""
 
-        oldNets = self.nets
-        startNets = {}
-        stopNets = {}
-        self.nets = {}
-        newNets = {}
+        origNets = self.nets
+        currentNets = {}
+        startNets = []
+        stopNets = []
+        newNets = []
         newActiveNetNames = []
         newInactiveNetNames = []
         try:
@@ -584,30 +650,106 @@ class vmmConnection(gobject.GObject):
             logging.warn("Unable to list inactive networks")
 
         for name in newActiveNetNames:
-            net = self.vmm.networkLookupByName(name)
-            uuid = self.uuidstr(net.UUID())
-            if not oldNets.has_key(uuid):
-                self.nets[uuid] = vmmNetwork(self.config, self, net, uuid, True)
-                newNets[uuid] = self.nets[uuid]
-                startNets[uuid] = newNets[uuid]
-            else:
-                self.nets[uuid] = oldNets[uuid]
-                if not self.nets[uuid].is_active():
-                    self.nets[uuid].set_active(True)
-                    startNets[uuid] = self.nets[uuid]
-                del oldNets[uuid]
+            try:
+                net = self.vmm.networkLookupByName(name)
+                uuid = self.uuidstr(net.UUID())
+                if not origNets.has_key(uuid):
+                    # Brand new network
+                    currentNets[uuid] = vmmNetwork(self.config, self, net,
+                                                   uuid, True)
+                    newNets.append(uuid)
+                    startNets.append(uuid)
+                else:
+                    # Already present network, see if it changed state
+                    currentNets[uuid] = origNets[uuid]
+                    if not currentNets[uuid].is_active():
+                        currentNets[uuid].set_active(True)
+                        startNets.append(uuid)
+                    del origNets[uuid]
+            except libvirt.libvirtError:
+                logging.warn("Couldn't fetch active network name '%s'" % name)
+
         for name in newInactiveNetNames:
-            net = self.vmm.networkLookupByName(name)
-            uuid = self.uuidstr(net.UUID())
-            if not oldNets.has_key(uuid):
-                self.nets[uuid] = vmmNetwork(self.config, self, net, uuid, False)
-                newNets[uuid] = self.nets[uuid]
-            else:
-                self.nets[uuid] = oldNets[uuid]
-                if self.nets[uuid].is_active():
-                    self.nets[uuid].set_active(False)
-                    stopNets[uuid] = self.nets[uuid]
-                del oldNets[uuid]
+            try:
+                net = self.vmm.networkLookupByName(name)
+                uuid = self.uuidstr(net.UUID())
+                if not origNets.has_key(uuid):
+                    currentNets[uuid] = vmmNetwork(self.config, self, net,
+                                                 uuid, False)
+                    newNets.append(uuid)
+                else:
+                    currentNets[uuid] = origNets[uuid]
+                    if currentNets[uuid].is_active():
+                        currentNets[uuid].set_active(False)
+                        stopNets.append(uuid)
+                    del origNets[uuid]
+            except libvirt.libvirtError:
+                logging.warn("Couldn't fetch inactive network name '%s'" % name)
+
+        return (startNets, stopNets, newNets, origNets, currentNets)
+
+    def _update_pools(self):
+        origPools = self.pools
+        currentPools = {}
+        startPools = []
+        stopPools = []
+        newPools = []
+        newActivePoolNames = []
+        newInactivePoolNames = []
+
+        if self.storage_capable == None:
+            self.storage_capable = virtinst.util.is_storage_capable(self.vmm)
+
+        if not self.storage_capable:
+            return (stopPools, startPools, origPools, newPools, currentPools)
+
+        try:
+            newActivePoolNames = self.vmm.listStoragePools()
+        except:
+            logging.warn("Unable to list active pools")
+        try:
+            newInactivePoolNames = self.vmm.listDefinedStoragePools()
+        except:
+            logging.warn("Unable to list inactive pools")
+
+        for name in newActivePoolNames:
+            try:
+                pool = self.vmm.storagePoolLookupByName(name)
+                uuid = self.uuidstr(pool.UUID())
+                if not origPools.has_key(uuid):
+                    currentPools[uuid] = vmmStoragePool(self.config, self,
+                                                        pool, uuid, True)
+                    newPools.append(uuid)
+                    startPools.append(uuid)
+                else:
+                    currentPools[uuid] = origPools[uuid]
+                    if not currentPools[uuid].is_active():
+                        currentPools[uuid].set_active(True)
+                        startPools.append(uuid)
+                    del origPools[uuid]
+            except libvirt.libvirtError:
+                logging.warn("Couldn't fetch active pool '%s'" % name)
+
+        for name in newInactivePoolNames:
+            try:
+                pool = self.vmm.storagePoolLookupByName(name)
+                uuid = self.uuidstr(pool.UUID())
+                if not origPools.has_key(uuid):
+                    currentPools[uuid] = vmmStoragePool(self.config, self,
+                                                        pool, uuid, False)
+                    newPools.append(uuid)
+                else:
+                    currentPools[uuid] = origPools[uuid]
+                    if currentPools[uuid].is_active():
+                        currentPools[uuid].set_active(False)
+                        stopPools.append(uuid)
+                    del origPools[uuid]
+            except libvirt.libvirtError:
+                logging.warn("Couldn't fetch inactive pool '%s'" % name)
+        return (stopPools, startPools, origPools, newPools, currentPools)
+
+    def _update_vms(self):
+        """returns lists of changed VM states"""
 
         oldActiveIDs = {}
         oldInactiveNames = {}
@@ -616,28 +758,31 @@ class vmmConnection(gobject.GObject):
             vm = self.vms[uuid]
             if vm.get_id() == -1:
                 oldInactiveNames[vm.get_name()] = vm
-
         for uuid in self.activeUUIDs:
-            # Now get all the vms that were active the last time around and are still active
+            # Now get all the vms that were active the last time around
+            # and are still active
             vm = self.vms[uuid]
             if vm.get_id() != -1:
                 oldActiveIDs[vm.get_id()] = vm
 
-        # Now we can clear the list of actives from the last time through
-        self.activeUUIDs = []
+        newActiveIDs = []
+        try:
+            newActiveIDs = self.vmm.listDomainsID()
+        except:
+            logging.warn("Unable to list active domains")
 
-        newActiveIDs = self.vmm.listDomainsID()
         newInactiveNames = []
         try:
             newInactiveNames = self.vmm.listDefinedDomains()
         except:
             logging.warn("Unable to list inactive domains")
 
-        newUUIDs = {}
-        oldUUIDs = {}
-        curUUIDs = {}
-        maybeNewUUIDs = {}
-        startedUUIDs = []
+        curUUIDs = {}       # new master list of vms
+        maybeNewUUIDs = {}  # list of vms that changed state or are brand new
+        oldUUIDs = {}       # no longer present vms
+        newUUIDs = []       # brand new vms
+        startedUUIDs = []   # previously present vms that are now running
+        activeUUIDs = []    # all running vms
 
         # NB in these first 2 loops, we go to great pains to
         # avoid actually instantiating a new VM object so that
@@ -651,18 +796,20 @@ class vmmConnection(gobject.GObject):
                     # No change, copy across existing VM object
                     vm = oldActiveIDs[id]
                     curUUIDs[vm.get_uuid()] = vm
-                    self.activeUUIDs.append(vm.get_uuid())
+                    activeUUIDs.append(vm.get_uuid())
                 else:
                     # May be a new VM, we have no choice but
                     # to create the wrapper so we can see
                     # if its a previously inactive domain.
-                    vm = self.vmm.lookupByID(id)
-                    uuid = self.uuidstr(vm.UUID())
-                    maybeNewUUIDs[uuid] = vm
-                    # also add the new or newly started VM to the "started" list
-                    startedUUIDs.append(uuid)
-                    #print "Maybe new active " + str(maybeNewUUIDs[uuid].get_name()) + " " + uuid
-                    self.activeUUIDs.append(uuid)
+                    try:
+                        vm = self.vmm.lookupByID(id)
+                        uuid = self.uuidstr(vm.UUID())
+                        maybeNewUUIDs[uuid] = vm
+                        startedUUIDs.append(uuid)
+                        activeUUIDs.append(uuid)
+                    except libvirt.libvirtError:
+                        logging.debug("Couldn't fetch domain id '%s'" % str(id)
+                                      + ": it probably went away")
 
         # Filter out inactive domains which haven't changed
         if newInactiveNames != None:
@@ -670,7 +817,6 @@ class vmmConnection(gobject.GObject):
                 if oldInactiveNames.has_key(name):
                     # No change, copy across existing VM object
                     vm = oldInactiveNames[name]
-                    #print "Existing inactive " + str(vm.get_name()) + " " + vm.get_uuid()
                     curUUIDs[vm.get_uuid()] = vm
                 else:
                     # May be a new VM, we have no choice but
@@ -681,8 +827,8 @@ class vmmConnection(gobject.GObject):
                         uuid = self.uuidstr(vm.UUID())
                         maybeNewUUIDs[uuid] = vm
                     except libvirt.libvirtError:
-                        logging.debug("Couldn't fetch domain id " + str(id) + "; it probably went away")
-                    #print "Maybe new inactive " + str(maybeNewUUIDs[uuid].get_name()) + " " + uuid
+                        logging.debug("Couldn't fetch domain id '%s'" % str(id)
+                                      + ": it probably went away")
 
         # At this point, maybeNewUUIDs has domains which are
         # either completely new, or changed state.
@@ -692,62 +838,80 @@ class vmmConnection(gobject.GObject):
         for uuid in maybeNewUUIDs.keys():
             rawvm = maybeNewUUIDs[uuid]
             if not(self.vms.has_key(uuid)):
-                #print "Completely new VM " + str(vm)
                 vm = vmmDomain(self.config, self, rawvm, uuid)
-                newUUIDs[vm.get_uuid()] = vm
+                newUUIDs.append(uuid)
                 curUUIDs[uuid] = vm
             else:
                 vm = self.vms[uuid]
                 vm.release_handle()
                 vm.set_handle(rawvm)
                 curUUIDs[uuid] = vm
-                #print "Mere state change " + str(vm)
 
         # Finalize list of domains which went away altogether
         for uuid in self.vms.keys():
             vm = self.vms[uuid]
             if not(curUUIDs.has_key(uuid)):
-                #print "Completly old VM " + str(vm)
                 oldUUIDs[uuid] = vm
-            else:
-                #print "Mere state change " + str(vm)
-                pass
 
-        # We have our new master list
-        self.vms = curUUIDs
+        return (startedUUIDs, newUUIDs, oldUUIDs, curUUIDs, activeUUIDs)
 
-        # Inform everyone what changed
-        for uuid in oldUUIDs:
+    def tick(self, noStatsUpdate=False):
+        """ main update function: polls for new objects, updates stats, ..."""
+        if self.state != self.STATE_ACTIVE:
+            return
+
+        # Poll for new virtual network objects
+        (startNets, stopNets, newNets,
+         oldNets, self.nets) = self._update_nets()
+
+        # Update pools
+        (stopPools, startPools, oldPools,
+         newPools, self.pools) = self._update_pools()
+
+        # Poll for changed/new/removed VMs
+        (startVMs, newVMs, oldVMs,
+         self.vms, self.activeUUIDs) = self._update_vms()
+
+        # Update VM states
+        for uuid in oldVMs:
             self.emit("vm-removed", self.uri, uuid)
-            oldUUIDs[uuid].release_handle()
-
-        for uuid in newUUIDs:
+            oldVMs[uuid].release_handle()
+        for uuid in newVMs:
             self.emit("vm-added", self.uri, uuid)
-
-        for uuid in startedUUIDs:
+        for uuid in startVMs:
             self.emit("vm-started", self.uri, uuid)
 
+        # Update virtual network states
         for uuid in oldNets:
             self.emit("net-removed", self.uri, uuid)
-
         for uuid in newNets:
             self.emit("net-added", self.uri, uuid)
-
         for uuid in startNets:
             self.emit("net-started", self.uri, uuid)
-
         for uuid in stopNets:
             self.emit("net-stopped", self.uri, uuid)
 
+        for uuid in oldPools:
+            self.emit("pool-removed", self.uri, uuid)
+        for uuid in newPools:
+            self.emit("pool-added", self.uri, uuid)
+        for uuid in startPools:
+            self.emit("pool-started", self.uri, uuid)
+        for uuid in stopPools:
+            self.emit("pool-stopped", self.uri, uuid)
+
         # Finally, we sample each domain
         now = time()
-        self.hostinfo = self.vmm.getInfo()
+        try:
+            self.hostinfo = self.vmm.getInfo()
+        except:
+            logging.warn("Unable to get host information")
 
         updateVMs = self.vms
         if noStatsUpdate:
-            updateVMs = newUUIDs
+            updateVMs = newVMs
 
-        for uuid in updateVMs.keys():
+        for uuid in updateVMs:
             self.vms[uuid].tick(now)
 
         if not noStatsUpdate:
@@ -832,11 +996,6 @@ class vmmConnection(gobject.GObject):
         else:
             return "%2.2f MB" % (mem/1024.0)
 
-    def current_memory(self):
-        if len(self.record) == 0:
-            return 0
-        return self.record[0]["memory"]
-
     def current_memory_percentage(self):
         if len(self.record) == 0:
             return 0
@@ -871,7 +1030,10 @@ class vmmConnection(gobject.GObject):
         elif self.state == self.STATE_CONNECTING:
             return _("Connecting")
         elif self.state == self.STATE_ACTIVE:
-            return _("Active")
+            if self.is_read_only():
+                return _("Active (RO)")
+            else:
+                return _("Active")
         elif self.state == self.STATE_INACTIVE:
             return _("Inactive")
         else:
@@ -899,9 +1061,9 @@ class vmmConnection(gobject.GObject):
         addrpath = sysfspath + "/address"
         if os.path.exists(addrpath):
             df = open(addrpath, 'r')
-            mac = df.readline()
+            mac = df.readline().strip(" \n\t")
             df.close()
-        return mac.strip(" \n\t")
+        return mac
 
     def _net_get_bonding_masters(self):
         masters = []
@@ -912,10 +1074,8 @@ class vmmConnection(gobject.GObject):
                 if not rline: break
                 if rline == "\x00": continue
                 rline = rline.strip("\n\t")
-                masters = rline[:-1].split(' ')
-            return masters
-        else:
-            return None
+                masters = rline[:].split(' ')
+        return masters
 
     def _net_is_bonding_slave(self, name, sysfspath):
         masterpath = sysfspath + "/master"
