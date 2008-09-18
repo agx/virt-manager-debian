@@ -1,0 +1,25 @@
+From 1cf32690e4e5dccfcc60632e285e35d846f33086 Mon Sep 17 00:00:00 2001
+From: Guido Guenther <agx@sigxcpu.org>
+Date: Thu, 18 Sep 2008 22:55:16 +0200
+Subject: [PATCH] use /usr/share/gconf for schema data
+
+---
+ src/Makefile.am |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/src/Makefile.am b/src/Makefile.am
+index 250e10d..e424887 100644
+--- a/src/Makefile.am
++++ b/src/Makefile.am
+@@ -22,7 +22,7 @@ dbusdir = $(datadir)/dbus-1/services
+ dbus_DATA_IN = $(PACKAGE).service.in
+ dbus_DATA = $(PACKAGE).service
+ 
+-schemadir = $(sysconfdir)/gconf/schemas
++schemadir = $(datadir)/gconf/schemas
+ schema_DATA_IN = $(PACKAGE).schemas.in
+ schema_DATA = $(PACKAGE).schemas
+ 
+-- 
+1.5.6.5
+
