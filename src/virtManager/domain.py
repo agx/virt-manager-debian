@@ -25,7 +25,7 @@ import os
 import sys
 import logging
 import copy
-
+import virtinst.util as util
 
 class vmmDomain(gobject.GObject):
     __gsignals__ = {
@@ -54,17 +54,7 @@ class vmmDomain(gobject.GObject):
         return self.xml
 
     def release_handle(self):
-        # HACK: Force free the virtDomainPtr C object since we
-        # can't rely on timely GC. Use try...except block to
-        # protect in case internals of libvirt python change
-        # in the future
-        try:
-            import libvirtmod
-            if self.vm._o is not None:
-                libvirtmod.virDomainFree(self.vm._o)
-                self.vm._o = None
-        except:
-            pass
+        del(self.vm)
         self.vm = None
 
     def set_handle(self, vm):
@@ -107,7 +97,7 @@ class vmmDomain(gobject.GObject):
         return False
 
     def is_hvm(self):
-        os_type = self.get_xml_string("/domain/os/type")
+        os_type = util.get_xml_path(self.get_xml(), "/domain/os/type")
         # XXX libvirt bug - doesn't work for inactive guests
         #os_type = self.vm.OSType()
         logging.debug("OS Type: %s" % os_type)
@@ -115,12 +105,17 @@ class vmmDomain(gobject.GObject):
             return True
         return False
 
+    def get_type(self):
+        return util.get_xml_path(self.get_xml(), "/domain/@type")
+
     def is_vcpu_hotplug_capable(self):
         # Read only connections aren't allowed to change it
         if self.connection.is_read_only():
             return False
         # Running paravirt guests can change it, or any inactive guest
-        if self.vm.OSType() == "linux" or self.get_id() < 0:
+        if self.vm.OSType() == "linux" \
+           or self.status() not in [libvirt.VIR_DOMAIN_RUNNING,\
+                                    libvirt.VIR_DOMAIN_PAUSED]:
             return True
         # Everyone else is out of luck
         return False
@@ -130,7 +125,9 @@ class vmmDomain(gobject.GObject):
         if self.connection.is_read_only():
             return False
         # Running paravirt guests can change it, or any inactive guest
-        if self.vm.OSType() == "linux" or self.get_id() < 0:
+        if self.vm.OSType() == "linux" \
+           or self.status() not in [libvirt.VIR_DOMAIN_RUNNING,\
+                                    libvirt.VIR_DOMAIN_PAUSED]:
             return True
         # Everyone else is out of luck
         return False
@@ -318,7 +315,7 @@ class vmmDomain(gobject.GObject):
         return self.record[0]["vcpuCount"]
 
     def vcpu_max_count(self):
-        cpus = self.get_xml_string("/domain/vcpu")
+        cpus = util.get_xml_path(self.get_xml(), "/domain/vcpu")
         return int(cpus)
 
     def cpu_time_vector(self):
@@ -375,6 +372,10 @@ class vmmDomain(gobject.GObject):
         self.vm.shutdown()
         self._update_status()
 
+    def reboot(self):
+        self.vm.reboot(0)
+        self._update_status()
+
     def startup(self):
         self.vm.create()
         self._update_status()
@@ -390,8 +391,14 @@ class vmmDomain(gobject.GObject):
         self.vm.resume()
         self._update_status()
 
-    def save(self, file, ignore1=None):
-        self.vm.save(file)
+    def save(self, file, ignore1=None, background=True):
+        if background:
+            conn = libvirt.open(self.connection.uri)
+            vm = conn.lookupByID(self.get_id())
+        else:
+            vm = self.vm
+
+        vm.save(file)
         self._update_status()
 
     def destroy(self):
@@ -417,31 +424,13 @@ class vmmDomain(gobject.GObject):
     def run_status_icon(self):
         return self.config.get_vm_status_icon(self.status())
 
-    def get_xml_string(self, path):
-        xml = self.get_xml()
-        doc = None
-        try:
-            doc = libxml2.parseDoc(xml)
-        except:
-            return None
-        ctx = doc.xpathNewContext()
-        try:
-            ret = ctx.xpathEval(path)
-            tty = None
-            if len(ret) == 1:
-                tty = ret[0].content
-            ctx.xpathFreeContext()
-            doc.freeDoc()
-            return tty
-        except:
-            ctx.xpathFreeContext()
-            doc.freeDoc()
-            return None
-
     def get_serial_console_tty(self):
-        return self.get_xml_string("/domain/devices/console/@tty")
+        return util.get_xml_path(self.get_xml(), "/domain/devices/console/@tty")
 
     def is_serial_console_tty_accessible(self):
+        # pty serial scheme doesn't work over remote
+        if self.connection.is_remote():
+            return False
         tty = self.get_serial_console_tty()
         if tty == None:
             return False
@@ -449,10 +438,12 @@ class vmmDomain(gobject.GObject):
 
     def get_graphics_console(self):
         self.xml = None
-        type = self.get_xml_string("/domain/devices/graphics/@type")
+        type = util.get_xml_path(self.get_xml(),
+                                 "/domain/devices/graphics/@type")
         port = None
         if type == "vnc":
-            port = self.get_xml_string("/domain/devices/graphics[@type='vnc']/@port")
+            port = util.get_xml_path(self.get_xml(),
+                                     "/domain/devices/graphics[@type='vnc']/@port")
             if port is not None:
                 port = int(port)
 
@@ -468,20 +459,14 @@ class vmmDomain(gobject.GObject):
 
 
     def get_disk_devices(self):
-        xml = self.get_xml()
-        doc = None
-        try:
-            doc = libxml2.parseDoc(xml)
-        except:
-            return []
-        ctx = doc.xpathNewContext()
-        disks = []
-        try:
+        def _parse_disk_devs(ctx):
+            disks = []
             ret = ctx.xpathEval("/domain/devices/disk")
             for node in ret:
                 type = node.prop("type")
                 srcpath = None
                 devdst = None
+                bus = None
                 readonly = False
                 sharable = False
                 devtype = node.prop("device")
@@ -497,11 +482,12 @@ class vmmDomain(gobject.GObject):
                             type = "-"
                     elif child.name == "target":
                         devdst = child.prop("dev")
+                        bus = child.prop("bus")
                     elif child.name == "readonly":
                         readonly = True
                     elif child.name == "sharable":
                         sharable = True
-                        
+
                 if srcpath == None:
                     if devtype == "cdrom":
                         srcpath = "-"
@@ -512,15 +498,12 @@ class vmmDomain(gobject.GObject):
                     raise RuntimeError("missing destination device")
 
                 disks.append([type, srcpath, devtype, devdst, readonly, \
-                              sharable])
+                              sharable, bus])
 
-        finally:
-            if ctx != None:
-                ctx.xpathFreeContext()
-            if doc != None:
-                doc.freeDoc()
-        return disks
-    
+            return disks
+
+        return self._parse_device_xml(_parse_disk_devs)
+
     def get_disk_xml(self, target):
         """Returns device xml in string form for passed disk target"""
         xml = self.get_xml()
@@ -542,27 +525,298 @@ class vmmDomain(gobject.GObject):
                 doc.freeDoc()
         return result
 
-    def _change_cdrom(self, newxml, origxml):
-        # If vm is shutoff, remove device, and redefine with media
-        if not self.is_active():
-            logging.debug("_change_cdrom: removing original xml")
-            self.remove_device(origxml)
-            try:
-                logging.debug("_change_cdrom: adding new xml")
-                self.add_device(newxml)
-            except Exception, e1:
-                logging.debug("_change_cdrom: adding new xml failed. attempting to readd original device")
-                try:
-                    self.add_device(origxml) # Try to re-add original
-                except Exception, e2:
-                    raise RuntimeError(_("Failed to change cdrom and re-add original device. Exceptions were: \n%s\n%s") % (str(e1), str(e2)))
-                raise e1
-        else:
-            self.vm.attachDevice(newxml)
-            vmxml = self.vm.XMLDesc(0)
-            self.get_connection().define_domain(vmxml)
+    def get_network_devices(self):
+        def _parse_network_devs(ctx):
+            nics = []
+            ret = ctx.xpathEval("/domain/devices/interface")
 
-    def connect_cdrom_device(self, type, source, target): 
+            for node in ret:
+                type = node.prop("type")
+                devmac = None
+                source = None
+                target = None
+                model = None
+                for child in node.children:
+                    if child.name == "source":
+                        if type == "bridge":
+                            source = child.prop("bridge")
+                        elif type == "ethernet":
+                            source = child.prop("dev")
+                        elif type == "network":
+                            source = child.prop("network")
+                        elif type == "user":
+                            source = None
+                        else:
+                            source = None
+                    elif child.name == "mac":
+                        devmac = child.prop("address")
+                    elif child.name == "target":
+                        target = child.prop("dev")
+                    elif child.name == "model":
+                        model = child.prop("type")
+                # XXX Hack - ignore devs without a MAC, since we
+                # need mac for uniqueness. Some reason XenD doesn't
+                # always complete kill the NIC record
+                if devmac != None:
+                    nics.append([type, source, target, devmac, model])
+            return nics
+
+        return self._parse_device_xml(_parse_network_devs)
+
+    def get_input_devices(self):
+        def _parse_input_devs(ctx):
+            inputs = []
+            ret = ctx.xpathEval("/domain/devices/input")
+
+            for node in ret:
+                type = node.prop("type")
+                bus = node.prop("bus")
+                # XXX Replace 'None' with device model when libvirt supports
+                # that
+                inputs.append([type, bus, None, type + ":" + bus])
+            return inputs
+
+        return self._parse_device_xml(_parse_input_devs)
+
+    def get_graphics_devices(self):
+        def _parse_graphics_devs(ctx):
+            graphics = []
+            ret = ctx.xpathEval("/domain/devices/graphics[1]")
+            for node in ret:
+                type = node.prop("type")
+                if type == "vnc":
+                    listen = node.prop("listen")
+                    port = node.prop("port")
+                    keymap = node.prop("keymap")
+                    graphics.append([type, listen, port, type, keymap])
+                else:
+                    graphics.append([type, None, None, type])
+            return graphics
+
+        return self._parse_device_xml(_parse_graphics_devs)
+
+    def get_sound_devices(self):
+        def _parse_sound_devs(ctx):
+            sound = []
+            ret = ctx.xpathEval("/domain/devices/sound")
+            for node in ret:
+                sound.append([None, None, None, node.prop("model")])
+            return sound
+
+        return self._parse_device_xml(_parse_sound_devs)
+
+    def get_char_devices(self):
+        def _parse_char_devs(ctx):
+            chars = []
+            devs  = []
+            devs = ctx.xpathEval("/domain/devices/console")
+            devs.extend(ctx.xpathEval("/domain/devices/parallel"))
+            devs.extend(ctx.xpathEval("/domain/devices/serial"))
+
+            # Since there is only one 'console' device ever in the xml
+            # find its port (if present) and path
+            cons_port = None
+            cons_dev = None
+            list_cons = True
+
+            for node in devs:
+                char_type = node.name
+                dev_type = node.prop("type")
+                target_port = None
+                source_path = None
+
+                for child in node.children:
+                    if child.name == "target":
+                        target_port = child.prop("port")
+                    if child.name == "source":
+                        source_path = child.prop("path")
+
+                if not source_path:
+                    source_path = node.prop("tty")
+
+                dev = [char_type, dev_type, target_port,
+                       "%s:%s" % (char_type, target_port), source_path, False]
+
+                if node.name == "console":
+                    cons_port = target_port
+                    cons_dev = dev
+                    continue
+                elif node.name == "serial" and cons_port \
+                   and target_port == cons_port:
+                    # Console is just a dupe of this serial device
+                    dev[5] = True
+                    list_cons = False
+
+                chars.append(dev)
+
+            if cons_dev and list_cons:
+                chars.append(cons_dev)
+
+            return chars
+
+        return self._parse_device_xml(_parse_char_devs)
+
+    def _parse_device_xml(self, parse_function):
+        doc = None
+        ctx = None
+        ret = []
+        try:
+            doc = libxml2.parseDoc(self.get_xml())
+            ctx = doc.xpathNewContext()
+            ret = parse_function(ctx)
+        except Exception, e:
+            logging.debug("Error parsing domain xml: %s" % str(e))
+        finally:
+            if ctx:
+                ctx.xpathFreeContext()
+            if doc:
+                doc.freeDoc()
+        return ret
+
+    def _add_xml_device(self, xml, devxml):
+        """Add device 'devxml' to devices section of 'xml', return result"""
+        index = xml.find("</devices>")
+        return xml[0:index] + devxml + xml[index:]
+
+    def _remove_xml_device(self, xml, devxml):
+        """Remove device 'devxml' from devices section of 'xml, return
+           result"""
+        doc = None
+        try:
+            doc = libxml2.parseDoc(xml)
+        except:
+            return
+        ctx = doc.xpathNewContext()
+        try:
+            dev_doc = libxml2.parseDoc(devxml)
+        except:
+            raise RuntimeError("Device XML would not parse")
+        dev_ctx = dev_doc.xpathNewContext()
+        ret = None
+
+        try:
+            dev = dev_ctx.xpathEval("//*")
+            dev_type = dev[0].name
+            if dev_type=="interface":
+                address = dev_ctx.xpathEval("/interface/mac/@address")
+                if len(address) > 0 and address[0].content != None:
+                    logging.debug("The mac address appears to be %s" % address[0].content)
+                    ret = ctx.xpathEval("/domain/devices/interface[mac/@address='%s']" % address[0].content)
+
+            elif dev_type=="disk":
+                path = dev_ctx.xpathEval("/disk/target/@dev")
+                if len(path) > 0 and path[0].content != None:
+                    logging.debug("Looking for path %s" % path[0].content)
+                    ret = ctx.xpathEval("/domain/devices/disk[target/@dev='%s']" % path[0].content)
+
+            elif dev_type=="input":
+                type = dev_ctx.xpathEval("/input/@type")
+                bus = dev_ctx.xpathEval("/input/@bus")
+                if len(type) > 0 and type[0].content != None and len(bus) > 0 and bus[0].content != None:
+                    logging.debug("Looking for type %s bus %s" % (type[0].content, bus[0].content))
+                    ret = ctx.xpathEval("/domain/devices/input[@type='%s' and @bus='%s']" % (type[0].content, bus[0].content))
+
+            elif dev_type=="graphics":
+                type = dev_ctx.xpathEval("/graphics/@type")
+                if len(type) > 0 and type[0].content != None:
+                    logging.debug("Looking for type %s" % type[0].content)
+                    ret = ctx.xpathEval("/domain/devices/graphics[@type='%s']" % type[0].content)
+
+            elif dev_type == "sound":
+                model = dev_ctx.xpathEval("/sound/@model")
+                if len(model) > 0 and model[0].content != None:
+                    logging.debug("Looking for type %s" % model[0].content)
+                    ret = ctx.xpathEval("/domain/devices/sound[@model='%s']" % model[0].content)
+
+            elif dev_type == "parallel" or dev_type == "console" or \
+                 dev_type == "serial":
+                 port = dev_ctx.xpathEval("/%s/target/@port" % dev_type)
+                 if port and len(port) > 0 and port[0].content != None:
+                    logging.debug("Looking for %s w/ port %s" % (dev_type,
+                                                                 port))
+                    ret = ctx.xpathEval("/domain/devices/%s[target/@port='%s']" % (dev_type, port[0].content))
+
+                    # If serial and console are both present, console is
+                    # probably (always?) just a dup of the 'primary' serial
+                    # device. Try and find an associated console device with
+                    # the same port and remove that as well, otherwise the
+                    # removal doesn't go through on libvirt <= 0.4.4
+                    if dev_type == "serial":
+                        cons_ret = ctx.xpathEval("/domain/devices/console[target/@port='%s']" % port[0].content)
+                        if cons_ret and len(cons_ret) > 0:
+                            logging.debug("Also removing console device "
+                                          "associated with serial dev.")
+                            cons_ret[0].unlinkNode()
+                            cons_ret[0].freeNode()
+                        else:
+                            logging.debug("No console device found associated "
+                                          "with passed serial devices")
+
+            else:
+                raise RuntimeError, _("Unknown device type '%s'" % dev_type)
+
+            # Take variable 'ret', unlink it, and define the altered xml
+            if ret and len(ret) > 0:
+                ret[0].unlinkNode()
+                ret[0].freeNode()
+                newxml = doc.serialize()
+                return newxml
+            else:
+                logging.debug("Didn't find the specified device to remove. "
+                              "Passed xml was: %s" % devxml)
+        finally:
+            if ctx != None:
+                ctx.xpathFreeContext()
+            if doc != None:
+                doc.freeDoc()
+            if dev_doc != None:
+                dev_doc.freeDoc()
+
+    def attach_device(self, xml):
+        """Hotplug device to running guest"""
+        if self.is_active():
+            self.vm.attachDevice(xml)
+
+    def detach_device(self, xml):
+        """Hotunplug device from running guest"""
+        if self.is_active():
+            self.vm.detachDevice(xml)
+
+    def add_device(self, xml):
+        """Redefine guest with appended device"""
+        vmxml = self.vm.XMLDesc(0)
+
+        newxml = self._add_xml_device(vmxml, xml)
+
+        logging.debug("Redefine with " + newxml)
+        self.get_connection().define_domain(newxml)
+
+        # Invalidate cached XML
+        self.xml = None
+
+    def remove_device(self, devxml):
+        xml = self.vm.XMLDesc(0)
+
+        newxml = self._remove_xml_device(xml, devxml)
+
+        logging.debug("Redefine with " + newxml)
+        self.get_connection().define_domain(newxml)
+
+        # Invalidate cached XML
+        self.xml = None
+
+    def _change_cdrom(self, newdev, origdev):
+        # If vm is shutoff, remove device, and redefine with media
+        vmxml = self.vm.XMLDesc(0)
+        if not self.is_active():
+            tmpxml = self._remove_xml_device(vmxml, origdev)
+            finalxml = self._add_xml_device(tmpxml, newdev)
+            logging.debug("change cdrom: redefining xml with:\n%s" % finalxml)
+            self.get_connection().define_domain(finalxml)
+        else:
+            self.attach_device(newdev)
+
+    def connect_cdrom_device(self, type, source, target):
         xml = self.get_disk_xml(target)
         doc = None
         ctx = None
@@ -570,13 +824,18 @@ class vmmDomain(gobject.GObject):
             doc = libxml2.parseDoc(xml)
             ctx = doc.xpathNewContext()
             disk_fragment = ctx.xpathEval("/disk")
+            driver_fragment = ctx.xpathEval("/disk/driver")
             origdisk = disk_fragment[0].serialize()
             disk_fragment[0].setProp("type", type)
             elem = disk_fragment[0].newChild(None, "source", None)
             if type == "file":
                 elem.setProp("file", source)
+                if driver_fragment:
+                    driver_fragment[0].setProp("name", type)
             else:
                 elem.setProp("dev", source)
+                if driver_fragment:
+                    driver_fragment[0].setProp("name", "phy")
             result = disk_fragment[0].serialize()
             logging.debug("connect_cdrom_device produced the following XML: %s" % result)
         finally:
@@ -612,214 +871,6 @@ class vmmDomain(gobject.GObject):
             if doc != None:
                 doc.freeDoc()
         self._change_cdrom(result, origdisk)
-
-    def get_network_devices(self):
-        xml = self.get_xml()
-        doc = None
-        try:
-            doc = libxml2.parseDoc(xml)
-        except:
-            return []
-        ctx = doc.xpathNewContext()
-        nics = []
-        try:
-            ret = ctx.xpathEval("/domain/devices/interface")
-
-            for node in ret:
-                type = node.prop("type")
-                devmac = None
-                source = None
-                target = None
-                for child in node.children:
-                    if child.name == "source":
-                        if type == "bridge":
-                            source = child.prop("bridge")
-                        elif type == "ethernet":
-                            source = child.prop("dev")
-                        elif type == "network":
-                            source = child.prop("network")
-                        elif type == "user":
-                            source = None
-                        else:
-                            source = None
-                    elif child.name == "mac":
-                        devmac = child.prop("address")
-                    elif child.name == "target":
-                        target = child.prop("dev")
-                # XXX Hack - ignore devs without a MAC, since we
-                # need mac for uniqueness. Some reason XenD doesn't
-                # always complete kill the NIC record
-                if devmac != None:
-                    nics.append([type, source, target, devmac])
-        finally:
-            if ctx != None:
-                ctx.xpathFreeContext()
-            if doc != None:
-                doc.freeDoc()
-        return nics
-
-    def get_input_devices(self):
-        xml = self.get_xml()
-        doc = None
-        try:
-            doc = libxml2.parseDoc(xml)
-        except:
-            return []
-        ctx = doc.xpathNewContext()
-        inputs = []
-        try:
-            ret = ctx.xpathEval("/domain/devices/input")
-
-            for node in ret:
-                type = node.prop("type")
-                bus = node.prop("bus")
-                # XXX Replace 'None' with device model when libvirt supports that
-                inputs.append([type, bus, None, type + ":" + bus])
-        finally:
-            if ctx != None:
-                ctx.xpathFreeContext()
-            if doc != None:
-                doc.freeDoc()
-        return inputs
-
-    def get_graphics_devices(self):
-        xml = self.get_xml()
-        doc = None
-        try:
-            doc = libxml2.parseDoc(xml)
-        except:
-            return []
-        ctx = doc.xpathNewContext()
-        graphics = []
-        try:
-            ret = ctx.xpathEval("/domain/devices/graphics[1]")
-            for node in ret:
-                type = node.prop("type")
-                if type == "vnc":
-                    listen = node.prop("listen")
-                    port = node.prop("port")
-                    graphics.append([type, listen, port, type])
-                else:
-                    graphics.append([type, None, None, type])
-        finally:
-            if ctx != None:
-                ctx.xpathFreeContext()
-            if doc != None:
-                doc.freeDoc()
-        return graphics
-
-    def add_device(self, xml):
-        logging.debug("Adding device " + xml)
-
-        # get the XML for the live domain before we attach the device
-        # otherwise the device gets added to the XML twice.
-        vmxml = self.vm.XMLDesc(0)
-
-        device_exception = None
-        try:
-            if self.is_active():
-                self.vm.attachDevice(xml)
-        except libvirt.libvirtError, e:
-            device_exception = str(e)
-
-        index = vmxml.find("</devices>")
-        newxml = vmxml[0:index] + xml + vmxml[index:]
-        logging.debug("Redefine with " + newxml)
-        self.get_connection().define_domain(newxml)
-
-        # Invalidate cached XML
-        self.xml = None
-        if device_exception:
-            raise RuntimeError, "Unable to attach device to live guest, libvirt reported error:\n" + device_exception 
-
-    def remove_device(self, dev_xml):
-        logging.debug("Removing device " + dev_xml)
-        xml = self.vm.XMLDesc(0)
-
-        # do the live guest first
-        device_exception = None
-        if self.is_active():
-            try:
-                self.vm.detachDevice(dev_xml)
-            except libvirt.libvirtError, e:
-                device_exception = str(e)
-
-        # then the stored XML
-        doc = None
-        try:
-            doc = libxml2.parseDoc(xml)
-        except:
-            return
-        ctx = doc.xpathNewContext()
-        try:
-            dev_doc = libxml2.parseDoc(dev_xml)
-        except:
-            raise RuntimeError("Device XML would not parse")
-        dev_ctx = dev_doc.xpathNewContext()
-        ret = None
-        try:
-            dev = dev_ctx.xpathEval("//*")
-            dev_type = dev[0].name
-            if dev_type=="interface":
-                address = dev_ctx.xpathEval("/interface/mac/@address")
-                if len(address) > 0 and address[0].content != None:
-                    logging.debug("The mac address appears to be %s" % address[0].content)
-                    ret = ctx.xpathEval("/domain/devices/interface[mac/@address='%s']" % address[0].content)
-                if len(ret) >0:
-                    ret[0].unlinkNode()
-                    ret[0].freeNode()
-                    newxml=doc.serialize()
-                    logging.debug("Redefine with " + newxml)
-                    self.get_connection().define_domain(newxml)
-            elif dev_type=="disk":
-                path = dev_ctx.xpathEval("/disk/target/@dev")
-                if len(path) > 0 and path[0].content != None:
-                    logging.debug("Looking for path %s" % path[0].content)
-                    ret = ctx.xpathEval("/domain/devices/disk[target/@dev='%s']" % path[0].content)
-                if len(ret) > 0:
-                    ret[0].unlinkNode()
-                    ret[0].freeNode()
-                    newxml=doc.serialize()
-                    logging.debug("Redefine with " + newxml)
-                    self.get_connection().define_domain(newxml)
-            elif dev_type=="input":
-                type = dev_ctx.xpathEval("/input/@type")
-                bus = dev_ctx.xpathEval("/input/@bus")
-                if len(type) > 0 and type[0].content != None and len(bus) > 0 and bus[0].content != None:
-                    logging.debug("Looking for type %s bus %s" % (type[0].content, bus[0].content))
-                    ret = ctx.xpathEval("/domain/devices/input[@type='%s' and @bus='%s']" % (type[0].content, bus[0].content))
-                if len(ret) > 0:
-                    ret[0].unlinkNode()
-                    ret[0].freeNode()
-                    newxml=doc.serialize()
-                    logging.debug("Redefine with " + newxml)
-                    self.get_connection().define_domain(newxml)
-            elif dev_type=="graphics":
-                type = dev_ctx.xpathEval("/graphics/@type")
-                if len(type) > 0 and type[0].content != None:
-                    logging.debug("Looking for type %s" % type[0].content)
-                    ret = ctx.xpathEval("/domain/devices/graphics[@type='%s']" % type[0].content)
-                if len(ret) > 0:
-                    ret[0].unlinkNode()
-                    ret[0].freeNode()
-                    newxml=doc.serialize()
-                    logging.debug("Redefine with " + newxml)
-                    self.get_connection().define_domain(newxml)
-
-        finally:
-            if ctx != None:
-                ctx.xpathFreeContext()
-            if doc != None:
-                doc.freeDoc()
-            if dev_doc != None:
-                dev_doc.freeDoc()
-
-        # Invalidate cached XML
-        self.xml = None
-
-        # if we had a problem with the live guest, complain here
-        if device_exception:
-            raise RuntimeError, "Unable to detach device from live guest, libvirt reported: \n" + device_exception
 
     def set_vcpu_count(self, vcpus):
         vcpus = int(vcpus)

@@ -1,111 +1,100 @@
-# translation of or.po to Oriya
-# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
-# This file is distributed under the same license as the PACKAGE package.
+# Serbian(Latin) translations for virt-manager
+# Copyright (C) 2006 Red Hat, Inc.
+# This file is distributed under the same license as the virt-manager package.
+# Miloš Komarčević <kmilos@gmail.com>, 2006.
 #
-# Subhransu Behera <sbehera@redhat.com>, 2006.
-# Subhransu Behera <arya_subhransu@yahoo.co.in>, 2007.
 msgid ""
 msgstr ""
-"Project-Id-Version: or\n"
+"Project-Id-Version: virt-manager\n"
 "Report-Msgid-Bugs-To: \n"
 "POT-Creation-Date: 2008-09-10 13:45-0400\n"
-"PO-Revision-Date: 2007-06-26 12:50+0530\n"
-"Last-Translator: Subhransu Behera <arya_subhransu@yahoo.co.in>\n"
-"Language-Team: Oriya <oriya-group@lists.sarovar.org>\n"
+"PO-Revision-Date: 2007-06-21 20:35-0000\n"
+"Last-Translator: Miloš Komarčević <kmilos@gmail.com>\n"
+"Language-Team: Serbian (sr) <fedora-trans-sr@redhat.com>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"X-Generator: KBabel 1.11.4\n"
-"Plural-Forms: Plural-Forms: nplurals=2; plural=(n!=1);\n"
-"\n"
-"\n"
-"\n"
-"\n"
-"\n"
-"\n"
-"\n"
-"\n"
-"\n"
-"\n"
-"\n"
+"Plural-Forms: nplurals=3; plural=(n%10==1 && n%100!=11 ? 0 : n%10>=2 && n%"
+"10<=4 && (n%100<10 || n%100>=20) ? 1 : 2);\n"
 
 #: ../src/virt-manager.desktop.in.in.h:1
 #, fuzzy
 msgid "Manage virtual machines"
-msgstr "ଆଭାସୀ ମେସିନକୁ ସଂରକ୍ଷଣ କରନ୍ତୁ"
+msgstr "Čuvam virtuelnu mašinu"
 
 #: ../src/virt-manager.desktop.in.in.h:2 ../src/vmm-about.glade.h:3
 #: ../src/vmm-manager.glade.h:17
 msgid "Virtual Machine Manager"
-msgstr "ଆଭାସୀ ମେସିନ ପରିଚାଳକ"
+msgstr "Upravnik virtuelne mašine"
 
 #: ../src/vmm-about.glade.h:1
 msgid "Copyright (C) 2006 Red Hat Inc."
-msgstr "ସ୍ବତ୍ତ୍ବାଧୀକାର (C) ୨୦୦୬ Red Hat Inc."
+msgstr "Autorska prava 2006 Red Hat Inc."
 
 #: ../src/vmm-about.glade.h:2
 msgid "Powered by libvirt"
-msgstr "libvirt ଦ୍ବାରା ଚାଳିତ"
+msgstr "Napaja se od libvirt"
 
 #. TRANSLATORS: Replace this string with your names, one name per line.
 #: ../src/vmm-about.glade.h:5
 msgid "translator-credits"
-msgstr "ଶୁଭ୍ରାଂଶୁ ବେହେରା <sbehera@redhat.com>"
+msgstr "Miloš Komarčević <kmilos@gmail.com>, 2006."
 
 #: ../src/vmm-details.glade.h:1
 msgid "20 bits/sec"
-msgstr "୨୦ ବିଟ/ସେକେଣ୍ଡ"
+msgstr "20 bita/sek"
 
 #: ../src/vmm-details.glade.h:2
 #, fuzzy
 msgid "<b>Autostart</b>"
-msgstr "ସ୍ବତଃଚାଳନ:"
+msgstr "Samostalno pokretanje:"
 
 #: ../src/vmm-details.glade.h:3 ../src/vmm-host.glade.h:1
 msgid "<b>Basic details</b>"
-msgstr "<b>ମୌଳିକ ବିବରଣୀ</b>"
+msgstr "<b>Osnovni detalji</b>"
 
 #: ../src/vmm-details.glade.h:4
 #, fuzzy
 msgid "<b>Boot Device</b>"
-msgstr "<b>କୋନଶୋଲ ଗୁଡିକ</b>"
+msgstr "<b>Konzole</b>"
 
 #: ../src/vmm-details.glade.h:5
 msgid "<b>CPUs</b>"
-msgstr "<b>CPU ଗୁଡିକ:</b>"
+msgstr "<b>CPU-i</b>"
 
 #: ../src/vmm-details.glade.h:6
 msgid "<b>Memory</b>"
-msgstr "<b>ସ୍ମୃତି</b>"
+msgstr "<b>Memorija</b>"
 
 #: ../src/vmm-details.glade.h:7 ../src/vmm-host.glade.h:3
 msgid "<b>Performance</b>"
-msgstr "<b>ପ୍ରଦର୍ଶନ</b>"
+msgstr "<b>Učinak</b>"
 
 #: ../src/vmm-details.glade.h:8
 #, fuzzy
 msgid "<b>Sound Device</b>"
-msgstr "<b>ଭଣ୍ଡାର</b>"
+msgstr "<b>Skladište</b>"
 
 #: ../src/vmm-details.glade.h:9
 msgid "<b>The console is currently unavailable</b>"
-msgstr "<b>କୋନଶୋଲଟି ବର୍ତ୍ତମାନ ଅନୁପଲବ୍ଧ</b>"
+msgstr "<b>Konzola trenutno nije dostupna</b>"
 
 #: ../src/vmm-details.glade.h:10
 msgid ""
 "<b>Tip:</b> 'Source device' refers to the name of the device as seen from "
 "the host OS."
 msgstr ""
-"<b>ପରାମର୍ଶ:</b> 'ଉତ୍ସ ଉପକରଣ' ଆଧାର ପ୍ରଚାଳନ ତନ୍ତ୍ରରେ ଥିବା ଉପକରଣର ନାମକୁ ନାମକୁ ନିର୍ଦ୍ଦେଶ "
-"କରିଥାଏ।"
+"<b>Savet:</b> „Izvorni uređaj“ se odnosi na ime uređaja kako se pojavljuje u "
+"domaćinskom OS-u."
 
 #: ../src/vmm-details.glade.h:11
 msgid ""
 "<b>Tip:</b> 'source' refers to information seen from the host OS, while "
 "'target' refers to information seen from the guest OS"
 msgstr ""
-"<b>ପରାମର୍ଶ:</b> 'ଉତ୍ସ' ଆଧାର ପ୍ରଚାଳନ ତନ୍ତ୍ରରୁ ମିଳିଥିବା ସୂଚନାକୁ ନିର୍ଦ୍ଦେଶ କରିଥାଏ, କିନ୍ତୁ 'ଲକ୍ଷ୍ଯ' "
-"ଅତିଥି ପ୍ରଚାଳନ ତନ୍ତ୍ରରୁ ମିଳିଥିବା ସୂଚନାକୁ ନିର୍ଦ୍ଦେଶ କରିଥାଏ।"
+"<b>Savet:</b> „izvorni“ se odnosi na podatke kako se pojavljuju u "
+"domaćinskom OS-u, dok se „ciljni“ odnosi na podatke kako se pojavljuju u "
+"gostujućem OS-u"
 
 #: ../src/vmm-details.glade.h:12
 msgid ""
@@ -119,49 +108,49 @@ msgid ""
 "<b>Tip:</b> For best performance, the number of virtual CPUs should be less "
 "than (or equal to) the number of physical CPUs on the host system."
 msgstr ""
-"<b>ପରାମର୍ଶ:</b> ସର୍ବତ୍କୃଷ୍ଟ ପ୍ରଦର୍ଶନ ପାଇଁ, ଆଧାର ତନ୍ତ୍ରରେ ଆଭାସୀ CPU ମାନଙ୍କର ସଂଖ୍ଯା ଭୌତିକ "
-"CPU ମାନଙ୍କର ସଂଖ୍ଯାଠାରୁ କମ (କିମ୍ବା ତାହା ସହିତ ସମାନ) ହେବା ଉଚିତ।"
+"<b>Savet:</b> Za najbolji učinak, broj virtuelnih CPU-a treba da bude manji "
+"(ili jednak) od broja fizičkih CPU-a na sistemu domaćina."
 
 #: ../src/vmm-details.glade.h:14
 msgid "<b>Virtual Disk</b>"
-msgstr "<b>ଆଭାସୀ ଡିସ୍କ</b>"
+msgstr "<b>Virtuelni disk</b>"
 
 #: ../src/vmm-details.glade.h:15
 #, fuzzy
 msgid "<b>Virtual Display</b>"
-msgstr "<b>ଆଭାସୀ ଡିସ୍କ</b>"
+msgstr "<b>Virtuelni disk</b>"
 
 #: ../src/vmm-details.glade.h:16
 msgid "<b>Virtual Network Interface</b>"
-msgstr "<b>ଆଭାସୀ ନେଟୱାର୍କ ଅନ୍ତରାପୃଷ୍ଠ</b>"
+msgstr "<b>Virtuelna mrežna sprega</b>"
 
 #: ../src/vmm-details.glade.h:17
 #, fuzzy
 msgid "<b>Virtual Pointer</b>"
-msgstr "<b>ଆଭାସୀ ଡିସ୍କ</b>"
+msgstr "<b>Virtuelni disk</b>"
 
 #: ../src/vmm-details.glade.h:18
 #, fuzzy
 msgid "<b>insert type</b>"
-msgstr "<b>କୋନଶୋଲ ଗୁଡିକ</b>"
+msgstr "<b>Konzole</b>"
 
 #: ../src/vmm-details.glade.h:19 ../src/vmm-add-hardware.glade.h:24
 #, fuzzy
 msgid "Address:"
-msgstr "MAC ଠିକଣା:"
+msgstr "MAC adresa:"
 
 #: ../src/vmm-details.glade.h:20
 msgid "Auth"
-msgstr "Auth"
+msgstr "Auten."
 
 #: ../src/vmm-details.glade.h:21
 #, fuzzy
 msgid "Autostart VM"
-msgstr "ସ୍ବତଃଚାଳନ:"
+msgstr "Samostalno pokretanje:"
 
 #: ../src/vmm-details.glade.h:22
 msgid "Block"
-msgstr "ଅଂଶ"
+msgstr "Blok"
 
 #: ../src/vmm-details.glade.h:23
 msgid "Boot Options"
@@ -169,11 +158,11 @@ msgstr ""
 
 #: ../src/vmm-details.glade.h:24 ../src/vmm-host.glade.h:12
 msgid "CPU usage:"
-msgstr "CPU ବ୍ଯବହାର ବିଧି:"
+msgstr "CPU upotreba:"
 
 #: ../src/vmm-details.glade.h:25
 msgid "Change allocation:"
-msgstr "ବଣ୍ଟନ ପ୍ରକ୍ରିୟାକୁ ପରିବର୍ତ୍ତନ କରନ୍ତୁ:"
+msgstr "Promeni zauzeće:"
 
 #: ../src/vmm-details.glade.h:26
 msgid "Char"
@@ -182,7 +171,7 @@ msgstr ""
 #: ../src/vmm-details.glade.h:27
 #, fuzzy
 msgid "Console"
-msgstr "କ୍ରମିକ କୋନଶୋଲ (_S)"
+msgstr "_Serijska konzola"
 
 #: ../src/vmm-details.glade.h:28
 msgid "Ctrl+Alt+Backspace"
@@ -242,17 +231,17 @@ msgstr ""
 
 #: ../src/vmm-details.glade.h:42
 msgid "Current allocation:"
-msgstr "ବର୍ତ୍ତମାନ ବଣ୍ଟନ:"
+msgstr "Trenutno zauzeće:"
 
 #: ../src/vmm-details.glade.h:43
 #, fuzzy
 msgid "Device Model:"
-msgstr "ଉପକରଣ:"
+msgstr "Uređaj:"
 
 #: ../src/vmm-details.glade.h:44
 #, fuzzy
 msgid "Device Type:"
-msgstr "ଉପକରଣ:"
+msgstr "Uređaj:"
 
 #: ../src/vmm-details.glade.h:45
 msgid "Device virtual machine will boot from:"
@@ -261,11 +250,11 @@ msgstr ""
 #: ../src/vmm-details.glade.h:46 ../src/vmm-add-hardware.glade.h:32
 #: ../src/vmm-create.glade.h:41
 msgid "Disk"
-msgstr "ଡିସ୍କ"
+msgstr "Disk"
 
 #: ../src/vmm-details.glade.h:47
 msgid "Disk usage:"
-msgstr "ଡିସ୍କ ବ୍ଯବହାର ବିଧି:"
+msgstr "Upotreba diska:"
 
 #: ../src/vmm-details.glade.h:48
 msgid "Force poweroff"
@@ -274,27 +263,27 @@ msgstr ""
 #: ../src/vmm-details.glade.h:49
 #, fuzzy
 msgid "Full Screen"
-msgstr "ସମ୍ପୂର୍ଣ୍ଣ ପରଦା (_F)"
+msgstr "Pun _ekran"
 
 #: ../src/vmm-details.glade.h:50
 msgid "Hardware"
-msgstr "ହାର୍ଡୱେର"
+msgstr "Hardver"
 
 #: ../src/vmm-details.glade.h:51
 #, fuzzy
 msgid "How many virtual CPUs should be allocated for this machine?"
-msgstr "ଏହି ମେସିନକୁ କେତେ ସଂଖ୍ଯକ ଆଭାସୀ CPU ବଣ୍ଟାଯିବା ଉଚିତ?"
+msgstr "Koliko virtuelnih CPU-a treba dodeliti ovoj mašini?"
 
 #: ../src/vmm-details.glade.h:52
 #, fuzzy
 msgid "How much memory should be allocated for this machine?"
-msgstr "ଏହି ମେସିନକୁ କେତେ ପରିମାଣର ସ୍ମୃତି ବଣ୍ଟାଯିବା ଉଚିତ?"
+msgstr "Koliko memorije treba dodeliti ovoj mašini?"
 
 #: ../src/vmm-details.glade.h:53 ../src/vmm-add-hardware.glade.h:43
 #: ../src/virtManager/details.py:1499
 #, fuzzy
 msgid "Input"
-msgstr "ଉପସ୍ଥାପନ"
+msgstr "Uvod"
 
 #: ../src/vmm-details.glade.h:54 ../src/vmm-add-hardware.glade.h:45
 msgid "Keymap:"
@@ -302,22 +291,22 @@ msgstr ""
 
 #: ../src/vmm-details.glade.h:55
 msgid "Login"
-msgstr "ଲଗଇନ କରନ୍ତୁ"
+msgstr "Prijava"
 
 #: ../src/vmm-details.glade.h:56 ../src/vmm-add-hardware.glade.h:47
 #, fuzzy
 msgid "MAC Address Field"
-msgstr "MAC ଠିକଣା:"
+msgstr "MAC adresa:"
 
 #: ../src/vmm-details.glade.h:57 ../src/vmm-add-hardware.glade.h:48
 #: ../src/vmm-create.glade.h:68
 msgid "MAC address:"
-msgstr "MAC ଠିକଣା:"
+msgstr "MAC adresa:"
 
 #: ../src/vmm-details.glade.h:58 ../src/vmm-add-hardware.glade.h:49
 #: ../src/vmm-create.glade.h:69 ../src/vmm-create-vol.glade.h:24
 msgid "MB"
-msgstr "ମେଗା-ବାଇଟ"
+msgstr "MB"
 
 #: ../src/vmm-details.glade.h:59
 msgid "Max Memory Select"
@@ -325,20 +314,20 @@ msgstr ""
 
 #: ../src/vmm-details.glade.h:60
 msgid "Maximum allocation:"
-msgstr "ସର୍ବାଧିକ ବଣ୍ଟନ:"
+msgstr "Najveće zauzeće:"
 
 #: ../src/vmm-details.glade.h:61
 msgid "Memory"
-msgstr "ସ୍ମୃତି"
+msgstr "Memorija"
 
 #: ../src/vmm-details.glade.h:62
 #, fuzzy
 msgid "Memory Select"
-msgstr "ସ୍ମୃତି ବ୍ଯବହାର ବିଧି"
+msgstr "Upotreba memorije"
 
 #: ../src/vmm-details.glade.h:63 ../src/vmm-host.glade.h:26
 msgid "Memory usage:"
-msgstr "ସ୍ମୃତି ବ୍ଯବହାର ବିଧି:"
+msgstr "Upotreba memorije:"
 
 #: ../src/vmm-details.glade.h:64 ../src/vmm-add-hardware.glade.h:50
 msgid "Mode:"
@@ -351,38 +340,38 @@ msgstr ""
 #: ../src/vmm-details.glade.h:66 ../src/vmm-host.glade.h:29
 #: ../src/vmm-create-pool.glade.h:12 ../src/vmm-create-vol.glade.h:26
 msgid "Name:"
-msgstr "ନାମ:"
+msgstr "Ime:"
 
 #: ../src/vmm-details.glade.h:67 ../src/vmm-add-hardware.glade.h:51
 #: ../src/vmm-create.glade.h:78
 msgid "Network"
-msgstr "ନେଟୱାର୍କ"
+msgstr "Mreža"
 
 #: ../src/vmm-details.glade.h:68
 msgid "Network usage:"
-msgstr "ନେଟୱାର୍କ ବ୍ଯବହାର ବିଧି:"
+msgstr "Upotreba mreže:"
 
 #: ../src/vmm-details.glade.h:69 ../src/vmm-host.glade.h:32
 msgid "Overview"
-msgstr "ପୂର୍ବାବଲୋକନ"
+msgstr "Pregled"
 
 #: ../src/vmm-details.glade.h:70 ../src/vmm-add-hardware.glade.h:58
 msgid "Password:"
-msgstr "ପ୍ରବେଶ ସଙ୍କେତ:"
+msgstr "Lozinka:"
 
 #: ../src/vmm-details.glade.h:71
 msgid "Pause"
-msgstr "କିଛି ସମୟ ପାଇଁ ବନ୍ଦ କରନ୍ତୁ"
+msgstr "Pauza"
 
 #: ../src/vmm-details.glade.h:72
 #, fuzzy
 msgid "Permissions:"
-msgstr "ବିଭାଜନ (_a):"
+msgstr "P_articija:"
 
 #: ../src/vmm-details.glade.h:73 ../src/vmm-add-hardware.glade.h:63
 #, fuzzy
 msgid "Port:"
-msgstr "ସଂଯୋଗିକୀ (_P):"
+msgstr "Por_t:"
 
 #: ../src/vmm-details.glade.h:74
 msgid "Poweroff"
@@ -394,24 +383,24 @@ msgstr ""
 
 #: ../src/vmm-details.glade.h:76
 msgid "Processor"
-msgstr "ସଂସାଧକ"
+msgstr "Procesor"
 
 #: ../src/vmm-details.glade.h:77
 #, fuzzy
 msgid "Reboot"
-msgstr "ବୁଟ କରୁଅଛି"
+msgstr "Po pokretanju"
 
 #: ../src/vmm-details.glade.h:78
 msgid "Run"
-msgstr "ଚଳାନ୍ତୁ"
+msgstr "Pokreni"
 
 #: ../src/vmm-details.glade.h:79
 msgid "S_hutdown"
-msgstr "ବନ୍ଦ କରନ୍ତୁ (_h)"
+msgstr "U_gasi"
 
 #: ../src/vmm-details.glade.h:80
 msgid "Save this password in your keyring"
-msgstr "ଆପଣଙ୍କ କି-ରିଙ୍ଗରେ ପ୍ରବେଶ ସଙ୍କେତକୁ ସଂରକ୍ଷଣ କରନ୍ତୁ"
+msgstr "Sačuvaj ovu lozinku na mom privesku"
 
 #: ../src/vmm-details.glade.h:81
 msgid "Scale display"
@@ -419,7 +408,7 @@ msgstr ""
 
 #: ../src/vmm-details.glade.h:82
 msgid "Screenshot"
-msgstr "ପରଦା ପ୍ରତିଛବି"
+msgstr "Snimak ekrana"
 
 #: ../src/vmm-details.glade.h:83
 msgid "Send key"
@@ -428,15 +417,15 @@ msgstr ""
 #: ../src/vmm-details.glade.h:84
 #, fuzzy
 msgid "Serial Console..."
-msgstr "କ୍ରମିକ କୋନଶୋଲ (_S)"
+msgstr "_Serijska konzola"
 
 #: ../src/vmm-details.glade.h:85
 msgid "Shut down"
-msgstr "ବନ୍ଦ କରନ୍ତୁ"
+msgstr "Ugasi"
 
 #: ../src/vmm-details.glade.h:86 ../src/virtManager/domain.py:416
 msgid "Shutdown"
-msgstr "ବନ୍ଦ କରନ୍ତୁ"
+msgstr "Ugasi"
 
 #: ../src/vmm-details.glade.h:87
 msgid "Sound"
@@ -445,68 +434,68 @@ msgstr ""
 #: ../src/vmm-details.glade.h:88 ../src/vmm-create-pool.glade.h:13
 #, fuzzy
 msgid "Source Path:"
-msgstr "ଉତ୍ସ ପଥ:"
+msgstr "Izvorna putanja:"
 
 #: ../src/vmm-details.glade.h:89
 msgid "Source device:"
-msgstr "ଉତ୍ସ ଉପକରଣ:"
+msgstr "Izvorni uređaj:"
 
 #: ../src/vmm-details.glade.h:90
 #, fuzzy
 msgid "Source model:"
-msgstr "ଉତ୍ସ ଉପକରଣ:"
+msgstr "Izvorni uređaj:"
 
 #: ../src/vmm-details.glade.h:91
 msgid "Source path:"
-msgstr "ଉତ୍ସ ପଥ:"
+msgstr "Izvorna putanja:"
 
 #: ../src/vmm-details.glade.h:92
 msgid "Source type:"
-msgstr "ଉତ୍ସ ପ୍ରକାର:"
+msgstr "Izvorna vrsta:"
 
 #: ../src/vmm-details.glade.h:93
 #, fuzzy
 msgid "Start virtual machine on host boot up?"
-msgstr "ଆଭାସୀ ମେସିନର ପରଦା ପ୍ରତିଛବିକୁ ସଂରକ୍ଷଣ କରନ୍ତୁ"
+msgstr "Sačuvaj snimak ekrana virtuelne mašine"
 
 #: ../src/vmm-details.glade.h:94
 msgid "Status:"
-msgstr "ସ୍ଥିତି:"
+msgstr "Status:"
 
 #: ../src/vmm-details.glade.h:95
 #, fuzzy
 msgid "Target Port:"
-msgstr "ଲକ୍ଷ୍ଯ ପ୍ରକାର:"
+msgstr "Ciljna vrsta:"
 
 #: ../src/vmm-details.glade.h:96
 #, fuzzy
 msgid "Target bus:"
-msgstr "ଲକ୍ଷ୍ଯ:"
+msgstr "Cilj:"
 
 #: ../src/vmm-details.glade.h:97
 msgid "Target device:"
-msgstr "ଲକ୍ଷ୍ଯ ଉପକରଣ:"
+msgstr "Ciljni uređaj:"
 
 #: ../src/vmm-details.glade.h:98
 msgid "Target type:"
-msgstr "ଲକ୍ଷ୍ଯ ପ୍ରକାର:"
+msgstr "Ciljna vrsta:"
 
 #: ../src/vmm-details.glade.h:99
 msgid "Toolbar"
-msgstr "ସାଧନ ପଟି"
+msgstr "Traka sa alatkama:"
 
 #: ../src/vmm-details.glade.h:100
 msgid "Total CPUs on host machine:"
-msgstr "ଆଧାର ମେସିନରେ ସମୁଦାୟ CPU ସଂଖ୍ଯା:"
+msgstr "Ukupno CPU-a na mašini domaćina:"
 
 #: ../src/vmm-details.glade.h:101 ../src/vmm-create.glade.h:105
 msgid "Total memory on host machine:"
-msgstr "ଆଧାର ମେସିନରେ ସମୁଦାୟ ସ୍ମୃତି ପରିମାଣ:"
+msgstr "Ukupna memorija na mašini domaćina:"
 
 #: ../src/vmm-details.glade.h:102 ../src/vmm-add-hardware.glade.h:70
 #: ../src/vmm-create-net.glade.h:50 ../src/vmm-create-pool.glade.h:18
 msgid "Type:"
-msgstr "ପ୍ରକାର:"
+msgstr "Vrsta:"
 
 #: ../src/vmm-details.glade.h:103
 msgid "UUID Field"
@@ -514,11 +503,11 @@ msgstr ""
 
 #: ../src/vmm-details.glade.h:104
 msgid "UUID:"
-msgstr "ୟୁ.ୟୁ.ଆଇ.ଡି.:"
+msgstr "UUID:"
 
 #: ../src/vmm-details.glade.h:105
 msgid "Unavailable"
-msgstr "ଅନୁପଲବ୍ଧ"
+msgstr "Nedostupno"
 
 #: ../src/vmm-details.glade.h:106 ../src/vmm-create.glade.h:107
 msgid "VCPU Select"
@@ -531,16 +520,16 @@ msgstr "VNC"
 #: ../src/vmm-details.glade.h:108
 #, fuzzy
 msgid "View Manager"
-msgstr "ଆଭାସୀ ମେସିନ ପରିଚାଳକ"
+msgstr "Upravnik virtuelne mašine"
 
 #: ../src/vmm-details.glade.h:109
 #, fuzzy
 msgid "Virtual Machine"
-msgstr "ଆଭାସୀ ମେସିନ (_M)"
+msgstr "Virtuelna _mašina"
 
 #: ../src/vmm-details.glade.h:110
 msgid "Virtual _Machine"
-msgstr "ଆଭାସୀ ମେସିନ (_M)"
+msgstr "Virtuelna _mašina"
 
 #: ../src/vmm-details.glade.h:111 ../src/vmm-host.glade.h:42
 #: ../src/vmm-manager.glade.h:18
@@ -550,36 +539,36 @@ msgstr ""
 #: ../src/vmm-details.glade.h:112 ../src/vmm-host.glade.h:43
 #: ../src/vmm-manager.glade.h:20
 msgid "_File"
-msgstr "ଫାଇଲ (_F)"
+msgstr "_Datoteka"
 
 #: ../src/vmm-details.glade.h:113 ../src/vmm-host.glade.h:44
 #: ../src/vmm-manager.glade.h:21
 msgid "_Help"
-msgstr "ସହାୟତା (_H)"
+msgstr "_Pomoć"
 
 #: ../src/vmm-details.glade.h:114
 msgid "_Pause"
-msgstr "କିଛି ସମୟ ବନ୍ଦ କରନ୍ତୁ (_P)"
+msgstr "Pau_za"
 
 #: ../src/vmm-details.glade.h:115
 msgid "_Run"
-msgstr "ଚଳାନ୍ତୁ (_R)"
+msgstr "Po_kreni"
 
 #: ../src/vmm-details.glade.h:116
 msgid "_Save"
-msgstr "ସଂରକ୍ଷଣ କରନ୍ତୁ (_S)"
+msgstr "_Sačuvaj"
 
 #: ../src/vmm-details.glade.h:117
 msgid "_Take Screenshot"
-msgstr "ଗୋଟିଏ ପରଦା ପ୍ରତିଛବି ନିଅନ୍ତୁ (_T)"
+msgstr "Snimi _ekran"
 
 #: ../src/vmm-details.glade.h:118 ../src/vmm-manager.glade.h:22
 msgid "_View"
-msgstr "ଦେଖନ୍ତୁ (_V)"
+msgstr "Pre_gled"
 
 #: ../src/vmm-details.glade.h:119
 msgid "disk\t"
-msgstr "ଡିସ୍କ\t"
+msgstr "disk\t"
 
 #: ../src/vmm-details.glade.h:120
 msgid "insert sound model"
@@ -588,44 +577,44 @@ msgstr ""
 #: ../src/vmm-add-hardware.glade.h:1
 #, fuzzy
 msgid "<b>Display</b>"
-msgstr "<b>ସାରାଂଶ</b> "
+msgstr "Sažetak:"
 
 #: ../src/vmm-add-hardware.glade.h:2 ../src/vmm-create.glade.h:7
 msgid "<b>Network</b>"
-msgstr "<b>ନେଟୱାର୍କ</b>"
+msgstr "<b>Mreža</b>"
 
 #: ../src/vmm-add-hardware.glade.h:3
 #, fuzzy
 msgid "<b>Pointer</b>"
-msgstr "<b>କୋନଶୋଲ ଗୁଡିକ</b>"
+msgstr "<b>Konzole</b>"
 
 #: ../src/vmm-add-hardware.glade.h:4
 #, fuzzy
 msgid "<b>Source:</b>"
-msgstr "<b>ଭଣ୍ଡାର</b>"
+msgstr "<b>Skladište</b>"
 
 #: ../src/vmm-add-hardware.glade.h:5 ../src/vmm-create.glade.h:9
 msgid "<b>Storage</b>"
-msgstr "<b>ଭଣ୍ଡାର</b>"
+msgstr "<b>Skladište</b>"
 
 #: ../src/vmm-add-hardware.glade.h:6
 #, fuzzy
 msgid "<b>Target:</b>"
-msgstr "<b>ଭଣ୍ଡାର</b>"
+msgstr "<b>Skladište</b>"
 
 #: ../src/vmm-add-hardware.glade.h:7
 #, fuzzy
 msgid "<b>Virtual display</b>"
-msgstr "<b>ଆଭାସୀ ଡିସ୍କ</b>"
+msgstr "<b>Virtuelni disk</b>"
 
 #: ../src/vmm-add-hardware.glade.h:8
 #, fuzzy
 msgid "<b>Virtual pointer</b>"
-msgstr "<b>ଆଭାସୀ ଡିସ୍କ</b>"
+msgstr "<b>Virtuelni disk</b>"
 
 #: ../src/vmm-add-hardware.glade.h:9 ../src/vmm-create.glade.h:12
 msgid "<small><b>Example:</b> /dev/hdc2</small>"
-msgstr "<small><b>ଉଦାହରଣ:</b> /dev/hdc2</small>"
+msgstr "<small><b>Primer:</b> /dev/hdc2</small>"
 
 #: ../src/vmm-add-hardware.glade.h:10
 msgid ""
@@ -647,18 +636,17 @@ msgid ""
 "connected via wireless, or dynamically configured with NetworkManager.</"
 "small>"
 msgstr ""
-"<small><b>ପରାମର୍ଶ:</b> ଆପଣଙ୍କ ଆଧାରର ସଂଯୋଗ ବିଚ୍ଛିନ୍ନ ହୋଇଥିଲେ, ବେତାର ଦ୍ବାରା ସଂଯୋଜିତ "
-"ହୋଇଥିଲେ, କିମ୍ବା ନେଟୱାର୍କ ପରିଚାଳକ ଦ୍ବାରା ଗତିଶୀଳ ଭାବରେ ବିନ୍ଯାସ କରାଯାଇଥିଲେ ଏହି ବିକଳ୍ପକୁ ଚୟନ "
-"କରନ୍ତୁ।</small>"
+"<small><b>Savet:</b> Izaberite ovu opciju ako domaćin nije povezan, povezan "
+"bežično, ili dinamički podešen kroz NetworkManager.</small>"
 
 #: ../src/vmm-add-hardware.glade.h:13 ../src/vmm-create.glade.h:19
 msgid ""
 "<small><b>Tip:</b> Choose this option if your host is statically connected "
 "to wired ethernet, to gain the ability to migrate the virtual system.</small>"
 msgstr ""
-"<small><b>ପରାମର୍ଶ:</b> ଆପଣଙ୍କ ଆଧାରକୁ ସ୍ଥୈତିକ ଭାବରେ ଗୋଟିଏ ତାର ବିଶିଷ୍ଟ ଇଥରନେଟ ସହିତ ସଂଯୋଗ "
-"କରାଯାଇଥିଲେ, ଆଭାସୀ ତନ୍ତ୍ରକୁ ଉତ୍ପ୍ରବାସନ କରିବାର କ୍ଷମତା ହାସଲ କରିବା ପାଇଁ ଏହି ବିକଳ୍ପକୁ ଚୟନ କରନ୍ତୁ। "
-"</small>"
+"<small><b>Savet:</b> Izaberite ovu opciju ako je domaćin statički povezan "
+"ethernet kablom, kako bi dobili mogućnost za selidbu virtuelnog sistema.</"
+"small>"
 
 #: ../src/vmm-add-hardware.glade.h:14
 msgid ""
@@ -674,9 +662,10 @@ msgid ""
 "sufficient free space is not available on the host, this may result in data "
 "corruption on the guest.</small>"
 msgstr ""
-"<small><b>ଚେତାବନୀ:</b> ଆପଣ VM ସୃଷ୍ଟି ସମୟରେ ସମ୍ପୂର୍ଣ୍ଣ ଡିସ୍କକୁ ନ ବାଣ୍ଟିଲେ, ଅତିଥି ତନ୍ତ୍ରଟି "
-"ଚାଲୁଥିବା ସମୟରେ ଆବଶ୍ଯକତା ଅନୁସାରେ ଖାଲିସ୍ଥାନ ବଣ୍ଟାଯିବ। ଆଧାରରେ ଯଥେଷ୍ଟ ଖାଲିସ୍ଥାନ ନ ଥିଲେ, ଏହା "
-"ଅତିଥିରେ ତଥ୍ଯ ହାନି ଘଟାଇପାରେ।</small>"
+"<small><b>Upozorenje:</b> Ako ne dodelite čitav disk tokom pravljenja VM-a, "
+"prostor će biti dodavan po potrebi dok gostujući sistem radi. U slučaju da "
+"ne bude dovoljno prostora na domaćinu, može doći do oštećenja podataka na "
+"gostujućem sistemu.</small>"
 
 #: ../src/vmm-add-hardware.glade.h:16
 #, fuzzy
@@ -684,32 +673,32 @@ msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Access the "
 "guest display</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ଭଣ୍ଡାର ସ୍ଥାନ ନ୍ଯସ୍ତ "
-"କରୁଅଛି</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Dodela prostora "
+"za skladište</span>"
 
 #: ../src/vmm-add-hardware.glade.h:17
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Adding new "
 "virtual hardware </span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ଗୋଟିଏ ନୂତନ ଆଭାସୀ "
-"ହାର୍ଡୱେର ଯୋଗ କରୁଅଛି</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Dodavanje novog "
+"virtuelnog hardvera</span>"
 
 #: ../src/vmm-add-hardware.glade.h:18 ../src/vmm-create.glade.h:24
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Assigning "
 "storage space</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ଭଣ୍ଡାର ସ୍ଥାନ ନ୍ଯସ୍ତ "
-"କରୁଅଛି</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Dodela prostora "
+"za skladište</span>"
 
 #: ../src/vmm-add-hardware.glade.h:19 ../src/vmm-create.glade.h:27
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Connect to host "
 "network</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ଆଧାର ନେଟୱାର୍କ "
-"ସହିତ ସଂଯୋଗ କରନ୍ତୁ</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Poveži se sa "
+"mrežom domaćina</span>"
 
 #: ../src/vmm-add-hardware.glade.h:20
 #, fuzzy
@@ -717,16 +706,16 @@ msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Interacting "
 "with the guest</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">DHCP ପରିସର ଚୟନ "
-"କରୁଅଛି</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Izbor DHCP "
+"opsega</span>"
 
 #: ../src/vmm-add-hardware.glade.h:21
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to add "
 "hardware</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ହାର୍ଡୱେର ଯୋଗ "
-"କରିବା ପାଇଁ ପ୍ରସ୍ତୁତ</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Spremno za "
+"dodavanje hardvera</span>"
 
 #: ../src/vmm-add-hardware.glade.h:22
 msgid "Absolute"
@@ -734,30 +723,30 @@ msgstr ""
 
 #: ../src/vmm-add-hardware.glade.h:23
 msgid "Add new virtual hardware"
-msgstr "ଗୋଟିଏ ନୂତନ ଆଭାସୀ ହାର୍ଡୱେର ଯୋଗ କରନ୍ତୁ"
+msgstr "Dodavanje novog virtuelnog hardvera"
 
 #: ../src/vmm-add-hardware.glade.h:25 ../src/vmm-create.glade.h:34
 msgid "Allocate entire virtual disk now?"
-msgstr "ସମ୍ପୂର୍ଣ୍ଣ ଆଭାସୀ ଡିସ୍କକୁ ବର୍ତ୍ତମାନ ବାଣ୍ଚନ୍ତୁ?"
+msgstr "Da zauzmem čitav virtuelni disk sada?"
 
 #: ../src/vmm-add-hardware.glade.h:26 ../src/virtManager/addhardware.py:442
 #: ../src/virtManager/details.py:906
 #, fuzzy
 msgid "Automatically allocated"
-msgstr "କୋନଶୋଲ ମାନଙ୍କୁ ସ୍ବୟଂଚାଳିତ ଭାବରେ ଖୋଲନ୍ତୁ:"
+msgstr "Samostalno otvori konzole:"
 
 #: ../src/vmm-add-hardware.glade.h:27 ../src/vmm-create.glade.h:35
 msgid "Browse..."
-msgstr "ଖୋଜନ୍ତୁ..."
+msgstr "Razgledaj..."
 
 #: ../src/vmm-add-hardware.glade.h:28 ../src/vmm-create.glade.h:38
 #: ../src/vmm-create-net.glade.h:16
 msgid "Complete"
-msgstr "ସମ୍ପୂର୍ଣ୍ଣ କରନ୍ତୁ"
+msgstr "Završeno"
 
 #: ../src/vmm-add-hardware.glade.h:29 ../src/vmm-create.glade.h:39
 msgid "Connection type:"
-msgstr "ସଂଯୋଗ ପ୍ରକାର:"
+msgstr "Vrsta veze:"
 
 #: ../src/vmm-add-hardware.glade.h:30
 msgid "Device Type Field"
@@ -766,15 +755,15 @@ msgstr ""
 #: ../src/vmm-add-hardware.glade.h:31
 #, fuzzy
 msgid "Device type:"
-msgstr "ଉପକରଣ:"
+msgstr "Uređaj:"
 
 #: ../src/vmm-add-hardware.glade.h:33 ../src/vmm-create.glade.h:42
 msgid "Disk image:"
-msgstr "ଡିସ୍କ ପ୍ରତିଛବି:"
+msgstr "Odraz diska:"
 
 #: ../src/vmm-add-hardware.glade.h:34 ../src/vmm-create.glade.h:43
 msgid "Disk size:"
-msgstr "ଡିସ୍କ ଆକାର:"
+msgstr "Veličina diska:"
 
 #: ../src/vmm-add-hardware.glade.h:35 ../src/virtManager/details.py:1518
 msgid "Display"
@@ -787,34 +776,34 @@ msgstr ""
 #: ../src/vmm-add-hardware.glade.h:37 ../src/vmm-create.glade.h:46
 #, fuzzy
 msgid "File Location Field"
-msgstr "ଫାଇଲ ଅବସ୍ଥାନ (_L):"
+msgstr "_Mesto datoteke:"
 
 #: ../src/vmm-add-hardware.glade.h:38
 #, fuzzy
 msgid "File Size Field"
-msgstr "ଫାଇଲ ଆକାର (_S)ଛ"
+msgstr "_Veličina datoteke:"
 
 #: ../src/vmm-add-hardware.glade.h:39 ../src/vmm-create.glade.h:48
 msgid "File _Location:"
-msgstr "ଫାଇଲ ଅବସ୍ଥାନ (_L):"
+msgstr "_Mesto datoteke:"
 
 #: ../src/vmm-add-hardware.glade.h:40 ../src/vmm-create.glade.h:49
 msgid "File _Size:"
-msgstr "ଫାଇଲ ଆକାର (_S)ଛ"
+msgstr "_Veličina datoteke:"
 
 #: ../src/vmm-add-hardware.glade.h:41
 #, fuzzy
 msgid "Hardware Type Select"
-msgstr "ହାର୍ଡୱେର ପ୍ରକାର ଆବଶ୍ଯକ"
+msgstr "Neophodna vrsta hardvera"
 
 #: ../src/vmm-add-hardware.glade.h:42
 msgid "Hardware type:"
-msgstr "ହାର୍ଡୱେର ପ୍ରକାର:"
+msgstr "Vrsta hardvera:"
 
 #: ../src/vmm-add-hardware.glade.h:44 ../src/vmm-create.glade.h:58
 #: ../src/vmm-create-net.glade.h:28
 msgid "Intro"
-msgstr "ଉପସ୍ଥାପନ"
+msgstr "Uvod"
 
 #: ../src/vmm-add-hardware.glade.h:46
 msgid "Listen on all public network interfaces "
@@ -830,16 +819,16 @@ msgstr ""
 
 #: ../src/vmm-add-hardware.glade.h:54 ../src/vmm-create.glade.h:82
 msgid "Normal Disk _Partition:"
-msgstr "ସାଧାରଣ ଡିସ୍କ ବିଭାଜନ (_P):"
+msgstr "Obična disk par_ticija"
 
 #: ../src/vmm-add-hardware.glade.h:55
 #, fuzzy
 msgid "Other:"
-msgstr "ଅନ୍ଯାନ୍ଯ"
+msgstr "Drugo"
 
 #: ../src/vmm-add-hardware.glade.h:56 ../src/vmm-create.glade.h:86
 msgid "P_artition:"
-msgstr "ବିଭାଜନ (_a):"
+msgstr "P_articija:"
 
 #: ../src/vmm-add-hardware.glade.h:57
 msgid "Partition Location Field"
@@ -849,30 +838,29 @@ msgstr ""
 #, fuzzy
 msgid "Please indicate how you would like to view the guest display."
 msgstr ""
-"ଆପଣ ଆପଣଙ୍କର ନୂତନ ଆଭାସୀ ତନ୍ତ୍ରକୁ ଆଧାର ନେଟୱାର୍କ ସହିତ କିପରି ସଂଯୋଗ କରିବେ ଦୟାକରି ତାହା ସୂଚିତ "
-"କରନ୍ତୁ।"
+"Naznačite kako želite da povežete novi virtuelni sistem sa mrežom domaćina."
 
 #: ../src/vmm-add-hardware.glade.h:60
 msgid ""
 "Please indicate how you'd like to assign space on this physical host system "
 "for your new virtual storage device."
 msgstr ""
-"ଆପଣଙ୍କର ନୂତନ ଆଭାସୀ ଭଣ୍ଡାର ଉପକରଣ ପାଇଁ ଏହି ଭୌତିକ ଆଧାର ତନ୍ତ୍ରରେ ଆପଣ କିପରି ଖାଲିସ୍ଥାନ ବଣ୍ଟିବା "
-"ପାଇଁ ଚାହିଁବେ ଦୟାକରି ତାହା ଉଲ୍ଲେଖ କରନ୍ତୁ।"
+"Naznačite kako želite da dodelite prostor na ovom fizičkom sistemu domaćina "
+"za novi virtuelni uređaj skladištenja."
 
 #: ../src/vmm-add-hardware.glade.h:61
 msgid ""
 "Please indicate how you'd like to connect your new virtual network device to "
 "the host network."
 msgstr ""
-"ଆପଣ ଆପଣଙ୍କ ନୂତନ ଆଭାସୀ ନେଟୱାର୍କ ଉପକରଣକୁ ଆଧାର ନେଟୱାର୍କ ସହିତ କିପରି ସଂଯୋଗ କରିବେ ଦୟାକରି "
-"ତାହା ସୂଚିତ କରନ୍ତୁ।"
+"Naznačite kako želite da povežete novu virtuelnu mrežu sa mrežom domaćina."
 
 #: ../src/vmm-add-hardware.glade.h:62
 #, fuzzy
 msgid "Please indicate what kind of pointer device to connect to the guest."
 msgstr ""
-"ଦୟାକରି ଏହା ସୂଚାନ୍ତୁ ଯେ ଏହି ଆଭାସୀ ନେଟୱାର୍କକୁ ଭୌତିକ ନେଟୱାର୍କ ସହିତ ସଂଯୋଗ କରାଯିବା ଉଚିତ କି ନୁହେଁ।"
+"Naznačite da li ova virtuelna mreža treba da bude povezana sa fizičkom "
+"mrežom."
 
 #: ../src/vmm-add-hardware.glade.h:64 ../src/virtManager/addhardware.py:452
 msgid "Same as host"
@@ -881,58 +869,58 @@ msgstr ""
 #: ../src/vmm-add-hardware.glade.h:65
 #, fuzzy
 msgid "Set fixed MAC _address for this NIC?"
-msgstr "ଦୟାକରି ଆପଣଙ୍କ ଆଭାସୀ ତନ୍ତ୍ର ପାଇଁ ଗୋଟିଏ ନାମ ଚୟନ କରନ୍ତୁ:"
+msgstr "Izaberite ime za virtuelni sistem:"
 
 #: ../src/vmm-add-hardware.glade.h:66 ../src/vmm-create.glade.h:98
 msgid "Shared Physical Device"
-msgstr "ସହଭାଗୀ ଭୌତିକ ଉପକରଣ"
+msgstr "Deljeni fiziki uređaj"
 
 #: ../src/vmm-add-hardware.glade.h:67 ../src/vmm-create.glade.h:99
 msgid "Simple F_ile:"
-msgstr "ସାଧାରଣ ଫାଇଲ (_i):"
+msgstr "Obična _datoteka:"
 
 #: ../src/vmm-add-hardware.glade.h:68 ../src/vmm-create.glade.h:102
 msgid "Target:"
-msgstr "ଲକ୍ଷ୍ଯ:"
+msgstr "Cilj:"
 
 #: ../src/vmm-add-hardware.glade.h:69
 msgid ""
 "This assistant will guide you through adding a new piece of virtual "
 "hardware. First select what type of hardware you wish to add:"
 msgstr ""
-"ଏହି ସହକାରୀ ଉପଯୋଗ ଆପଣଙ୍କୁ ଗୋଟିଏ ନୂତନ ଆଭାସୀ ହାର୍ଡୱେରକୁ ଯୋଗ କରିବା ବିଷୟରେ ମାର୍ଗ ନିର୍ଦ୍ଦେଶ "
-"କରିବ। ଆପଣ କେଉଁ ପ୍ରକାରର ହାର୍ଡୱେର ଯୋଗ କରିବା ପାଇଁ ଚାହୁଁଛନ୍ତି ପ୍ରଥମେ ତାହା ଚୟନ କରନ୍ତୁ:"
+"Ovaj pomoćnik će Vas provesti kroz dodavanje novog komada virtuelnog "
+"hardvera. Prvo izaberite vrstu hardvera koji želite da dodate:"
 
 #: ../src/vmm-add-hardware.glade.h:72
 #, fuzzy
 msgid "Virtual Network Select"
-msgstr "ଆଭାସୀ ନେଟୱାର୍କ ଗୁଡିକ"
+msgstr "Virtuelne mreže"
 
 #: ../src/vmm-add-hardware.glade.h:73 ../src/vmm-create.glade.h:117
 msgid "_Device:"
-msgstr "ଉପକରଣ (_D):"
+msgstr "U_ređaj:"
 
 #: ../src/vmm-add-hardware.glade.h:74 ../src/vmm-create.glade.h:118
 #: ../src/vmm-create-net.glade.h:53
 msgid "_Finish"
-msgstr "ସମାପ୍ତ କରନ୍ତୁ (_F)"
+msgstr "_Završi"
 
 #: ../src/vmm-add-hardware.glade.h:75 ../src/vmm-create.glade.h:122
 #, fuzzy
 msgid "_MAC address:"
-msgstr "MAC ଠିକଣା:"
+msgstr "MAC adresa:"
 
 #: ../src/vmm-add-hardware.glade.h:76 ../src/vmm-create.glade.h:124
 msgid "_Network:"
-msgstr "ନେଟୱାର୍କ (_N):"
+msgstr "M_reža:"
 
 #: ../src/vmm-add-hardware.glade.h:77 ../src/vmm-create.glade.h:127
 msgid "_Shared physical device"
-msgstr "ସହଭାଗୀ ଭୌତିକ ଉପକରଣ (_S)"
+msgstr "D_eljeni fiziki uređaj"
 
 #: ../src/vmm-add-hardware.glade.h:78 ../src/vmm-create.glade.h:129
 msgid "_Virtual network"
-msgstr "ଆଭାସୀ ନେଟୱାର୍କ (_M)"
+msgstr "Virtuelna m_reža"
 
 #: ../src/vmm-add-hardware.glade.h:79
 msgid "keylabel"
@@ -940,22 +928,22 @@ msgstr ""
 
 #: ../src/vmm-host.glade.h:2
 msgid "<b>IPv4 configuration</b>"
-msgstr "<b>IPv4 ବିନ୍ଯାସ</b>"
+msgstr "<b>IPv4 podešavanje</b>"
 
 #: ../src/vmm-host.glade.h:4
 #, fuzzy
 msgid "<b>Volumes</b>"
-msgstr "<b>କୋନଶୋଲ ଗୁଡିକ</b>"
+msgstr "<b>Konzole</b>"
 
 #: ../src/vmm-host.glade.h:5 ../src/virtManager/connection.py:1029
 #: ../src/virtManager/host.py:326 ../src/virtManager/host.py:543
 msgid "Active"
-msgstr "ସକ୍ରିୟ"
+msgstr "Aktivna"
 
 #: ../src/vmm-host.glade.h:6
 #, fuzzy
 msgid "Add Network"
-msgstr "ନେଟୱାର୍କ"
+msgstr "Mreža"
 
 #: ../src/vmm-host.glade.h:7
 msgid "Add Pool"
@@ -967,34 +955,34 @@ msgstr ""
 
 #: ../src/vmm-host.glade.h:9
 msgid "Architecture:"
-msgstr "ସ୍ଥାପତ୍ଯ:"
+msgstr "Arhitektura:"
 
 #: ../src/vmm-host.glade.h:10
 #, fuzzy
 msgid "Autoconnect:"
-msgstr "ସଂଯୋଗ ପ୍ରକାର:"
+msgstr "Vrsta veze:"
 
 #: ../src/vmm-host.glade.h:11
 msgid "Autostart:"
-msgstr "ସ୍ବତଃଚାଳନ:"
+msgstr "Samostalno pokretanje:"
 
 #: ../src/vmm-host.glade.h:13 ../src/vmm-open-connection.glade.h:6
 #, fuzzy
 msgid "Connection:"
-msgstr "ସଂଯୋଗ ପ୍ରକାର:"
+msgstr "Vrsta veze:"
 
 #: ../src/vmm-host.glade.h:14
 msgid "DHCP end:"
-msgstr "DHCP ଅନ୍ତ:"
+msgstr "DHCP kraj:"
 
 #: ../src/vmm-host.glade.h:15
 msgid "DHCP start:"
-msgstr "DHCP ପ୍ରାରମ୍ଭ:"
+msgstr "DHCP početak:"
 
 #: ../src/vmm-host.glade.h:16
 #, fuzzy
 msgid "Delete Network"
-msgstr "ନେଟୱାର୍କ"
+msgstr "Mreža"
 
 #: ../src/vmm-host.glade.h:17
 msgid "Delete Pool"
@@ -1003,50 +991,50 @@ msgstr ""
 #: ../src/vmm-host.glade.h:18
 #, fuzzy
 msgid "Delete Volume"
-msgstr "ମେସିନ ଅପସାରଣ କରନ୍ତୁ"
+msgstr "Obriši mašinu"
 
 #: ../src/vmm-host.glade.h:19
 msgid "Device:"
-msgstr "ଉପକରଣ:"
+msgstr "Uređaj:"
 
 #: ../src/vmm-host.glade.h:20
 msgid "Forwarding:"
-msgstr "ଅଗ୍ରସରଣ କରୁଅଛି:"
+msgstr "Prosleđivanje:"
 
 #: ../src/vmm-host.glade.h:21
 msgid "Host Details"
-msgstr "ଆଧାରର ବିସ୍ତୃତ ବିବରଣୀ"
+msgstr "Detalji domaćina"
 
 #: ../src/vmm-host.glade.h:22 ../src/vmm-open-connection.glade.h:8
 msgid "Hostname:"
-msgstr "ଆଧାର ନାମ:"
+msgstr "Ime domaćina:"
 
 #: ../src/vmm-host.glade.h:23 ../src/vmm-create.glade.h:50
 #: ../src/vmm-open-connection.glade.h:10
 msgid "Hypervisor:"
-msgstr "hypervisor:"
+msgstr "Hipervizor:"
 
 #: ../src/vmm-host.glade.h:24
 msgid "Location:"
-msgstr "ଅବସ୍ଥାନ:"
+msgstr "Mesto:"
 
 #: ../src/vmm-host.glade.h:25
 msgid "Logical CPUs:"
-msgstr "ଭୌତିକ CPU ମାନ:"
+msgstr "Logički CPU-i:"
 
 #: ../src/vmm-host.glade.h:27
 msgid "Memory:"
-msgstr "ସ୍ମୃତି:"
+msgstr "Memorija:"
 
 #: ../src/vmm-host.glade.h:28 ../src/vmm-create-net.glade.h:30
 #: ../src/virtManager/createnet.py:101 ../src/virtManager/createnet.py:264
 #: ../src/virtManager/host.py:358
 msgid "NAT to any physical device"
-msgstr "ଯେ କୌଣସି ଭୌତିକ ଉପକରଣ ପାଇଁ NAT"
+msgstr "NAT do bilo kod fizičkog uređaja"
 
 #: ../src/vmm-host.glade.h:30 ../src/vmm-create-net.glade.h:37
 msgid "Network:"
-msgstr "ନେଟୱାର୍କ:"
+msgstr "Mreža:"
 
 #: ../src/vmm-host.glade.h:31
 msgid "New Volume"
@@ -1055,39 +1043,39 @@ msgstr ""
 #: ../src/vmm-host.glade.h:33
 #, fuzzy
 msgid "Pool Type:"
-msgstr "ପ୍ରକାର:"
+msgstr "Vrsta:"
 
 #: ../src/vmm-host.glade.h:34
 #, fuzzy
 msgid "Start Network"
-msgstr "ନେଟୱାର୍କ"
+msgstr "Mreža"
 
 #: ../src/vmm-host.glade.h:35
 #, fuzzy
 msgid "Start Pool"
-msgstr "ସଂରକ୍ଷଣ ସ୍ଥଳୀ"
+msgstr "Rezervoari skladištenja"
 
 #: ../src/vmm-host.glade.h:36
 msgid "State:"
-msgstr "ସ୍ଥିତି:"
+msgstr "Stanje:"
 
 #: ../src/vmm-host.glade.h:37
 #, fuzzy
 msgid "Stop Network"
-msgstr "ନେଟୱାର୍କ"
+msgstr "Mreža"
 
 #: ../src/vmm-host.glade.h:38
 #, fuzzy
 msgid "Stop Pool"
-msgstr "ସଂରକ୍ଷଣ ସ୍ଥଳୀ"
+msgstr "Rezervoari skladištenja"
 
 #: ../src/vmm-host.glade.h:39
 msgid "Storage Pools"
-msgstr "ସଂରକ୍ଷଣ ସ୍ଥଳୀ"
+msgstr "Rezervoari skladištenja"
 
 #: ../src/vmm-host.glade.h:40
 msgid "Virtual Networks"
-msgstr "ଆଭାସୀ ନେଟୱାର୍କ ଗୁଡିକ"
+msgstr "Virtuelne mreže"
 
 #: ../src/vmm-host.glade.h:41
 msgid "Xen"
@@ -1100,32 +1088,32 @@ msgstr ""
 #: ../src/vmm-choose-cd.glade.h:2
 #, fuzzy
 msgid "Choose A CD Source Device"
-msgstr "ଉତ୍ସ ଉପକରଣ:"
+msgstr "Izvorni uređaj:"
 
 #: ../src/vmm-choose-cd.glade.h:3 ../src/vmm-create.glade.h:52
 msgid "ISO _Location:"
-msgstr "ISO ଅବସ୍ଥାନ (_L):"
+msgstr "ISO _mesto:"
 
 #: ../src/vmm-choose-cd.glade.h:4 ../src/vmm-create.glade.h:115
 msgid "_Browse..."
-msgstr "ବ୍ରାଉଜ କରନ୍ତୁ (_B) ..."
+msgstr "_Razgledaj..."
 
 #: ../src/vmm-choose-cd.glade.h:5 ../src/vmm-create.glade.h:116
 msgid "_CD-ROM or DVD:"
-msgstr "_CD-ROM କିମ୍ବା DVD:"
+msgstr "_CD-ROM ili DVD:"
 
 #: ../src/vmm-choose-cd.glade.h:6 ../src/vmm-create.glade.h:119
 msgid "_ISO Image Location:"
-msgstr "_ISO ପ୍ରତିଛବି ଅବସ୍ଥାନ:"
+msgstr "Mesto _ISO odraza:"
 
 #: ../src/vmm-choose-cd.glade.h:7 ../src/vmm-create.glade.h:126
 msgid "_Path to install media:"
-msgstr "ସଞ୍ଚାରମାଧ୍ଯମକୁ ସ୍ଥାପନ କରିବା ପାଇଁ ପଥ (_P)"
+msgstr "Putanj_a do medijuma instalacije:"
 
 #: ../src/vmm-manager.glade.h:1
 #, fuzzy
 msgid "Add Connection..."
-msgstr "ଖୋଲା ସଂଯୋଗ ..."
+msgstr "Otvori vezu..."
 
 #: ../src/vmm-manager.glade.h:2
 msgid ""
@@ -1133,142 +1121,142 @@ msgid ""
 "Active virtual machines\n"
 "Inactive virtual machines"
 msgstr ""
-"ସମସ୍ତ ଆଭାସୀ ମେସିନ ଗୁଡିକ\n"
-"ସକ୍ରିୟ ଆଭାସୀ ମେସିନ ଗୁଡିକ\n"
-"ନିଷ୍କ୍ରିୟ ଆଭାସୀ ମେସିନ ଗୁଡିକ"
+"Sve virtuelne mašine\n"
+"Aktivne virtuelne mašine\n"
+"Neaktivne virtuelne mašine"
 
 #: ../src/vmm-manager.glade.h:5 ../src/virtManager/manager.py:804
 msgid "CPU usage"
-msgstr "CPU ବ୍ଯବହାର ବିଧି"
+msgstr "CPU upotreba"
 
 #: ../src/vmm-manager.glade.h:6
 #, fuzzy
 msgid "Connection Details..."
-msgstr "ସଂଯୋଗ ପ୍ରକାର:"
+msgstr "Vrsta veze:"
 
 #: ../src/vmm-manager.glade.h:7
 #, fuzzy
 msgid "Delete Machine"
-msgstr "ମେସିନ ଅପସାରଣ କରନ୍ତୁ"
+msgstr "Obriši mašinu"
 
 #: ../src/vmm-manager.glade.h:8 ../src/virtManager/manager.py:807
 msgid "Disk usage"
-msgstr "ଡିସ୍କ ବ୍ଯବହାର ବିଧି"
+msgstr "Upotreba diska"
 
 #: ../src/vmm-manager.glade.h:9
 msgid "Domain ID"
-msgstr "ପରିସର ପରିଚୟ"
+msgstr "ID domena"
 
 #: ../src/vmm-manager.glade.h:10
 #, fuzzy
 msgid "Machine Details..."
-msgstr "ମେସିନର ବିସ୍ତୃତ ବିବରଣୀ ..."
+msgstr "Detalji o mašini..."
 
 #: ../src/vmm-manager.glade.h:11 ../src/virtManager/manager.py:806
 msgid "Memory usage"
-msgstr "ସ୍ମୃତି ବ୍ଯବହାର ବିଧି"
+msgstr "Upotreba memorije"
 
 #: ../src/vmm-manager.glade.h:12 ../src/virtManager/manager.py:808
 msgid "Network traffic"
-msgstr "ନେଟୱାର୍କ ଯାତାୟାତ"
+msgstr "Mrežni saobraćaj"
 
 #: ../src/vmm-manager.glade.h:13
 msgid "Restore a saved machine from a filesystem image"
-msgstr "ଗୋଟିଏ ଫାଇଲ ତନ୍ତ୍ର ପ୍ରତିଛବିରୁ ଗୋଟିଏ ସଂରକ୍ଷିତ ମେସିନକୁ ପୁନଃସ୍ଥାପନ କରନ୍ତୁ"
+msgstr "Vrati sačuvanu mašinu iz odraza sistema datoteka"
 
 #: ../src/vmm-manager.glade.h:14
 msgid "Restore saved machine..."
-msgstr "ସଂରକ୍ଷିତ ମେସିନକୁ ପୁନଃସ୍ଥାପନ କରନ୍ତୁ ..."
+msgstr "Vrati sačuvanu mašinu..."
 
 #: ../src/vmm-manager.glade.h:15 ../src/virtManager/manager.py:803
 msgid "Status"
-msgstr "ଅବସ୍ଥିତି"
+msgstr "Status"
 
 #: ../src/vmm-manager.glade.h:16
 msgid "Virtual CPUs"
-msgstr "ଆଭାସୀ CPU ଗୁଡିକ"
+msgstr "Virtuelni CPU-i"
 
 #: ../src/vmm-manager.glade.h:19
 msgid "_Edit"
-msgstr "ସମ୍ପାଦନ କରନ୍ତୁ (_E)"
+msgstr "_Uredi"
 
 #: ../src/vmm-manager.glade.h:23
 msgid "_View:"
-msgstr "ଦେଖନ୍ତୁ (_V):"
+msgstr "Pre_gled:"
 
 #: ../src/vmm-create.glade.h:1
 #, fuzzy
 msgid "32"
-msgstr "୨"
+msgstr "2"
 
 #: ../src/vmm-create.glade.h:2
 msgid "<b>CPUs:</b>"
-msgstr "<b>CPU ଗୁଡିକ:</b>"
+msgstr "<b>CPU-i:</b>"
 
 #: ../src/vmm-create.glade.h:3
 msgid "<b>Example:</b> system1"
-msgstr "<b>ଉଦାହରଣ:</b> ତନ୍ତ୍ର୧"
+msgstr "<b>Primer:</b> sistem1"
 
 #: ../src/vmm-create.glade.h:4
 msgid "<b>Install media</b>"
-msgstr "<b>ସ୍ଥାପନ ମାଧ୍ଯମ</b>"
+msgstr "Instalacioni medijum:"
 
 #: ../src/vmm-create.glade.h:5
 msgid "<b>Memory:</b>"
-msgstr "<b>ସ୍ମୃତି:</b>"
+msgstr "<b>Memorija:</b>"
 
 #: ../src/vmm-create.glade.h:6
 msgid "<b>Memory</b> and <b>CPU</b> allocation"
-msgstr "<b>ସ୍ମୃତି</b> ଏବଂ <b>CPU</b> ବଣ୍ଟନ"
+msgstr "Dodeljivanje <b>memorije</b> i <b>CPU-a</b>"
 
 #: ../src/vmm-create.glade.h:8
 #, fuzzy
 msgid "<b>Sound</b>"
-msgstr "<b>ଭଣ୍ଡାର</b>"
+msgstr "<b>Skladište</b>"
 
 #: ../src/vmm-create.glade.h:10
 msgid ""
 "<b>Storage</b> details - which disk partitions or files the system should use"
 msgstr ""
-"<b>ଭଣ୍ଡାର</b> ବିଷୟରେ ବିବରଣୀ - କେଉଁ ଡିସ୍କ ବିଭାଜନ କିମ୍ବା ଫାଇଲ ମାନଙ୍କୁ ତନ୍ତ୍ରଟି ବ୍ଯବହାର କରିବା "
-"ଉଚିତ"
+"Detalji <b>skladišta</b> - koje particije ili datoteke sistem treba da "
+"koristi"
 
 #: ../src/vmm-create.glade.h:11 ../src/vmm-create-net.glade.h:6
 msgid "<b>Summary</b>"
-msgstr "<b>ସାରାଂଶ</b> "
+msgstr "Sažetak:"
 
 #: ../src/vmm-create.glade.h:13
 msgid "<small><b>Example:</b> ftp://hostname.example.com/ks/ks.cfg</small>"
-msgstr "<small><b>ଉଦାହରଣ:</b> ftp://hostname.example.com/ks/ks.cfg</small>"
+msgstr "<small><b>Primer:</b> ftp://hostname.example.com/ks/ks.cfg</small>"
 
 #: ../src/vmm-create.glade.h:14
 msgid ""
 "<small><b>Example:</b> http://servername.example.com/distro/i386/tree</small>"
 msgstr ""
-"<small><b>ଉଦାହରଣ:</b> http://servername.example.com/distro/i386/tree</small>"
+"<small><b>Primer:</b> http://servername.example.com/distro/i386/tree</small>"
 
 #: ../src/vmm-create.glade.h:15
 #, fuzzy
 msgid ""
 "<small><b>Example:</b> updates=http://hostname.example.com/updates.img</"
 "small>"
-msgstr "<small><b>ଉଦାହରଣ:</b> ftp://hostname.example.com/ks/ks.cfg</small>"
+msgstr "<small><b>Primer:</b> ftp://hostname.example.com/ks/ks.cfg</small>"
 
 #: ../src/vmm-create.glade.h:16
 msgid ""
 "<small><b>Note:</b> The host CPU(s) in this machine do not have support for "
 "full virtualization.</small>"
 msgstr ""
-"<small><b>ଟିପ୍ପଣୀ:</b> ଏହି ମେସିନରେ ଥିବା ଆଧାର CPU ମାନଙ୍କ ନିକଟରେ ସମ୍ପୂର୍ଣ୍ଣ ଆଭାସୀକରଣ ପାଇଁ "
-"ସହାୟତା ନାହିଁ। </small>"
+"<small><b>Napomena:</b> Domaćinski CPU(i) u ovoj mašini nemaju podršku za "
+"potpunu virtualizaciju.</small>"
 
 #: ../src/vmm-create.glade.h:17
 msgid ""
 "<small><b>Note:</b> The host CPU(s) in this machine support full "
 "virtualization, but it is not enabled by the BIOS.</small>"
 msgstr ""
-"<small><b>ଟିପ୍ପଣୀ:</b> ଏହି ମେସିନରେ ଥିବା ଆଧାର CPU ଗୁଡିକ ସମ୍ପୂର୍ଣ୍ଣ ଆଭାସୀକରଣକୁ ସହାୟତା "
-"ପ୍ରଦାନ କରିବେ, କିନ୍ତୁ ଏହା BIOS ଦ୍ବାରା ସକ୍ରିୟ. ନୁହେଁ।</small>"
+"<small><b>Napomena:</b> Domaćinski CPU(i) u ovoj mašini podržavaju potpunu "
+"virtualizaciju, ali nije uključena u BIOS-u.</small>"
 
 #: ../src/vmm-create.glade.h:20
 msgid ""
@@ -1276,8 +1264,8 @@ msgid ""
 "be less than (or equal to) the number of logical CPUs on the host system.</"
 "small>"
 msgstr ""
-"<small><b>ପରାମର୍ଶ:</b> ସର୍ବତ୍କୃଷ୍ଟ ପ୍ରଦର୍ଶନ ପାଇଁ, ଆଧାର ତନ୍ତ୍ରରେ ଥିବା ତାର୍କିକ CPU ମାନଙ୍କ "
-"ଅପେକ୍ଷା ଆଭାସୀ CPU ମାନଙ୍କ ସଂଖ୍ଯା କମ (କିମ୍ବା ସମାନ) ହେବା ଉଚିତ।</small>"
+"<small><b>Savet:</b> Za najbolji učinak, broj virtuelnih CPU-a treba da bude "
+"manji (ili jednak) od broja logičkih CPU-a na sistemu domaćina.</small>"
 
 #: ../src/vmm-create.glade.h:21
 msgid ""
@@ -1285,25 +1273,25 @@ msgid ""
 "storage, to your virtual system after it has been created using the same "
 "tools you would on a physical system.</small>"
 msgstr ""
-"<small><b>ପରାମର୍ଶ:</b>ଭୌତିକ ତନ୍ତ୍ରରେ ବ୍ଯବହାର କରୁଥିବା ଉପକରଣ ମାନଙ୍କୁ ବ୍ଯବହାର କରି ଆପଣଙ୍କ "
-"ଆଭାସୀ ତନ୍ତ୍ରକୁ ସୃଷ୍ଟି କରିସାରିବା ପରେ, ଆପଣ ସେଥିରେ ନେଟୱାର୍କ-ଆରୋହିତ ଭଣ୍ଡାର ସହିତ ଅତିରିକ୍ତ ଭଣ୍ଡାରକୁ "
-"ଯୋଗ କରିପାରିବେ।</small>"
+"<small><b>Savet:</b> Možete dodati dodatno skladište virtuelnom sistemu, "
+"uključujući i skladište montirano preko mreže, nakon njegovog pravljenja "
+"koristeći iste alate koje bi koristili na fizičkom sistemu.</small>"
 
 #: ../src/vmm-create.glade.h:23
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Allocate memory "
 "and CPU</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ସ୍ମୃତି ଏବଂ CPU କୁ "
-"ବାଣ୍ଟନ୍ତୁ</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Dodeli memoriju "
+"i CPU</span>"
 
 #: ../src/vmm-create.glade.h:25
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Choosing a "
 "virtualization method</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ଗୋଟିଏ ଆଭାସୀ ପଦ୍ଧତି "
-"ଚୟନ କରୁଅଛି</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Izbor metoda "
+"virtualizacije</span>"
 
 #: ../src/vmm-create.glade.h:26
 #, fuzzy
@@ -1311,24 +1299,24 @@ msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Choosing "
 "installation method</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ଗୋଟିଏ ଆଭାସୀ ପଦ୍ଧତି "
-"ଚୟନ କରୁଅଛି</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Izbor metoda "
+"virtualizacije</span>"
 
 #: ../src/vmm-create.glade.h:28
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Creating a new "
 "virtual system </span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ଗୋଟିଏ ନୂତନ ଆଭାସୀ "
-"ତନ୍ତ୍ର ସୃଷ୍ଟି କରୁଅଛି </span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Pravljenje "
+"novog virtuelnog sistema</span>"
 
 #: ../src/vmm-create.glade.h:29
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Locating "
 "installation media</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ସ୍ଥାପନ "
-"ସଞ୍ଚାରମାଧ୍ଯମକୁ ଖୋଜୁଅଛି</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Određivanje "
+"medijuma instalacije</span>"
 
 #: ../src/vmm-create.glade.h:30
 #, fuzzy
@@ -1336,40 +1324,40 @@ msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Locating "
 "installation source</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ସ୍ଥାପନ "
-"ସଞ୍ଚାରମାଧ୍ଯମକୁ ଖୋଜୁଅଛି</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Određivanje "
+"medijuma instalacije</span>"
 
 #: ../src/vmm-create.glade.h:31
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Naming your "
 "virtual system </span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ଆପଣଙ୍କ ଆଭାସୀ "
-"ତନ୍ତ୍ରର ନାମକରଣ କରୁଅଛି </span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Imenovanje "
+"virtuelnog sistema</span>"
 
 #: ../src/vmm-create.glade.h:32
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to begin "
 "installation</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ସ୍ଥାପନ ପ୍ରକ୍ରିୟା "
-"ପ୍ରାରମ୍ଭ କରିବା ପାଇଁ ପ୍ରସ୍ତୁତ</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Spremno za "
+"početak instalacije</span>"
 
 #: ../src/vmm-create.glade.h:33
 msgid "A <b>name</b> for your new virtual system"
-msgstr "ଆପଣଙ୍କ ନୂତନ ଆଭାସୀ ତନ୍ତ୍ର ପାଇଁ ଗୋଟିଏ <b>ନାମ</b>"
+msgstr "<b>Ime</b> za novi virtuelni sistem"
 
 #: ../src/vmm-create.glade.h:36
 msgid "CPU architecture:"
-msgstr "CPU ସ୍ଥାପତ୍ଯ:"
+msgstr "CPU arhitektura:"
 
 #: ../src/vmm-create.glade.h:37
 msgid "CPU/memory"
-msgstr "CPU/ସ୍ମୃତି"
+msgstr "CPU/memorija"
 
 #: ../src/vmm-create.glade.h:40
 msgid "Create a new virtual system"
-msgstr "ଗୋଟଏ ନୂତନ ଆଭାସୀ ତନ୍ତ୍ର ସୃଷ୍ଟି କରନ୍ତୁ"
+msgstr "Napravi novi virtuelni sistem"
 
 #: ../src/vmm-create.glade.h:44
 msgid "Enable Audio:"
@@ -1377,39 +1365,39 @@ msgstr ""
 
 #: ../src/vmm-create.glade.h:45
 msgid "F_ully Virtualized:"
-msgstr "ସମ୍ପୂର୍ଣ୍ଣ ଆଭାସୀକୃତ (_F):"
+msgstr "Po_tpuno virtualizovano:"
 
 #: ../src/vmm-create.glade.h:47
 #, fuzzy
 msgid "File Size Select"
-msgstr "ଫାଇଲ ଆକାର (_S)ଛ"
+msgstr "_Veličina datoteke:"
 
 #: ../src/vmm-create.glade.h:51
 #, fuzzy
 msgid "ISO Location Field"
-msgstr "ISO ଅବସ୍ଥାନ (_L):"
+msgstr "ISO _mesto:"
 
 #: ../src/vmm-create.glade.h:53
 msgid "Initial memory:"
-msgstr "ପ୍ରାରମ୍ଭିକ ସ୍ମୃତି:"
+msgstr "Početna memorija:"
 
 #: ../src/vmm-create.glade.h:54
 msgid "Install Media _URL:"
-msgstr "ସ୍ଥାପନ ସଞ୍ଚାରମାଧ୍ଯମ ୟୁ.ଆର.ଏଲ. (_U):"
+msgstr "_URL medijuma instalacije:"
 
 #: ../src/vmm-create.glade.h:55
 #, fuzzy
 msgid "Install URL Field"
-msgstr "ସ୍ଥାପନ ସଞ୍ଚାରମାଧ୍ଯମ ଆବଶ୍ଯକ"
+msgstr "Neophodan medijum instalacije"
 
 #: ../src/vmm-create.glade.h:56
 #, fuzzy
 msgid "Install type"
-msgstr "ସ୍ଥାପନ ସଞ୍ଚାରମାଧ୍ଯମ ଆବଶ୍ଯକ"
+msgstr "Neophodan medijum instalacije"
 
 #: ../src/vmm-create.glade.h:57
 msgid "Installation source:"
-msgstr "ସ୍ଥାପନ ଉତ୍ସ:"
+msgstr "Izvor instalacije:"
 
 #: ../src/vmm-create.glade.h:59
 msgid ""
@@ -1417,9 +1405,8 @@ msgid ""
 "systems (does not require OS modification). Slower than paravirtualized "
 "systems."
 msgstr ""
-"ପ୍ରଚାଳନ ତନ୍ତ୍ର ରୂପାନ୍ତରଣ ଆବଶ୍ଯକ କରୁ ନଥିବା ଗୋଟିଏ ବୃହତ ପରିସର ବିଶିଷ୍ଟ ପ୍ରଚାଳନ ତନ୍ତ୍ର ପାଇଁ ଅନୁମତି "
-"ପ୍ରଦାନ କରି, ହାର୍ଡୱେର ଅନୁକରଣକୁ ଜଡିତ କରିଥାଏ। ଏହା ଆଂଶିକ ଆଭାସୀକୃତ ତନ୍ତ୍ର ମାନଙ୍କଠାରୁ ମନ୍ଥରତର "
-"ଅଟେ।"
+"Podrazumeva simulaciju hardvera, dozvoljavajući širi opseg operativnih "
+"sistema (ne zahteva izmene OS-a). Sporiji od paravirtualizovanih sistema."
 
 #: ../src/vmm-create.glade.h:60
 msgid "Kernel arguments:"
@@ -1428,15 +1415,15 @@ msgstr ""
 #: ../src/vmm-create.glade.h:61
 #, fuzzy
 msgid "Kickstart Field"
-msgstr "କିକ-ଷ୍ଟାର୍ଟ ଉତ୍ସ:"
+msgstr "Kickstart izvor:"
 
 #: ../src/vmm-create.glade.h:62
 msgid "Kickstart U_RL:"
-msgstr "କିକ-ଷ୍ଟାର୍ଟ ୟୁ.ଆର.ଏଲ. (_R):"
+msgstr "Kickstart U_RL:"
 
 #: ../src/vmm-create.glade.h:63
 msgid "Kickstart source:"
-msgstr "କିକ-ଷ୍ଟାର୍ଟ ଉତ୍ସ:"
+msgstr "Kickstart izvor:"
 
 #: ../src/vmm-create.glade.h:64
 msgid ""
@@ -1444,18 +1431,18 @@ msgid ""
 "because the OS must be specially modified to support paravirtualization. "
 "Better performance than fully virtualized systems."
 msgstr ""
-"ଆଭାସୀକରଣ କରୁଥିବା ମେସିନ ମାନଙ୍କର ଲାଇଟ-ୱେଟ ପଦ୍ଧତି। ଏହା ପ୍ରଚାଳନ ତନ୍ତ୍ରର ବିକଲ୍ପକୁ ସୀମାବଦ୍ଧ "
-"କରିଥାଏ କାରଣ ଆଂଶିକ ଆଭାସୀକରଣ ପ୍ରକ୍ରିୟାକୁ ସମର୍ଥ କରିବା ପାଇଁ ପ୍ରଚାଳନ ତନ୍ତ୍ରଟି ବିଶେଷ ଭାବରେ "
-"ରୂପାନ୍ତରିତ ହେବା ଉଚିତ। ପୂର୍ଣ୍ଣ ଆଭାସୀକୃତ ତନ୍ତ୍ର ଅପେକ୍ଷା ଉନ୍ନତ ପ୍ରଦର୍ଶନ।"
+"Lagan metod za virtualizaciju mašina. Ograničava izbor operativnog sistema "
+"pošto OS mora biti namenski izmenjen da podržava paravirtualizaciju. Bolji "
+"učinak nego potpuno virtualizovani sistemi."
 
 #: ../src/vmm-create.glade.h:65
 #, fuzzy
 msgid "Local inst"
-msgstr "ସ୍ଥାନୀୟ ଆଧାର (_L)"
+msgstr "_Lokalni domaćin"
 
 #: ../src/vmm-create.glade.h:66
 msgid "Logical host CPUs:"
-msgstr "ଭୌତିକ ଆଧାର CPU ମାନ:"
+msgstr "Logički CPU-i domaćina:"
 
 #: ../src/vmm-create.glade.h:67
 msgid "MAC Field"
@@ -1463,7 +1450,7 @@ msgstr ""
 
 #: ../src/vmm-create.glade.h:70
 msgid "Machine name:"
-msgstr "ମେସିନ ନାମ:"
+msgstr "Ime mašine:"
 
 #: ../src/vmm-create.glade.h:71
 msgid "Max Mem Select"
@@ -1475,7 +1462,7 @@ msgstr ""
 
 #: ../src/vmm-create.glade.h:73
 msgid "Maximum memory:"
-msgstr "ସର୍ବାଧିକ ସ୍ମୃତି:"
+msgstr "Najviše memorije:"
 
 #: ../src/vmm-create.glade.h:74
 msgid "Media Path Select"
@@ -1485,7 +1472,7 @@ msgstr ""
 #: ../src/vmm-create-pool.glade.h:11 ../src/virtManager/connect.py:75
 #: ../src/virtManager/manager.py:801
 msgid "Name"
-msgstr "ନାମ"
+msgstr "Ime"
 
 #: ../src/vmm-create.glade.h:77
 msgid "Netinst"
@@ -1494,7 +1481,7 @@ msgstr ""
 #: ../src/vmm-create.glade.h:80
 #, fuzzy
 msgid "Network Select"
-msgstr "ନେଟୱାର୍କ"
+msgstr "Mreža"
 
 #: ../src/vmm-create.glade.h:81
 msgid "Network install t_ree (HTTP, FTP, or NFS)"
@@ -1502,29 +1489,29 @@ msgstr ""
 
 #: ../src/vmm-create.glade.h:83
 msgid "OS _Type:"
-msgstr "ପ୍ରଚାଳନ ତନ୍ତ୍ର ପ୍ରକାର (_T):"
+msgstr "V_rsta OS-a:"
 
 #: ../src/vmm-create.glade.h:84
 msgid "OS _Variant:"
-msgstr "ପ୍ରଚାଳନ ତନ୍ତ୍ର ଚଳ (_V):"
+msgstr "_Varijanta OS-a:"
 
 #: ../src/vmm-create.glade.h:85
 msgid "Operating System:"
-msgstr "ପ୍ରଚାଳନ ତନ୍ତ୍ର:"
+msgstr "Operativni sistem:"
 
 #: ../src/vmm-create.glade.h:87
 #, fuzzy
 msgid "Partition Field"
-msgstr "ବିଭାଜନ (_a):"
+msgstr "P_articija:"
 
 #: ../src/vmm-create.glade.h:88
 msgid "Please choose a name for your virtual system:"
-msgstr "ଦୟାକରି ଆପଣଙ୍କ ଆଭାସୀ ତନ୍ତ୍ର ପାଇଁ ଗୋଟିଏ ନାମ ଚୟନ କରନ୍ତୁ:"
+msgstr "Izaberite ime za virtuelni sistem:"
 
 #: ../src/vmm-create.glade.h:89
 msgid ""
 "Please choose the type of guest operating system you will be installing:"
-msgstr "ଦୟାକରି ଆପଣ ସ୍ଥାପନ କରିବା ଅତିଥି ପ୍ରଚାଳନ ତନ୍ତ୍ରର ପ୍ରକାର ଚୟନ କରନ୍ତୁ:"
+msgstr "Izaberite vrstu gostujućeg operativnog sistema kojeg ćete instalirati:"
 
 #: ../src/vmm-create.glade.h:90
 msgid ""
@@ -1533,16 +1520,14 @@ msgid ""
 "lower amount to grab on startup. Warning: setting VM memory too high will "
 "cause out-of-memory errors in your host domain!"
 msgstr ""
-"ଏହି ଆଭାସୀ ମେସିନ ପାଇଁ ଦୟାକରି ସ୍ମୃତି ବିନ୍ଯାସକୁ ଭରଣ କରନ୍ତୁ। ଆଭାସୀ ମେସିନଟି ବ୍ଯବହାର କରିବା ସର୍ବାଧିକ "
-"ସଂଖ୍ଯକ ସ୍ମୃତିକୁ, ଏବଂ ପ୍ରାରମ୍ଭିକରଣ ସମୟରେ ହାସଲ କରିବା ପାଇଁ ସ୍ବଳ୍ପ ସଂଖ୍ଯକ ସ୍ମୃତିକୁ ଇଚ୍ଛାଧୀନ ଭାବରେ "
-"ଆପଣ ନିର୍ଦ୍ଦିଷ୍ଟ କରିପାରିବେ। ଚେତାବନୀ: ଆଭାସୀ ମେସିନର ସ୍ମୃତିକୁ ଅତ୍ଯଧିକ ଭାବରେ ବିନ୍ଯାସ କଲେ ଏହା "
-"ଆପଣଙ୍କ ଆଧାର ପରିସରରେ ଯଥେଷ୍ଟ ସ୍ମୃତି ନାହିଁ ବୋଲି ତୃଟି ମାନ ସୃଷ୍ଟି କରିବ।"
+"Unesite podešavanja memorije za ovu VM. Možete navesti najveću količinu "
+"memorije koju VM može da koristi, i izborno manju količinu koju treba "
+"zgrabiti pri pokretanju. Upozerenje: postavljanje prevelike VM memorije može "
+"izazvati greške nedostatka memorije u domenu domaćina!"
 
 #: ../src/vmm-create.glade.h:91
 msgid "Please enter the number of virtual CPUs this VM should start up with."
-msgstr ""
-"ଏହି ଆଭାସୀ ଯନ୍ତ୍ରଟି କେତେ ସଂଖ୍ଯକ ଆଭାସୀ CPU ମାନଙ୍କ ସହିତ ପ୍ରାରମ୍ଭିକୃତ ହେବା ଉଚିତ ଦୟାକରି ତାହା "
-"ଭରଣ କରନ୍ତୁ।"
+msgstr "Unesite broj virtuelnih CPU-a sa kojim ova VM treba da se pokrene."
 
 #: ../src/vmm-create.glade.h:92
 msgid ""
@@ -1550,16 +1535,16 @@ msgid ""
 "for your new virtual system. This space will be used to install the virtual "
 "system's operating system."
 msgstr ""
-"ଆପଣଙ୍କର ନୂତନ ଆଭାସୀ ତନ୍ତ୍ର ପାଇଁ ଏହି ଭୌତିକ ଆଧାର ତନ୍ତ୍ରରେ ଆପଣ କିପରି ଖାଲିସ୍ଥାନ ବଣ୍ଟିବା ପାଇଁ "
-"ଚାହିଁବେ ଦୟାକରି ତାହା ଉଲ୍ଲେଖ କରନ୍ତୁ।"
+"Naznačite kako želite da dodelite prostor na ovom fizičkom sistemu domaćina "
+"za novi virtuelni sistem. Ovaj prostor će biti upotrebljen za instalaciju "
+"operativnog sistema virtuelnog sistema."
 
 #: ../src/vmm-create.glade.h:93
 msgid ""
 "Please indicate how you'd like to connect your new virtual system to the "
 "host network."
 msgstr ""
-"ଆପଣ ଆପଣଙ୍କର ନୂତନ ଆଭାସୀ ତନ୍ତ୍ରକୁ ଆଧାର ନେଟୱାର୍କ ସହିତ କିପରି ସଂଯୋଗ କରିବେ ଦୟାକରି ତାହା ସୂଚିତ "
-"କରନ୍ତୁ।"
+"Naznačite kako želite da povežete novi virtuelni sistem sa mrežom domaćina."
 
 #: ../src/vmm-create.glade.h:94
 #, fuzzy
@@ -1569,9 +1554,9 @@ msgid ""
 "Optionally you can provide the URL for a kickstart file that describes your "
 "system:"
 msgstr ""
-"ଏହି <b>ଆଂଶିକ ଆଭାସୀକୃତ</b> ଆଭାସୀ ତନ୍ତ୍ରରେ ଆପଣ ସ୍ଥାପନ କରିବା ପାଇଁ ଚାହୁଁଥିବା ପ୍ରଚାଳନ ତନ୍ତ୍ର "
-"ପାଇଁ ସ୍ଥାପନ ସଞ୍ଚାରମାଧ୍ଯମଟି କେଉଁଠାରେ ରହିଛି, ଦୟାକରି ତାହା ଉଲ୍ଲେଖ କରନ୍ତୁ। ଇଚ୍ଛାଧୀନ ଭାବରେ ଆପଣ "
-"ଗୋଟିଏ କିକ-ଷ୍ଟାର୍ଟ ଫାଇଲ ପାଇଁ ୟୁ.ଆର.ଏଲ. ପ୍ରଦାନ କରିପାରନ୍ତି ଯାହାକି ଆପଣଙ୍କ ତନ୍ତ୍ରକୁ ବର୍ଣ୍ଣନା କରିଥାଏ:"
+"Naznačite gde su dostupni instalacioni medijumi za operativni sistem koji "
+"želite da instalirati na ovaj <b>paravirtualizovani</b> virtuelni sistem. "
+"Izborno možete dostaviti URL za kickstart datoteku koja opisuje sistem:"
 
 #: ../src/vmm-create.glade.h:95
 #, fuzzy
@@ -1579,8 +1564,8 @@ msgid ""
 "Please indicate where installation media is available for the operating "
 "system you would like to install on this virtual operating system:"
 msgstr ""
-"ଏହି <b>ପୂର୍ଣ୍ଣ ଆଭାସୀକୃତ</b> ଆଭାସୀ ତନ୍ତ୍ରରେ ଆପଣ ସ୍ଥାପନ କରିବା ପାଇଁ ଚାହୁଁଥିବା ପ୍ରଚାଳନ ତନ୍ତ୍ର "
-"ପାଇଁ ସ୍ଥାପନ ସଞ୍ଚାରମାଧ୍ଯମଟି କେଉଁଠାରେ ରହିଛି, ଦୟାକରି ତାହା ଉଲ୍ଲେଖ କରନ୍ତୁ:"
+"Naznačite gde su dostupni instalacioni medijumi za operativni sistem koji "
+"želite da instalirati na ovaj <b>potpuno virtualizovani</b> virtuelni sistem:"
 
 #: ../src/vmm-create.glade.h:96
 #, fuzzy
@@ -1588,13 +1573,13 @@ msgid ""
 "Please indicate where installation media is available for the operating "
 "system you would like to install on this virtual system:"
 msgstr ""
-"ଏହି <b>ପୂର୍ଣ୍ଣ ଆଭାସୀକୃତ</b> ଆଭାସୀ ତନ୍ତ୍ରରେ ଆପଣ ସ୍ଥାପନ କରିବା ପାଇଁ ଚାହୁଁଥିବା ପ୍ରଚାଳନ ତନ୍ତ୍ର "
-"ପାଇଁ ସ୍ଥାପନ ସଞ୍ଚାରମାଧ୍ଯମଟି କେଉଁଠାରେ ରହିଛି, ଦୟାକରି ତାହା ଉଲ୍ଲେଖ କରନ୍ତୁ:"
+"Naznačite gde su dostupni instalacioni medijumi za operativni sistem koji "
+"želite da instalirati na ovaj <b>potpuno virtualizovani</b> virtuelni sistem:"
 
 #: ../src/vmm-create.glade.h:97
 #, fuzzy
 msgid "Set fixed MAC _address for your virtual system?"
-msgstr "ଦୟାକରି ଆପଣଙ୍କ ଆଭାସୀ ତନ୍ତ୍ର ପାଇଁ ଗୋଟିଏ ନାମ ଚୟନ କରନ୍ତୁ:"
+msgstr "Izaberite ime za virtuelni sistem:"
 
 #: ../src/vmm-create.glade.h:100
 msgid "Startup Mem Select"
@@ -1602,14 +1587,15 @@ msgstr ""
 
 #: ../src/vmm-create.glade.h:101
 msgid "System _Name:"
-msgstr "ତନ୍ତ୍ର ନାମ (_N):"
+msgstr "_Ime sistema:"
 
 #: ../src/vmm-create.glade.h:103
 msgid ""
 "The <b>location</b> of the files necessary for installing an operating "
 "system on the virtual system"
 msgstr ""
-"ଆଭାସୀ ତନ୍ତ୍ରରେ ଗୋଟିଏ ପ୍ରଚାଳନ ତନ୍ତ୍ରକୁ ସ୍ଥାପନ କରିବା ପାଇଁ ଆବଶ୍ଯକ ଫାଇଲ ମାନଙ୍କର <b>ଅବସ୍ଥାନ</b>"
+"<b>Mesto</b> za datoteke je neophodno za instalaciju operativnog sistema na "
+"virtuelni sistem."
 
 #: ../src/vmm-create.glade.h:104
 msgid ""
@@ -1617,20 +1603,21 @@ msgid ""
 "will be asked for some information about the virtual system you'd like to "
 "create, such as:"
 msgstr ""
-"ଏହି ସହକାରୀଟି ଆପଣଙ୍କୁ ଗୋଟିଏ ନୂତନ ଆଭାସୀ ତନ୍ତ୍ର ପ୍ରସ୍ତୁତ କରିବା ସମୟରେ ମାର୍ଗ ନିର୍ଦ୍ଦେଶ କରିବ। ଆପଣ "
-"ପ୍ରସ୍ତୁତ କରିବା ପାଇଁ ଚାହୁଁଥିବା ଆଭାସୀ ତନ୍ତ୍ର ବିଷୟରେ ଆପଣଙ୍କୁ କିଛି ପ୍ରଶ୍ନ ପଚରାଯିବ, ଉଦାହରଣ ସ୍ବରୂପ:"
+"Ovaj pomoćnik će Vas provesti kroz pravljenje novog virtuelnog sistema. "
+"Bićete upitani za neke podatke o virtuelnom sistemu koji želite da "
+"napravite, kao što su:"
 
 #: ../src/vmm-create.glade.h:106
 msgid "Type"
-msgstr "ପ୍ରକାର"
+msgstr "Vrsta"
 
 #: ../src/vmm-create.glade.h:108
 msgid "VM _Max Memory (MB):"
-msgstr "VM ସର୍ବାଧିକ ସ୍ମୃତି (ମେଗା-ବାଇଟରେ) (_M):"
+msgstr "Naj_više VM memorije (MB):"
 
 #: ../src/vmm-create.glade.h:109
 msgid "VM _Startup Memory (MB):"
-msgstr "VM ପ୍ରାରମ୍ଭିକରଣ ସ୍ମୃତି (ମେଗା-ବାଇଟରେ) (_S):"
+msgstr "VM memorija pri po_kretanju (MB):"
 
 #: ../src/vmm-create.glade.h:110
 msgid "VMS"
@@ -1638,21 +1625,23 @@ msgstr "VMS"
 
 #: ../src/vmm-create.glade.h:111
 msgid "Virtual CPUs:"
-msgstr "ଆଭାସୀ CPU ଗୁଡିକ:"
+msgstr "Virtuelni CPU-i:"
 
 #: ../src/vmm-create.glade.h:112
 msgid "Virtualization method:"
-msgstr "ଆଭାସୀକରଣ ପଦ୍ଧତି:"
+msgstr "Metod virtualizacije:"
 
 #: ../src/vmm-create.glade.h:113
 msgid ""
 "Whether the system will be <b>fully virtualized</b> or <b>para-virtualized</"
 "b>"
-msgstr "ତନ୍ତ୍ରଟି <b>ପୂର୍ଣ୍ଣ ଆଭାସୀକୃତ</b> ହେବ କିମ୍ବା <b>ଆଂଶିକ ଆଭାସୀକୃତ</b> ହେବ"
+msgstr ""
+"Da li će sistem biti <b>potpuno virtualizovan</b> ili <b>para-virtualizovan</"
+"b>"
 
 #: ../src/vmm-create.glade.h:114
 msgid "You will need to choose a virtualization method for your new system:"
-msgstr "ଆପଣଙ୍କ ନୂତନ ତନ୍ତ୍ର ପାଇଁ ଆପଣ ଗୋଟିଏ ଆଭାସୀକରଣ ପଦ୍ଧତିକୁ ଚୟନ କରିବା ଉଚିତ:"
+msgstr "Treba da izaberete metod virtualizacije za novi sistem:"
 
 #: ../src/vmm-create.glade.h:120
 msgid "_Kernel parameters:"
@@ -1665,20 +1654,20 @@ msgstr ""
 #: ../src/vmm-create.glade.h:123
 #, fuzzy
 msgid "_Network boot (PXE)"
-msgstr "ନେଟୱାର୍କ (_N):"
+msgstr "M_reža:"
 
 #: ../src/vmm-create.glade.h:125
 msgid "_Paravirtualized:"
-msgstr "ଆଂଶିକ ଆଭାସୀକୃତ (_P):"
+msgstr "Pa_ravirtualizovan:"
 
 #: ../src/vmm-create.glade.h:128
 msgid "_VCPUs:"
-msgstr "VCPUs (_V):"
+msgstr "_VCPU-i"
 
 #: ../src/vmm-open-connection.glade.h:1
 #, fuzzy
 msgid "Add Connection"
-msgstr "ସଂଯୋଗ ପ୍ରକାର:"
+msgstr "Vrsta veze:"
 
 #: ../src/vmm-open-connection.glade.h:2
 msgid ""
@@ -1688,22 +1677,22 @@ msgstr ""
 
 #: ../src/vmm-open-connection.glade.h:4
 msgid "Co_nnect"
-msgstr "ସଂଯୋଗ କରନ୍ତୁ (_n)"
+msgstr "Po_veži se"
 
 #: ../src/vmm-open-connection.glade.h:5
 #, fuzzy
 msgid "Connection Select"
-msgstr "ସଂଯୋଗ ପ୍ରକାର:"
+msgstr "Vrsta veze:"
 
 #: ../src/vmm-open-connection.glade.h:7
 #, fuzzy
 msgid "Hostname Field"
-msgstr "ଆଧାର ନାମ:"
+msgstr "Ime domaćina:"
 
 #: ../src/vmm-open-connection.glade.h:9
 #, fuzzy
 msgid "Hypervisor Select"
-msgstr "hypervisor:"
+msgstr "Hipervizor:"
 
 #: ../src/vmm-open-connection.glade.h:11
 msgid ""
@@ -1727,23 +1716,23 @@ msgstr "<b>DHCP</b>"
 
 #: ../src/vmm-create-net.glade.h:2
 msgid "<b>Example:</b> network1"
-msgstr "<b>ଉଦାହରଣ:</b> ନେଟୱାର୍କ୧"
+msgstr "<b>Primer:</b> mreza1"
 
 #: ../src/vmm-create-net.glade.h:3
 msgid "<b>Forwarding</b>"
-msgstr "<b>ଅଗ୍ରସରଣ</b>"
+msgstr "<b>Prosleđivanje</b>"
 
 #: ../src/vmm-create-net.glade.h:4
 msgid ""
 "<b>Hint:</b> The network should be choosen from one of the IPv4 private "
 "address ranges. eg 10.0.0.0/8,  172.16.0.0/12, or 192.168.0.0/16"
 msgstr ""
-"<b>ସଙ୍କେତ:</b> IPv4 ବ୍ଯକ୍ତିଗତ ଠିକଣା ପରିସରରୁ ନେଟୱାର୍କକୁ ଚୟନ କରାଯିବା ଉଚିତ। ଉଦାହରଣ ସ୍ବରୂପ "
-"10.0.0.0/8,  172.16.0.0/12, କିମ୍ବା 192.168.0.0/16"
+"<b>Savet:</b> Mrežu treba izabrati iz jednog od opsega IPv4 privatnih "
+"adresa. npr. 10.0.0.0/8,  172.16.0.0/12, ili 192.168.0.0/16"
 
 #: ../src/vmm-create-net.glade.h:5
 msgid "<b>IPv4 network</b>"
-msgstr "<b>IPv4 ନେଟୱାର୍କ</b>"
+msgstr "<b>IPv4 mreža</b>"
 
 #: ../src/vmm-create-net.glade.h:7
 msgid ""
@@ -1751,73 +1740,73 @@ msgid ""
 "network configuration in virtual machines, these parameters can be left with "
 "their default values."
 msgstr ""
-"<b>ପରାମର୍ଶ:</b> ଆଭାସୀ ମେସିନ ମାନଙ୍କରେ ସ୍ଥୈତିକ ନେଟୱାର୍କ ବିନ୍ଯାସକୁ ସ୍ବୀକାର କରିବା ପାଇଁ କିଛି "
-"ଠିକଣା ସଂରକ୍ଷଣ ନ କରିବା ପର୍ଯ୍ଯନ୍ତ, ଏହି ପାରାମିଟର ମାନଙ୍କୁ ସେମାନଙ୍କର ପୂର୍ବନିର୍ଦ୍ଧାରିତ ମୂଲ୍ଯ ସହିତ "
-"ଛାଡିହେବ।"
+"<b>Savet:</b> Osim ako želite da zauzmete neke adrese kako bi dozvolili "
+"statičko podešavanje mreže kod virtuelnih mašina, ovi parametri mogu biti "
+"ostavljeni na podrazumevanim vrednostima."
 
 #: ../src/vmm-create-net.glade.h:8
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Choosing an "
 "IPv4 address space</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ଗୋଟିଏ IPv4 ଠିକଣା "
-"ସ୍ଥାନ ଚୟନ କରୁଅଛି</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Izbor prostora "
+"IPv4 adresa</span>"
 
 #: ../src/vmm-create-net.glade.h:9
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Connecting to "
 "physical network</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ଭୌତିକ ନେଟୱାର୍କ "
-"ସହିତ ସଂଯୋଗ କରୁଅଛି</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Povezivanje sa "
+"fizičkom mrežom</span>"
 
 #: ../src/vmm-create-net.glade.h:10
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Creating a new "
 "virtual network </span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ଗୋଟିଏ ନୂତନ ଆଭାସୀ "
-"ନେଟୱାର୍କ ସୃଷ୍ଟି କରୁଅଛି </span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Pravljenje nove "
+"virtuelne mreže</span>"
 
 #: ../src/vmm-create-net.glade.h:11
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Naming your "
 "virtual network </span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ଆପଣଙ୍କ ଆଭାସୀ "
-"ନେଟୱାର୍କର ନାମକରଣ କରୁଅଛି </span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Imenovanje "
+"virtuelne mreže</span>"
 
 #: ../src/vmm-create-net.glade.h:12
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to create "
 "network</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ନେଟୱାର୍କ ସୃଷ୍ଟି "
-"କରିବା ପାଇଁ ପ୍ରସ୍ତୁତ</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Spremno za "
+"pravljenje mreže</span>"
 
 #: ../src/vmm-create-net.glade.h:13
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Selecting the "
 "DHCP range</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">DHCP ପରିସର ଚୟନ "
-"କରୁଅଛି</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Izbor DHCP "
+"opsega</span>"
 
 #: ../src/vmm-create-net.glade.h:14
 msgid "A <b>name</b> for your new virtual network"
-msgstr "ଆପଣଙ୍କ ନୂତନ ଆଭାସୀ ନେଟୱାର୍କ ପାଇଁ ଗୋଟିଏ <b>ନାମ</b>"
+msgstr "<b>Ime</b> za novu virtuelnu mrežu"
 
 #: ../src/vmm-create-net.glade.h:15
 msgid "Broadcast:"
-msgstr "ପ୍ରସାରଣ:"
+msgstr "Odašiljanje:"
 
 #: ../src/vmm-create-net.glade.h:17
 msgid "Connectivity:"
-msgstr "ସଂଯୋଜକତା:"
+msgstr "Povezivanje:"
 
 #: ../src/vmm-create-net.glade.h:18
 msgid "Create a new virtual network"
-msgstr "ଗୋଟଏ ନୂତନ ଆଭାସୀ ନେଟୱାର୍କ ସୃଷ୍ଟି କରନ୍ତୁ"
+msgstr "Napravi novu virtuelnu mrežu"
 
 #: ../src/vmm-create-net.glade.h:19
 msgid "DHCP"
@@ -1825,32 +1814,32 @@ msgstr "DHCP"
 
 #: ../src/vmm-create-net.glade.h:20
 msgid "Desination:"
-msgstr "ଗନ୍ତବ୍ଯସ୍ଥଳ:"
+msgstr "Odredište:"
 
 #: ../src/vmm-create-net.glade.h:21
 #, fuzzy
 msgid "End Address"
-msgstr "ଅନ୍ତିମ ଠିକଣା:"
+msgstr "Završna adresa:"
 
 #: ../src/vmm-create-net.glade.h:22
 msgid "End address:"
-msgstr "ଅନ୍ତିମ ଠିକଣା:"
+msgstr "Završna adresa:"
 
 #: ../src/vmm-create-net.glade.h:23
 msgid "End:"
-msgstr "ସମାପ୍ତ:"
+msgstr "Kraj:"
 
 #: ../src/vmm-create-net.glade.h:24
 msgid "Forwarding"
-msgstr "ଅଗ୍ରସରଣ କରୁଅଛି"
+msgstr "Prosleđivanje"
 
 #: ../src/vmm-create-net.glade.h:25
 msgid "Forwarding to physical network"
-msgstr "ଭୌତିକ ନେଟୱାର୍କକୁ ଅଗ୍ରସରଣ କରୁଅଛି"
+msgstr "Prosleđivanje ka fizičkoj mreži"
 
 #: ../src/vmm-create-net.glade.h:26
 msgid "Gateway:"
-msgstr "ଗେଟ-ୱେ:"
+msgstr "Mrežni prolaz:"
 
 #: ../src/vmm-create-net.glade.h:27
 msgid "IPv4"
@@ -1859,7 +1848,7 @@ msgstr "IPv4"
 #: ../src/vmm-create-net.glade.h:29 ../src/virtManager/createnet.py:266
 #: ../src/virtManager/host.py:361 ../src/virtManager/host.py:381
 msgid "Isolated virtual network"
-msgstr "ବିଚ୍ଛିନ୍ନ ଆଭାସୀ ନେଟୱାର୍କ"
+msgstr "Izolovana virtuelna mreža"
 
 #: ../src/vmm-create-net.glade.h:32
 msgid "Net Name Field"
@@ -1867,76 +1856,78 @@ msgstr ""
 
 #: ../src/vmm-create-net.glade.h:33
 msgid "Netmask:"
-msgstr "ନେଟମାସ୍କ:"
+msgstr "Mrežna maska:"
 
 #: ../src/vmm-create-net.glade.h:34
 #, fuzzy
 msgid "Network Range"
-msgstr "ନେଟୱାର୍କ ବ୍ଯବହାର ବିଧି:"
+msgstr "Upotreba mreže:"
 
 #: ../src/vmm-create-net.glade.h:35
 msgid "Network _Name:"
-msgstr "ନେଟୱାର୍କ ନାମ (_N):"
+msgstr "_Ime mreže:"
 
 #: ../src/vmm-create-net.glade.h:36
 msgid "Network name:"
-msgstr "ନେଟୱାର୍କ ନାମ:"
+msgstr "Ime mreže:"
 
 #: ../src/vmm-create-net.glade.h:38
 #, fuzzy
 msgid "Physical Network"
-msgstr "ଆଭାସୀ ନେଟୱାର୍କ ଗୁଡିକ"
+msgstr "Virtuelne mreže"
 
 #: ../src/vmm-create-net.glade.h:39
 msgid "Please choose a name for your virtual network:"
-msgstr "ଦୟାକରି ଆପଣଙ୍କ ଆଭାସୀ ନେଟୱାର୍କ ପାଇଁ ଗୋଟିଏ ନାମ ଚୟନ କରନ୍ତୁ:"
+msgstr "Izaberite ime za virtuelnu mrežu:"
 
 #: ../src/vmm-create-net.glade.h:40
 msgid ""
 "Please choose the range of addresses the DHCP server can use to allocate to "
 "guests attached to the virtual network"
 msgstr ""
-"ଆଭାସୀ ନେଟୱାର୍କ ସହିତ ସଂଯୋଜିତ ଅତିଥି ମାନଙ୍କୁ ବାଣ୍ଟିବା ପାଇଁ DHCP ବ୍ଯବହାର କରିପାରିବା ଠିକଣା "
-"ମାନଙ୍କର ପରିସରକୁ ଦୟାକରି ଚୟନ କରନ୍ତୁ"
+"Izaberite opseg adresa koje DHCP server može koristiti za dodelu gostima "
+"povezanim na virtuelnu mrežu"
 
 #: ../src/vmm-create-net.glade.h:41
 msgid ""
 "Please indicate whether this virtual network should be connected to the "
 "physical network."
 msgstr ""
-"ଦୟାକରି ଏହା ସୂଚାନ୍ତୁ ଯେ ଏହି ଆଭାସୀ ନେଟୱାର୍କକୁ ଭୌତିକ ନେଟୱାର୍କ ସହିତ ସଂଯୋଗ କରାଯିବା ଉଚିତ କି ନୁହେଁ।"
+"Naznačite da li ova virtuelna mreža treba da bude povezana sa fizičkom "
+"mrežom."
 
 #: ../src/vmm-create-net.glade.h:42 ../src/virtManager/createnet.py:163
 msgid "Private"
-msgstr "ବ୍ଯକ୍ତିଗତ"
+msgstr "Privatno"
 
 #: ../src/vmm-create-net.glade.h:43
 msgid "Size:"
-msgstr "ଆକାର:"
+msgstr "Veličina:"
 
 #: ../src/vmm-create-net.glade.h:44
 #, fuzzy
 msgid "Start Address"
-msgstr "ପ୍ରାରମ୍ଭିକ ଠିକଣା:"
+msgstr "Početna adresa:"
 
 #: ../src/vmm-create-net.glade.h:45
 msgid "Start address:"
-msgstr "ପ୍ରାରମ୍ଭିକ ଠିକଣା:"
+msgstr "Početna adresa:"
 
 #: ../src/vmm-create-net.glade.h:46
 msgid "Start:"
-msgstr "ପ୍ରାରମ୍ଭ:"
+msgstr "Početak:"
 
 #: ../src/vmm-create-net.glade.h:47
 msgid ""
 "The <b>address range</b> from which the <b>DHCP</b> server will allocate "
 "addresses for virtual machines"
 msgstr ""
-"<b>ଠିକଣା ପରିସର</b> ଯେଉଁଠାରୁ <b>DHCP</b> ସେବକ ଆଭାସୀ ମେସିନ ମାନଙ୍କୁ ଠିକଣା ନ୍ଯସ୍ତ କରିବ"
+"<b>Opseg adresa</b> iz koga će <b>DHCP</b> server dodeljivati adrese "
+"virtuelnim mašinama"
 
 #: ../src/vmm-create-net.glade.h:48
 msgid "The IPv4 <b>address</b> and <b>netmask</b> to assign"
-msgstr "ନ୍ଯସ୍ତ କରାଯିବା IPv4 <b>ଠିକଣା</b> ଏବଂ <b>ନେଟମାସ୍କ</b>"
+msgstr "IPv4 <b>adresa</b> i <b>mrežna maska</b> za dodelu"
 
 #: ../src/vmm-create-net.glade.h:49
 msgid ""
@@ -1944,30 +1935,30 @@ msgid ""
 "will be asked for some information about the virtual network you'd like to "
 "create, such as:"
 msgstr ""
-"ଏହି ସହକାରୀ ଉପଯୋଗ ଆପଣଙ୍କୁ ଗୋଟିଏ ନୂତନ ଆଭାସୀ ନେଟୱାର୍କ ପ୍ରସ୍ତୁତ କରିବା ସମୟରେ ମାର୍ଗ ନିର୍ଦ୍ଦେଶ "
-"କରିବ। ଆପଣ ପ୍ରସ୍ତୁତ କରିବା ପାଇଁ ଚାହୁଁଥିବା ଆଭାସୀ ନେଟୱାର୍କ ବିଷୟରେ ଆପଣଙ୍କୁ କିଛି ପ୍ରଶ୍ନ ପଚରାଯିବ, "
-"ଉଦାହରଣ ସ୍ବରୂପ:"
+"Ovaj pomoćnik će Vas provesti kroz pravljenje nove virtuelne mreže. Bićete "
+"upitani za neke podatke o virtuelnoj mreži koju želite da napravite, kao što "
+"su:"
 
 #: ../src/vmm-create-net.glade.h:51
 msgid "Whether to <b>forward</b> traffic to the physical network"
-msgstr "ଭୌତିକ ନେଟୱାର୍କକୁ ଯାତାୟାତ <b>ଅଗ୍ରସରଣ</b> କରାଯିବା ଉଚିତ କି ନୁହେଁ"
+msgstr "Da li <b>prosleđivati</b> saobraćaj ka fizičkoj mreži"
 
 #: ../src/vmm-create-net.glade.h:52
 msgid "You will need to choose an IPv4 address space for the virtual network:"
-msgstr "ଆଭାସୀ ନେଟୱାର୍କ ପାଇଁ ଆପଣ ଗୋଟିଏ IPv4 ଠିକଣା ସ୍ଥାନ ଚୟନ କରିବା ଉଚିତ:"
+msgstr "Treba da izaberete prostor IPv4 adresa za virtuelnu mrežu:"
 
 #: ../src/vmm-preferences.glade.h:1
 msgid "<b>Consoles</b>"
-msgstr "<b>କୋନଶୋଲ ଗୁଡିକ</b>"
+msgstr "<b>Konzole</b>"
 
 #: ../src/vmm-preferences.glade.h:2
 #, fuzzy
 msgid "<b>New VM Preferences</b>"
-msgstr "<b>ପ୍ରଦର୍ଶନ</b>"
+msgstr "<b>Učinak</b>"
 
 #: ../src/vmm-preferences.glade.h:3
 msgid "<b>Status monitoring</b>"
-msgstr "<b>ସ୍ଥିତି ଉପରେ ଦୃଷ୍ଟି ରଖୁଅଛି</b>"
+msgstr "<b>Nadgledanje statusa</b>"
 
 #: ../src/vmm-preferences.glade.h:4
 msgid "Auto Console"
@@ -1975,35 +1966,35 @@ msgstr ""
 
 #: ../src/vmm-preferences.glade.h:5
 msgid "Automatically open consoles:"
-msgstr "କୋନଶୋଲ ମାନଙ୍କୁ ସ୍ବୟଂଚାଳିତ ଭାବରେ ଖୋଲନ୍ତୁ:"
+msgstr "Samostalno otvori konzole:"
 
 #: ../src/vmm-preferences.glade.h:6
 #, fuzzy
 msgid "Grab Keyboard"
-msgstr "କି-ବୋର୍ଡ ନିବେଶକୁ ହାସଲ କରନ୍ତୁ:"
+msgstr "Zgrabi unose tastature:"
 
 #: ../src/vmm-preferences.glade.h:7
 msgid "Grab keyboard input:"
-msgstr "କି-ବୋର୍ଡ ନିବେଶକୁ ହାସଲ କରନ୍ତୁ:"
+msgstr "Zgrabi unose tastature:"
 
 #: ../src/vmm-preferences.glade.h:8
 #, fuzzy
 msgid "History Samples"
-msgstr "ନମୁନା"
+msgstr "primerci"
 
 #: ../src/vmm-preferences.glade.h:9
 #, fuzzy
 msgid "Install Audio Device:"
-msgstr "ସ୍ଥାପନ ଉତ୍ସ:"
+msgstr "Izvor instalacije:"
 
 #: ../src/vmm-preferences.glade.h:10
 #, fuzzy
 msgid "Local VM"
-msgstr "ସ୍ଥାନୀୟ ଆଧାର (_L)"
+msgstr "_Lokalni domaćin"
 
 #: ../src/vmm-preferences.glade.h:11
 msgid "Maintain history of"
-msgstr "ଏହାର ପୁରାତନ ତଥ୍ଯର ତତ୍ବାବଧାନ ନିଅନ୍ତୁ"
+msgstr "Održavaj istoriju od"
 
 #: ../src/vmm-preferences.glade.h:12
 msgid ""
@@ -2011,9 +2002,9 @@ msgid ""
 "For new domains\n"
 "For all domains"
 msgstr ""
-"କଦାପି ନୁହେଁ\n"
-"ନୂତନ ପରିସର ମାନଙ୍କ ପାଇଁ\n"
-"ସମସ୍ତ ପରିସର ମାନଙ୍କ ପାଇଁ"
+"Nikada\n"
+"Za nove domene\n"
+"Za sve domene"
 
 #: ../src/vmm-preferences.glade.h:15
 msgid ""
@@ -2021,18 +2012,18 @@ msgid ""
 "When fullscreen\n"
 "On mouse over"
 msgstr ""
-"କଦାପି ନୁହେଁ\n"
-"ସମ୍ପୂର୍ଣ୍ଣ ପରଦା ଧାରା ସମୟରେ\n"
-"ମାଉସ ଉପରକୁ ଗଲେ"
+"Nikada\n"
+"Kada je pun ekran\n"
+"Kada je miš preko"
 
 #: ../src/vmm-preferences.glade.h:18
 msgid "Preferences"
-msgstr "ପସନ୍ଦ"
+msgstr "Postavke"
 
 #: ../src/vmm-preferences.glade.h:19
 #, fuzzy
 msgid "Remote VM"
-msgstr "ଦୂର ଆଧାର (_R)"
+msgstr "Udalje_ni domaćin"
 
 #: ../src/vmm-preferences.glade.h:20
 msgid "Status Interval"
@@ -2040,15 +2031,15 @@ msgstr ""
 
 #: ../src/vmm-preferences.glade.h:21
 msgid "Update status every"
-msgstr "ସ୍ଥିତିକୁ ଅଦ୍ଯତନ କରନ୍ତୁ ପ୍ରତ୍ଯେକ"
+msgstr "Osvežavaj status svakih"
 
 #: ../src/vmm-preferences.glade.h:22
 msgid "samples"
-msgstr "ନମୁନା"
+msgstr "primerci"
 
 #: ../src/vmm-preferences.glade.h:23
 msgid "seconds"
-msgstr "ସେକେଣ୍ଡ"
+msgstr "sekundi"
 
 #: ../src/vmm-create-pool.glade.h:1
 msgid "                                  \n"
@@ -2061,12 +2052,12 @@ msgstr ""
 #: ../src/vmm-create-pool.glade.h:4
 #, fuzzy
 msgid "Add a New Storage Pool"
-msgstr "ସଂରକ୍ଷଣ ସ୍ଥଳୀ"
+msgstr "Rezervoari skladištenja"
 
 #: ../src/vmm-create-pool.glade.h:5
 #, fuzzy
 msgid "Browse"
-msgstr "ଖୋଜନ୍ତୁ..."
+msgstr "Razgledaj..."
 
 #: ../src/vmm-create-pool.glade.h:6
 msgid "Build Pool:"
@@ -2075,7 +2066,7 @@ msgstr ""
 #: ../src/vmm-create-pool.glade.h:7
 #, fuzzy
 msgid "Finish"
-msgstr "ସମାପ୍ତ କରନ୍ତୁ (_F)"
+msgstr "_Završi"
 
 #: ../src/vmm-create-pool.glade.h:8
 msgid "Format"
@@ -2084,12 +2075,12 @@ msgstr ""
 #: ../src/vmm-create-pool.glade.h:9 ../src/vmm-create-vol.glade.h:23
 #, fuzzy
 msgid "Format:"
-msgstr "ସଂଯୋଗିକୀ (_P):"
+msgstr "Por_t:"
 
 #: ../src/vmm-create-pool.glade.h:10
 #, fuzzy
 msgid "Host Name:"
-msgstr "ଆଧାର ନାମ:"
+msgstr "Ime domaćina:"
 
 #: ../src/vmm-create-pool.glade.h:14
 msgid "Specify a storage location to be later split into VM storage."
@@ -2106,20 +2097,20 @@ msgstr ""
 #: ../src/vmm-create-pool.glade.h:17
 #, fuzzy
 msgid "Target Path:"
-msgstr "ଲକ୍ଷ୍ଯ ପ୍ରକାର:"
+msgstr "Ciljna vrsta:"
 
 #: ../src/vmm-progress.glade.h:1 ../src/virtManager/asyncjob.py:39
 msgid "Operation in progress"
-msgstr "କାର୍ଯ୍ଯ ପ୍ରଗତିରେ ଅଛି"
+msgstr "Radnja u toku"
 
 #: ../src/vmm-progress.glade.h:2 ../src/virtManager/asyncjob.py:39
 msgid "Please wait a few moments..."
-msgstr "ଦୟାକରି କିଛି ସମୟ ଅପେକ୍ଷା କରନ୍ତୁ..."
+msgstr "Molim sačekajte nekoliko trenutaka..."
 
 #: ../src/vmm-progress.glade.h:3 ../src/virtManager/asyncjob.py:75
 #: ../src/virtManager/asyncjob.py:88
 msgid "Processing..."
-msgstr "ସଂସାଧନ କରୁଅଛି..."
+msgstr "Obrađujem..."
 
 #: ../src/vmm-create-vol.glade.h:1
 msgid "(parent-name)"
@@ -2158,12 +2149,12 @@ msgstr ""
 #: ../src/vmm-create-vol.glade.h:19
 #, fuzzy
 msgid "Add a Storage Volume"
-msgstr "ସଂରକ୍ଷଣ ସ୍ଥଳୀ"
+msgstr "Rezervoari skladištenja"
 
 #: ../src/vmm-create-vol.glade.h:20
 #, fuzzy
 msgid "Allocation:"
-msgstr "ଅବସ୍ଥାନ:"
+msgstr "Mesto:"
 
 #: ../src/vmm-create-vol.glade.h:21
 msgid "Create _Volume"
@@ -2180,18 +2171,18 @@ msgstr ""
 #: ../src/vmm-create-vol.glade.h:27
 #, fuzzy
 msgid "available space:"
-msgstr "ଅନୁପଲବ୍ଧ"
+msgstr "Nedostupno"
 
 #: ../src/virt-manager.py.in:54
 #, fuzzy
 msgid "Error starting Virtual Machine Manager"
-msgstr "ଆଭାସୀ ମେସିନ ପରିଚାଳକ"
+msgstr "Upravnik virtuelne mašine"
 
 #. ...the risk is we catch too much though
 #. Damned if we do, damned if we dont :-)(
 #: ../src/virt-manager.py.in:263
 msgid "Unable to initialize GTK: "
-msgstr "GTK ପ୍ରାରମ୍ଭିକରଣ କରିବାରେ ଅସମର୍ଥ: "
+msgstr "Ne mogu da inicijalizujem GTK: "
 
 #: ../src/virt-manager.schemas.in.h:1
 msgid "Install sound device for local VM"
@@ -2224,7 +2215,7 @@ msgstr ""
 #: ../src/virt-manager.schemas.in.h:8
 #, fuzzy
 msgid "Show network traffic in summary"
-msgstr "ନେଟୱାର୍କ ଯାତାୟାତ"
+msgstr "Mrežni saobraćaj"
 
 #: ../src/virt-manager.schemas.in.h:9
 msgid "Show run state in summary"
@@ -2333,23 +2324,23 @@ msgstr ""
 #: ../src/virtManager/connection.py:1022
 #, fuzzy
 msgid "Disconnected"
-msgstr "ସଂଯୋଗ କରନ୍ତୁ (_n)"
+msgstr "Po_veži se"
 
 #: ../src/virtManager/connection.py:1024
 #, fuzzy
 msgid "Connecting"
-msgstr "ସଂଯୋଗ ପ୍ରକାର:"
+msgstr "Vrsta veze:"
 
 #: ../src/virtManager/connection.py:1027
 #, fuzzy
 msgid "Active (RO)"
-msgstr "ସକ୍ରିୟ"
+msgstr "Aktivna"
 
 #: ../src/virtManager/connection.py:1031 ../src/virtManager/host.py:331
 #: ../src/virtManager/host.py:370 ../src/virtManager/host.py:543
 #: ../src/virtManager/host.py:579
 msgid "Inactive"
-msgstr "ନିଷ୍କ୍ରିୟ"
+msgstr "Neaktivna"
 
 #: ../src/virtManager/connection.py:1033 ../src/virtManager/details.py:830
 msgid "Unknown"
@@ -2375,63 +2366,63 @@ msgstr ""
 #: ../src/virtManager/host.py:356
 #, python-format
 msgid "NAT to physical device %s"
-msgstr "%s ଭୌତିକ ଉପକରଣ ପାଇଁ NAT"
+msgstr "NAT do fizičkog uređaja %s"
 
 #: ../src/virtManager/createnet.py:159
 #, python-format
 msgid "%d addresses"
-msgstr "%d ଠିକଣା"
+msgstr "%d adresa"
 
 #: ../src/virtManager/createnet.py:161
 msgid "Public"
-msgstr "ସାର୍ବଜନୀନ"
+msgstr "javno"
 
 #: ../src/virtManager/createnet.py:165
 msgid "Reserved"
-msgstr "ସଂରକ୍ଷିତ"
+msgstr "Zauzeto"
 
 #: ../src/virtManager/createnet.py:167
 msgid "Other"
-msgstr "ଅନ୍ଯାନ୍ଯ"
+msgstr "Drugo"
 
 #: ../src/virtManager/createnet.py:307
 #, fuzzy, python-format
 msgid "Error creating virtual network: %s"
-msgstr "ଗୋଟଏ ନୂତନ ଆଭାସୀ ନେଟୱାର୍କ ସୃଷ୍ଟି କରନ୍ତୁ"
+msgstr "Napravi novu virtuelnu mrežu"
 
 #: ../src/virtManager/createnet.py:315 ../src/virtManager/createnet.py:318
 msgid "Invalid Network Name"
-msgstr "ଅବୈଧ ନେଟୱାର୍କ ନାମ"
+msgstr "Neispravno ime mreže"
 
 #: ../src/virtManager/createnet.py:316
 msgid "Network name must be non-blank and less than 50 characters"
-msgstr "ନେଟୱାର୍କ ନାମଟି ଖାଲିହେବା ଉଚିତ ନୁହେଁ ଏବଂ ଏହା ୫୦ଟି ଅକ୍ଷରରୁ କମହେବା ଉଚିତ"
+msgstr "Ime mreže ne sme biti prazno i mora biti kraće od 50 znakova"
 
 #: ../src/virtManager/createnet.py:319
 msgid "Network name may contain alphanumeric and '_' characters only"
-msgstr "ନେଟୱାର୍କ ନାମ କେବଳ ଅକ୍ଷରାଂକୀୟ ଏବଂ '_' ଅକ୍ଷରକୁ ଧାରଣ କରିପାରିବ"
+msgstr "Ime mreže može da sadrži samo alfanumeričke i „_“ znakove"
 
 #: ../src/virtManager/createnet.py:325 ../src/virtManager/createnet.py:329
 #: ../src/virtManager/createnet.py:333
 msgid "Invalid Network Address"
-msgstr "ଅବୈଧ ନେଟୱାର୍କ ଠିକଣା"
+msgstr "Neispravna mrežna adresa"
 
 #: ../src/virtManager/createnet.py:326
 msgid "The network address could not be understood"
-msgstr "ନେଟୱାର୍କ ଠିକଣାଟି ବୁଝିହେଲା ନାହିଁ"
+msgstr "Mrežna adresa nije razumljiva"
 
 #: ../src/virtManager/createnet.py:330
 msgid "The network must be an IPv4 address"
-msgstr "ନେଟୱାର୍କ ଗୋଟିଏ IPv4 ଠିକଣା ବିଶିଷ୍ଟ ହେବା ଉଚିତ"
+msgstr "Mreža mora biti IPv4 adresa"
 
 #: ../src/virtManager/createnet.py:334
 msgid "The network prefix must be at least /4 (16 addresses)"
-msgstr "ନେଟୱାର୍କ ଉପସର୍ଗ ଅତିକମରେ /4 (16 ଠିକଣା) ବିଶିଷ୍ଟ ହେବା ଉଚିତ"
+msgstr "Mrežni predmetak mora biti barem /4 (16 adresa)"
 
 #: ../src/virtManager/createnet.py:337
 #, fuzzy
 msgid "Check Network Address"
-msgstr "ଅବୈଧ ନେଟୱାର୍କ ଠିକଣା"
+msgstr "Neispravna mrežna adresa"
 
 #: ../src/virtManager/createnet.py:338
 msgid ""
@@ -2442,33 +2433,33 @@ msgstr ""
 #: ../src/virtManager/createnet.py:347 ../src/virtManager/createnet.py:350
 #: ../src/virtManager/createnet.py:354 ../src/virtManager/createnet.py:357
 msgid "Invalid DHCP Address"
-msgstr "ଅବୈଧ DHCP ଠିକଣା"
+msgstr "Neispravna DHCP adresa"
 
 #: ../src/virtManager/createnet.py:348
 msgid "The DHCP start address could not be understood"
-msgstr "DHCP ଦ୍ବାରା ମିଳିଥିବା ପ୍ରାରମ୍ଭିକ ଠିକଣା ବୁଝିହେଲା ନାହିଁ"
+msgstr "DHCP početna adresa nije razumljiva"
 
 #: ../src/virtManager/createnet.py:351
 msgid "The DHCP end address could not be understood"
-msgstr "DHCP ଦ୍ବାରା ମିଳିଥିବା ଅନ୍ତିମ ଠିକଣା ବୁଝିହେଲା ନାହିଁ"
+msgstr "DHCP krajnja adresa nije razumljiva"
 
 #: ../src/virtManager/createnet.py:355
 #, python-format
 msgid "The DHCP start address is not with the network %s"
-msgstr "DHCP ଦ୍ବାରା ମିଳିଥିବା ପ୍ରାରମ୍ଭିକ ଠିକଣା %s ନେଟୱାର୍କରେ ନାହିଁ"
+msgstr "DHCP početna adresa nije u mreži %s"
 
 #: ../src/virtManager/createnet.py:358
 #, python-format
 msgid "The DHCP end address is not with the network %s"
-msgstr "DHCP ଦ୍ବାରା ମିଳିଥିବା ଅନ୍ତିମ ଠିକଣା %s ନେଟୱାର୍କରେ ନାହିଁ"
+msgstr "DHCP krajnja adresa nije u mreži %s"
 
 #: ../src/virtManager/createnet.py:363
 msgid "Invalid forwarding mode"
-msgstr "ଅବୈଧ ଅଗ୍ରସରଣ ଧାରା"
+msgstr "Neispravan režim prosleđivanja"
 
 #: ../src/virtManager/createnet.py:364
 msgid "Please select where the traffic should be forwarded"
-msgstr "ଯାତାୟାତକୁ କେଉଁଠାକୁ ଅଗ୍ରସରଣ କରାଯିବା ଦୟାକରି ତାହା ଚୟନ କରନ୍ତୁ"
+msgstr "Izaberite gde treba prosleđivati saobraćaj"
 
 #: ../src/virtManager/engine.py:318
 #, python-format
@@ -2481,11 +2472,11 @@ msgstr ""
 
 #: ../src/virtManager/engine.py:440
 msgid "Save Virtual Machine"
-msgstr "ଆଭାସୀ ମେସିନକୁ ସଂରକ୍ଷଣ କରନ୍ତୁ"
+msgstr "Sačuvaj virtuelnu mašinu"
 
 #: ../src/virtManager/engine.py:455
 msgid "Saving Virtual Machine"
-msgstr "ଆଭାସୀ ମେସିନକୁ ସଂରକ୍ଷଣ କରନ୍ତୁ"
+msgstr "Čuvam virtuelnu mašinu"
 
 #: ../src/virtManager/engine.py:460
 #, python-format
@@ -2495,7 +2486,7 @@ msgstr ""
 #: ../src/virtManager/engine.py:478
 #, fuzzy, python-format
 msgid "About to poweroff virtual machine %s"
-msgstr "%s ଆଭାସୀ ମେସିନକୁ ନଷ୍ଟ କରିବା ଉପରେ"
+msgstr "Spremam se da uništim virtuelnu mašinu %s"
 
 #: ../src/virtManager/engine.py:478
 #, fuzzy
@@ -2503,7 +2494,8 @@ msgid ""
 "This will immediately poweroff the VM without shutting down the OS and may "
 "cause data loss. Are you sure?"
 msgstr ""
-"ଏହା ତୁରନ୍ତ ଆଭାସୀ ମେସିନକୁ ନଷ୍ଟ କରିଦେବ ଏବଂ ଏହାର ଡିସ୍କ ପ୍ରତିଛବିକୁ ବିକୃତ କରିଦେବ। ଆପଣ ନିଶ୍ଚିତ କି?"
+"Ovo će odmah da uništi VM i može iskvariti svoj odraz diska. Da li ste "
+"sigurni?"
 
 #: ../src/virtManager/engine.py:484 ../src/virtManager/engine.py:547
 #: ../src/virtManager/engine.py:563
@@ -2533,15 +2525,15 @@ msgstr ""
 
 #: ../src/virtManager/addhardware.py:409 ../src/virtManager/create.py:581
 msgid "Shared physical device"
-msgstr "ସହଭାଗୀ ଭୌତିକ ଉପକରଣ"
+msgstr "Deljeni fizički uređaj"
 
 #: ../src/virtManager/addhardware.py:412 ../src/virtManager/create.py:584
 msgid "Virtual network"
-msgstr "ଆଭାସୀ ନେଟୱାର୍କ"
+msgstr "Virtuelna mreža"
 
 #: ../src/virtManager/addhardware.py:415 ../src/virtManager/create.py:587
 msgid "Usermode networking"
-msgstr "ଚାଳକ ଅବସ୍ଥା ନେଟୱାର୍କିଙ୍ଗ"
+msgstr "Korisničko umrežavanje"
 
 #: ../src/virtManager/addhardware.py:429
 msgid "Absolute movement"
@@ -2555,7 +2547,7 @@ msgstr ""
 #: ../src/virtManager/details.py:894
 #, fuzzy
 msgid "VNC server"
-msgstr "କେବେ ନୁହେଁ"
+msgstr "Nikada"
 
 #. XXX inclined to just not give this choice at all
 #: ../src/virtManager/addhardware.py:438 ../src/virtManager/addhardware.py:885
@@ -2576,27 +2568,27 @@ msgstr ""
 #: ../src/virtManager/addhardware.py:520
 #, fuzzy
 msgid "Unable to complete install: "
-msgstr "ସ୍ଥାପନ କରିବାକୁ ଅସମର୍ଥ: '%s'"
+msgstr "Ne mogu da završim instalaciju: „%s“"
 
 #: ../src/virtManager/addhardware.py:522 ../src/virtManager/addhardware.py:564
 #: ../src/virtManager/addhardware.py:566 ../src/virtManager/addhardware.py:585
 #: ../src/virtManager/create.py:738
 #, python-format
 msgid "Unable to complete install: '%s'"
-msgstr "ସ୍ଥାପନ କରିବାକୁ ଅସମର୍ଥ: '%s'"
+msgstr "Ne mogu da završim instalaciju: „%s“"
 
 #: ../src/virtManager/addhardware.py:527
 msgid "Creating Storage File"
-msgstr "ଭଣ୍ଡାର ଫାଇଲର ସୃଷ୍ଟି କରିବା ବିଷୟରେ"
+msgstr "Pravljenje datoteke skladišta"
 
 #: ../src/virtManager/addhardware.py:528
 msgid "Allocation of disk storage may take a few minutes "
-msgstr "ଡିସ୍କ ଭଣ୍ଡାରର ବଣ୍ଟନ କିଛି ସମୟ ନେଇପାରେ "
+msgstr "Zauzimanje skladišta na disku može potrajati nekoliko minuta"
 
 #: ../src/virtManager/addhardware.py:546
 #, fuzzy
 msgid "Are you sure you want to add this device?"
-msgstr "ଆପଣ ପ୍ରକୃତରେ ଡିସ୍କ ବ୍ଯବହାର କରିବା ପାଇଁ ଚାହୁଁଛନ୍ତି କି ?"
+msgstr "Stvarno želite da upotrebite ovaj disk?"
 
 #: ../src/virtManager/addhardware.py:548
 msgid ""
@@ -2608,45 +2600,45 @@ msgstr ""
 
 #: ../src/virtManager/addhardware.py:592 ../src/virtManager/create.py:773
 msgid "Locate Storage Partition"
-msgstr "ଭଣ୍ଡାର ବିଭାଜନର ଅବସ୍ଥିତି ନିର୍ଣ୍ଣୟ କରନ୍ତୁ"
+msgstr "Lociraj particiju skladišta"
 
 #: ../src/virtManager/addhardware.py:598 ../src/virtManager/create.py:778
 msgid "Locate or Create New Storage File"
-msgstr "ନୂତନ ଭଣ୍ଡାର ଫାଇଲର ସ୍ଥାନ ନିରୂପଣ କରନ୍ତୁ ଏବଂ ଏହାକୁ ସୃଷ୍ଟି କରନ୍ତୁ"
+msgstr "Lociraj ili napravi novu datoteku skladišta"
 
 #: ../src/virtManager/addhardware.py:711
 msgid "Hardware Type Required"
-msgstr "ହାର୍ଡୱେର ପ୍ରକାର ଆବଶ୍ଯକ"
+msgstr "Neophodna vrsta hardvera"
 
 #: ../src/virtManager/addhardware.py:712
 msgid "You must specify what type of hardware to add"
-msgstr "ଯୋଗ କରାଯିବା ହାର୍ଡୱେର ପ୍ରକାରକୁ ଆପଣ ଉଲ୍ଲେଖ କରିବା ଉଚିତ"
+msgstr "Morate navesti koju vrstu hardvera dodajete"
 
 #: ../src/virtManager/addhardware.py:717
 #, fuzzy
 msgid "Storage Path Required"
-msgstr "ISO ପଥ ଆବଶ୍ଯକ"
+msgstr "Neophodna ISO putanja"
 
 #: ../src/virtManager/addhardware.py:718
 #, fuzzy
 msgid "You must specify a partition or a file for disk storage."
 msgstr ""
-"ଅତିଥି ସ୍ଥାପନ ସମୟରେ ସଂଗ୍ରହ କରିବା ପାଇଁ ଆପଣ ଗୋଟିଏ ବିଭାଜନ କିମ୍ବା ଫାଇଲକୁ ଉଲ୍ଲେଖ କରିବା ଉଚିତ"
+"Morate navesti particiju ili datoteku za skladištenje instalacije gosta"
 
 #: ../src/virtManager/addhardware.py:721
 #, fuzzy
 msgid "Target Device Required"
-msgstr "ଭୌତିକ ଉପକରଣ ଆବଶ୍ଯକ"
+msgstr "Neophodan fizički uređaj"
 
 #: ../src/virtManager/addhardware.py:722
 #, fuzzy
 msgid "You must select a target device for the disk"
-msgstr "ଆପଣ ଭୌତିକ ଉପକରଣ ମାନଙ୍କ ମଧ୍ଯରୁ ଗୋଟିକୁ ଚୟନ କରିବା ଉଚିତ"
+msgstr "Morate izabrati jedan od fizičkih uređaja"
 
 #: ../src/virtManager/addhardware.py:754
 #, fuzzy
 msgid "Invalid Storage Parameters"
-msgstr "ଅବୈଧ ଭଣ୍ଡାର ଠିକଣା"
+msgstr "Neispravna adresa skladišta"
 
 #: ../src/virtManager/addhardware.py:758 ../src/virtManager/create.py:1026
 msgid "Not Enough Free Space"
@@ -2655,33 +2647,33 @@ msgstr ""
 #: ../src/virtManager/addhardware.py:763 ../src/virtManager/create.py:1031
 #, python-format
 msgid "Disk \"%s\" is already in use by another guest!"
-msgstr "\"%s\" ଡିସ୍କ ପୂର୍ବରୁ ଅନ୍ଯ ଗୋଟିଏ ଅତିଥି ଚାଳକ ଦ୍ବାରା ବ୍ଯବହୃତ ହେଉଛି!"
+msgstr "Disk „%s“ već koristi drugi gost!"
 
 #: ../src/virtManager/addhardware.py:764 ../src/virtManager/create.py:1031
 msgid "Do you really want to use the disk ?"
-msgstr "ଆପଣ ପ୍ରକୃତରେ ଡିସ୍କ ବ୍ଯବହାର କରିବା ପାଇଁ ଚାହୁଁଛନ୍ତି କି ?"
+msgstr "Stvarno želite da upotrebite ovaj disk?"
 
 #: ../src/virtManager/addhardware.py:771 ../src/virtManager/create.py:1038
 msgid "Virtual Network Required"
-msgstr "ଆଭାସୀ ନେଟୱାର୍କ ଆବଶ୍ଯକ"
+msgstr "Neophodna virtuelna mreža"
 
 #: ../src/virtManager/addhardware.py:772 ../src/virtManager/create.py:1039
 msgid "You must select one of the virtual networks"
-msgstr "ଆପଣ ଆଭାସୀ ନେଟୱାର୍କ ମାନଙ୍କ ମଧ୍ଯରୁ ଗୋଟିକୁ ଚୟନ କରିବା ଉଚିତ"
+msgstr "Morate izabrati jednu od virtuelnih mreža"
 
 #: ../src/virtManager/addhardware.py:775 ../src/virtManager/create.py:1042
 msgid "Physical Device Required"
-msgstr "ଭୌତିକ ଉପକରଣ ଆବଶ୍ଯକ"
+msgstr "Neophodan fizički uređaj"
 
 #: ../src/virtManager/addhardware.py:776 ../src/virtManager/create.py:1043
 msgid "You must select one of the physical devices"
-msgstr "ଆପଣ ଭୌତିକ ଉପକରଣ ମାନଙ୍କ ମଧ୍ଯରୁ ଗୋଟିକୁ ଚୟନ କରିବା ଉଚିତ"
+msgstr "Morate izabrati jedan od fizičkih uređaja"
 
 #: ../src/virtManager/addhardware.py:782 ../src/virtManager/addhardware.py:788
 #: ../src/virtManager/create.py:1053
 #, fuzzy
 msgid "Invalid MAC address"
-msgstr "ଅବୈଧ DHCP ଠିକଣା"
+msgstr "Neispravna DHCP adresa"
 
 #: ../src/virtManager/addhardware.py:783 ../src/virtManager/create.py:1054
 msgid "No MAC address was entered. Please enter a valid MAC address."
@@ -2690,12 +2682,12 @@ msgstr ""
 #: ../src/virtManager/addhardware.py:801
 #, fuzzy
 msgid "Unsupported networking type"
-msgstr "ଚାଳକ ଅବସ୍ଥା ନେଟୱାର୍କିଙ୍ଗ"
+msgstr "Korisničko umrežavanje"
 
 #: ../src/virtManager/addhardware.py:803
 #, fuzzy
 msgid "Invalid Network Parameter"
-msgstr "ଅବୈଧ ନେଟୱାର୍କ ନାମ"
+msgstr "Neispravno ime mreže"
 
 #: ../src/virtManager/addhardware.py:808 ../src/virtManager/addhardware.py:811
 #: ../src/virtManager/create.py:1075 ../src/virtManager/create.py:1077
@@ -2705,7 +2697,7 @@ msgstr ""
 #: ../src/virtManager/addhardware.py:812 ../src/virtManager/create.py:1078
 #, fuzzy
 msgid "Are you sure you want to use this address?"
-msgstr "ଆପଣ ପ୍ରକୃତରେ ଡିସ୍କ ବ୍ଯବହାର କରିବା ପାଇଁ ଚାହୁଁଛନ୍ତି କି ?"
+msgstr "Stvarno želite da upotrebite ovaj disk?"
 
 #: ../src/virtManager/addhardware.py:827
 msgid "Graphics device parameter error"
@@ -2738,11 +2730,11 @@ msgstr ""
 
 #: ../src/virtManager/create.py:553
 msgid "Paravirtualized"
-msgstr "ଆଂଶିକ ଆଭାସୀକୃତ"
+msgstr "Paravirtualizovano"
 
 #: ../src/virtManager/create.py:557
 msgid "Fully virtualized"
-msgstr "ସମ୍ପୂର୍ଣ୍ଣ ଆଭାସୀକୃତ"
+msgstr "Potpuno vurtuelizovano"
 
 #: ../src/virtManager/create.py:621
 msgid "UUID Error"
@@ -2751,7 +2743,7 @@ msgstr ""
 #: ../src/virtManager/create.py:628
 #, fuzzy
 msgid "Failed to set up usermode networking"
-msgstr "ଚାଳକ ଅବସ୍ଥା ନେଟୱାର୍କିଙ୍ଗ"
+msgstr "Korisničko umrežavanje"
 
 #: ../src/virtManager/create.py:642
 msgid "Error setting up graphics device:"
@@ -2763,35 +2755,35 @@ msgstr ""
 
 #: ../src/virtManager/create.py:679
 msgid "Creating Virtual Machine"
-msgstr "ଆଭାସୀ ମେସିନ ସୃଷ୍ଟି କରୁଅଛି"
+msgstr "Pravljenje virtuelne mašine"
 
 #: ../src/virtManager/create.py:680
 msgid "The virtual machine is now being created. "
-msgstr "ଆଭାସୀ ମେସିନକୁ ବର୍ତ୍ତମାନ ସୃଷ୍ଟି କରାଯାଇଛି। "
+msgstr "Virtuelna mašina se pravi sada."
 
 #: ../src/virtManager/create.py:724
 msgid "Guest installation failed to complete"
-msgstr "ଅତିଥି ସ୍ଥାପନ ସମ୍ପୂର୍ଣ୍ଣ ହୋଇପାରିଲା ନାହିଁ"
+msgstr "Neuspešan završetak instalacije gosta"
 
 #: ../src/virtManager/create.py:743
 msgid "Locate ISO Image"
-msgstr "ISO ପ୍ରତିଛବିର ଅବସ୍ଥିତି ନିର୍ଣ୍ଣୟ କରନ୍ତୁ"
+msgstr "Lociraj ISO odraz"
 
 #: ../src/virtManager/create.py:892
 msgid "Invalid System Name"
-msgstr "ଅବୈଧ ତନ୍ତ୍ର ନାମ"
+msgstr "Neispravno ime sistema"
 
 #: ../src/virtManager/create.py:926
 msgid "Invalid FV OS Type"
-msgstr "ଅବୈଧ FV ପ୍ରଚାଳନ ତନ୍ତ୍ର ପ୍ରକାର"
+msgstr "Neispravna vrsta FV OS-a"
 
 #: ../src/virtManager/create.py:933
 msgid "Invalid FV OS Variant"
-msgstr "ଅବୈଧ FV ପ୍ରଚାଳନ ତନ୍ତ୍ର ଚଳ"
+msgstr "Neispravna varijanta FV OS-a"
 
 #: ../src/virtManager/create.py:948
 msgid "ISO Path Not Found"
-msgstr "ISO ପଥ ମିଳିଲା ନାହିଁ"
+msgstr "Nije nađena ISO putanja"
 
 #: ../src/virtManager/create.py:956
 msgid "CD-ROM Path Error"
@@ -2808,7 +2800,7 @@ msgstr ""
 #: ../src/virtManager/create.py:971
 #, fuzzy
 msgid "Kickstart URL Error"
-msgstr "କିକ-ଷ୍ଟାର୍ଟ ୟୁ.ଆର.ଏଲ. (_R):"
+msgstr "Kickstart U_RL:"
 
 #: ../src/virtManager/create.py:972
 msgid "Kickstart location must be an NFS, HTTP or FTP source"
@@ -2816,33 +2808,33 @@ msgstr ""
 
 #: ../src/virtManager/create.py:987
 msgid "Storage Address Required"
-msgstr "ଭଣ୍ଡାର ଠିକଣା ଆବଶ୍ଯକ"
+msgstr "Neophodna adresa skladišta"
 
 #: ../src/virtManager/create.py:988
 msgid ""
 "You must specify a partition or a file for storage for the guest install"
 msgstr ""
-"ଅତିଥି ସ୍ଥାପନ ସମୟରେ ସଂଗ୍ରହ କରିବା ପାଇଁ ଆପଣ ଗୋଟିଏ ବିଭାଜନ କିମ୍ବା ଫାଇଲକୁ ଉଲ୍ଲେଖ କରିବା ଉଚିତ"
+"Morate navesti particiju ili datoteku za skladištenje instalacije gosta"
 
 #: ../src/virtManager/create.py:1022
 #, fuzzy
 msgid "Invalid Storage Address"
-msgstr "ଅବୈଧ ଭଣ୍ଡାର ଠିକଣା"
+msgstr "Neispravna adresa skladišta"
 
 #: ../src/virtManager/create.py:1047
 #, fuzzy
 msgid "Invalid Physical Device"
-msgstr "ସହଭାଗୀ ଭୌତିକ ଉପକରଣ"
+msgstr "Deljeni fiziki uređaj"
 
 #: ../src/virtManager/create.py:1048
 #, fuzzy
 msgid "The selected physical device must be bridged."
-msgstr "%s ଭୌତିକ ଉପକରଣ ପାଇଁ NAT"
+msgstr "NAT do fizičkog uređaja %s"
 
 #: ../src/virtManager/create.py:1071
 #, fuzzy
 msgid "Network Parameter Error"
-msgstr "ନେଟୱାର୍କ ନାମ:"
+msgstr "Ime mreže:"
 
 #: ../src/virtManager/create.py:1086
 msgid "VCPU Count Error"
@@ -2859,7 +2851,7 @@ msgstr ""
 #: ../src/virtManager/createvol.py:158
 #, fuzzy
 msgid "Creating storage volume..."
-msgstr "ଭଣ୍ଡାର ଫାଇଲର ସୃଷ୍ଟି କରିବା ବିଷୟରେ"
+msgstr "Pravljenje datoteke skladišta"
 
 #: ../src/virtManager/createvol.py:159
 msgid "Creating the storage volume may take a while..."
@@ -2873,12 +2865,12 @@ msgstr ""
 #: ../src/virtManager/createvol.py:213
 #, fuzzy
 msgid "Volume Parameter Error"
-msgstr "ନେଟୱାର୍କ ନାମ:"
+msgstr "Ime mreže:"
 
 #: ../src/virtManager/createpool.py:222
 #, fuzzy
 msgid "Choose source path"
-msgstr "ଉତ୍ସ ପଥ:"
+msgstr "Izvorna putanja:"
 
 #: ../src/virtManager/createpool.py:228
 msgid "Choose target directory"
@@ -2887,7 +2879,7 @@ msgstr ""
 #: ../src/virtManager/createpool.py:261
 #, fuzzy
 msgid "Creating storage pool..."
-msgstr "ଭଣ୍ଡାର ଫାଇଲର ସୃଷ୍ଟି କରିବା ବିଷୟରେ"
+msgstr "Pravljenje datoteke skladišta"
 
 #: ../src/virtManager/createpool.py:262
 msgid "Creating the storage pool may take a while..."
@@ -2901,7 +2893,7 @@ msgstr ""
 #: ../src/virtManager/createpool.py:324 ../src/virtManager/createpool.py:343
 #, fuzzy
 msgid "Pool Parameter Error"
-msgstr "ନେଟୱାର୍କ ନାମ:"
+msgstr "Ime mreže:"
 
 #: ../src/virtManager/createpool.py:348
 msgid ""
@@ -2916,36 +2908,36 @@ msgstr ""
 #. Expander section with details.
 #: ../src/virtManager/error.py:42
 msgid "Details"
-msgstr "ବିସ୍ତୃତ ବିବରଣୀ"
+msgstr "Detalji"
 
 #: ../src/virtManager/error.py:77
 #, fuzzy
 msgid "Input Error"
-msgstr "ଉପସ୍ଥାପନ"
+msgstr "Uvod"
 
 #: ../src/virtManager/serialcon.py:37
 msgid "serial console"
-msgstr "କ୍ରମିକ କୋନଶୋଲ"
+msgstr "serijska konzola"
 
 #: ../src/virtManager/asyncjob.py:103
 msgid "Completed"
-msgstr "ସମାପ୍ତ"
+msgstr "Završeno"
 
 #: ../src/virtManager/details.py:349
 msgid "Press Ctrl+Alt to release pointer."
-msgstr "ସୂଚକକୁ ଛାଡିବା ପାଇଁ Ctrl+Alt ଦବାନ୍ତୁ"
+msgstr "Pritisnite Ctrl+Alt da oslobodite miš."
 
 #: ../src/virtManager/details.py:357
 msgid "Pointer grabbed"
-msgstr "ସୂଚକକୁ ଧାରଣ କରାଯାଇଛି"
+msgstr "Miš preuzet"
 
 #: ../src/virtManager/details.py:358
 msgid ""
 "The mouse pointer has been restricted to the virtual console window. To "
 "release the pointer press the key pair Ctrl+Alt"
 msgstr ""
-"ମାଉସ ସୂଚକକୁ କେବଳ ଆଭାସୀ କୋନଶୋଲ ୱିଣ୍ଡୋ ପ୍ରତି ସୀମାବଦ୍ଧ କରାଯାଇଛି। ସୂଚକକୁ ଛାଡିବା ପାଇଁ Ctrl"
-"+Alt ଚାବି ଯୋଡିକୁ ଦବାନ୍ତୁ"
+"Miš je ograničen na prozor virtuelne konzole. Da biste oslobodili miš "
+"pritisnite Ctrl+Alt na tastaturi."
 
 #: ../src/virtManager/details.py:361
 msgid "Do not show this notification in the future"
@@ -2953,7 +2945,7 @@ msgstr ""
 
 #: ../src/virtManager/details.py:682
 msgid "paused"
-msgstr "କିଛି ସମୟ ବନ୍ଦ କରନ୍ତୁ"
+msgstr "pauzirano"
 
 #: ../src/virtManager/details.py:695
 msgid "Console not available while paused"
@@ -2962,7 +2954,7 @@ msgstr ""
 #: ../src/virtManager/details.py:856
 #, fuzzy
 msgid "Hypervisor Default"
-msgstr "hypervisor:"
+msgstr "Hipervizor:"
 
 #: ../src/virtManager/details.py:870
 msgid "Xen Mouse"
@@ -2983,7 +2975,7 @@ msgstr ""
 #: ../src/virtManager/details.py:946
 #, fuzzy
 msgid "(Primary Console)"
-msgstr "କ୍ରମିକ କୋନଶୋଲ (_S)"
+msgstr "_Serijska konzola"
 
 #: ../src/virtManager/details.py:997 ../src/virtManager/details.py:1090
 msgid "Guest not running"
@@ -3022,7 +3014,7 @@ msgstr ""
 #. user to choose what image format they'd like to save in....
 #: ../src/virtManager/details.py:1187
 msgid "Save Virtual Machine Screenshot"
-msgstr "ଆଭାସୀ ମେସିନର ପରଦା ପ୍ରତିଛବିକୁ ସଂରକ୍ଷଣ କରନ୍ତୁ"
+msgstr "Sačuvaj snimak ekrana virtuelne mašine"
 
 #: ../src/virtManager/details.py:1217
 #, python-format
@@ -3030,12 +3022,12 @@ msgid ""
 "The screenshot has been saved to:\n"
 "%s"
 msgstr ""
-"ପରଦା ପ୍ରତିଛବିକୁ ନିମ୍ନିଲିଖିତ ସ୍ଥାନରେ ସଂରକ୍ଷଣ କରାଗଲା:\n"
+"Snimak je sačuvan u:\n"
 "%s"
 
 #: ../src/virtManager/details.py:1218
 msgid "Screenshot saved"
-msgstr "ପରଦା ପ୍ରତିଛବିକୁ ସଂରକ୍ଷଣ କରାଯାଇଛି"
+msgstr "Snimak je sačuvan"
 
 #: ../src/virtManager/details.py:1282
 #, python-format
@@ -3060,12 +3052,12 @@ msgstr ""
 #: ../src/virtManager/details.py:1495
 #, fuzzy
 msgid "Tablet"
-msgstr "ଲକ୍ଷ୍ଯ:"
+msgstr "Cilj:"
 
 #: ../src/virtManager/details.py:1497
 #, fuzzy
 msgid "Mouse"
-msgstr "କିଛି ସମୟ ପାଇଁ ବନ୍ଦ କରନ୍ତୁ"
+msgstr "Pauza"
 
 #: ../src/virtManager/details.py:1537
 #, python-format
@@ -3075,7 +3067,7 @@ msgstr ""
 #: ../src/virtManager/details.py:1629
 #, fuzzy
 msgid "No Boot Device"
-msgstr "ଉପକରଣ:"
+msgstr "Uređaj:"
 
 #: ../src/virtManager/details.py:1649
 #, python-format
@@ -3090,7 +3082,7 @@ msgstr ""
 #: ../src/virtManager/details.py:1680
 #, fuzzy
 msgid "Are you sure you want to remove this device?"
-msgstr "ଆପଣ ପ୍ରକୃତରେ ଡିସ୍କ ବ୍ଯବହାର କରିବା ପାଇଁ ଚାହୁଁଛନ୍ତି କି ?"
+msgstr "Stvarno želite da upotrebite ovaj disk?"
 
 #: ../src/virtManager/details.py:1682
 msgid ""
@@ -3109,7 +3101,8 @@ msgstr ""
 #, fuzzy, python-format
 msgid "This will permanently delete the network '%s,' are you sure?"
 msgstr ""
-"ଏହା ତୁରନ୍ତ ଆଭାସୀ ମେସିନକୁ ନଷ୍ଟ କରିଦେବ ଏବଂ ଏହାର ଡିସ୍କ ପ୍ରତିଛବିକୁ ବିକୃତ କରିଦେବ। ଆପଣ ନିଶ୍ଚିତ କି?"
+"Ovo će odmah da uništi VM i može iskvariti svoj odraz diska. Da li ste "
+"sigurni?"
 
 #: ../src/virtManager/host.py:241
 #, python-format
@@ -3140,13 +3133,13 @@ msgstr ""
 #: ../src/virtManager/host.py:519 ../src/virtManager/host.py:544
 #, fuzzy
 msgid "On Boot"
-msgstr "ବୁଟ କରୁଅଛି"
+msgstr "Po pokretanju"
 
 #: ../src/virtManager/host.py:292 ../src/virtManager/host.py:343
 #: ../src/virtManager/host.py:375 ../src/virtManager/host.py:520
 #: ../src/virtManager/host.py:544 ../src/virtManager/host.py:581
 msgid "Never"
-msgstr "କେବେ ନୁହେଁ"
+msgstr "Nikada"
 
 #: ../src/virtManager/host.py:405 ../src/virtManager/host.py:415
 #, python-format
@@ -3157,7 +3150,8 @@ msgstr ""
 #, fuzzy, python-format
 msgid "This will permanently delete the pool '%s,' are you sure?"
 msgstr ""
-"ଏହା ତୁରନ୍ତ ଆଭାସୀ ମେସିନକୁ ନଷ୍ଟ କରିଦେବ ଏବଂ ଏହାର ଡିସ୍କ ପ୍ରତିଛବିକୁ ବିକୃତ କରିଦେବ। ଆପଣ ନିଶ୍ଚିତ କି?"
+"Ovo će odmah da uništi VM i može iskvariti svoj odraz diska. Da li ste "
+"sigurni?"
 
 #: ../src/virtManager/host.py:431
 #, python-format
@@ -3168,7 +3162,8 @@ msgstr ""
 #, fuzzy, python-format
 msgid "This will permanently delete the volume '%s,' are you sure?"
 msgstr ""
-"ଏହା ତୁରନ୍ତ ଆଭାସୀ ମେସିନକୁ ନଷ୍ଟ କରିଦେବ ଏବଂ ଏହାର ଡିସ୍କ ପ୍ରତିଛବିକୁ ବିକୃତ କରିଦେବ। ଆପଣ ନିଶ୍ଚିତ କି?"
+"Ovo će odmah da uništi VM i može iskvariti svoj odraz diska. Da li ste "
+"sigurni?"
 
 #: ../src/virtManager/host.py:448
 #, python-format
@@ -3192,23 +3187,23 @@ msgstr ""
 
 #: ../src/virtManager/domain.py:412
 msgid "Running"
-msgstr "ଚାଲୁଅଛି"
+msgstr "Pokrenuto"
 
 #: ../src/virtManager/domain.py:414
 msgid "Paused"
-msgstr "କିଛି ସମୟ ପାଇଁ ବନ୍ଦ କରାଯାଇଛି"
+msgstr "Pauzirano"
 
 #: ../src/virtManager/domain.py:418
 msgid "Shutoff"
-msgstr "ବନ୍ଦ କରନ୍ତୁ"
+msgstr "Isključi"
 
 #: ../src/virtManager/domain.py:420
 msgid "Crashed"
-msgstr "ହଠାତ ଅଚଳ ହୋଇଗଲା"
+msgstr "Krahiralo"
 
 #: ../src/virtManager/domain.py:422
 msgid "Unknown status code"
-msgstr "ଅଜଣା ଅବସ୍ଥିତି ସଙ୍କେତ"
+msgstr "Nepoznata šifra statusa"
 
 #: ../src/virtManager/domain.py:756
 #, python-format
@@ -3222,27 +3217,28 @@ msgstr ""
 #. get filename
 #: ../src/virtManager/manager.py:335
 msgid "Restore Virtual Machine"
-msgstr "ଆଭାସୀ ମେସିନକୁ ପୁନଃସ୍ଥାପନ କରନ୍ତୁ"
+msgstr "Vrati virtuelnu mašinu"
 
 #: ../src/virtManager/manager.py:352
 msgid "Restoring Virtual Machine"
-msgstr "ଆଭାସୀ ମେସିନକୁ ପୁନଃସ୍ଥାପନ କରୁଅଛି"
+msgstr "Vraćam virtuelnu mašinu"
 
 #: ../src/virtManager/manager.py:355
 #, python-format
 msgid "The file '%s' does not appear to be a valid saved machine image"
-msgstr "'%s' ଫାଇଲ ଗୋଟିଏ ବୈଧ ସଂରକ୍ଷିତ ମେସିନ ପ୍ରତିଛବି ହୋଇଥିବା ପରି ଜଣାପଡୁ ନାହିଁ"
+msgstr "Datoteka „%s“ ne izgleda kao ispravno sačuvan mašinski odraz"
 
 #: ../src/virtManager/manager.py:376
 #, python-format
 msgid "Error restoring domain '%s'. Is the domain already running?"
-msgstr "%s ପରିସରକୁ ପୁନଃସ୍ଥାପନ କରିବା ସମୟରେ ତୃଟି। ପରିସରଟି ପୂର୍ବରୁ ଚାଲୁଅଛି?"
+msgstr "Greška pri vraćanju domena „%s“. Da li je domen već pokrenut?"
 
 #: ../src/virtManager/manager.py:753
 #, fuzzy, python-format
 msgid "This will permanently delete the connection \"%s\", are you sure?"
 msgstr ""
-"ଏହା ତୁରନ୍ତ ଆଭାସୀ ମେସିନକୁ ନଷ୍ଟ କରିଦେବ ଏବଂ ଏହାର ଡିସ୍କ ପ୍ରତିଛବିକୁ ବିକୃତ କରିଦେବ। ଆପଣ ନିଶ୍ଚିତ କି?"
+"Ovo će odmah da uništi VM i može iskvariti svoj odraz diska. Da li ste "
+"sigurni?"
 
 #. are you sure you want to delete this VM?
 #: ../src/virtManager/manager.py:764
@@ -3257,23 +3253,23 @@ msgstr ""
 
 #: ../src/virtManager/manager.py:802
 msgid "ID"
-msgstr "ପରିଚୟ"
+msgstr "ID"
 
 #: ../src/virtManager/manager.py:805
 msgid "VCPUs"
-msgstr "VCPUs"
+msgstr "VCPU-i"
 
 #: ../src/virtManager/manager.py:1048
 msgid ""
 "Unable to open a connection to the Xen hypervisor/daemon.\n"
 "\n"
 msgstr ""
-"ଜେନ hypervisor/daemon ପାଇଁ ଗୋଟିଏ ସଂଯୋଗ ଖୋଲିବାରେ ଅସମର୍ଥ।\n"
+"Ne mogu da otvorim vezu ka Xen hipervizoru/demonu.\n"
 "\n"
 
 #: ../src/virtManager/manager.py:1053 ../src/virtManager/manager.py:1061
 msgid "Virtual Machine Manager Connection Failure"
-msgstr "ଆଭାସୀ ମେସିନ ପରିଚାଳକ ସଂଯୋଗ ବିଫଳ"
+msgstr "Neuspelo povezivanje upravnika virtuelne mašine"
 
 #: ../src/virtManager/manager.py:1055
 #, fuzzy
@@ -3281,7 +3277,7 @@ msgid ""
 "Unable to open a connection to the libvirt management daemon.\n"
 "\n"
 msgstr ""
-"ଜେନ hypervisor/daemon ପାଇଁ ଗୋଟିଏ ସଂଯୋଗ ଖୋଲିବାରେ ଅସମର୍ଥ।\n"
+"Ne mogu da otvorim vezu ka Xen hipervizoru/demonu.\n"
 "\n"
 
 #: ../src/virtManager/util.py:53
@@ -3294,16 +3290,16 @@ msgstr ""
 
 #, fuzzy
 #~ msgid "Password Field"
-#~ msgstr "ପ୍ରବେଶ ସଙ୍କେତ:"
+#~ msgstr "Lozinka:"
 
 #~ msgid "Virtual Machine Console"
-#~ msgstr "ଆଭାସୀ ମେସିନ କୋନଶୋଲ"
+#~ msgstr "Konzola virtuelne mašine"
 
 #~ msgid "_Destroy"
-#~ msgstr "ନଷ୍ଟ କରନ୍ତୁ (_D)"
+#~ msgstr "_Uništi"
 
 #~ msgid "_Details"
-#~ msgstr "ବିସ୍ତୃତ ବିବରଣୀ (_D)"
+#~ msgstr "De_talji"
 
 #~ msgid "\t"
 #~ msgstr "\t"
@@ -3327,86 +3323,87 @@ msgstr ""
 #~ msgstr "255.255.255.0"
 
 #~ msgid "256"
-#~ msgstr "୨୫୬"
+#~ msgstr "256"
 
 #~ msgid "5 GB"
-#~ msgstr "୫ ଗିଗା-ବାଇଟ"
+#~ msgstr "5 GB"
 
 #~ msgid "demo"
-#~ msgstr "ପ୍ରଦର୍ଶନ"
+#~ msgstr "demo"
 
 #~ msgid "1.59 GB of 2.2 GB"
-#~ msgstr "୨.୨ ଗିଗା-ବାଇଟ ମଧ୍ଯରୁ ୧.୫୯ ଗିଗା-ବାଇଟ"
+#~ msgstr "1.59 GB od 2.2 GB"
 
 #~ msgid "2000 MB"
-#~ msgstr "୨୦୦୦ ମେଗା-ବାଇଟ"
+#~ msgstr "2000 MB"
 
 #~ msgid "4"
-#~ msgstr "୪"
+#~ msgstr "4"
 
 #~ msgid "60%"
-#~ msgstr "୬୦%"
+#~ msgstr "60%"
 
 #, fuzzy
 #~ msgid "Net Name"
-#~ msgstr "ନେଟୱାର୍କ ନାମ (_N):"
+#~ msgstr "_Ime mreže:"
 
 #, fuzzy
 #~ msgid "Net UUID"
-#~ msgstr "ୟୁ.ୟୁ.ଆଇ.ଡି.:"
+#~ msgstr "UUID:"
 
 #~ msgid "Start"
-#~ msgstr "ପ୍ରାରମ୍ଭ"
+#~ msgstr "Pokreni"
 
 #, fuzzy
 #~ msgid "Storage Location"
-#~ msgstr "_ISO ପ୍ରତିଛବି ଅବସ୍ଥାନ:"
+#~ msgstr "Mesto _ISO odraza:"
 
 #~ msgid "example.com"
-#~ msgstr "example.com"
+#~ msgstr "primer.co.yu"
 
 #~ msgid "x86_64"
 #~ msgstr "x86_64"
 
 #~ msgid " free"
-#~ msgstr " ମୁକ୍ତ"
+#~ msgstr "slobodno"
 
 #~ msgid " of "
-#~ msgstr " ର"
+#~ msgstr "od"
 
 #~ msgid "/tmp"
 #~ msgstr "/tmp"
 
 #~ msgid "10 TB"
-#~ msgstr "10 ଟେରା-ବାଇଟ"
+#~ msgstr "10 TB"
 
 #~ msgid ""
 #~ "<b>Tip:</b> You may only increase the size of file-based storage; you "
 #~ "can't decrease its size."
 #~ msgstr ""
-#~ "<b>ପରାମର୍ଶ:</b> ଆପଣ କେବଳ ଫାଇଲ-ଆଧାରିତ ଭଣ୍ଡାରର ଆକାରକୁ ବଢାଇ ପାରନ୍ତି; କିନ୍ତୁ ଆପଣ ଏହାର "
-#~ "ଆକାରକୁ କମାଇ ପାରିବେ ନାହିଁ।"
+#~ "<b>Savet:</b> Možete samo da povećate veličinu skladišta zasnovanog na "
+#~ "datoteci; ne možete ga smanjivati."
 
 #~ msgid ""
 #~ "MB\n"
 #~ "GB\n"
 #~ "TB"
 #~ msgstr ""
-#~ "ମେଗା-ବାଇଟ\n"
-#~ "ଗିଗା-ବାଇଟnଟେରା-ବାଇଟ"
+#~ "MB\n"
+#~ "GB\n"
+#~ "TB"
 
 #~ msgid "Modify File Storage"
-#~ msgstr "ଫାଇଲ ଭଣ୍ଡାରକୁ ପରିବର୍ତ୍ତନ କରନ୍ତୁ"
+#~ msgstr "Izmeni skladište datoteke"
 
 #, fuzzy
 #~ msgid "Size Type"
-#~ msgstr "ପ୍ରଚାଳନ ତନ୍ତ୍ର ପ୍ରକାର (_T):"
+#~ msgstr "V_rsta OS-a:"
 
 #~ msgid "_Mount Point (on virtual system):"
-#~ msgstr "ଆରୋହଣ ବିନ୍ଦୁ (ଆଭାସୀ ତନ୍ତ୍ରରେ) (_M):"
+#~ msgstr "Tačka _montiranja (na virtuelnom sistemu):"
 
 #~ msgid "_Size:"
-#~ msgstr "ଆକାର (_S):"
+#~ msgstr "_Veličina:"
 
 #, fuzzy
 #~ msgid "127.0.0.1"
@@ -3419,41 +3416,41 @@ msgstr ""
 #~ msgstr " "
 
 #~ msgid "2 GB"
-#~ msgstr "୨ ଗିଗା-ବାଇଟ"
+#~ msgstr "2 GB"
 
 #~ msgid "256\t"
-#~ msgstr "୨୫୬\t"
+#~ msgstr "256\t"
 
 #~ msgid "400 MB"
-#~ msgstr "୪୦୦ ମେଗା-ବାଇଟ"
+#~ msgstr "400 MB"
 
 #~ msgid "5\t"
-#~ msgstr "୫\t"
+#~ msgstr "5\t"
 
 #, fuzzy
 #~ msgid "512 MB"
-#~ msgstr "୫୦୦ ମେଗା-ବାଇଟ"
+#~ msgstr "500 MB"
 
 #, fuzzy
 #~ msgid "Architecture Select"
-#~ msgstr "ସ୍ଥାପତ୍ଯ:"
+#~ msgstr "Arhitektura:"
 
 #~ msgid "Enable kernel / hardware acceleration"
-#~ msgstr "କର୍ଣ୍ଣଲ / ହାର୍ଡୱେର ତ୍ବରଣକୁ ସକ୍ରିୟ କରନ୍ତୁ"
+#~ msgstr "Uključi ubrzanje u jezgru / hardveru"
 
 #~ msgid "FV install"
-#~ msgstr "FV ସ୍ଥାପନ"
+#~ msgstr "FV instalacija"
 
 #, fuzzy
 #~ msgid "OS Type Select"
-#~ msgstr "ପ୍ରଚାଳନ ତନ୍ତ୍ର ପ୍ରକାର (_T):"
+#~ msgstr "V_rsta OS-a:"
 
 #, fuzzy
 #~ msgid "OS Variant Select"
-#~ msgstr "ପ୍ରଚାଳନ ତନ୍ତ୍ର ଚଳ (_V):"
+#~ msgstr "_Varijanta OS-a:"
 
 #~ msgid "PVinstall"
-#~ msgstr "PVinstall"
+#~ msgstr "PV instalacija"
 
 #~ msgid "http://"
 #~ msgstr "http://"
@@ -3478,169 +3475,169 @@ msgstr ""
 #~ msgstr "192.168.1.1"
 
 #~ msgid "para"
-#~ msgstr "ଆଂଶିକ"
+#~ msgstr "para"
 
 #~ msgid "18%"
-#~ msgstr "୧୮%"
+#~ msgstr "18%"
 
 #~ msgid "200 MB"
-#~ msgstr "୨୦୦ ମେଗା-ବାଇଟ"
+#~ msgstr "200 MB"
 
 #~ msgid "30 MB of 128 MB"
-#~ msgstr "୧୨୮ ମେଗା-ବାଇଟ ମଧ୍ଯରୁ ୩୦ ମେଗା-ବାଇଟ"
+#~ msgstr "30 MB od 128 MB"
 
 #~ msgid "8"
-#~ msgstr "୮"
+#~ msgstr "8"
 
 #~ msgid "80 MB of 1 GB"
-#~ msgstr "୧ ଗିଗା-ବାଇଟ ମଧ୍ଯରୁ ୮୦ ମେଗା-ବାଇଟ"
+#~ msgstr "80 MB od 1 GB"
 
 #~ msgid "Virtual Machine Details"
-#~ msgstr "ଆଭାସୀ ମେସିନ ବିବରଣୀ"
+#~ msgstr "Detalji o virtuelnoj mašini"
 
 #~ msgid "_Graphical Console"
-#~ msgstr "ଆଲେଖୀକ କୋନଶୋଲ (_G)"
+#~ msgstr "_Grafička konzola"
 
 #~ msgid "Host details..."
-#~ msgstr "ଆଧାରର ବିସ୍ତୃତ ବିବରଣୀ..."
+#~ msgstr "Detalji domaćina..."
 
 #~ msgid "De_tails"
-#~ msgstr "ବିସ୍ତୃତ ବିବରଣୀ (_t)"
+#~ msgstr "De_talji"
 
 #~ msgid "Open connection"
-#~ msgstr "ଖୋଲା ସଂଯୋଗ"
+#~ msgstr "Otvori vezu"
 
 #~ msgid "No media present"
-#~ msgstr "କୌଣସି ସଞ୍ଚାରମାଧ୍ଯମ ଉପସ୍ଥିତ ନାହିଁ"
+#~ msgstr "Nema prisutnog medijuma"
 
 #~ msgid "There are no more available virtual disk device nodes"
-#~ msgstr "ସେଠାରେ ଆଉ ଅଧିକ ଆଭାସୀ ଡିସ୍କ ଉପକରଣ ନୋଡ ଉପଲବ୍ଧ ନାହିଁ"
+#~ msgstr "Nema više dostupnih čvorova za virtuelne uređaje diska"
 
 #, fuzzy
 #~ msgid "Storage Path Does not exist"
-#~ msgstr "ସଂରକ୍ଷଣ ସ୍ଥଳୀ"
+#~ msgstr "Rezervoari skladištenja"
 
 #, fuzzy
 #~ msgid "MAC address \"%s\" is already in use by the host"
-#~ msgstr "\"%s\" ଡିସ୍କ ପୂର୍ବରୁ ଅନ୍ଯ ଗୋଟିଏ ଅତିଥି ଚାଳକ ଦ୍ବାରା ବ୍ଯବହୃତ ହେଉଛି!"
+#~ msgstr "Disk „%s“ već koristi drugi gost!"
 
 #, fuzzy
 #~ msgid "MAC address \"%s\" is already in use by an active guest"
-#~ msgstr "\"%s\" ଡିସ୍କ ପୂର୍ବରୁ ଅନ୍ଯ ଗୋଟିଏ ଅତିଥି ଚାଳକ ଦ୍ବାରା ବ୍ଯବହୃତ ହେଉଛି!"
+#~ msgstr "Disk „%s“ već koristi drugi gost!"
 
 #, fuzzy
 #~ msgid "MAC address \"%s\" is already in use by another inactive guest!"
-#~ msgstr "\"%s\" ଡିସ୍କ ପୂର୍ବରୁ ଅନ୍ଯ ଗୋଟିଏ ଅତିଥି ଚାଳକ ଦ୍ବାରା ବ୍ଯବହୃତ ହେଉଛି!"
+#~ msgstr "Disk „%s“ već koristi drugi gost!"
 
 #, fuzzy
 #~ msgid "MAC address \"%s\" is already in use by a active guest"
-#~ msgstr "\"%s\" ଡିସ୍କ ପୂର୍ବରୁ ଅନ୍ଯ ଗୋଟିଏ ଅତିଥି ଚାଳକ ଦ୍ବାରା ବ୍ଯବହୃତ ହେଉଛି!"
+#~ msgstr "Disk „%s“ već koristi drugi gost!"
 
 #~ msgid "Too many virtual disks"
-#~ msgstr "ଅତ୍ଯାଧିକ ଆଭାସୀ ଡିସ୍କ"
+#~ msgstr "Previše virtuelnih diskova"
 
 #~ msgid "to complete."
-#~ msgstr "ସମୟ ନେଇପାରେ।"
+#~ msgstr "da se završi."
 
 #~ msgid "Storage Address Is Directory"
-#~ msgstr "ଭଣ୍ଡାର ଠିକଣା ଡିରେକ୍ଟୋରି ଅଟେ"
+#~ msgstr "Adresa skladišta je direktorijum"
 
 #~ msgid ""
 #~ "You chose 'Simple File' storage for your storage method, but chose a "
 #~ "directory instead of a file. Please enter a new filename or choose an "
 #~ "existing file."
 #~ msgstr ""
-#~ "ଆପଣ ଆପଣଙ୍କ ଭଣ୍ଡାର ପଦ୍ଧତି ପାଇଁ 'ସାଧାରଣ ଫାଇଲ' ଭଣ୍ଡାର ଚୟନ କରନ୍ତୁ, କିନ୍ତୁ ଗୋଟିଏ ଫାଇଲ "
-#~ "ପରିବର୍ତ୍ତେ ଗୋଟିଏ ଡିରେକ୍ଟୋରି ଚୟନ କରନ୍ତୁ। ଦୟାକରି ଗୋଟିଏ ନୂତନ ଫାଇଲ ନାମ ଭରଣ କରନ୍ତୁ କିମ୍ବା ଗୋଟିଏ "
-#~ "ପୂର୍ବରୁ ଅବସ୍ଥିତ ଫାଇଲ ଚୟନ କରନ୍ତୁ।"
+#~ "Izabrali ste skladište „Jednostavne datoteke“ (Simple file) za način "
+#~ "skladištenja, ali ste izabrali direktorijum umesto datoteke. Unesite ili "
+#~ "ime nove datoteke ili izaberite postojeću datoteku."
 
 #~ msgid "Allocation of disk storage and retrieval of "
-#~ msgstr "ଡିସ୍କ ଭଣ୍ଡାରର ବଣ୍ଟନ ଏବଂ ସ୍ଥାପନ ପ୍ରତିଛବି ମାନଙ୍କର "
+#~ msgstr "Dodela prostora na disku i dobavljanje"
 
 #~ msgid "the installation images may take a few minutes "
-#~ msgstr "ସ୍ଥାପନ ପ୍ରତିଛବି ଗୁଡିକ କିଛି ସମୟ ନେଇପାରନ୍ତି "
+#~ msgstr "instalacioni odraz može uzeti nekoliko minuta"
 
 #, fuzzy
 #~ msgid "Invalid Mac address"
-#~ msgstr "ଅବୈଧ ଭଣ୍ଡାର ଠିକଣା"
+#~ msgstr "Neispravna adresa skladišta"
 
 #~ msgid "Verify that:\n"
-#~ msgstr "ଏହା ଯାଞ୍ଚ କରନ୍ତୁ ଯେ:\n"
+#~ msgstr "Proverite da li je:\n"
 
 #~ msgid " - A Xen host kernel was booted\n"
-#~ msgstr " - ଗୋଟିଏ ଜେନ ଆଧାର କର୍ଣ୍ଣଲକୁ ବୁଟ କରାଗଲା\n"
+#~ msgstr " - Podignuto jezgro Xen domaćina\n"
 
 #~ msgid " - The Xen service has been started\n"
-#~ msgstr " - ଜେନ ସବାକୁ ପ୍ରାରମ୍ଭ କରାଯାଇଛି\n"
+#~ msgstr " - Pokrenut Xen servis\n"
 
 #, fuzzy
 #~ msgid " - The 'libvirtd' daemon has been started\n"
-#~ msgstr " - ଜେନ ସବାକୁ ପ୍ରାରମ୍ଭ କରାଯାଇଛି\n"
+#~ msgstr " - Pokrenut Xen servis\n"
 
 #~ msgid "Unable to open connection to hypervisor '%s'"
-#~ msgstr "hypervisor '%s' ପାଇଁ ସଂଯୋଗକୁ ଖୋଲିବାରେ ଅସମର୍ଥ"
+#~ msgstr "Ne mogu da otvorim vezu ka hipervizoru „%s“"
 
 #, fuzzy
 #~ msgid "Connected"
-#~ msgstr "ସଂଯୋଗ କରନ୍ତୁ (_n)"
+#~ msgstr "Po_veži se"
 
 #~ msgid "New machine..."
-#~ msgstr "ନୂତନ ମେସିନ ..."
+#~ msgstr "Nova mašina..."
 
 #~ msgid "_Host:"
-#~ msgstr "ଆଧାର (_H):"
+#~ msgstr "Do_maćin:"
 
 #~ msgid "The network must be an IPv4 private address"
-#~ msgstr "ନେଟୱାର୍କ ଗୋଟିଏ IPv4 ବ୍ଯକ୍ତିଗତ ଠିକଣା ବିଶିଷ୍ଟ ହେବା ଉଚିତ"
+#~ msgstr "Mreža mora biti IPv4 privatna adresa"
 
 #, fuzzy
 #~ msgid "MAC adress \"%s\" is already in use by host!"
-#~ msgstr "\"%s\" ଡିସ୍କ ପୂର୍ବରୁ ଅନ୍ଯ ଗୋଟିଏ ଅତିଥି ଚାଳକ ଦ୍ବାରା ବ୍ଯବହୃତ ହେଉଛି!"
+#~ msgstr "Disk „%s“ već koristi drugi gost!"
 
 #, fuzzy
 #~ msgid "MAC adress \"%s\" is already in use by another guest!"
-#~ msgstr "\"%s\" ଡିସ୍କ ପୂର୍ବରୁ ଅନ୍ଯ ଗୋଟିଏ ଅତିଥି ଚାଳକ ଦ୍ବାରା ବ୍ଯବହୃତ ହେଉଛି!"
+#~ msgstr "Disk „%s“ već koristi drugi gost!"
 
 #~ msgid "Invalid FV media address"
-#~ msgstr "ଅବୈଧ FV ସଞ୍ଚାରମାଧ୍ଯମ ଠିକଣା"
+#~ msgstr "Neispravna adresa FV medijuma"
 
 #~ msgid "Invalid PV media address"
-#~ msgstr "ଅବୈଧ PV ସଞ୍ଚାରମାଧ୍ଯମ ଠିକଣା"
+#~ msgstr "Neispravna adresa PV medijuma"
 
 #~ msgid "Invalid system name"
-#~ msgstr "ଅବୈଧ ତନ୍ତ୍ର ନାମ"
+#~ msgstr "Neispravno ime sistema"
 
 #~ msgid "Invalid memory setting"
-#~ msgstr "ଅବୈଧ ସ୍ମୃତି ବିନ୍ଯାସ"
+#~ msgstr "Neispravna postavka memorije"
 
 #~ msgid "System name must be non-blank and less than 50 characters"
-#~ msgstr "ତନ୍ତ୍ରର ନାମଟି ଖାଲିହେବା ଉଚିତ ନୁହେଁ, ଏହା ୫୦ଟି ଅକ୍ଷରରୁ କମହେବା ଉଚିତ"
+#~ msgstr "Ime sistema ne sme biti prazno i mora biti kraće od 50 znakova"
 
 #~ msgid "System name may contain alphanumeric and '_' characters only"
-#~ msgstr "ତନ୍ତ୍ରର ନାମ କେବଳ ଅକ୍ଷରାଂକୀୟ ଏବଂ '_' ଅକ୍ଷରକୁ ଧାରଣ କରିପାରିବ"
+#~ msgstr "Sistemsko ime može da sadrži samo alfanumeričke i „_“ znakove"
 
 #~ msgid "Hardware Support Required"
-#~ msgstr "ହାର୍ଡୱେର ସହାୟତା ଆବଶ୍ଯକ"
+#~ msgstr "Neophodna hardverska podrška"
 
 #~ msgid ""
 #~ "Your hardware does not appear to support full virtualization. Only "
 #~ "paravirtualized guests will be available on this hardware."
 #~ msgstr ""
-#~ "ପୂର୍ଣ ଆଭାସୀକରଣକୁ ଆପଣଙ୍କ ହାର୍ଡୱେର ସମର୍ଥ କରୁଥିବା ପରି ଦୃଶ୍ଯମାନ ହେଉନାହିଁ। କେବଳ ଆଂଶିକ ଆଭସୀକୃତ "
-#~ "ଅତିଥି ମାନେ ଏହି ହାର୍ଡୱେରରେ ଉପଲବ୍ଧ ହେବେ।"
+#~ "Izgleda da hardver ne podržava potpunu vurtualizaciju. Samo će "
+#~ "paravirtualizovani gosti biti dostupni na ovom hardveru."
 
 #~ msgid "You must specify an ISO location for the guest installation"
-#~ msgstr "ଅତିଥି ସ୍ଥାପନ ପାଇଁ ଆପଣ ଗୋଟିଏ ISO ଅବସ୍ଥାନକୁ ନିର୍ଦ୍ଦିଷ୍ଟ କରିବା ଉଚିତ"
+#~ msgstr "Morate navesti ISO lokaciju za instalaciju gosta"
 
 #~ msgid ""
 #~ "You must specify a valid path to the ISO image for guest installation"
-#~ msgstr "ଅତିଥି ସ୍ଥାପନ ପାଇଁ ଆପଣ ISO ପ୍ରତିଛବିର ଗୋଟିଏ ବୌଧ ପଥକୁ ଉଲ୍ଲେଖ କରିବା ଉଚିତ"
+#~ msgstr "Morate navesti ispravnu putanju do ISO odraza za instalaciju gosta"
 
 #~ msgid "You must select the CDROM install media for guest installation"
-#~ msgstr "ଅତିଥି ସ୍ଥାପନ ପାଇଁ ଆପଣ CDROM ସ୍ଥାପମ ସଞ୍ଚାରମାଧ୍ଯମକୁ ଚୟନ କରିବା ଉଚିତ"
+#~ msgstr "Morate izabrati CDROM instalacione medijume za instalaciju gosta"
 
 #~ msgid "URL Required"
-#~ msgstr "ୟୁ.ଆର.ଏଲ. ଆବଶ୍ଯକ"
+#~ msgstr "Neophodan URL"
 
 #~ msgid "You must specify a URL for the install image for the guest install"
-#~ msgstr "ଅତିଥି ସ୍ଥାପନ ପାଇଁ ଆବଶ୍ଯକ ସ୍ଥାପନ ପ୍ରତିଛବିର ଗୋଟିଏ ୟୁ.ଆର.ଏଲ. କୁ ଆପଣ ଉଲ୍ଲେଖ କରିବା ଉଚିତ"
+#~ msgstr "Morate navesti URL do odraza instalacije za instalaciju gosta"

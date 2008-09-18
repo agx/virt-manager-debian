@@ -29,6 +29,7 @@ import locale
 import gettext
 import logging
 import logging.handlers
+import threading
 import traceback
 from optparse import OptionParser, OptionValueError
 
@@ -46,6 +47,12 @@ pylib_dir = "::PYLIBDIR::"
 pyarchlib_dir = "::PYARCHLIBDIR::"
 data_dir = "::DATADIR::"
 
+def _show_startup_error(msg, details):
+    import gtk
+    from virtManager.error import vmmErrorDialog
+    err = vmmErrorDialog(None, 0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE, "", "")
+    title = _("Error starting Virtual Machine Manager")
+    err.show_err(title + ": " +  msg, details, title)
 
 def setup_i18n():
     locale.setlocale(locale.LC_ALL, '')
@@ -152,6 +159,9 @@ def parse_commandline():
         help="Disable DBus service for controlling UI")
     optParser.add_option("--no-fork", action="store_true", dest="nofork",
         help="Don't fork into background on startup")
+    optParser.add_option("--no-conn-autostart", action="store_true",
+                         dest="no_conn_auto",
+                         help="Do not autostart connections")
     optParser.add_option("--show-domain-creator", action="callback",
         callback=opt_show_cb, dest="show", help="Create a new virtual machine")
     optParser.add_option("--show-domain-editor",  type="string", metavar="UUID",
@@ -165,8 +175,10 @@ def parse_commandline():
 
     return optParser.parse_args()
 
-# maps --show-* to engine (ie local instance) methods
-def show_engine(engine, show, uri, uuid):
+def launch_specific_window(engine, show, uri, uuid):
+    if not engine.wait_for_open(uri):
+        # Connection failed, don't attempt to continue
+        return
     if show=='creator':
         engine.show_create(uri)
     elif show=='editor':
@@ -175,33 +187,50 @@ def show_engine(engine, show, uri, uuid):
         engine.show_details_performance(uri, uuid)
     elif show=='console':
         engine.show_console(uri, uuid)
+
+# maps --show-* to engine (ie local instance) methods
+def show_engine(engine, show, uri, uuid, no_conn_auto):
+    if show=='creator' or show=='editor' \
+       or show=='performance' or show=='console':
+        # Create a thread so we can wait for connection to _fully_ start,
+        # to prevent races accessing uninit'd vars for ex. the create wizard
+        # which expects the connection to be active.
+        thread = threading.Thread(target=launch_specific_window,
+                                  args=(engine, show, uri, uuid),
+                                  name="Launching '%s' window" % show)
+        thread.start()
     elif show=='summary' or uri:
         engine.connect_to_uri(uri)
     else:
-        if engine.config.get_connections() is None or len(engine.config.get_connections()) == 0:
+        if engine.config.get_connections() is None \
+           or len(engine.config.get_connections()) == 0:
             tryuri = None
             if os.path.exists("/var/lib/xend") and os.path.exists("/proc/xen"):
                 tryuri = "xen:///"
             elif os.path.exists("/usr/bin/qemu"):
                 tryuri = "qemu:///system"
             if tryuri is not None:
-                conn = engine.add_connection(tryuri)
+                engine.add_connection(tryuri, autoconnect=True)
         engine.show_manager()
+
+    if not no_conn_auto:
+        engine.autostart_connections()
+
 
 # maps --show-* to remote manager (ie dbus call) methods
 def show_remote(managerObj, show, uri, uuid):
-    if show=='creator':
-        managerObj.show_domain_creator(uri)
-    elif show=='editor':
-        managerObj.show_domain_editor(uri, uuid)
-    elif show=='performance':
-        managerObj.show_domain_performance(uri, uuid)
-    elif show=='console':
-        managerObj.show_domain_console(uri, uuid)
+    if show=='creator' or show=='editor' \
+       or show=='performance' or show=='console':
+        # Create a thread so to block on connection _fully_ starting so that
+        #   a non-manager window to prevent races accessing uninit'd vars
+        thread = threading.Thread(target=launch_specific_window,
+                                  args=(managerObj, show, uri, uuid),
+                                  name="Launching '%s' window" % show)
+        thread.start()
     elif show=='summary' or uri:
         managerObj.show_host_summary(uri)
     else:
-        managerObj.show_connect()
+        managerObj.show_manager()
 
 # Generic OptionParser callback for all --show-* options
 # This routine stores UUID to options.uuid for all --show-* options 
@@ -243,12 +272,18 @@ def main():
     dbus.glib.threads_init()
     import dbus.service
 
+    # Specifically init config/gconf before the fork, so that pam
+    # doesn't think we closed the app, therefor robbing us of
+    # display access
+    from virtManager.config import vmmConfig
+    config = vmmConfig(appname, appversion, gconf_dir, glade_dir,
+                       icon_dir, data_dir)
+
     # Now we've got basic environment up & running we can fork
     if not options.nofork:
         drop_tty()
         drop_stdio()
 
-    from virtManager.config import vmmConfig
     from virtManager.engine import vmmEngine
     from virtManager.remote import vmmRemote
 
@@ -257,8 +292,8 @@ def main():
     if options.show and options.uri==None:
         raise OptionValueError("can't use --show-* options without --connect")
 
-    config = vmmConfig(appname, appversion, gconf_dir, glade_dir, icon_dir, data_dir)
     engine = vmmEngine(config)
+
     if not(options.nodbus) and not( (os.getenv("DBUS_SESSION_BUS_ADDRESS") is None ) and ( os.getenv("DBUS_STARTER_ADDRESS") is None ) ):
         try:
             bus = None
@@ -294,7 +329,8 @@ def main():
     # Finally start the app for real
     gtk.gdk.threads_enter()
     try:
-        show_engine(engine, options.show, options.uri, options.uuid)
+        show_engine(engine, options.show, options.uri, options.uuid,
+                    options.no_conn_auto)
         if options.profile != None:
             import hotshot
             prof = hotshot.Profile(options.profile)
@@ -310,4 +346,4 @@ if __name__ == "__main__":
         main()
     except Exception, e:
         logging.exception(e)
-        raise
+        _show_startup_error(str(e), "".join(traceback.format_exc()))
