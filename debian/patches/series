@@ -1,2 +1,2 @@
 0001-use-usr-share-gconf-for-schema-data.patch
-#autogen_use_copy.diff
+0002-check-for-qemu-session-instead-of-uid-0.patch
