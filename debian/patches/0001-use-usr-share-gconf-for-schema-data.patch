@@ -1,4 +1,4 @@
-From 1cf32690e4e5dccfcc60632e285e35d846f33086 Mon Sep 17 00:00:00 2001
+From efa101409761eeebbdc36fce05b18f978741b78a Mon Sep 17 00:00:00 2001
 From: Guido Guenther <agx@sigxcpu.org>
 Date: Thu, 18 Sep 2008 22:55:16 +0200
 Subject: [PATCH] use /usr/share/gconf for schema data
