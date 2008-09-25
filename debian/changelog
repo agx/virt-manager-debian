@@ -1,3 +1,14 @@
+virt-manager (0.6.0-2) experimental; urgency=low
+
+  * [9fddc09] check for qemu session instead of uid != 0 allows to
+    manage kvm/qemu network hardware as non root (0002-check-for-qemu-
+    session-instead-of-uid-0.patch)
+  * [8c96c5b] drop autogen_use_copy.diff
+  * [588fcf5] start network if it's not already active (0003-start-
+    network-if-it-s-not-already-active.patch) (Closes: #499867)
+
+ -- Guido Guenther <agx@sigxcpu.org>  Thu, 25 Sep 2008 12:28:03 +0200
+
 virt-manager (0.6.0-1) experimental; urgency=low
 
   * [67d97e5] Imported Upstream version 0.6.0
