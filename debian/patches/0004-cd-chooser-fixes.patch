@@ -1,0 +1,65 @@
+From e5539a453ccae0b815795ea60178fad2a372ae7b Mon Sep 17 00:00:00 2001
+From: =?utf-8?q?Guido=20G=C3=BCnther?= <agx@sigxcpu.org>
+Date: Thu, 2 Oct 2008 16:33:33 +0200
+Subject: [PATCH] cd-chooser fixes
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+HG changeset patch
+User "Guido Günther <agx@sigxcpu.org>"
+Date 1222957855 -7200
+Node ID a510b28cd7f71f5c5871089f60369f327c83b6d3
+Parent  003db80b54c615696cac682c1c74f696f1f30d45
+User "Guido Günther <agx@sigxcpu.org>"
+call populate_opt_media when the widget gets activated
+
+not when it gets deactivated. Also select the first entry since we always have
+one. Prevents the physical media combo box from suddenly becomming empty.
+
+HG changeset patch
+User "Guido Günther <agx@sigxcpu.org>"
+Date 1222957947 -7200
+Node ID 071a45834084fed40d0d4b5cbc5113a3d98f9378
+Parent  a510b28cd7f71f5c5871089f60369f327c83b6d3
+call populate_opt_media on reset_state
+
+this way the physical media combo box isn't empty when we show the dialog for
+the first time
+---
+ src/virtManager/choosecd.py |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
+
+diff --git a/src/virtManager/choosecd.py b/src/virtManager/choosecd.py
+index 3e04497..cde714e 100644
+--- a/src/virtManager/choosecd.py
++++ b/src/virtManager/choosecd.py
+@@ -89,6 +89,8 @@ class vmmChooseCD(gobject.GObject):
+         else:
+             self.window.get_widget("physical-media").set_sensitive(True)
+             self.window.get_widget("iso-file-chooser").set_sensitive(True)
++            self.populate_opt_media()
++            self.window.get_widget("cd-path").set_active(0)
+ 
+     def ok(self,ignore1=None, ignore2=None):
+         if self.window.get_widget("iso-image").get_active():
+@@ -114,6 +116,8 @@ class vmmChooseCD(gobject.GObject):
+ 
+     def media_toggled(self, ignore1=None, ignore2=None):
+         if self.window.get_widget("physical-media").get_active():
++            self.populate_opt_media()
++            self.window.get_widget("cd-path").set_active(0)
+             self.window.get_widget("cd-path").set_sensitive(True)
+             self.window.get_widget("iso-path").set_sensitive(False)
+             self.window.get_widget("iso-file-chooser").set_sensitive(False)
+@@ -121,7 +125,6 @@ class vmmChooseCD(gobject.GObject):
+             self.window.get_widget("cd-path").set_sensitive(False)
+             self.window.get_widget("iso-path").set_sensitive(True)
+             self.window.get_widget("iso-file-chooser").set_sensitive(True)
+-            self.populate_opt_media()
+ 
+     def change_cd_path(self, ignore1=None, ignore2=None):
+         pass
+-- 
+1.6.0.1
+

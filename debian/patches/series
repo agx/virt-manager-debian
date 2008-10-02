@@ -1,3 +1,4 @@
 0001-use-usr-share-gconf-for-schema-data.patch
 0002-check-for-qemu-session-instead-of-uid-0.patch
 0003-start-network-if-it-s-not-already-active.patch
+0004-cd-chooser-fixes.patch
