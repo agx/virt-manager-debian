@@ -1,3 +1,15 @@
+virt-manager (0.6.0-3) experimental; urgency=low
+
+  * [c77ca5a] depend on python-libvirt >= 0.4.6 we need libvirt >= 0.4.6
+    for improved storage pool support
+  * [e61e724] always select a proper element in the cd chooser and fill
+    the list on reset. (0004-cd-chooser-fixes.patch) (Closes: #500263)
+  * [e171231] clear list of optical devices on populate_media()
+    otherwise we keep on adding the same device over and over again.
+    (0005-clear-list-of-optical-devices.patch)
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 02 Oct 2008 16:46:01 +0200
+
 virt-manager (0.6.0-2) experimental; urgency=low
 
   * [9fddc09] check for qemu session instead of uid != 0 allows to
