@@ -4,3 +4,4 @@
 0004-cd-chooser-fixes.patch
 0005-clear-list-of-optical-devices.patch
 0006-fix-sorting-exceptions.patch
+0007-populate-hostinfo-earlier-in-tick-function-so-it-isn.patch
