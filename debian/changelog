@@ -1,3 +1,13 @@
+virt-manager (0.6.0-4) experimental; urgency=low
+
+  * [e8d9a67] fix exceptions when sorting columns (0006-fix-sorting-
+    exceptions.patch)
+  * [677afb8] fix exception when opening a connection and "Automatically
+    open consoles" is activated. Patch from upstream (0007-populate-
+    hostinfo-....patch)
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 07 Oct 2008 08:53:48 +0200
+
 virt-manager (0.6.0-3) experimental; urgency=low
 
   * [c77ca5a] depend on python-libvirt >= 0.4.6 we need libvirt >= 0.4.6
