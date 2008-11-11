@@ -83,9 +83,6 @@ class vmmConsole(gobject.GObject):
         else:
             self.vncViewer.set_keyboard_grab(False)
         self.vncViewer.set_pointer_grab(True)
-        if not topwin.is_composited():
-            self.vncViewer.set_scaling(True)
-            self.window.get_widget("menu-view-scale-display").set_active(True)
 
         self.vncViewer.connect("vnc-pointer-grab", self.notify_grabbed)
         self.vncViewer.connect("vnc-pointer-ungrab", self.notify_ungrabbed)
