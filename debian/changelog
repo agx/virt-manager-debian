@@ -1,3 +1,10 @@
+virt-manager (0.5.4-1~bpo40+2) etch-backports; urgency=low
+
+  * [c9802d6] remove check for is_composited - not supported by etch's gtk -
+    fixes vnc display
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 11 Nov 2008 18:15:36 +0100
+
 virt-manager (0.5.4-1~bpo40+1) etch-backports; urgency=low
 
   * Rebuild for etch-backports.
