@@ -1,3 +1,12 @@
+virt-manager (0.6.0-5) experimental; urgency=low
+
+  * [2c57e52] Don't try to use the storage pool with qemu:///session
+    (Closes: #500260)
+  * [62c6e49] add README.source
+  * [87e5620] bump standards version to 3.8.0
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 11 Nov 2008 22:44:43 +0100
+
 virt-manager (0.6.0-4) experimental; urgency=low
 
   * [e8d9a67] fix exceptions when sorting columns (0006-fix-sorting-
