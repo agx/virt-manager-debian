@@ -1,3 +1,11 @@
+virt-manager (0.6.0-6) unstable; urgency=low
+
+  * Upload to unstable
+  * [a43bbb1] version the libvirt-bin recommends need a recent version
+    for storage pools
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 19 Nov 2008 13:09:10 +0100
+
 virt-manager (0.6.0-5) experimental; urgency=low
 
   * [2c57e52] Don't try to use the storage pool with qemu:///session
