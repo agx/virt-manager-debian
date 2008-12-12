@@ -6,3 +6,4 @@
 0006-fix-sorting-exceptions.patch
 0007-populate-hostinfo-earlier-in-tick-function-so-it-isn.patch
 0008-qemu-session-can-t-write-to-the-pool-so-use-curren.patch
+0009-allow-non-root-users-for-ssh-connections.patch
