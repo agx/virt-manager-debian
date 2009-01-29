@@ -41,7 +41,11 @@ static gboolean gtk_sparkline_expose(GtkWidget *widget,
 
 enum {
   PROP_0,
-  PROP_DATAARRAY
+  PROP_DATAARRAY,
+  PROP_FILLED,
+  PROP_REVERSED,
+  PROP_NUMSETS,
+  PROP_RGB_ARRAY,
 };
 
 static gpointer parent_class;
@@ -52,7 +56,11 @@ typedef struct _GtkSparklinePrivate GtkSparklinePrivate;
 struct _GtkSparklinePrivate
 {
   gboolean filled;
+  gboolean reversed;
+  gint num_sets;
+  gint points_per_set;
   GValueArray *data_array;
+  GValueArray *rgb_array;
 };
 
 
@@ -88,8 +96,11 @@ static void gtk_sparkline_init (GtkSparkline *sparkline)
   priv = GTK_SPARKLINE_GET_PRIVATE (sparkline);
 
   priv->filled = TRUE;
-  //  priv->filled = FALSE;
+  priv->reversed = FALSE;
   priv->data_array = g_value_array_new(0);
+  priv->rgb_array = g_value_array_new(0);
+  priv->num_sets = 1;
+  priv->points_per_set = 0;
 
   g_signal_connect (G_OBJECT (sparkline), "expose_event",
                     G_CALLBACK (gtk_sparkline_expose), NULL);
@@ -100,6 +111,7 @@ static void gtk_sparkline_class_init (GtkSparklineClass *class)
 {
   GObjectClass *object_class = G_OBJECT_CLASS (class);
   GtkWidgetClass *widget_class = GTK_WIDGET_CLASS (class);
+  GParamSpec *data_array_spec;
 
   parent_class = g_type_class_peek_parent (class);
 
@@ -111,18 +123,48 @@ static void gtk_sparkline_class_init (GtkSparklineClass *class)
   widget_class->size_request = gtk_sparkline_size_request;
   //widget_class->expose_event = gtk_sparkline_expose;
 
+  data_array_spec = g_param_spec_double("data_array_value",
+		     		        "Data array value",
+				        "GValueArray element",
+					0.0,
+					100.0,
+					0,
+					G_PARAM_READABLE | G_PARAM_WRITABLE);
+
   g_object_class_install_property (object_class,
 				   PROP_DATAARRAY,
 				   g_param_spec_value_array ("data_array",
 							     "Data array",
 							     "GValueArray of data",
-							     g_param_spec_double("data_array_value",
-										 "Data array value",
-										 "GValueArray element",
-										 0.0,
-										 100.0,
-										 0,
-										 G_PARAM_READABLE | G_PARAM_WRITABLE),
+							     data_array_spec,
+							     G_PARAM_READABLE | G_PARAM_WRITABLE));
+  g_object_class_install_property (object_class,
+				   PROP_NUMSETS,
+				   g_param_spec_int ("num_sets",
+						     "Num Sets",
+						     "Number of data sets in data",
+						     1, 2, 1,
+						     G_PARAM_READABLE | G_PARAM_WRITABLE));
+  g_object_class_install_property (object_class,
+				   PROP_FILLED,
+				   g_param_spec_boolean ("filled",
+							 "Filled",
+							 "fill space under sparcline",
+							 TRUE,
+							 G_PARAM_READABLE | G_PARAM_WRITABLE));
+  g_object_class_install_property (object_class,
+				   PROP_REVERSED,
+				   g_param_spec_boolean ("reversed",
+						         "Reversed",
+						         "process data from back to front",
+						         FALSE,
+						         G_PARAM_READABLE | G_PARAM_WRITABLE));
+  g_object_class_install_property (object_class,
+				   PROP_RGB_ARRAY,
+				   g_param_spec_value_array ("rgb",
+							     "RGB Array",
+							     "GValueArray of rgb values",
+							     data_array_spec,
 							     G_PARAM_READABLE | G_PARAM_WRITABLE));
 
   g_type_class_add_private (object_class, sizeof (GtkSparklinePrivate));
@@ -130,12 +172,9 @@ static void gtk_sparkline_class_init (GtkSparklineClass *class)
 
 static void gtk_sparkline_finalize (GObject *object)
 {
-  GtkSparkline *cellsparkline = GTK_SPARKLINE (object);
   GtkSparklinePrivate *priv;
 
   priv = GTK_SPARKLINE_GET_PRIVATE (object);
-
-
   (* G_OBJECT_CLASS (parent_class)->finalize) (object);
 }
 
@@ -144,7 +183,6 @@ static void gtk_sparkline_get_property (GObject *object,
 					GValue *value,
 					GParamSpec *pspec)
 {
-  GtkSparkline *cellsparkline = GTK_SPARKLINE (object);
   GtkSparklinePrivate *priv;
 
   priv = GTK_SPARKLINE_GET_PRIVATE (object);
@@ -153,6 +191,18 @@ static void gtk_sparkline_get_property (GObject *object,
     {
     case PROP_DATAARRAY:
       g_value_set_boxed(value, priv->data_array);
+      break;
+
+    case PROP_NUMSETS:
+      g_value_set_int(value, priv->num_sets);
+      break;
+
+    case PROP_FILLED:
+      g_value_set_boolean(value, priv->filled);
+      break;
+
+    case PROP_REVERSED:
+      g_value_set_boolean(value, priv->reversed);
       break;
 
     default:
@@ -167,7 +217,6 @@ gtk_sparkline_set_property (GObject      *object,
 			    const GValue *value,
 			    GParamSpec   *pspec)
 {
-  GtkSparkline *cellsparkline = GTK_SPARKLINE (object);
   GtkSparklinePrivate *priv;
 
   priv = GTK_SPARKLINE_GET_PRIVATE (object);
@@ -177,7 +226,25 @@ gtk_sparkline_set_property (GObject      *object,
     case PROP_DATAARRAY:
       g_value_array_free(priv->data_array);
       priv->data_array = g_value_array_copy(g_value_get_boxed(value));
+      priv->points_per_set = priv->data_array->n_values / priv->num_sets;
       gtk_widget_queue_draw(GTK_WIDGET(object));
+      break;
+
+    case PROP_RGB_ARRAY:
+      g_value_array_free(priv->rgb_array);
+      priv->rgb_array = g_value_array_copy(g_value_get_boxed(value));
+      break;
+
+    case PROP_FILLED:
+      priv->filled = g_value_get_boolean(value);
+      break;
+
+    case PROP_REVERSED:
+      priv->reversed = g_value_get_boolean(value);
+      break;
+
+    case PROP_NUMSETS:
+      priv->num_sets = g_value_get_int(value);
       break;
 
     default:
@@ -189,7 +256,6 @@ gtk_sparkline_set_property (GObject      *object,
 static void gtk_sparkline_size_request(GtkWidget *widget,
 				       GtkRequisition *area)
 {
-  GtkSparkline *sparkline = (GtkSparkline *) widget;
   GtkSparklinePrivate *priv;
   GValueArray *data;
 
@@ -198,17 +264,24 @@ static void gtk_sparkline_size_request(GtkWidget *widget,
   data = priv->data_array;
 
   if (area) {
-    area->width = data->n_values;
+    area->width = data->n_values / priv->num_sets;
     area->height = 20;
   }
 }
 
-static double get_y (GtkAllocation *cell_area,
-		     GValueArray *data,
-		     int index)
+static double get_y (GtkSparklinePrivate *priv, GtkAllocation *cell_area,
+		     GValueArray *data, int set, int index)
 {
   double baseline_y = cell_area->height;
-  GValue *val = g_value_array_get_nth(data, index);
+  int n;
+
+  n = set * priv->points_per_set;
+  if (priv->reversed) 
+    n += priv->points_per_set - 1 - index;
+  else
+    n += index;
+
+  GValue *val = g_value_array_get_nth(data, n);
   return baseline_y - ((cell_area->height-1) * g_value_get_double(val));
 }
 
@@ -219,27 +292,15 @@ gtk_sparkline_expose (GtkWidget *widget,
 {
   GtkSparklinePrivate *priv;
   GValueArray *data;
-  GdkPoint *points;
-  int index;
+  int index, set;
   double pixels_per_point;
   GtkAllocation *cell_area = &widget->allocation;
-#if USE_CAIRO
   cairo_t *cr;
-#endif
 
   priv = GTK_SPARKLINE_GET_PRIVATE (widget);
 
   data = priv->data_array;
-
-  pixels_per_point = (double)cell_area->width / ((double)data->n_values-1);
-
-  points = g_new(GdkPoint, data->n_values);
-  for (index=0;index<data->n_values;index++) {
-    double cx = ((double)index * pixels_per_point);
-    double cy = get_y (cell_area, data, index);
-    points[index].x = cx;
-    points[index].y = cy;
-  }
+  pixels_per_point = (double)cell_area->width / ((double)priv->points_per_set-1);
 
   gdk_draw_rectangle(widget->window,
 		     widget->style->mid_gc[GTK_WIDGET_STATE (widget)],
@@ -266,7 +327,6 @@ gtk_sparkline_expose (GtkWidget *widget,
 		  cell_area->height/NTICKS*index);
   }
 
-#if USE_CAIRO
   cr = gdk_cairo_create (widget->window);
 
   /* Clip to the cell: */
@@ -274,26 +334,34 @@ gtk_sparkline_expose (GtkWidget *widget,
   cairo_rectangle (cr, 0, 0, cell_area->width, cell_area->height);
   cairo_clip (cr);
 
-  /* Render the line: */
+  /* Render the lines: */
   cairo_set_line_width (cr, (double)0.5);
 
-  for (index=0;index<data->n_values;index++) {
-    double cx = points[index].x;
-    double cy = points[index].y;
-    if (index) {
-      cairo_line_to (cr, cx, cy);
-    } else {
-      cairo_move_to (cr, cx, cy);
+  for (set=0; set < priv->num_sets; set++) {
+    if (priv->rgb_array->n_values == priv->num_sets * 3) {
+    	cairo_set_source_rgb (cr, 
+	    g_value_get_double(g_value_array_get_nth(priv->rgb_array, set*3)),
+	    g_value_get_double(g_value_array_get_nth(priv->rgb_array, set*3+1)),
+	    g_value_get_double(g_value_array_get_nth(priv->rgb_array, set*3+2)));
     }
-  }
-  if (data->n_values) {
-    if (priv->filled) {
-      double baseline_y = cell_area->height + cell_area->y;
-      cairo_line_to (cr, cell_area->x + cell_area->width, baseline_y);
-      cairo_line_to (cr, 0, baseline_y);
-      cairo_fill (cr);
-    } else {
-      cairo_stroke (cr);
+    for (index=0; index < priv->points_per_set; index++) {
+      double cx = ((double)index * pixels_per_point);
+      double cy = get_y (priv, cell_area, data, set, index);
+      if (index) {
+        cairo_line_to (cr, cx, cy);
+      } else {
+        cairo_move_to (cr, cx, cy);
+      }
+    }
+    if (priv->points_per_set) {
+        if (priv->filled) {
+          double baseline_y = cell_area->height + cell_area->y;
+          cairo_line_to (cr, cell_area->x + cell_area->width, baseline_y);
+          cairo_line_to (cr, 0, baseline_y);
+          cairo_fill (cr);
+        } else {
+          cairo_stroke (cr);
+      }
     }
   }
 
@@ -301,14 +369,6 @@ gtk_sparkline_expose (GtkWidget *widget,
   cairo_restore (cr);
 
   cairo_destroy (cr);
-
-#else
-  gdk_draw_lines(widget->window,
-		 widget->style->fg_gc[GTK_WIDGET_STATE(widget)],
-		 points, data->n_values);
-#endif
-
-  g_free(points);
 
   return TRUE;
 }

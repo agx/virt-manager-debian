@@ -21,14 +21,12 @@
 import gobject
 import gtk
 import gtk.glade
-import libvirt
 import sparkline
-import logging
-import os
 import traceback
 
 from virtinst import Storage
 
+from virtManager.connection import vmmConnection
 from virtManager.createnet import vmmCreateNetwork
 from virtManager.createpool import vmmCreatePool
 from virtManager.createvol import vmmCreateVolume
@@ -76,7 +74,10 @@ class vmmHost(gobject.GObject):
         self.window.get_widget("vol-list").set_model(volListModel)
 
         self.volmenu = gtk.Menu()
-        volCopyPath = gtk.MenuItem("Copy Volume Path")
+        volCopyPath = gtk.ImageMenuItem(_("Copy Volume Path"))
+        volCopyImage = gtk.Image()
+        volCopyImage.set_from_stock(gtk.STOCK_COPY, gtk.ICON_SIZE_MENU)
+        volCopyPath.set_image(volCopyImage)
         volCopyPath.show()
         volCopyPath.connect("activate", self.copy_vol_path)
         self.volmenu.add(volCopyPath)
@@ -158,6 +159,8 @@ class vmmHost(gobject.GObject):
         self.conn.connect("pool-started", self.refresh_storage_pool)
         self.conn.connect("pool-stopped", self.refresh_storage_pool)
 
+        self.conn.connect("state-changed", self.conn_state_changed)
+
         self.window.signal_autoconnect({
             "on_menu_file_close_activate": self.close,
             "on_vmm_host_delete_event": self.close,
@@ -181,9 +184,7 @@ class vmmHost(gobject.GObject):
             })
 
         self.conn.connect("resources-sampled", self.refresh_resources)
-        self.refresh_resources()
-        self.reset_pool_state()
-        self.reset_net_state()
+        self.reset_state()
 
     def show(self):
         # Update autostart value
@@ -193,7 +194,7 @@ class vmmHost(gobject.GObject):
 
     def is_visible(self):
         if self.window.get_widget("vmm-host").flags() & gtk.VISIBLE:
-           return 1
+            return 1
         return 0
 
     def close(self,ignore1=None,ignore2=None):
@@ -208,11 +209,17 @@ class vmmHost(gobject.GObject):
            self.window.get_widget("config-autoconnect").get_active():
             self.conn.toggle_autoconnect()
 
+    def reset_state(self):
+        self.refresh_resources()
+        self.reset_pool_state()
+        self.reset_net_state()
+        self.conn_state_changed()
+
     def refresh_resources(self, ignore=None):
         self.window.get_widget("performance-cpu").set_text("%d %%" % self.conn.cpu_time_percentage())
         vm_memory = self.conn.pretty_current_memory()
         host_memory = self.conn.pretty_host_memory_size()
-        self.window.get_widget("performance-memory").set_text("%s of %s" % (vm_memory, host_memory))
+        self.window.get_widget("performance-memory").set_text(_("%(currentmem)s of %(maxmem)s") % {'currentmem': vm_memory, 'maxmem': host_memory})
 
         cpu_vector = self.conn.cpu_time_vector()
         cpu_vector.reverse()
@@ -221,6 +228,11 @@ class vmmHost(gobject.GObject):
         memory_vector = self.conn.current_memory_vector()
         memory_vector.reverse()
         self.memory_usage_graph.set_property("data_array", memory_vector)
+
+    def conn_state_changed(self, ignore1=None):
+        state = (self.conn.get_state() == vmmConnection.STATE_ACTIVE)
+        self.window.get_widget("net-add").set_sensitive(state)
+        self.window.get_widget("pool-add").set_sensitive(state)
 
     # -------------------------
     # Virtual Network functions
@@ -231,8 +243,8 @@ class vmmHost(gobject.GObject):
         if net is None:
             return
 
-        result = self.err.yes_no(_("This will permanently delete the network "
-                                   "'%s,' are you sure?") % net.get_name())
+        result = self.err.yes_no(_("Are you sure you want to permanently "
+                                   "delete the network %s?") % net.get_name())
         if not result:
             return
         try:
@@ -421,8 +433,8 @@ class vmmHost(gobject.GObject):
         if pool is None:
             return
 
-        result = self.err.yes_no(_("This will permanently delete the pool "
-                                   "'%s,' are you sure?") % pool.get_name())
+        result = self.err.yes_no(_("Are you sure you want to permanently "
+                                   "delete the pool %s?") % pool.get_name())
         if not result:
             return
         try:
@@ -436,8 +448,8 @@ class vmmHost(gobject.GObject):
         if vol is None:
             return
 
-        result = self.err.yes_no(_("This will permanently delete the volume "
-                                   "'%s,' are you sure?") % vol.get_name())
+        result = self.err.yes_no(_("Are you sure you want to permanently "
+                                   "delete the volume %s?") % vol.get_name())
         if not result:
             return
 
@@ -599,13 +611,9 @@ class vmmHost(gobject.GObject):
         self.window.get_widget("vol-delete").set_sensitive(True)
 
     def popup_vol_menu(self, widget, event):
-        tup = widget.get_path_at_pos(int(event.x), int(event.y))
-        if tup == None:
-            return False
-        path = tup[0]
-        model = widget.get_model()
-        iter = model.get_iter(path)
-        vol = model.get_value(iter, 0)
+        if event.button != 3:
+            return
+
         self.volmenu.popup(None, None, None, 0, event.time)
 
     def copy_vol_path(self, ignore=None):
@@ -624,11 +632,11 @@ class vmmHost(gobject.GObject):
     def get_pool_size_percent(self, uuid):
         pool = self.conn.get_pool(uuid)
         cap = pool.get_capacity()
-        all = pool.get_allocation()
-        if not cap or all is None:
+        alloc = pool.get_allocation()
+        if not cap or alloc is None:
             per = 0
         else:
-            per = int(((float(all) / float(cap)) * 100))
+            per = int(((float(alloc) / float(cap)) * 100))
         return per
 
     def populate_storage_pools(self, model):

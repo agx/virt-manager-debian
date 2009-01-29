@@ -22,11 +22,7 @@ import gobject
 import gtk
 import gtk.gdk
 import gtk.glade
-import libvirt
-import virtinst
-import os, sys
 import logging
-import dbus
 import re
 import traceback
 
@@ -274,7 +270,7 @@ class vmmCreateNetwork(gobject.GObject):
 
     def is_visible(self):
         if self.topwin.flags() & gtk.VISIBLE:
-           return 1
+            return 1
         return 0
 
     def finish(self, ignore=None):
@@ -306,6 +302,7 @@ class vmmCreateNetwork(gobject.GObject):
         except Exception, e:
             self.err.show_err(_("Error creating virtual network: %s" % str(e)),
                               "".join(traceback.format_exc()))
+            return
         self.close()
 
     def validate(self, page_num):

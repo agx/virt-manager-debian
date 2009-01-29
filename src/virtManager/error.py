@@ -19,23 +19,27 @@
 
 import gtk
 import gtk.glade
-import pango
 
 import logging
 
 class vmmErrorDialog (gtk.MessageDialog):
-    def __init__ (self, parent=None, flags=0, type=gtk.MESSAGE_INFO,
+    def __init__ (self, parent=None, flags=0, typ=gtk.MESSAGE_INFO,
                   buttons=gtk.BUTTONS_NONE, message_format=None,
                   message_details=None, default_title=_("Error")):
         gtk.MessageDialog.__init__ (self,
-                                    parent, flags, type, buttons,
+                                    parent, flags, typ, buttons,
                                     message_format)
+
+        self.val_err_box = None
+
         self.message_format = message_format
         self.message_details = message_details
         self.buffer = None
         self.default_title = default_title
         self.set_title(self.default_title)
         self.set_property("text", self.message_format)
+        self.connect("response", self.response_cb)
+        self.connect("delete-event", self.hide_on_delete)
 
         if not message_details is None:
             # Expander section with details.
@@ -58,29 +62,45 @@ class vmmErrorDialog (gtk.MessageDialog):
             self.vbox.pack_start (expander)
             expander.show ()
 
-    def show_err(self, summary, details, title=None):
+    def response_cb(self, src, ignore):
+        src.hide()
+
+    def show_err(self, summary, details, title=None, async=True):
+        self.hide()
+
         if title is None:
             title = self.default_title
         self.set_title(title)
         self.set_property("text", summary)
         self.buffer.set_text(details)
         logging.debug("Uncaught Error: %s : %s" % (summary, details))
-        self.run()
-        self.hide()
+
+        if async:
+            self.show()
+        else:
+            self.run()
 
     def val_err(self, text1, text2=None, title=None):
-        message_box = gtk.MessageDialog(self.parent, \
-                                        gtk.DIALOG_DESTROY_WITH_PARENT, \
-                                        gtk.MESSAGE_ERROR,\
-                                        gtk.BUTTONS_OK, text1)
+        def response_destroy(src, ignore):
+            src.destroy()
+
+        if self.val_err_box:
+            self.val_err_box.destroy()
+
+        self.val_err_box = gtk.MessageDialog(self.parent,
+                                             gtk.DIALOG_DESTROY_WITH_PARENT,
+                                             gtk.MESSAGE_ERROR,
+                                             gtk.BUTTONS_OK, text1)
+
         if title is None:
             title = _("Input Error")
         logging.debug("Validation Error: %s" % text1)
-        message_box.set_title(title)
+        self.val_err_box.set_title(title)
         if text2 is not None:
-            message_box.format_secondary_text(text2)
-        message_box.run()
-        message_box.destroy()
+            self.val_err_box.format_secondary_text(text2)
+
+        self.val_err_box.show()
+        self.val_err_box.connect("response", response_destroy)
         return False
 
     def yes_no(self, text1, text2=None):

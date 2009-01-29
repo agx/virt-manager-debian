@@ -22,9 +22,7 @@ import gobject
 import libvirt
 import libxml2
 import os
-import sys
 import logging
-import copy
 import virtinst.util as util
 
 class vmmDomain(gobject.GObject):
@@ -45,8 +43,30 @@ class vmmDomain(gobject.GObject):
         self.uuid = uuid
         self.lastStatus = None
         self.record = []
+        self.maxRecord = { "diskRdRate" : 10.0,
+                           "diskWrRate" : 10.0,
+                           "netTxRate"  : 10.0,
+                           "netRxRate"  : 10.0,
+                         }
+
         self._update_status()
         self.xml = None
+
+        self._mem_stats = None
+        self._cpu_stats = None
+        self._network_traffic = None
+        self._disk_io = None
+
+        self.config.on_stats_enable_mem_poll_changed(self.toggle_sample_mem_stats)
+        self.config.on_stats_enable_cpu_poll_changed(self.toggle_sample_cpu_stats)
+        self.config.on_stats_enable_net_poll_changed(self.toggle_sample_network_traffic)
+        self.config.on_stats_enable_disk_poll_changed(self.toggle_sample_disk_io)
+
+        self.toggle_sample_mem_stats()
+        self.toggle_sample_cpu_stats()
+        self.toggle_sample_network_traffic()
+        self.toggle_sample_disk_io()
+
 
     def get_xml(self):
         if self.xml is None:
@@ -73,10 +93,10 @@ class vmmDomain(gobject.GObject):
         return self.vm.ID()
 
     def get_id_pretty(self):
-        id = self.get_id()
-        if id < 0:
+        i = self.get_id()
+        if i < 0:
             return "-"
-        return str(id)
+        return str(i)
 
     def get_name(self):
         return self.vm.name()
@@ -149,18 +169,18 @@ class vmmDomain(gobject.GObject):
             self.lastStatus = status
             self.emit("status-changed", status)
 
-    def tick(self, now):
-        if self.connection.get_state() != self.connection.STATE_ACTIVE:
-            return
-        # Clear cached XML
-        self.xml = None
-        hostInfo = self.connection.get_host_info()
-        info = self.vm.info()
-        expected = self.config.get_stats_history_length()
-        current = len(self.record)
-        if current > expected:
-            del self.record[expected:current]
+    def _sample_mem_stats_dummy(self, ignore):
+        return 0, 0
 
+    def _sample_mem_stats(self, info):
+        pcentCurrMem = info[2] * 100.0 / self.connection.host_memory_size()
+        pcentMaxMem = info[1] * 100.0 / self.connection.host_memory_size()
+        return pcentCurrMem, pcentMaxMem
+
+    def _sample_cpu_stats_dummy(self, ignore, ignore1):
+        return 0, 0, 0
+
+    def _sample_cpu_stats(self, info, now):
         prevCpuTime = 0
         prevTimestamp = 0
         if len(self.record) > 0:
@@ -170,11 +190,14 @@ class vmmDomain(gobject.GObject):
         cpuTime = 0
         cpuTimeAbs = 0
         pcentCpuTime = 0
-        if not(info[0] in [libvirt.VIR_DOMAIN_SHUTOFF, libvirt.VIR_DOMAIN_CRASHED]):
+        if not (info[0] in [libvirt.VIR_DOMAIN_SHUTOFF,
+                            libvirt.VIR_DOMAIN_CRASHED]):
             cpuTime = info[4] - prevCpuTime
             cpuTimeAbs = info[4]
 
-            pcentCpuTime = (cpuTime) * 100.0 / ((now - prevTimestamp)*1000.0*1000.0*1000.0*self.connection.host_active_processor_count())
+            pcentCpuTime = ((cpuTime) * 100.0 /
+                            (((now - prevTimestamp)*1000.0*1000.0*1000.0) *
+                               self.connection.host_active_processor_count()))
             # Due to timing diffs between getting wall time & getting
             # the domain's time, its possible to go a tiny bit over
             # 100% utilization. This freaks out users of the data, so
@@ -185,6 +208,64 @@ class vmmDomain(gobject.GObject):
             if pcentCpuTime < 0.0:
                 pcentCpuTime = 0.0
 
+        return cpuTime, cpuTimeAbs, pcentCpuTime
+
+    def _sample_network_traffic_dummy(self):
+        return 0, 0
+
+    def _sample_network_traffic(self):
+        rx = 0
+        tx = 0
+        for netdev in self.get_network_devices():
+            try:
+                io = self.vm.interfaceStats(netdev[4])
+                if io:
+                    rx += io[0]
+                    tx += io[4]
+            except libvirt.libvirtError, err:
+                logging.error("Error reading interface stats %s" % err)
+        return rx, tx
+
+    def _sample_disk_io_dummy(self):
+        return 0, 0
+
+    def _sample_disk_io(self):
+        rd = 0
+        wr = 0
+        for disk in self.get_disk_devices():
+            try:
+                io = self.vm.blockStats(disk[2])
+                if io:
+                    rd += io[1]
+                    wr += io[3]
+            except libvirt.libvirtError, err:
+                logging.error("Error reading block stats %s" % err)
+        return rd, wr
+
+    def _get_cur_rate(self, what):
+        if len(self.record) > 1:
+            ret = float(self.record[0][what] - self.record[1][what]) / \
+                      float(self.record[0]["timestamp"] - self.record[1]["timestamp"])
+        else:
+            ret = 0.0
+        return max(ret, 0,0) # avoid negative values at poweroff
+
+    def _set_max_rate(self, what):
+        if self.record[0][what] > self.maxRecord[what]:
+            self.maxRecord[what] = self.record[0][what]
+
+    def tick(self, now):
+        if self.connection.get_state() != self.connection.STATE_ACTIVE:
+            return
+
+        # Clear cached XML
+        self.xml = None
+        info = self.vm.info()
+        expected = self.config.get_stats_history_length()
+        current = len(self.record)
+        if current > expected:
+            del self.record[expected:current]
+
         # Xen reports complete crap for Dom0 max memory
         # (ie MAX_LONG) so lets clamp it to the actual
         # physical RAM in machine which is the effective
@@ -193,8 +274,10 @@ class vmmDomain(gobject.GObject):
         if self.get_id() == 0:
             info[1] = self.connection.host_memory_size()
 
-        pcentCurrMem = info[2] * 100.0 / self.connection.host_memory_size()
-        pcentMaxMem = info[1] * 100.0 / self.connection.host_memory_size()
+        cpuTime, cpuTimeAbs, pcentCpuTime = self._cpu_stats(info, now)
+        pcentCurrMem, pcentMaxMem = self._mem_stats(info)
+        rdBytes, wrBytes = self._disk_io()
+        rxBytes, txBytes = self._network_traffic()
 
         newStats = { "timestamp": now,
                      "cpuTime": cpuTime,
@@ -205,11 +288,14 @@ class vmmDomain(gobject.GObject):
                      "vcpuCount": info[3],
                      "maxMem": info[1],
                      "maxMemPercent": pcentMaxMem,
+                     "diskRdKB": rdBytes / 1024,
+                     "diskWrKB": wrBytes / 1024,
+                     "netRxKB": rxBytes / 1024,
+                     "netTxKB": txBytes / 1024,
                      }
 
         self.record.insert(0, newStats)
         nSamples = 5
-        #nSamples = len(self.record)
         if nSamples > len(self.record):
             nSamples = len(self.record)
 
@@ -222,6 +308,10 @@ class vmmDomain(gobject.GObject):
         else:
             self.record[0]["cpuTimeMovingAvg"] = (self.record[0]["cpuTimeAbs"]-startCpuTime) / nSamples
             self.record[0]["cpuTimeMovingAvgPercent"] = (self.record[0]["cpuTimeAbs"]-startCpuTime) * 100.0 / ((now-startTimestamp)*1000.0*1000.0*1000.0 * self.connection.host_active_processor_count())
+
+        for r in [ "diskRd", "diskWr", "netRx", "netTx" ]:
+            self.record[0][r + "Rate"] = self._get_cur_rate(r + "KB")
+            self._set_max_rate(r + "Rate")
 
         self._update_status(info[0])
         self.emit("resources-sampled")
@@ -297,17 +387,31 @@ class vmmDomain(gobject.GObject):
     def cpu_time_pretty(self):
         return "%2.2f %%" % self.cpu_time_percentage()
 
-    def network_traffic(self):
-        return 1
+    def network_rx_rate(self):
+        if len(self.record) == 0:
+            return 0
+        return self.record[0]["netRxRate"]
 
-    def network_traffic_percentage(self):
-        return 1
+    def network_tx_rate(self):
+        if len(self.record) == 0:
+            return 0
+        return self.record[0]["netTxRate"]
 
-    def disk_usage(self):
-        return 1
+    def network_traffic_rate(self):
+        return self.network_tx_rate() + self.network_rx_rate()
 
-    def disk_usage_percentage(self):
-        return 1
+    def disk_read_rate(self):
+        if len(self.record) == 0:
+            return 0
+        return self.record[0]["diskRdRate"]
+
+    def disk_write_rate(self):
+        if len(self.record) == 0:
+            return 0
+        return self.record[0]["diskWrRate"]
+
+    def disk_io_rate(self):
+        return self.disk_read_rate() + self.disk_write_rate()
 
     def vcpu_count(self):
         if len(self.record) == 0:
@@ -354,19 +458,43 @@ class vmmDomain(gobject.GObject):
                 vector.append(0)
         return vector
 
+    def in_out_vector_limit(self, data, limit):
+        l = len(data)/2
+        end = [l, limit][l > limit]
+        if l > limit:
+            data = data[0:end] + data[l:l+end]
+        d = map(lambda x,y: (x + y)/2, data[0:end], data[end:end*2]) 
+        return d
+
     def network_traffic_vector(self):
         vector = []
         stats = self.record
-        for i in range(self.config.get_stats_history_length()+1):
-            vector.append(0)
+        ceil = float(max(self.maxRecord["netRxRate"], self.maxRecord["netTxRate"]))
+        for n in [ "netRxRate", "netTxRate" ]:
+            for i in range(self.config.get_stats_history_length()+1):
+                if i < len(stats):
+                    vector.append(float(stats[i][n])/ceil)
+                else:
+                    vector.append(0.0)
         return vector
 
-    def disk_usage_vector(self):
+    def network_traffic_vector_limit(self, limit):
+        return self.in_out_vector_limit(self.network_traffic_vector(), limit)
+
+    def disk_io_vector(self):
         vector = []
         stats = self.record
-        for i in range(self.config.get_stats_history_length()+1):
-            vector.append(0)
+        ceil = float(max(self.maxRecord["diskRdRate"], self.maxRecord["diskWrRate"]))
+        for n in [ "diskRdRate", "diskWrRate" ]:
+            for i in range(self.config.get_stats_history_length()+1):
+                if i < len(stats):
+                    vector.append(float(stats[i][n])/ceil)
+                else:
+                    vector.append(0.0)
         return vector
+
+    def disk_io_vector_limit(self, limit):
+        return self.in_out_vector_limit(self.disk_io_vector(), limit)
 
     def shutdown(self):
         self.vm.shutdown()
@@ -391,14 +519,14 @@ class vmmDomain(gobject.GObject):
         self.vm.resume()
         self._update_status()
 
-    def save(self, file, ignore1=None, background=True):
+    def save(self, filename, ignore1=None, background=True):
         if background:
             conn = libvirt.open(self.connection.uri)
             vm = conn.lookupByID(self.get_id())
         else:
             vm = self.vm
 
-        vm.save(file)
+        vm.save(filename)
         self._update_status()
 
     def destroy(self):
@@ -413,7 +541,7 @@ class vmmDomain(gobject.GObject):
         elif self.lastStatus == libvirt.VIR_DOMAIN_PAUSED:
             return _("Paused")
         elif self.lastStatus == libvirt.VIR_DOMAIN_SHUTDOWN:
-            return _("Shutdown")
+            return _("Shuting Down")
         elif self.lastStatus == libvirt.VIR_DOMAIN_SHUTOFF:
             return _("Shutoff")
         elif self.lastStatus == libvirt.VIR_DOMAIN_CRASHED:
@@ -424,24 +552,44 @@ class vmmDomain(gobject.GObject):
     def run_status_icon(self):
         return self.config.get_vm_status_icon(self.status())
 
-    def get_serial_console_tty(self):
-        return util.get_xml_path(self.get_xml(), "/domain/devices/console/@tty")
-
-    def is_serial_console_tty_accessible(self):
+    def _is_serial_console_tty_accessible(self, path):
         # pty serial scheme doesn't work over remote
         if self.connection.is_remote():
             return False
-        tty = self.get_serial_console_tty()
-        if tty == None:
+
+        if path == None:
             return False
-        return os.access(tty, os.R_OK | os.W_OK)
+        return os.access(path, os.R_OK | os.W_OK)
+
+    def get_serial_devs(self):
+        def _parse_serial_consoles(ctx):
+            # [ Name, device type, source path
+            serial_list = []
+            devs = ctx.xpathEval("/domain/devices/serial")
+            for node in devs:
+                name = "Serial "
+                dev_type = node.prop("type")
+                source_path = None
+
+                for child in node.children:
+                    if child.name == "target":
+                        target_port = child.prop("port")
+                        if target_port:
+                            name += str(target_port)
+                    if child.name == "source":
+                        source_path = child.prop("path")
+
+                serial_list.append([name, dev_type, source_path])
+
+            return serial_list
+        return self._parse_device_xml(_parse_serial_consoles)
 
     def get_graphics_console(self):
         self.xml = None
-        type = util.get_xml_path(self.get_xml(),
-                                 "/domain/devices/graphics/@type")
+        typ = util.get_xml_path(self.get_xml(),
+                                "/domain/devices/graphics/@type")
         port = None
-        if type == "vnc":
+        if typ == "vnc":
             port = util.get_xml_path(self.get_xml(),
                                      "/domain/devices/graphics[@type='vnc']/@port")
             if port is not None:
@@ -453,17 +601,23 @@ class vmmDomain(gobject.GObject):
             # reliably resolve 'localhost' into 127.0.0.1, either returning
             # the public IP, or an IPv6 addr. Neither work since QEMU only
             # listens on 127.0.0.1 for VNC.
-            return [type, "127.0.0.1", port, None, None]
+            return [typ, "127.0.0.1", port, None, None]
         else:
-            return [type, self.connection.get_hostname(), port, transport, username]
+            return [typ, self.connection.get_hostname(), port, transport, username]
 
+
+    # ----------------
+    # get_X_devices functions: return a list of lists. Each sublist represents
+    # a device, of the format:
+    # [ device_type, unique_attribute(s), hw column label, attr1, attr2, ... ]
+    # ----------------
 
     def get_disk_devices(self):
         def _parse_disk_devs(ctx):
             disks = []
             ret = ctx.xpathEval("/domain/devices/disk")
             for node in ret:
-                type = node.prop("type")
+                typ = node.prop("type")
                 srcpath = None
                 devdst = None
                 bus = None
@@ -474,12 +628,12 @@ class vmmDomain(gobject.GObject):
                     devtype = "disk"
                 for child in node.children:
                     if child.name == "source":
-                        if type == "file":
+                        if typ == "file":
                             srcpath = child.prop("file")
-                        elif type == "block":
+                        elif typ == "block":
                             srcpath = child.prop("dev")
-                        elif type == None:
-                            type = "-"
+                        elif typ == None:
+                            typ = "-"
                     elif child.name == "target":
                         devdst = child.prop("dev")
                         bus = child.prop("bus")
@@ -489,41 +643,23 @@ class vmmDomain(gobject.GObject):
                         sharable = True
 
                 if srcpath == None:
-                    if devtype == "cdrom":
+                    if devtype == "cdrom" or devtype == "floppy":
                         srcpath = "-"
-                        type = "block"
+                        typ = "block"
                     else:
                         raise RuntimeError("missing source path")
                 if devdst == None:
                     raise RuntimeError("missing destination device")
 
-                disks.append([type, srcpath, devtype, devdst, readonly, \
-                              sharable, bus])
+                # [ devicetype, unique, device target, source path,
+                #   disk device type, disk type, readonly?, sharable?,
+                #   bus type ]
+                disks.append(["disk", devdst, devdst, srcpath, devtype, typ,
+                              readonly, sharable, bus])
 
             return disks
 
         return self._parse_device_xml(_parse_disk_devs)
-
-    def get_disk_xml(self, target):
-        """Returns device xml in string form for passed disk target"""
-        xml = self.get_xml()
-        doc = None
-        ctx = None
-        try:
-            doc = libxml2.parseDoc(xml)
-            ctx = doc.xpathNewContext()
-            disk_fragment = ctx.xpathEval("/domain/devices/disk[target/@dev='%s']" % target)
-            if len(disk_fragment) == 0:
-                raise RuntimeError("Attmpted to parse disk device %s, but %s does not exist" % (target,target))
-            if len(disk_fragment) > 1:
-                raise RuntimeError("Found multiple disk devices named %s. This domain's XML is malformed." % target)
-            result = disk_fragment[0].serialize()
-        finally:
-            if ctx != None:
-                ctx.xpathFreeContext()
-            if doc != None:
-                doc.freeDoc()
-        return result
 
     def get_network_devices(self):
         def _parse_network_devs(ctx):
@@ -531,20 +667,20 @@ class vmmDomain(gobject.GObject):
             ret = ctx.xpathEval("/domain/devices/interface")
 
             for node in ret:
-                type = node.prop("type")
+                typ = node.prop("type")
                 devmac = None
                 source = None
                 target = None
                 model = None
                 for child in node.children:
                     if child.name == "source":
-                        if type == "bridge":
+                        if typ == "bridge":
                             source = child.prop("bridge")
-                        elif type == "ethernet":
+                        elif typ == "ethernet":
                             source = child.prop("dev")
-                        elif type == "network":
+                        elif typ == "network":
                             source = child.prop("network")
-                        elif type == "user":
+                        elif typ == "user":
                             source = None
                         else:
                             source = None
@@ -558,7 +694,10 @@ class vmmDomain(gobject.GObject):
                 # need mac for uniqueness. Some reason XenD doesn't
                 # always complete kill the NIC record
                 if devmac != None:
-                    nics.append([type, source, target, devmac, model])
+                    # [device type, unique, mac addr, source, target dev,
+                    #  net type, net model]
+                    nics.append(["interface", devmac, devmac, source, target,
+                                 typ, model])
             return nics
 
         return self._parse_device_xml(_parse_network_devs)
@@ -569,11 +708,11 @@ class vmmDomain(gobject.GObject):
             ret = ctx.xpathEval("/domain/devices/input")
 
             for node in ret:
-                type = node.prop("type")
+                typ = node.prop("type")
                 bus = node.prop("bus")
-                # XXX Replace 'None' with device model when libvirt supports
-                # that
-                inputs.append([type, bus, None, type + ":" + bus])
+
+                # [device type, unique, display string, bus type, input type]
+                inputs.append(["input", (typ, bus), typ + ":" + bus, bus, typ])
             return inputs
 
         return self._parse_device_xml(_parse_input_devs)
@@ -583,14 +722,18 @@ class vmmDomain(gobject.GObject):
             graphics = []
             ret = ctx.xpathEval("/domain/devices/graphics[1]")
             for node in ret:
-                type = node.prop("type")
-                if type == "vnc":
+                typ = node.prop("type")
+                listen = None
+                port = None
+                keymap = None
+                if typ == "vnc":
                     listen = node.prop("listen")
                     port = node.prop("port")
                     keymap = node.prop("keymap")
-                    graphics.append([type, listen, port, type, keymap])
-                else:
-                    graphics.append([type, None, None, type])
+
+                # [device type, unique, graphics type, listen addr, port,
+                #  keymap ]
+                graphics.append(["graphics", typ, typ, listen, port, keymap])
             return graphics
 
         return self._parse_device_xml(_parse_graphics_devs)
@@ -600,7 +743,10 @@ class vmmDomain(gobject.GObject):
             sound = []
             ret = ctx.xpathEval("/domain/devices/sound")
             for node in ret:
-                sound.append([None, None, None, node.prop("model")])
+                model = node.prop("model")
+
+                # [device type, unique, sound model]
+                sound.append(["sound", model, model])
             return sound
 
         return self._parse_device_xml(_parse_sound_devs)
@@ -634,8 +780,11 @@ class vmmDomain(gobject.GObject):
                 if not source_path:
                     source_path = node.prop("tty")
 
-                dev = [char_type, dev_type, target_port,
-                       "%s:%s" % (char_type, target_port), source_path, False]
+                # [device type, unique, display string, target_port,
+                #  char device type, source_path, is_console_dup_of_serial?
+                dev = [char_type, target_port,
+                       "%s:%s" % (char_type, target_port), target_port,
+                       dev_type, source_path, False]
 
                 if node.name == "console":
                     cons_port = target_port
@@ -644,7 +793,7 @@ class vmmDomain(gobject.GObject):
                 elif node.name == "serial" and cons_port \
                    and target_port == cons_port:
                     # Console is just a dupe of this serial device
-                    dev[5] = True
+                    dev[6] = True
                     list_cons = False
 
                 chars.append(dev)
@@ -656,16 +805,112 @@ class vmmDomain(gobject.GObject):
 
         return self._parse_device_xml(_parse_char_devs)
 
+    def get_hostdev_devices(self):
+        def _parse_hostdev_devs(ctx):
+            hostdevs = []
+            devs = ctx.xpathEval("/domain/devices/hostdev")
+
+            for dev in devs:
+                vendor  = None
+                product = None
+                addrbus = None
+                addrdev = None
+                unique = {}
+
+                # String shown in the devices details section
+                srclabel = ""
+                # String shown in the VMs hardware list
+                hwlabel = ""
+
+                def dehex(val):
+                    if val.startswith("0x"):
+                        val = val[2:]
+                    return val
+
+                def safeint(val, fmt="%.3d"):
+                    try:
+                        int(val)
+                    except:
+                        return str(val)
+                    return fmt % int(val)
+
+                def set_uniq(baseent, propname, node):
+                    val = node.prop(propname)
+                    if not unique.has_key(baseent):
+                        unique[baseent] = {}
+                    unique[baseent][propname] = val
+                    return val
+
+                mode = dev.prop("mode")
+                typ  = dev.prop("type")
+                unique["type"] = typ
+
+                hwlabel = typ.upper()
+                srclabel = typ.upper()
+
+                for node in dev.children:
+                    if node.name == "source":
+                        for child in node.children:
+                            if child.name == "address":
+                                addrbus = set_uniq("address", "bus", child)
+
+                                # For USB
+                                addrdev = set_uniq("address", "device", child)
+
+                                # For PCI
+                                addrdom = set_uniq("address", "domain", child)
+                                addrslt = set_uniq("address", "slot", child)
+                                addrfun = set_uniq("address", "function", child)
+                            elif child.name == "vendor":
+                                vendor = set_uniq("vendor", "id", child)
+                            elif child.name == "product":
+                                product = set_uniq("product", "id", child)
+
+                if vendor and product:
+                    # USB by vendor + product
+                    devstr = " %s:%s" % (dehex(vendor), dehex(product))
+                    srclabel += devstr
+                    hwlabel += devstr
+
+                elif addrbus and addrdev:
+                    # USB by bus + dev
+                    srclabel += " Bus %s Device %s" % \
+                                (safeint(addrbus), safeint(addrdev))
+                    hwlabel += " %s:%s" % (safeint(addrbus), safeint(addrdev))
+
+                elif addrbus and addrslt and addrfun and addrdom:
+                    # PCI by bus:slot:function
+                    devstr = " %s:%s:%s.%s" % \
+                              (dehex(addrdom), dehex(addrbus),
+                               dehex(addrslt), dehex(addrfun))
+                    srclabel += devstr
+                    hwlabel += devstr
+
+                else:
+                    # If we can't determine source info, skip these
+                    # device since we have no way to determine uniqueness
+                    continue
+
+                # [device type, unique, hwlist label, hostdev mode,
+                #  hostdev type, source desc label]
+                hostdevs.append(["hostdev", unique, hwlabel, mode, typ,
+                                 srclabel])
+
+            return hostdevs
+        return self._parse_device_xml(_parse_hostdev_devs)
+
+
     def _parse_device_xml(self, parse_function):
         doc = None
         ctx = None
         ret = []
         try:
-            doc = libxml2.parseDoc(self.get_xml())
-            ctx = doc.xpathNewContext()
-            ret = parse_function(ctx)
-        except Exception, e:
-            logging.debug("Error parsing domain xml: %s" % str(e))
+            try:
+                doc = libxml2.parseDoc(self.get_xml())
+                ctx = doc.xpathNewContext()
+                ret = parse_function(ctx)
+            except Exception, e:
+                raise RuntimeError(_("Error parsing domain xml: %s") % str(e))
         finally:
             if ctx:
                 ctx.xpathFreeContext()
@@ -678,99 +923,141 @@ class vmmDomain(gobject.GObject):
         index = xml.find("</devices>")
         return xml[0:index] + devxml + xml[index:]
 
-    def _remove_xml_device(self, xml, devxml):
-        """Remove device 'devxml' from devices section of 'xml, return
-           result"""
+    def get_device_xml(self, dev_type, dev_id_info):
+        vmxml = self.vm.XMLDesc(0)
         doc = None
-        try:
-            doc = libxml2.parseDoc(xml)
-        except:
-            return
-        ctx = doc.xpathNewContext()
-        try:
-            dev_doc = libxml2.parseDoc(devxml)
-        except:
-            raise RuntimeError("Device XML would not parse")
-        dev_ctx = dev_doc.xpathNewContext()
-        ret = None
+        ctx = None
 
         try:
-            dev = dev_ctx.xpathEval("//*")
-            dev_type = dev[0].name
-            if dev_type=="interface":
-                address = dev_ctx.xpathEval("/interface/mac/@address")
-                if len(address) > 0 and address[0].content != None:
-                    logging.debug("The mac address appears to be %s" % address[0].content)
-                    ret = ctx.xpathEval("/domain/devices/interface[mac/@address='%s']" % address[0].content)
+            doc = libxml2.parseDoc(vmxml)
+            ctx = doc.xpathNewContext()
+            nodes = self._get_device_xml_helper(ctx, dev_type, dev_id_info)
 
-            elif dev_type=="disk":
-                path = dev_ctx.xpathEval("/disk/target/@dev")
-                if len(path) > 0 and path[0].content != None:
-                    logging.debug("Looking for path %s" % path[0].content)
-                    ret = ctx.xpathEval("/domain/devices/disk[target/@dev='%s']" % path[0].content)
+            if nodes:
+                return nodes[0].serialize()
 
-            elif dev_type=="input":
-                type = dev_ctx.xpathEval("/input/@type")
-                bus = dev_ctx.xpathEval("/input/@bus")
-                if len(type) > 0 and type[0].content != None and len(bus) > 0 and bus[0].content != None:
-                    logging.debug("Looking for type %s bus %s" % (type[0].content, bus[0].content))
-                    ret = ctx.xpathEval("/domain/devices/input[@type='%s' and @bus='%s']" % (type[0].content, bus[0].content))
-
-            elif dev_type=="graphics":
-                type = dev_ctx.xpathEval("/graphics/@type")
-                if len(type) > 0 and type[0].content != None:
-                    logging.debug("Looking for type %s" % type[0].content)
-                    ret = ctx.xpathEval("/domain/devices/graphics[@type='%s']" % type[0].content)
-
-            elif dev_type == "sound":
-                model = dev_ctx.xpathEval("/sound/@model")
-                if len(model) > 0 and model[0].content != None:
-                    logging.debug("Looking for type %s" % model[0].content)
-                    ret = ctx.xpathEval("/domain/devices/sound[@model='%s']" % model[0].content)
-
-            elif dev_type == "parallel" or dev_type == "console" or \
-                 dev_type == "serial":
-                 port = dev_ctx.xpathEval("/%s/target/@port" % dev_type)
-                 if port and len(port) > 0 and port[0].content != None:
-                    logging.debug("Looking for %s w/ port %s" % (dev_type,
-                                                                 port))
-                    ret = ctx.xpathEval("/domain/devices/%s[target/@port='%s']" % (dev_type, port[0].content))
-
-                    # If serial and console are both present, console is
-                    # probably (always?) just a dup of the 'primary' serial
-                    # device. Try and find an associated console device with
-                    # the same port and remove that as well, otherwise the
-                    # removal doesn't go through on libvirt <= 0.4.4
-                    if dev_type == "serial":
-                        cons_ret = ctx.xpathEval("/domain/devices/console[target/@port='%s']" % port[0].content)
-                        if cons_ret and len(cons_ret) > 0:
-                            logging.debug("Also removing console device "
-                                          "associated with serial dev.")
-                            cons_ret[0].unlinkNode()
-                            cons_ret[0].freeNode()
-                        else:
-                            logging.debug("No console device found associated "
-                                          "with passed serial devices")
-
-            else:
-                raise RuntimeError, _("Unknown device type '%s'" % dev_type)
-
-            # Take variable 'ret', unlink it, and define the altered xml
-            if ret and len(ret) > 0:
-                ret[0].unlinkNode()
-                ret[0].freeNode()
-                newxml = doc.serialize()
-                return newxml
-            else:
-                logging.debug("Didn't find the specified device to remove. "
-                              "Passed xml was: %s" % devxml)
         finally:
             if ctx != None:
                 ctx.xpathFreeContext()
             if doc != None:
                 doc.freeDoc()
-            if dev_doc != None:
-                dev_doc.freeDoc()
+
+
+    def _get_device_xml_helper(self, ctx, dev_type, dev_id_info):
+        """Does all the work of looking up the device in the VM xml"""
+
+        if dev_type=="interface":
+            ret = ctx.xpathEval("/domain/devices/interface[mac/@address='%s']" % dev_id_info)
+
+        elif dev_type=="disk":
+            ret = ctx.xpathEval("/domain/devices/disk[target/@dev='%s']" % \
+                                dev_id_info)
+
+        elif dev_type=="input":
+            typ, bus = dev_id_info
+            ret = ctx.xpathEval("/domain/devices/input[@type='%s' and @bus='%s']" % (typ, bus))
+
+        elif dev_type=="graphics":
+            ret = ctx.xpathEval("/domain/devices/graphics[@type='%s']" % \
+                                dev_id_info)
+
+        elif dev_type == "sound":
+            ret = ctx.xpathEval("/domain/devices/sound[@model='%s']" % \
+                                dev_id_info)
+
+        elif dev_type == "parallel" or dev_type == "console" or \
+             dev_type == "serial":
+            ret = ctx.xpathEval("/domain/devices/%s[target/@port='%s']" % (dev_type, dev_id_info))
+
+            # If serial and console are both present, console is
+            # probably (always?) just a dup of the 'primary' serial
+            # device. Try and find an associated console device with
+            # the same port and remove that as well, otherwise the
+            # removal doesn't go through on libvirt <= 0.4.4
+            if dev_type == "serial":
+                cons_ret = ctx.xpathEval("/domain/devices/console[target/@port='%s']" % dev_id_info)
+                if cons_ret and len(cons_ret) > 0:
+                    ret.append(cons_ret[0])
+
+        elif dev_type == "hostdev":
+            # This whole process is a little funky, since we need a decent
+            # amount of info to determine which specific hostdev to remove
+
+            xmlbase = "/domain/devices/hostdev[@type='%s' and " % \
+                      dev_id_info["type"]
+            xpath = ""
+            ret = []
+
+            addr = dev_id_info.get("address")
+            vend = dev_id_info.get("vendor")
+            prod = dev_id_info.get("product")
+            if addr:
+                bus = addr.get("bus")
+                dev = addr.get("device")
+                slot = addr.get("slot")
+                funct = addr.get("function")
+                dom = addr.get("domain")
+
+                if bus and dev:
+                    # USB by bus and dev
+                    xpath = (xmlbase + "source/address/@bus='%s' and "
+                                       "source/address/@device='%s']" %
+                                       (bus, dev))
+                elif bus and slot and funct and dom:
+                    # PCI by bus,slot,funct,dom
+                    xpath = (xmlbase + "source/address/@bus='%s' and "
+                                       "source/address/@slot='%s' and "
+                                       "source/address/@function='%s' and "
+                                       "source/address/@domain='%s']" %
+                                       (bus, slot, funct, dom))
+
+            elif vend.get("id") and prod.get("id"):
+                # USB by vendor and product
+                xpath = (xmlbase + "source/vendor/@id='%s' and "
+                                   "source/product/@id='%s']" %
+                                   (vend.get("id"), prod.get("id")))
+
+            if xpath:
+                # Log this, since we could hit issues with unexpected
+                # xml parameters in the future
+                logging.debug("Hostdev xpath string: %s" % xpath)
+                ret = ctx.xpathEval(xpath)
+
+        else:
+            raise RuntimeError, _("Unknown device type '%s'" % dev_type)
+
+        return ret
+
+    def _remove_xml_device(self, dev_type, dev_id_info):
+        """Remove device 'devxml' from devices section of 'xml, return
+           result"""
+        vmxml = self.vm.XMLDesc(0)
+        doc = libxml2.parseDoc(vmxml)
+        ctx = None
+
+        try:
+            ctx = doc.xpathNewContext()
+            ret = self._get_device_xml_helper(ctx, dev_type, dev_id_info)
+
+            if ret and len(ret) > 0:
+                if len(ret) > 1 and ret[0].name == "serial" and \
+                   ret[1].name == "console":
+                    ret[1].unlinkNode()
+                    ret[1].freeNode()
+
+                ret[0].unlinkNode()
+                ret[0].freeNode()
+                newxml = doc.serialize()
+                return newxml
+            else:
+                raise ValueError(_("Didn't find the specified device to "
+                                   "remove. Device was: %s %s" % \
+                                   (dev_type, str(dev_id_info))))
+        finally:
+            if ctx != None:
+                ctx.xpathFreeContext()
+            if doc != None:
+                doc.freeDoc()
 
     def attach_device(self, xml):
         """Hotplug device to running guest"""
@@ -794,10 +1081,8 @@ class vmmDomain(gobject.GObject):
         # Invalidate cached XML
         self.xml = None
 
-    def remove_device(self, devxml):
-        xml = self.vm.XMLDesc(0)
-
-        newxml = self._remove_xml_device(xml, devxml)
+    def remove_device(self, dev_type, dev_id_info):
+        newxml = self._remove_xml_device(dev_type, dev_id_info)
 
         logging.debug("Redefine with " + newxml)
         self.get_connection().define_domain(newxml)
@@ -805,19 +1090,19 @@ class vmmDomain(gobject.GObject):
         # Invalidate cached XML
         self.xml = None
 
-    def _change_cdrom(self, newdev, origdev):
+    def _change_cdrom(self, newdev, dev_id_info):
         # If vm is shutoff, remove device, and redefine with media
-        vmxml = self.vm.XMLDesc(0)
         if not self.is_active():
-            tmpxml = self._remove_xml_device(vmxml, origdev)
+            tmpxml = self._remove_xml_device("disk", dev_id_info)
             finalxml = self._add_xml_device(tmpxml, newdev)
+
             logging.debug("change cdrom: redefining xml with:\n%s" % finalxml)
             self.get_connection().define_domain(finalxml)
         else:
             self.attach_device(newdev)
 
-    def connect_cdrom_device(self, type, source, target):
-        xml = self.get_disk_xml(target)
+    def connect_cdrom_device(self, _type, source, dev_id_info):
+        xml = self.get_device_xml("disk", dev_id_info)
         doc = None
         ctx = None
         try:
@@ -825,35 +1110,33 @@ class vmmDomain(gobject.GObject):
             ctx = doc.xpathNewContext()
             disk_fragment = ctx.xpathEval("/disk")
             driver_fragment = ctx.xpathEval("/disk/driver")
-            origdisk = disk_fragment[0].serialize()
-            disk_fragment[0].setProp("type", type)
+            disk_fragment[0].setProp("type", _type)
             elem = disk_fragment[0].newChild(None, "source", None)
-            if type == "file":
+            if _type == "file":
                 elem.setProp("file", source)
                 if driver_fragment:
-                    driver_fragment[0].setProp("name", type)
+                    driver_fragment[0].setProp("name", _type)
             else:
                 elem.setProp("dev", source)
                 if driver_fragment:
                     driver_fragment[0].setProp("name", "phy")
             result = disk_fragment[0].serialize()
-            logging.debug("connect_cdrom_device produced the following XML: %s" % result)
+            logging.debug("connect_cdrom produced: %s" % result)
         finally:
             if ctx != None:
                 ctx.xpathFreeContext()
             if doc != None:
                 doc.freeDoc()
-        self._change_cdrom(result, origdisk)
+        self._change_cdrom(result, dev_id_info)
 
-    def disconnect_cdrom_device(self, target):
-        xml = self.get_disk_xml(target)
+    def disconnect_cdrom_device(self, dev_id_info):
+        xml = self.get_device_xml("disk", dev_id_info)
         doc = None
         ctx = None
         try:
             doc = libxml2.parseDoc(xml)
             ctx = doc.xpathNewContext()
             disk_fragment = ctx.xpathEval("/disk")
-            origdisk = disk_fragment[0].serialize()
             sourcenode = None
             for child in disk_fragment[0].children:
                 if child.name == "source":
@@ -864,13 +1147,13 @@ class vmmDomain(gobject.GObject):
             sourcenode.unlinkNode()
             sourcenode.freeNode()
             result = disk_fragment[0].serialize()
-            logging.debug("disconnect_cdrom_device produced the following XML: %s" % result)
+            logging.debug("eject_cdrom produced: %s" % result)
         finally:
             if ctx != None:
                 ctx.xpathFreeContext()
             if doc != None:
                 doc.freeDoc()
-        self._change_cdrom(result, origdisk)
+        self._change_cdrom(result, dev_id_info)
 
     def set_vcpu_count(self, vcpus):
         vcpus = int(vcpus)
@@ -905,7 +1188,6 @@ class vmmDomain(gobject.GObject):
         except:
             return []
         ctx = doc.xpathNewContext()
-        graphics = []
         dev = None
         try:
             ret = ctx.xpathEval("/domain/os/boot[1]")
@@ -927,8 +1209,6 @@ class vmmDomain(gobject.GObject):
         except:
             return []
         ctx = doc.xpathNewContext()
-        graphics = []
-        dev = None
         try:
             ret = ctx.xpathEval("/domain/os/boot[1]")
             if len(ret) > 0:
@@ -949,5 +1229,54 @@ class vmmDomain(gobject.GObject):
 
         # Invalidate cached xml
         self.xml = None
+
+    def toggle_sample_cpu_stats(self, ignore1=None, ignore2=None,
+                                ignore3=None, ignore4=None):
+        if self.config.get_stats_enable_cpu_poll():
+            self._cpu_stats = self._sample_cpu_stats
+        else:
+            self._cpu_stats = self._sample_cpu_stats_dummy
+
+    def toggle_sample_mem_stats(self, ignore1=None, ignore2=None,
+                                ignore3=None, ignore4=None):
+        if self.config.get_stats_enable_mem_poll():
+            self._mem_stats = self._sample_mem_stats
+        else:
+            self._mem_stats = self._sample_mem_stats_dummy
+
+    def toggle_sample_network_traffic(self, ignore1=None, ignore2=None,
+                                      ignore3=None, ignore4=None):
+        if self.config.get_stats_enable_net_poll():
+            if len(self.record) > 1:
+                # resample the current value before calculating the rate in
+                # self.tick() otherwise we'd get a huge spike when switching
+                # from 0 to bytes_transfered_so_far
+                rxBytes, txBytes = self._sample_network_traffic()
+                self.record[0]["netRxKB"] = rxBytes / 1024
+                self.record[0]["netTxKB"] = txBytes / 1024
+            self._network_traffic = self._sample_network_traffic
+        else:
+            self._network_traffic = self._sample_network_traffic_dummy
+
+    def toggle_sample_disk_io(self, ignore1=None, ignore2=None,
+                              ignore3=None, ignore4=None):
+        if self.config.get_stats_enable_disk_poll():
+            if len(self.record) > 1:
+                # resample the current value before calculating the rate in
+                # self.tick() otherwise we'd get a huge spike when switching
+                # from 0 to bytes_transfered_so_far
+                rdBytes, wrBytes = self._sample_disk_io()
+                self.record[0]["diskRdKB"] = rdBytes / 1024
+                self.record[0]["diskWrKB"] = wrBytes / 1024
+            self._disk_io = self._sample_disk_io
+        else:
+            self._disk_io = self._sample_disk_io_dummy
+
+
+    def migrate(self, dictcon):
+        flags = 0
+        if self.lastStatus == libvirt.VIR_DOMAIN_RUNNING:
+            flags = libvirt.VIR_MIGRATE_LIVE
+        self.vm.migrate(self.connection.vmm, flags, None, dictcon.get_short_hostname(), 0)
 
 gobject.type_register(vmmDomain)

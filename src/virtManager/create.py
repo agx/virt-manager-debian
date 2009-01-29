@@ -22,16 +22,10 @@ import gobject
 import gtk
 import gtk.gdk
 import gtk.glade
-import pango
 import libvirt
 import virtinst
 import os, sys
-import re
-import subprocess
-import urlgrabber.progress as progress
-import tempfile
 import logging
-import dbus
 import traceback
 
 import virtManager.util as vmmutil
@@ -85,6 +79,10 @@ class vmmCreate(gobject.GObject):
                                   0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
                                   _("Unexpected Error"),
                                   _("An unexpected error occurred"))
+        self.install_error = ""
+        self.install_details = ""
+        self.non_sparse = True
+
         self.topwin.hide()
         self.window.signal_autoconnect({
             "on_create_pages_switch_page" : self.page_changed,
@@ -144,7 +142,7 @@ class vmmCreate(gobject.GObject):
         cd_list.add_attribute(text, 'text', 1)
         cd_list.add_attribute(text, 'sensitive', 2)
         try:
-            self.optical_helper = vmmOpticalDriveHelper(self.window.get_widget("cd-path"))
+            vmmOpticalDriveHelper(self.window.get_widget("cd-path"))
             self.window.get_widget("media-physical").set_sensitive(True)
         except Exception, e:
             logging.error("Unable to create optical-helper widget: '%s'", e)
@@ -317,7 +315,7 @@ class vmmCreate(gobject.GObject):
                 notebook.set_current_page(PAGE_DISK)
         elif notebook.get_current_page() in [PAGE_INST_TREE, PAGE_INST_LOCAL]:
             notebook.set_current_page(PAGE_DISK)
-        elif notebook.get_current_page() == PAGE_DISK and self.connection.get_uri() == "qemu:///session":
+        elif notebook.get_current_page() == PAGE_DISK and self.connection.is_qemu_session():
             # Skip network for non-root
             notebook.set_current_page(PAGE_CPUMEM)
         else:
@@ -338,7 +336,7 @@ class vmmCreate(gobject.GObject):
             else:
                 # No config for PXE needed (yet)
                 notebook.set_current_page(PAGE_INST)
-        elif notebook.get_current_page() == PAGE_CPUMEM and self.connection.get_uri() == "qemu:///session":
+        elif notebook.get_current_page() == PAGE_CPUMEM and self.connection.is_qemu_session():
             # Skip network for non-root
             notebook.set_current_page(PAGE_DISK)
         else:
@@ -371,12 +369,12 @@ class vmmCreate(gobject.GObject):
         else:
             return "PXE"
 
-    def get_config_installer(self, type, os_type):
+    def get_config_installer(self, _type, os_type):
         if self.get_config_install_method() == VM_INST_PXE:
-            return virtinst.PXEInstaller(type=type, os_type=os_type,
+            return virtinst.PXEInstaller(type=_type, os_type=os_type,
                                          conn=self._guest.conn)
         else:
-            return virtinst.DistroInstaller(type=type, os_type=os_type,
+            return virtinst.DistroInstaller(type=_type, os_type=os_type,
                                             conn=self._guest.conn)
 
     def get_config_kickstart_source(self):
@@ -402,7 +400,7 @@ class vmmCreate(gobject.GObject):
             fd.seek(0,2)
             block_size = fd.tell() / 1024 / 1024
             return block_size
-        except Exception, e:
+        except Exception:
             details = "Unable to verify partition size: '%s'" % \
                       "".join(traceback.format_exc())
             logging.error(details)
@@ -419,10 +417,10 @@ class vmmCreate(gobject.GObject):
             return self.window.get_widget("storage-file-size").get_value()
     
     def get_config_kernel_params(self):
-	return self.window.get_widget("kernel-params").get_text()
+        return self.window.get_widget("kernel-params").get_text()
 
     def get_config_network(self):
-        if self.connection.get_uri() == "qemu:///session":
+        if self.connection.is_qemu_session():
             return ["user"]
 
         if self.window.get_widget("net-type-network").get_active():
@@ -458,9 +456,9 @@ class vmmCreate(gobject.GObject):
             return VM_INST_PXE
 
     def get_config_os_type(self):
-        type = self.window.get_widget("os-type")
-        if type.get_active_iter() != None:
-            return type.get_model().get_value(type.get_active_iter(), 0)
+        _type = self.window.get_widget("os-type")
+        if _type.get_active_iter() != None:
+            return _type.get_model().get_value(_type.get_active_iter(), 0)
         return None
 
     def get_config_os_variant(self):
@@ -474,9 +472,9 @@ class vmmCreate(gobject.GObject):
         if variant.get_active_iter() != None:
             return variant.get_model().get_value(variant.get_active_iter(), 1)
 
-        type = self.window.get_widget("os-type")
-        if type.get_active_iter() != None:
-            return type.get_model().get_value(type.get_active_iter(), 1)
+        _type = self.window.get_widget("os-type")
+        if _type.get_active_iter() != None:
+            return _type.get_model().get_value(_type.get_active_iter(), 1)
         return "N/A"
 
     def get_config_sound(self):
@@ -526,13 +524,9 @@ class vmmCreate(gobject.GObject):
         elif page_number == PAGE_DISK:
             self.change_storage_type()
             if self.connection.is_remote():
-                self.window.get_widget("storage-partition").set_sensitive(False)
-                self.window.get_widget("storage-partition-address").set_sensitive(False)
                 self.window.get_widget("storage-partition-address-browse").set_sensitive(False)
                 self.window.get_widget("storage-file-address-browse").set_sensitive(False)
             else:
-                self.window.get_widget("storage-partition").set_sensitive(True)
-                self.window.get_widget("storage-partition-address").set_sensitive(True)
                 self.window.get_widget("storage-partition-address-browse").set_sensitive(True)
                 self.window.get_widget("storage-file-address-browse").set_sensitive(True)
 
@@ -604,7 +598,7 @@ class vmmCreate(gobject.GObject):
 
     def is_visible(self):
         if self.topwin.flags() & gtk.VISIBLE:
-           return 1
+            return 1
         return 0
 
     def finish(self, ignore=None):
@@ -621,7 +615,7 @@ class vmmCreate(gobject.GObject):
             return self.err.val_err(_("UUID Error"), str(e))
 
         # HACK: If usermode, and no nic is setup, use usermode networking
-        if self.connection.get_uri() == "qemu:///session":
+        if self.connection.is_qemu_session():
             try:
                 self._net = virtinst.VirtualNetworkInterface(type="user")
             except ValueError, e:
@@ -643,6 +637,7 @@ class vmmCreate(gobject.GObject):
                               "".join(traceback.format_exc()))
             return False
 
+        guest.sound_devs = []
         try:
             if self.get_config_sound():
                 guest.sound_devs.append(virtinst.VirtualAudio(model="es1370"))
@@ -700,7 +695,7 @@ class vmmCreate(gobject.GObject):
         if self.config.get_console_popup() == 1:
             # user has requested console on new created vms only
             vm = self.connection.get_vm(guest.uuid)
-            (gtype, host, port, transport, username) = vm.get_graphics_console()
+            (gtype, ignore, ignore, ignore, ignore) = vm.get_graphics_console()
             if gtype == "vnc":
                 self.emit("action-show-console", self.connection.get_uri(), guest.uuid)
             else:
@@ -727,12 +722,12 @@ class vmmCreate(gobject.GObject):
             else:
                 logging.debug("Install completed")
         except:
-            (type, value, stacktrace) = sys.exc_info ()
+            (_type, value, stacktrace) = sys.exc_info ()
 
             # Detailed error message, in English so it can be Googled.
             details = \
                     "Unable to complete install '%s'" % \
-                    (str(type) + " " + str(value) + "\n" + \
+                    (str(_type) + " " + str(value) + "\n" + \
                      traceback.format_exc (stacktrace))
 
             self.install_error = _("Unable to complete install: '%s'") % str(value)
@@ -740,11 +735,11 @@ class vmmCreate(gobject.GObject):
             logging.error(details)
 
     def browse_iso_location(self, ignore1=None, ignore2=None):
-        file = self._browse_file(_("Locate ISO Image"), type="iso")
-        if file != None:
-            self.window.get_widget("fv-iso-location").set_text(file)
+        f = self._browse_file(_("Locate ISO Image"))
+        if f != None:
+            self.window.get_widget("fv-iso-location").set_text(f)
 
-    def _browse_file(self, dialog_name, folder=None, type=None):
+    def _browse_file(self, dialog_name, folder=None, _type=None):
         # user wants to browse for an ISO
         fcdialog = gtk.FileChooserDialog(dialog_name,
                                          self.window.get_widget("vmm-create"),
@@ -753,9 +748,9 @@ class vmmCreate(gobject.GObject):
                                           gtk.STOCK_OPEN, gtk.RESPONSE_ACCEPT),
                                          None)
         fcdialog.set_default_response(gtk.RESPONSE_ACCEPT)
-        if type != None:
+        if _type != None:
             f = gtk.FileFilter()
-            f.add_pattern("*." + type)
+            f.add_pattern("*." + _type)
             fcdialog.set_filter(f)
         if folder != None:
             fcdialog.set_current_folder(folder)
@@ -787,16 +782,16 @@ class vmmCreate(gobject.GObject):
         fcdialog.connect("confirm-overwrite", self.confirm_overwrite_callback)
         response = fcdialog.run()
         fcdialog.hide()
-        file = None
+        f = None
         if(response == gtk.RESPONSE_ACCEPT):
-            file = fcdialog.get_filename()
-        if file != None:
-            self.window.get_widget("storage-file-address").set_text(file)
+            f = fcdialog.get_filename()
+        if f != None:
+            self.window.get_widget("storage-file-address").set_text(f)
 
     def toggle_storage_size(self, ignore1=None, ignore2=None):
-        file = self.get_config_disk_image()
-        if file != None and len(file) > 0 and \
-           (self.connection.is_remote() or not os.path.exists(file)):
+        f = self.get_config_disk_image()
+        if f != None and len(f) > 0 and \
+           (self.connection.is_remote() or not os.path.exists(f)):
             self.window.get_widget("storage-file-size").set_sensitive(True)
             self.window.get_widget("non-sparse").set_sensitive(True)
             size = self.get_config_disk_size()
@@ -806,8 +801,8 @@ class vmmCreate(gobject.GObject):
         else:
             self.window.get_widget("storage-file-size").set_sensitive(False)
             self.window.get_widget("non-sparse").set_sensitive(False)
-            if os.path.isfile(file):
-                size = os.path.getsize(file)/(1024*1024)
+            if os.path.isfile(f):
+                size = os.path.getsize(f)/(1024*1024)
                 self.window.get_widget("storage-file-size").set_value(size)
             else:
                 self.window.get_widget("storage-file-size").set_value(0)
@@ -838,19 +833,19 @@ class vmmCreate(gobject.GObject):
         else:
             self.window.get_widget("storage-partition-box").set_sensitive(False)
             self.window.get_widget("storage-file-box").set_sensitive(True)
-            file = self.window.get_widget("storage-file-address").get_text()
-            if file is None or file == "":
-                dir = self.config.get_default_image_dir(self.connection)
-                file = os.path.join(dir, self.get_config_name() + ".img")
+            _file = self.window.get_widget("storage-file-address").get_text()
+            if _file is None or _file == "":
+                _dir = self.config.get_default_image_dir(self.connection)
+                _file = os.path.join(_dir, self.get_config_name() + ".img")
                 if not self.connection.is_remote():
                     n = 1
-                    while os.path.exists(file) and n < 100:
-                        file = os.path.join(dir, self.get_config_name() + \
-                                                 "-" + str(n) + ".img")
+                    while os.path.exists(_file) and n < 100:
+                        _file = os.path.join(_dir, self.get_config_name() + \
+                                                   "-" + str(n) + ".img")
                         n = n + 1
-                    if os.path.exists(file):
-                        file = ""
-                self.window.get_widget("storage-file-address").set_text(file)
+                    if os.path.exists(_file):
+                        _file = ""
+                self.window.get_widget("storage-file-address").set_text(_file)
             self.toggle_storage_size()
 
     def change_network_type(self, ignore=None):
@@ -874,9 +869,9 @@ class vmmCreate(gobject.GObject):
             startup_mem_adjustment.value = max_memory
         startup_mem_adjustment.upper = max_memory
 
-    def set_max_vcpus(self, type):
-        self.window.get_widget("create-vcpus").get_adjustment().upper = self.connection.get_max_vcpus(type)
-        self.window.get_widget("config-max-vcpus").set_text(str(self.connection.get_max_vcpus(type)))
+    def set_max_vcpus(self, _type):
+        self.window.get_widget("create-vcpus").get_adjustment().upper = self.connection.get_max_vcpus(_type)
+        self.window.get_widget("config-max-vcpus").set_text(str(self.connection.get_max_vcpus(_type)))
 
     def validate(self, page_num):
 
@@ -938,17 +933,17 @@ class vmmCreate(gobject.GObject):
                 os_type = "hvm"
             self._guest.installer = self.get_config_installer(self.get_domain_type(), os_type)
 
-            if self.window.get_widget("media-iso-image").get_active():
+            src = self.get_config_install_source()
+            if not src:
+                return self.err.val_err(_("An install media path is required."))
 
-                src = self.get_config_install_source()
+            if self.window.get_widget("media-iso-image").get_active():
                 try:
                     self._guest.installer.location = src
                     self._guest.installer.cdrom = True
                 except ValueError, e:
                     return self.err.val_err(_("ISO Path Not Found"), str(e))
             else:
-                cdlist = self.window.get_widget("cd-path")
-                src = self.get_config_install_source()
                 try:
                     self._guest.installer.location = src
                     self._guest.installer.cdrom = True
@@ -985,7 +980,7 @@ class vmmCreate(gobject.GObject):
             path = self.get_config_disk_image()
             if path == None or len(path) == 0:
                 return self.err.val_err(_("Storage Address Required"), \
-                                        _("You must specify a partition or a file for storage for the guest install"))
+                                        _("You must specify a partition or a file for storage for the guest install."))
 
             # Attempt to set disk
             filesize = None
@@ -993,9 +988,9 @@ class vmmCreate(gobject.GObject):
                 filesize = self.get_config_disk_size() / 1024.0
             try:
                 if self.window.get_widget("storage-partition").get_active():
-                    type = virtinst.VirtualDisk.TYPE_BLOCK
+                    _type = virtinst.VirtualDisk.TYPE_BLOCK
                 else:
-                    type = virtinst.VirtualDisk.TYPE_FILE
+                    _type = virtinst.VirtualDisk.TYPE_FILE
 
                 if (os.path.dirname(os.path.abspath(path)) == \
                     vmmutil.DEFAULT_POOL_PATH):
@@ -1005,7 +1000,7 @@ class vmmCreate(gobject.GObject):
                                                   filesize,
                                                   sparse = self.is_sparse_file(),
                                                   device = virtinst.VirtualDisk.DEVICE_DISK,
-                                                  type = type,
+                                                  type = _type,
                                                   conn=self._guest.conn)
 
                 if self._disk.type == virtinst.VirtualDisk.TYPE_FILE and \
@@ -1028,25 +1023,21 @@ class vmmCreate(gobject.GObject):
                     return False
 
             if self._disk.is_conflict_disk(self._guest.conn) is True:
-               res = self.err.yes_no(_('Disk "%s" is already in use by another guest!' % self._disk.path), _("Do you really want to use the disk ?"))
-               return res
+                res = self.err.yes_no(_('Disk "%s" is already in use by another guest!' % self._disk.path), _("Do you really want to use the disk?"))
+                return res
 
         elif page_num == PAGE_NETWORK:
 
             if self.window.get_widget("net-type-network").get_active():
                 if self.window.get_widget("net-network").get_active() == -1:
                     return self.err.val_err(_("Virtual Network Required"),
-                                            _("You must select one of the virtual networks"))
+                                            _("You must select one of the virtual networks."))
             else:
                 if self.window.get_widget("net-device").get_active() == -1:
                     return self.err.val_err(_("Physical Device Required"),
-                                            _("You must select one of the physical devices"))
+                                            _("You must select a physical device."))
 
             net = self.get_config_network()
-            if net[1] is None:
-                return self.err.val_err(_("Invalid Physical Device"),
-                                        _("The selected physical device must be bridged."))
-
             if self.window.get_widget("mac-address").get_active():
                 mac = self.window.get_widget("create-mac-address").get_text()
                 if mac is None or len(mac) == 0:
@@ -1069,6 +1060,18 @@ class vmmCreate(gobject.GObject):
                                                                  type=net[0])
             except ValueError, e:
                 return self.err.val_err(_("Network Parameter Error"), str(e))
+
+            if self._net.type == "network":
+                if self._net.network not in self.connection.vmm.listNetworks():
+                    res = self.err.yes_no(_("Virtual Network is Inactive"),
+                                          _("Virtual Network '%s' is not active. Would you like to start the network now?") % 
+                                          self._net.network)
+                    if res:
+                        net = self.connection.vmm.networkLookupByName(self._net.network)
+                        net.create()
+                        logging.info("Started network '%s'." % self._net.network)
+                    else:
+                        return False
 
             conflict = self._net.is_conflict_net(self._guest.conn)
             if conflict[0]:
@@ -1109,26 +1112,30 @@ class vmmCreate(gobject.GObject):
         model.clear()
         model.append(["generic", "Generic"])
         types = virtinst.FullVirtGuest.list_os_types()
-        types.sort()
-        for type in types:
-            model.append([type, virtinst.FullVirtGuest.get_os_type_label(type)])
+        for _type in types:
+            model.append([_type,
+                          virtinst.FullVirtGuest.get_os_type_label(_type)])
 
-    def populate_os_variant_model(self, type):
+    def populate_os_variant_model(self, _type):
         model = self.window.get_widget("os-variant").get_model()
         model.clear()
-        if type=="generic":
+        if _type == "generic":
             model.append(["generic", "Generic"])
             return
-        variants = virtinst.FullVirtGuest.list_os_variants(type)
-        variants.sort()
+        variants = virtinst.FullVirtGuest.list_os_variants(_type)
         for variant in variants:
-            model.append([variant, virtinst.FullVirtGuest.get_os_variant_label(type, variant)])
+            model.append([variant,
+                          virtinst.FullVirtGuest.get_os_variant_label(_type,
+                                                                      variant)])
 
     def populate_network_model(self, model):
         model.clear()
         for uuid in self.connection.list_net_uuids():
             net = self.connection.get_net(uuid)
-            model.append([net.get_label(), net.get_name()])
+            if net.get_name() in self.connection.vmm.listNetworks():
+                model.append([net.get_label(), net.get_name()])
+            else:
+                model.append([net.get_label(), "%s (%s)" % (net.get_name(), _("Inactive"))])
 
     def populate_device_model(self, model):
         model.clear()
@@ -1148,8 +1155,8 @@ class vmmCreate(gobject.GObject):
     def change_os_type(self, box):
         model = box.get_model()
         if box.get_active_iter() != None:
-            type = model.get_value(box.get_active_iter(), 0)
-            self.populate_os_variant_model(type)
+            _type = model.get_value(box.get_active_iter(), 0)
+            self.populate_os_variant_model(_type)
         variant = self.window.get_widget("os-variant")
         variant.set_active(0)
 
