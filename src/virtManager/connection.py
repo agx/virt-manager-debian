@@ -25,12 +25,10 @@ import os, sys
 import glob
 import traceback
 from time import time
-import logging
 from socket import gethostbyaddr, gethostname
 import dbus
 import threading
 import gtk
-import string
 import virtinst
 
 from virtManager.domain import vmmDomain
@@ -38,52 +36,12 @@ from virtManager.network import vmmNetwork
 from virtManager.netdev import vmmNetDevice
 from virtManager.storagepool import vmmStoragePool
 
-LIBVIRT_POLICY_FILES = [
-    "/usr/share/PolicyKit/policy/libvirtd.policy",
-    "/usr/share/PolicyKit/policy/org.libvirt.unix.policy"
-]
-
 def get_local_hostname():
     try:
-        (host, aliases, ipaddrs) = gethostbyaddr(gethostname())
-        return host
+        return gethostbyaddr(gethostname())[0]
     except:
         logging.warning("Unable to resolve local hostname for machine")
         return "localhost"
-
-# Standard python urlparse is utterly braindead - refusing to parse URIs
-# in any useful fashion unless the 'scheme' is in some pre-defined white
-# list. Theis functions is a hacked version of urlparse
-
-def uri_split(uri):
-    username = netloc = query = fragment = ''
-    i = uri.find(":")
-    if i > 0:
-        scheme, uri = uri[:i].lower(), uri[i+1:]
-        if uri[:2] == '//':
-            netloc, uri = _splitnetloc(uri, 2)
-            offset = netloc.find("@")
-            if offset > 0:
-                username = netloc[0:offset]
-                netloc = netloc[offset+1:]
-        if '#' in uri:
-            uri, fragment = uri.split('#', 1)
-        if '?' in uri:
-            uri, query = uri.split('?', 1)
-    else:
-        scheme = uri.lower()
-
-    return scheme, username, netloc, uri, query, fragment
-
-def _splitnetloc(url, start=0):
-    for c in '/?#': # the order is important!
-        delim = url.find(c, start)
-        if delim >= 0:
-            break
-    else:
-        delim = len(url)
-    return url[start:delim], url[delim:]
-
 
 class vmmConnection(gobject.GObject):
     __gsignals__ = {
@@ -139,15 +97,6 @@ class vmmConnection(gobject.GObject):
             self.uri = "xen:///"
 
         self.readOnly = readOnly
-        if not self.is_remote() and os.getuid() != 0 and self.uri != "qemu:///session":
-            hasPolkit = False
-            for f in LIBVIRT_POLICY_FILES:
-                if os.path.exists(f):
-                    hasPolkit = True
-
-            if not hasPolkit:
-                self.readOnly = True
-
         self.state = self.STATE_DISCONNECTED
         self.vmm = None
         self.storage_capable = None
@@ -196,9 +145,9 @@ class vmmConnection(gobject.GObject):
             for path in self.hal_iface.FindDeviceByCapability("net"):
                 self._net_phys_device_added(path)
         except:
-            (type, value, stacktrace) = sys.exc_info ()
+            (_type, value, stacktrace) = sys.exc_info ()
             logging.error("Unable to connect to HAL to list network devices: '%s'" + \
-                          str(type) + " " + str(value) + "\n" + \
+                          str(_type) + " " + str(value) + "\n" + \
                           traceback.format_exc (stacktrace))
             self.bus = None
             self.hal_iface = None
@@ -300,52 +249,26 @@ class vmmConnection(gobject.GObject):
         return hostname
 
     def get_hostname(self, resolveLocal=False):
-        try:
-            (scheme, username, netloc, path, query, fragment) = uri_split(self.uri)
-
-            if netloc != "":
-                return netloc
-        except Exception, e:
-            logging.warning("Cannot parse URI %s: %s" % (self.uri, str(e)))
-
-        if resolveLocal:
-            return get_local_hostname()
-        return "localhost"
+        return virtinst.util.get_uri_hostname(self.uri)
 
     def get_transport(self):
-        try:
-            (scheme, username, netloc, path, query, fragment) = uri_split(self.uri)
-            if scheme:
-                offset = scheme.index("+")
-                if offset > 0:
-                    return [scheme[offset+1:], username]
-        except:
-            pass
-        return [None, None]
+        return virtinst.util.get_uri_transport(self.uri)
 
     def get_driver(self):
-        try:
-            (scheme, username, netloc, path, query, fragment) = uri_split(self.uri)
-            if scheme:
-                offset = scheme.find("+")
-                if offset > 0:
-                    return scheme[:offset]
-                return scheme
-        except Exception, e:
-            pass
-        return "xen"
+        return virtinst.util.get_uri_driver(self.uri)
 
     def get_capabilities(self):
         return virtinst.CapabilitiesParser.parse(self.vmm.getCapabilities())
 
     def is_remote(self):
-        try:
-            (scheme, username, netloc, path, query, fragment) = uri_split(self.uri)
-            if netloc == "":
-                return False
+        return virtinst.util.is_uri_remote(self.uri)
+
+    def is_qemu_session(self):
+        (scheme, ignore, ignore, \
+         path, ignore, ignore) = virtinst.util.uri_split(self.uri)
+        if path == "/session" and scheme.startswith("qemu"):
             return True
-        except:
-            return True
+        return False
 
     def get_uri(self):
         return self.uri
@@ -376,6 +299,9 @@ class vmmConnection(gobject.GObject):
         self.connectThread.start()
 
     def _do_creds_polkit(self, action):
+        if os.getuid() == 0:
+            logging.debug("Skipping policykit check as root")
+            return 0
         logging.debug("Doing policykit for %s" % action)
         bus = dbus.SessionBus()
 
@@ -454,18 +380,17 @@ class vmmConnection(gobject.GObject):
 
             return self._do_creds_dialog(creds)
         except:
-            (type, value, stacktrace) = sys.exc_info ()
+            (_type, value, stacktrace) = sys.exc_info ()
             # Detailed error message, in English so it can be Googled.
             self.connectError = \
                 ("Failed to get credentials '%s':\n" %
                  str(self.uri)) + \
-                 str(type) + " " + str(value) + "\n" + \
+                 str(_type) + " " + str(value) + "\n" + \
                  traceback.format_exc (stacktrace)
             logging.error(self.connectError)
             return -1
 
-    def _open_thread(self):
-        logging.debug("Background thread is running")
+    def _try_open(self):
         try:
             flags = 0
             if self.readOnly:
@@ -478,17 +403,40 @@ class vmmConnection(gobject.GObject):
                                           libvirt.VIR_CRED_EXTERNAL],
                                          self._do_creds,
                                          None], flags)
-
-            self.state = self.STATE_ACTIVE
         except:
+            exc_info = sys.exc_info()
+
+            # If the previous attempt was read/write try to fall back
+            # on read-only connection, otherwise report the error.
+            if not self.readOnly:
+                try:
+                    self.vmm = libvirt.openReadOnly(self.uri)
+                    self.readOnly = True
+                    logging.info("Read/write connection failed to %s,"
+                            "falling back on read-only." % self.uri)
+                    return
+                except:
+                    pass
+
+            return exc_info
+
+
+    def _open_thread(self):
+        logging.debug("Background thread is running")
+
+        open_error = self._try_open()
+
+        if not open_error:
+            self.state = self.STATE_ACTIVE
+        else:
             self.state = self.STATE_DISCONNECTED
 
-            (type, value, stacktrace) = sys.exc_info ()
+            (_type, value, stacktrace) = open_error
             # Detailed error message, in English so it can be Googled.
             self.connectError = \
                     ("Unable to open connection to hypervisor URI '%s':\n" %
                      str(self.uri)) + \
-                    str(type) + " " + str(value) + "\n" + \
+                    str(_type) + " " + str(value) + "\n" + \
                     traceback.format_exc (stacktrace)
             logging.error(self.connectError)
 
@@ -559,8 +507,8 @@ class vmmConnection(gobject.GObject):
     def get_host_info(self):
         return self.hostinfo
 
-    def get_max_vcpus(self, type=None):
-        return virtinst.util.get_max_vcpus(self.vmm, type)
+    def get_max_vcpus(self, _type=None):
+        return virtinst.util.get_max_vcpus(self.vmm, _type)
 
     def get_autoconnect(self):
         # Use a local variable to cache autoconnect so we don't repeatedly
@@ -791,10 +739,10 @@ class vmmConnection(gobject.GObject):
 
         # Filter out active domains which haven't changed
         if newActiveIDs != None:
-            for id in newActiveIDs:
-                if oldActiveIDs.has_key(id):
+            for _id in newActiveIDs:
+                if oldActiveIDs.has_key(_id):
                     # No change, copy across existing VM object
-                    vm = oldActiveIDs[id]
+                    vm = oldActiveIDs[_id]
                     curUUIDs[vm.get_uuid()] = vm
                     activeUUIDs.append(vm.get_uuid())
                 else:
@@ -802,13 +750,13 @@ class vmmConnection(gobject.GObject):
                     # to create the wrapper so we can see
                     # if its a previously inactive domain.
                     try:
-                        vm = self.vmm.lookupByID(id)
+                        vm = self.vmm.lookupByID(_id)
                         uuid = self.uuidstr(vm.UUID())
                         maybeNewUUIDs[uuid] = vm
                         startedUUIDs.append(uuid)
                         activeUUIDs.append(uuid)
                     except libvirt.libvirtError:
-                        logging.debug("Couldn't fetch domain id '%s'" % str(id)
+                        logging.debug("Couldn't fetch domain id '%s'" % str(_id)
                                       + ": it probably went away")
 
         # Filter out inactive domains which haven't changed
@@ -860,6 +808,8 @@ class vmmConnection(gobject.GObject):
         if self.state != self.STATE_ACTIVE:
             return
 
+        self.hostinfo = self.vmm.getInfo()
+
         # Poll for new virtual network objects
         (startNets, stopNets, newNets,
          oldNets, self.nets) = self._update_nets()
@@ -902,10 +852,6 @@ class vmmConnection(gobject.GObject):
 
         # Finally, we sample each domain
         now = time()
-        try:
-            self.hostinfo = self.vmm.getInfo()
-        except:
-            logging.warn("Unable to get host information")
 
         updateVMs = self.vms
         if noStatsUpdate:
@@ -927,13 +873,20 @@ class vmmConnection(gobject.GObject):
 
         mem = 0
         cpuTime = 0
+        rdRate = 0
+        wrRate = 0
+        rxRate = 0
+        txRate = 0
 
         for uuid in self.vms:
             vm = self.vms[uuid]
             if vm.get_id() != -1:
                 cpuTime = cpuTime + vm.get_cputime()
                 mem = mem + vm.get_memory()
-
+                rdRate += vm.disk_read_rate()
+                wrRate += vm.disk_write_rate()
+                rxRate += vm.network_rx_rate()
+                txRate += vm.network_tx_rate()
 
         pcentCpuTime = 0
         if len(self.record) > 0:
@@ -957,7 +910,11 @@ class vmmConnection(gobject.GObject):
             "memory": mem,
             "memoryPercent": pcentMem,
             "cpuTime": cpuTime,
-            "cpuTimePercent": pcentCpuTime
+            "cpuTimePercent": pcentCpuTime,
+            "diskRdRate" : rdRate,
+            "diskWrRate" : wrRate,
+            "netRxRate" : rxRate,
+            "netTxRate" : txRate,
         }
 
         self.record.insert(0, newStats)
@@ -1011,12 +968,46 @@ class vmmConnection(gobject.GObject):
                 vector.append(0)
         return vector
 
+    def network_rx_rate(self):
+        if len(self.record) == 0:
+            return 0
+        return self.record[0]["netRxRate"]
+
+    def network_tx_rate(self):
+        if len(self.record) == 0:
+            return 0
+        return self.record[0]["netTxRate"]
+
+    def network_traffic_rate(self):
+        return self.network_tx_rate() + self.network_rx_rate()
+
+    def disk_read_rate(self):
+        if len(self.record) == 0:
+            return 0
+        return self.record[0]["diskRdRate"]
+
+    def disk_write_rate(self):
+        if len(self.record) == 0:
+            return 0
+        return self.record[0]["diskWrRate"]
+
+    def disk_io_rate(self):
+        return self.disk_read_rate() + self.disk_write_rate()
+       
+    def disk_io_vector_limit(self, dummy):
+        """No point to accumulate unnormalized I/O for a conenction"""
+        return [ 0.0 ]
+
+    def network_traffic_vector_limit(self, dummy):
+        """No point to accumulate unnormalized Rx/Tx for a conenction"""
+        return [ 0.0 ]
+
     def uuidstr(self, rawuuid):
-        hex = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f']
+        hx = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f']
         uuid = []
         for i in range(16):
-            uuid.append(hex[((ord(rawuuid[i]) >> 4) & 0xf)])
-            uuid.append(hex[(ord(rawuuid[i]) & 0xf)])
+            uuid.append(hx[((ord(rawuuid[i]) >> 4) & 0xf)])
+            uuid.append(hx[(ord(rawuuid[i]) & 0xf)])
             if i == 3 or i == 5 or i == 7 or i == 9:
                 uuid.append('-')
         return "".join(uuid)
@@ -1049,9 +1040,9 @@ class vmmConnection(gobject.GObject):
                 (ignore,bridge) = os.path.split(dest)
                 return bridge
         except:
-            (type, value, stacktrace) = sys.exc_info ()
+            (_type, value, stacktrace) = sys.exc_info ()
             logging.error("Unable to determine if device is shared:" +
-                            str(type) + " " + str(value) + "\n" + \
+                            str(_type) + " " + str(value) + "\n" + \
                             traceback.format_exc (stacktrace))
 
         return None
@@ -1071,8 +1062,10 @@ class vmmConnection(gobject.GObject):
             f = open("/sys/class/net/bonding_masters")
             while True:
                 rline = f.readline()
-                if not rline: break
-                if rline == "\x00": continue
+                if not rline:
+                    break
+                if rline == "\x00":
+                    continue
                 rline = rline.strip("\n\t")
                 masters = rline[:].split(' ')
         return masters

@@ -431,7 +431,7 @@ uninstall-man: uninstall-man1
 
 
 %.1: %.pod
-	pod2man $< > $@
+	pod2man --center="Virtual Machine Manager" $< > $@
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
 .NOEXPORT:

@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 #
-from virtManager.secret import *
+from virtManager.secret import vmmSecret
 
 import sys
 import logging
@@ -29,7 +29,6 @@ try:
     haveKeyring = True
 except:
     logging.warning("No support for gnome-keyring")
-    pass
 
 class vmmKeyring:
 
@@ -53,31 +52,31 @@ class vmmKeyring:
 
     def add_secret(self, secret):
         try:
-            id = gnomekeyring.item_create_sync(self.keyring,
+            _id = gnomekeyring.item_create_sync(self.keyring,
                                                gnomekeyring.ITEM_GENERIC_SECRET,
                                                secret.get_name(),
                                                secret.get_attributes(),
                                                secret.get_secret(),
                                                True)
-            
-            return id
+
+            return _id
         except:
             return None
 
-    def get_secret(self, id):
+    def get_secret(self, _id):
         try:
-            item = gnomekeyring.item_get_info_sync(self.keyring, id)
-            
-            attrs = gnomekeyring.item_get_attributes_sync(self.keyring, id)
-            
+            item = gnomekeyring.item_get_info_sync(self.keyring, _id)
+
+            attrs = gnomekeyring.item_get_attributes_sync(self.keyring, _id)
+
             return vmmSecret(item.get_display_name(), item.get_secret(), attrs)
         except:
             return None
-        
 
-    def clear_secret(self, id):
+
+    def clear_secret(self, _id):
         try:
-            gnomekeyring.item_delete_sync(self.keyring, id)
+            gnomekeyring.item_delete_sync(self.keyring, _id)
             return True
         except:
             return False

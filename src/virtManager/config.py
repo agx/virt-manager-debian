@@ -24,7 +24,8 @@ import gnome
 import gtk.gdk
 import libvirt
 
-from virtManager.keyring import *
+from virtManager.keyring import vmmKeyring
+from virtManager.secret import vmmSecret
 
 CONSOLE_POPUP_NEVER = 0
 CONSOLE_POPUP_NEW_ONLY = 1
@@ -109,7 +110,7 @@ class vmmConfig:
     def is_vmlist_memory_usage_visible(self):
         return self.conf.get_bool(self.conf_dir + "/vmlist-fields/memory_usage")
 
-    def is_vmlist_disk_usage_visible(self):
+    def is_vmlist_disk_io_visible(self):
         return self.conf.get_bool(self.conf_dir + "/vmlist-fields/disk_usage")
 
     def is_vmlist_network_traffic_visible(self):
@@ -132,7 +133,7 @@ class vmmConfig:
     def set_vmlist_memory_usage_visible(self, state):
         self.conf.set_bool(self.conf_dir + "/vmlist-fields/memory_usage", state)
 
-    def set_vmlist_disk_usage_visible(self, state):
+    def set_vmlist_disk_io_visible(self, state):
         self.conf.set_bool(self.conf_dir + "/vmlist-fields/disk_usage", state)
 
     def set_vmlist_network_traffic_visible(self, state):
@@ -155,7 +156,7 @@ class vmmConfig:
     def on_vmlist_memory_usage_visible_changed(self, callback):
         self.conf.notify_add(self.conf_dir + "/vmlist-fields/memory_usage", callback)
 
-    def on_vmlist_disk_usage_visible_changed(self, callback):
+    def on_vmlist_disk_io_visible_changed(self, callback):
         self.conf.notify_add(self.conf_dir + "/vmlist-fields/disk_usage", callback)
 
     def on_vmlist_network_traffic_visible_changed(self, callback):
@@ -189,6 +190,40 @@ class vmmConfig:
     def on_stats_history_length_changed(self, callback):
         self.conf.notify_add(self.conf_dir + "/stats/history-length", callback)
 
+
+    # Disable/Enable different stats polling
+    def get_stats_enable_disk_poll(self):
+        return self.conf.get_bool(self.conf_dir + "/stats/enable-disk-poll")
+    def get_stats_enable_net_poll(self):
+        return self.conf.get_bool(self.conf_dir + "/stats/enable-net-poll")
+    def get_stats_enable_mem_poll(self):
+        return self.conf.get_bool(self.conf_dir + "/stats/enable-mem-poll")
+    def get_stats_enable_cpu_poll(self):
+        return self.conf.get_bool(self.conf_dir + "/stats/enable-cpu-poll")
+
+    def set_stats_enable_disk_poll(self, val):
+        self.conf.set_bool(self.conf_dir + "/stats/enable-disk-poll", val)
+    def set_stats_enable_net_poll(self, val):
+        self.conf.set_bool(self.conf_dir + "/stats/enable-net-poll", val)
+    def set_stats_enable_mem_poll(self, val):
+        self.conf.set_bool(self.conf_dir + "/stats/enable-mem-poll", val)
+    def set_stats_enable_cpu_poll(self, val):
+        self.conf.set_bool(self.conf_dir + "/stats/enable-cpu-poll", val)
+
+    def on_stats_enable_disk_poll_changed(self, cb, userdata=None):
+        self.conf.notify_add(self.conf_dir + "/stats/enable-disk-poll", cb,
+                             userdata)
+    def on_stats_enable_net_poll_changed(self, cb, userdata=None):
+        self.conf.notify_add(self.conf_dir + "/stats/enable-net-poll", cb,
+                             userdata)
+    def on_stats_enable_mem_poll_changed(self, cb, userdata=None):
+        self.conf.notify_add(self.conf_dir + "/stats/enable-mem-poll", cb,
+                             userdata)
+    def on_stats_enable_cpu_poll_changed(self, cb, userdata=None):
+        self.conf.notify_add(self.conf_dir + "/stats/enable-cpu-poll", cb,
+                             userdata)
+
+    # VM Console preferences
     def on_console_popup_changed(self, callback):
         self.conf.notify_add(self.conf_dir + "/console/popup", callback)
 
@@ -249,23 +284,23 @@ class vmmConfig:
         return self.keyring.is_available()
 
     def clear_console_password(self, vm):
-        id = self.conf.get_int(self.conf_dir + "/console/passwords/" + vm.get_uuid())
+        _id = self.conf.get_int(self.conf_dir + "/console/passwords/" + vm.get_uuid())
 
-        if id != None:
+        if _id != None:
             if not(self.has_keyring()):
                 return
 
-            if self.keyring.clear_secret(id):
+            if self.keyring.clear_secret(_id):
                 self.conf.unset(self.conf_dir + "/console/passwords/" + vm.get_uuid())
 
     def get_console_password(self, vm):
-        id = self.conf.get_int(self.conf_dir + "/console/passwords/" + vm.get_uuid())
+        _id = self.conf.get_int(self.conf_dir + "/console/passwords/" + vm.get_uuid())
 
-        if id != None:
+        if _id != None:
             if not(self.has_keyring()):
                 return ""
 
-            secret = self.keyring.get_secret(id)
+            secret = self.keyring.get_secret(_id)
             if secret != None and secret.get_name() == self.get_secret_name(vm):
                 if not(secret.has_attribute("hvuri")):
                     return ""
@@ -289,9 +324,9 @@ class vmmConfig:
         # is our unique key
 
         secret = vmmSecret(self.get_secret_name(vm), password, { "uuid" : vm.get_uuid(), "hvuri": vm.get_connection().get_uri() })
-        id = self.keyring.add_secret(secret)
-        if id != None:
-            self.conf.set_int(self.conf_dir + "/console/passwords/" + vm.get_uuid(), id)
+        _id = self.keyring.add_secret(secret)
+        if _id != None:
+            self.conf.set_int(self.conf_dir + "/console/passwords/" + vm.get_uuid(), _id)
 
     def get_url_list_length(self):
         length = self.conf.get_int(self.conf_dir + "/urls/url-list-length")
@@ -380,11 +415,10 @@ class vmmConfig:
     def get_default_image_dir(self, connection):
         if connection.get_type() == "Xen":
             return DEFAULT_XEN_IMAGE_DIR
-        #elif os.access(DEFAULT_VIRT_IMAGE_DIR, os.W_OK):
-        #    return DEFAULT_VIRT_IMAGE_DIR
-        #else:
-        #    return os.getcwd()
 
+        if connection.is_qemu_session():
+            return os.getcwd()
+        
         # Just return the default dir since the intention is that it
         # is a managed pool and the user will be able to install to it.
         return DEFAULT_VIRT_IMAGE_DIR

@@ -29,7 +29,7 @@ class vmmChooseCD(gobject.GObject):
                            gobject.TYPE_NONE,
                            (str, str, str)), # type, source, target
 }
-    def __init__(self, config, target, connection):
+    def __init__(self, config, dev_id_info, connection):
         self.__gobject_init__()
         self.window = gtk.glade.XML(config.get_glade_dir() + "/vmm-choose-cd.glade", "vmm-choose-cd", domain="virt-manager")
         self.err = vmmErrorDialog(self.window.get_widget("vmm-choose-cd"),
@@ -38,7 +38,7 @@ class vmmChooseCD(gobject.GObject):
                                   _("An unexpected error occurred"))
         self.config = config
         self.window.get_widget("vmm-choose-cd").hide()
-        self.target = target
+        self.dev_id_info = dev_id_info
         self.conn = connection
 
         self.window.signal_autoconnect({
@@ -65,9 +65,6 @@ class vmmChooseCD(gobject.GObject):
 
         self.reset_state()
 
-    def set_target(self, target):
-        self.target=target
-
     def close(self,ignore1=None,ignore2=None):
         self.window.get_widget("vmm-choose-cd").hide()
         return 1
@@ -89,6 +86,8 @@ class vmmChooseCD(gobject.GObject):
         else:
             self.window.get_widget("physical-media").set_sensitive(True)
             self.window.get_widget("iso-file-chooser").set_sensitive(True)
+            self.populate_opt_media()
+            self.window.get_widget("cd-path").set_active(0)
 
     def ok(self,ignore1=None, ignore2=None):
         if self.window.get_widget("iso-image").get_active():
@@ -108,12 +107,14 @@ class vmmChooseCD(gobject.GObject):
                                         readOnly=True,
                                         conn=self.conn.vmm)
         except Exception, e:
-           return self.err.val_err(_("Invalid Media Path"), str(e))
-        self.emit("cdrom-chosen", disk.type, disk.path, self.target)
+            return self.err.val_err(_("Invalid Media Path"), str(e))
+        self.emit("cdrom-chosen", disk.type, disk.path, self.dev_id_info)
         self.cancel()
 
     def media_toggled(self, ignore1=None, ignore2=None):
         if self.window.get_widget("physical-media").get_active():
+            self.populate_opt_media()
+            self.window.get_widget("cd-path").set_active(0)
             self.window.get_widget("cd-path").set_sensitive(True)
             self.window.get_widget("iso-path").set_sensitive(False)
             self.window.get_widget("iso-file-chooser").set_sensitive(False)
@@ -121,26 +122,25 @@ class vmmChooseCD(gobject.GObject):
             self.window.get_widget("cd-path").set_sensitive(False)
             self.window.get_widget("iso-path").set_sensitive(True)
             self.window.get_widget("iso-file-chooser").set_sensitive(True)
-            self.populate_opt_media()
 
     def change_cd_path(self, ignore1=None, ignore2=None):
         pass
 
     def browse_fv_iso_location(self, ignore1=None, ignore2=None):
-        file = self._browse_file(_("Locate ISO Image"), type="iso")
-        if file != None:
-            self.window.get_widget("iso-path").set_text(file)
+        filename = self._browse_file(_("Locate ISO Image"))
+        if filename != None:
+            self.window.get_widget("iso-path").set_text(filename)
 
     def populate_opt_media(self):
         try:
-            self.optical_helper = vmmOpticalDriveHelper(self.window.get_widget("cd-path"))
-            self.optical_helper.populate_opt_media()
+            optical_helper = vmmOpticalDriveHelper(self.window.get_widget("cd-path"))
+            optical_helper.populate_opt_media()
             self.window.get_widget("physical-media").set_sensitive(True)
         except Exception, e:
             logging.error("Unable to create optical-helper widget: '%s'", e)
             self.window.get_widget("physical-media").set_sensitive(False)
 
-    def _browse_file(self, dialog_name, folder=None, type=None):
+    def _browse_file(self, dialog_name, folder=None, _type=None):
         # user wants to browse for an ISO
         fcdialog = gtk.FileChooserDialog(dialog_name,
                                          self.window.get_widget("vmm-choose-cd"),
@@ -149,9 +149,9 @@ class vmmChooseCD(gobject.GObject):
                                           gtk.STOCK_OPEN, gtk.RESPONSE_ACCEPT),
                                          None)
         fcdialog.set_default_response(gtk.RESPONSE_ACCEPT)
-        if type != None:
+        if _type != None:
             f = gtk.FileFilter()
-            f.add_pattern("*." + type)
+            f.add_pattern("*." + _type)
             fcdialog.set_filter(f)
         if folder != None:
             fcdialog.set_current_folder(folder)

@@ -19,11 +19,6 @@
 #
 
 import gobject
-import libvirt
-import libxml2
-import os
-import sys
-import logging
 import virtinst.util as util
 
 from virtManager.IPy import IP
@@ -52,7 +47,7 @@ class vmmNetwork(gobject.GObject):
         return self._xml
 
     def _update_xml(self):
-        self._xml = self.new.XMLDesc(0)
+        self._xml = self.net.XMLDesc(0)
 
     def is_active(self):
         return self.active

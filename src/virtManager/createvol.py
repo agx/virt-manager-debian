@@ -29,7 +29,6 @@ import libvirt
 from virtManager.error import vmmErrorDialog
 from virtManager.asyncjob import vmmAsyncJob
 from virtManager.createmeter import vmmCreateMeter
-from virtManager.connection import vmmConnection
 
 from virtinst import Storage
 
@@ -188,7 +187,7 @@ class vmmCreateVolume(gobject.GObject):
 
             meter = vmmCreateMeter(asyncjob)
             logging.debug("Starting backround vol creation.")
-            poolobj = self.vol.install(meter=meter)
+            self.vol.install(meter=meter)
         except Exception, e:
             self.error_msg = _("Error creating vol: %s") % str(e)
             self.error_details = "".join(traceback.format_exc())

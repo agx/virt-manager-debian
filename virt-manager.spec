@@ -7,23 +7,29 @@
 %define _extra_release %{?dist:%{dist}}%{!?dist:%{?extra_release:%{extra_release}}}
 
 Name: virt-manager
-Version: 0.6.0
+Version: 0.6.1
 Release: 1%{_extra_release}
 Summary: Virtual Machine Manager
 
 Group: Applications/Emulators
 License: GPLv2+
-URL: http://virt-manager.et.redhat.com/
-Source0: http://virt-manager.et.redhat.com/download/sources/%{name}/%{name}-%{version}.tar.gz
+URL: http://virt-manager.org/
+Source0: http://virt-manager.org/download/sources/%{name}/%{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
 
 # These two are just the oldest version tested
 Requires: pygtk2 >= 1.99.12-6
 Requires: gnome-python2-gconf >= 1.99.11-7
+%if 0%{?fedora} <= 9
+Requires: gnome-python2
+%else
+Requires: gnome-python2-gnome
+%endif
 # Absolutely require this version or newer
 Requires: libvirt-python >= 0.4.5
 # Definitely does not work with earlier due to python API changes
 Requires: dbus-python >= 0.61
+Requires: dbus-x11
 # Might work with earlier, but this is what we've tested
 Requires: gnome-keyring >= 0.4.9
 # Minimum we've tested with
@@ -35,7 +41,7 @@ Requires: gnome-python2-gnomevfs >= 2.15.4
 # Minimum we've tested with
 Requires: libxml2-python >= 2.6.23
 # Required to install Xen & QEMU guests
-Requires: python-virtinst >= 0.400.0
+Requires: python-virtinst >= 0.400.1
 # Required for loading the glade UI
 Requires: pygtk2-libglade
 # Required for our graphics which are currently SVG format
@@ -48,8 +54,6 @@ Requires: scrollkeeper
 Requires: gtk-vnc-python >= 0.3.4
 # For local authentication against PolicyKit
 Requires: PolicyKit-gnome
-
-ExclusiveArch: %{ix86} x86_64 ia64
 
 BuildRequires: pygtk2-devel
 BuildRequires: gtk2-devel
@@ -66,6 +70,8 @@ BuildRequires: intltool
 Requires(pre): GConf2
 Requires(post): GConf2
 Requires(preun): GConf2
+Requires(post): desktop-file-utils
+Requires(postun): desktop-file-utils
 
 %description
 Virtual Machine Manager provides a graphical tool for administering virtual
@@ -126,8 +132,12 @@ fi
 %{_sysconfdir}/gconf/schemas/%{name}.schemas
 %{_bindir}/%{name}
 %{_libexecdir}/%{name}-launch
+%dir %{_libdir}/%{name}/
 %{_libdir}/%{name}/*
 
+%{_mandir}/man1/%{name}.1*
+
+%dir %{_datadir}/%{name}
 %{_datadir}/%{name}/*.glade
 %{_datadir}/%{name}/pixmaps/*.png
 %{_datadir}/%{name}/pixmaps/*.svg
@@ -136,17 +146,21 @@ fi
 %{_datadir}/%{name}/*.pyc
 %{_datadir}/%{name}/*.pyo
 
+%dir %{_datadir}/%{name}/pixmaps/
+%{_datadir}/%{name}/pixmaps/*.png
+%{_datadir}/%{name}/pixmaps/*.svg
+
+%dir %{_datadir}/%{name}/virtManager/
+
 %{_datadir}/%{name}/virtManager/*.py
 %{_datadir}/%{name}/virtManager/*.pyc
 %{_datadir}/%{name}/virtManager/*.pyo
 
-%{_datadir}/omf/%{name}
-%{_datadir}/gnome/help
+%{_datadir}/omf/%{name}/
+%{_datadir}/gnome/help/%{name}
 
 %{_datadir}/applications/%{name}.desktop
 %{_datadir}/dbus-1/services/%{name}.service
-
-%{_datadir}/man/man1/%{name}.1*
 
 %changelog
 * Wed Sep 10 2008 Cole Robinson <crobinso@redhat.com> - 0.6.0-1
