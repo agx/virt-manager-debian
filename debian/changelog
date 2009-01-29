@@ -1,3 +1,25 @@
+virt-manager (0.6.1-1) experimental; urgency=low
+
+  * [31465dc] allow non root users for ssh connections
+  * [e43ed8a] Imported Upstream version 0.6.1 (Closes: #513290), 
+    has our non-root ssh patch (Closes: #505936)
+  * [12f2cc7] drop patches 
+        * fixed upstream:
+              0007-populate-hostinfo-earlier-in-tick-function-so-it-isn.patch
+        * applied ustream:
+              0002-check-for-qemu-session-instead-of-uid-0.patch
+              0003-start-network-if-it-s-not-already-active.patch
+              0004-cd-chooser-fixes.patch
+              0005-clear-list-of-optical-devices.patch
+              0006-fix-sorting-exceptions.patch
+              0008-qemu-session-can-t-write-to-the-pool-so-use-curren.patch
+              0009-allow-non-root-users-for-ssh-connections.patch
+  * [2d72548] depend on recent virtinst helper
+  * [4a55e79] remove files that we're added by the intial merge from
+    ubuntu
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 29 Jan 2009 17:51:29 +0100
+
 virt-manager (0.6.0-6) unstable; urgency=low
 
   * Upload to unstable
