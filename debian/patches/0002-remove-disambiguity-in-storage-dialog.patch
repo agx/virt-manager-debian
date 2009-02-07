@@ -1,0 +1,37 @@
+From: =?utf-8?q?Guido=20G=C3=BCnther?= <agx@sigxcpu.org>
+Date: Sat, 7 Feb 2009 21:35:20 +0100
+Subject: [PATCH] remove disambiguity in storage dialog
+
+Closes: #514324
+---
+ src/virtManager/addhardware.py |    2 +-
+ src/virtManager/create.py      |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/virtManager/addhardware.py b/src/virtManager/addhardware.py
+index ecf013d..db35d1d 100644
+--- a/src/virtManager/addhardware.py
++++ b/src/virtManager/addhardware.py
+@@ -800,7 +800,7 @@ class vmmAddHardware(gobject.GObject):
+ 
+             ret = self._dev.is_size_conflict()
+             if not ret[0] and ret[1]:
+-                res = self.err.yes_no(_("Not Enough Free Space"), ret[1])
++                res = self.err.yes_no(_("Not Enough Free Space"), _("%s. Continue anyway?") % ret[1])
+                 if not res:
+                     return False
+ 
+diff --git a/src/virtManager/create.py b/src/virtManager/create.py
+index 63df1c8..903ff36 100644
+--- a/src/virtManager/create.py
++++ b/src/virtManager/create.py
+@@ -1018,7 +1018,7 @@ class vmmCreate(gobject.GObject):
+ 
+             ret = self._disk.is_size_conflict()
+             if not ret[0] and ret[1]:
+-                res = self.err.yes_no(_("Not Enough Free Space"), ret[1])
++                res = self.err.yes_no(_("Not Enough Free Space"), _("%s. Continue anyway?") % ret[1])
+                 if not res:
+                     return False
+ 
+-- 
