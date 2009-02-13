@@ -1,2 +1,3 @@
 0001-use-usr-share-gconf-for-schema-data.patch
 0002-remove-disambiguity-in-storage-dialog.patch
+0003-hint-to-ssh-askpass.patch
