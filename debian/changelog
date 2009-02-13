@@ -1,3 +1,11 @@
+virt-manager (0.6.1-2) experimental; urgency=low
+
+  * [d0da6be] remove disambiguity in storage dialog (Closes: #514324)
+  * [de2dae7] hint to ssh-askpass (Closes: #513599) - thanks to
+    Sebastian Andrzej Siewior for the patch
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 13 Feb 2009 14:59:33 +0100
+
 virt-manager (0.6.1-1) experimental; urgency=low
 
   * [31465dc] allow non root users for ssh connections
