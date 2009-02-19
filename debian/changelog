@@ -1,3 +1,13 @@
+virt-manager (0.6.1-4) unstable; urgency=low
+
+  * [24b33f6] add ${misc:Depends}
+  * [8e2899f] make fullscreen mode more usful if the guests resolution is
+    large then the one of the host.
+  * [17b69af] gtk-vnc 0.3.8 uses cairo so no need to forbid scaling with
+    compiz
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 19 Feb 2009 17:26:57 +0100
+
 virt-manager (0.6.1-3) unstable; urgency=low
 
   * upload to unstable
