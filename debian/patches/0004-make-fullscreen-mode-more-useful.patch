@@ -1,0 +1,36 @@
+From: =?utf-8?q?Guido=20G=C3=BCnther?= <agx@sigxcpu.org>
+Date: Thu, 19 Feb 2009 16:11:34 +0100
+Subject: [PATCH] make fullscreen mode more useful
+
+when a VM uses a video mode that is larger than the mode of the host
+running virt-manager fullscreen mode isn't particular useful at the
+moment. Since there are no scroll bars (due to _force_resize), parts of
+the screen simply get cut off. This patch sets the size of the vnc
+widget to the actual screen size (minus the height of the menu bar) when
+switching to fullscreen mode with scaling enabled.
+---
+ src/virtManager/details.py |   10 ++++++++++
+ 1 files changed, 10 insertions(+), 0 deletions(-)
+
+diff --git a/src/virtManager/details.py b/src/virtManager/details.py
+index 2337516..94a31c8 100644
+--- a/src/virtManager/details.py
++++ b/src/virtManager/details.py
+@@ -438,6 +438,16 @@ class vmmDetails(gobject.GObject):
+     def toggle_fullscreen(self, src):
+         self.window.get_widget("control-fullscreen").set_active(src.get_active())
+         if src.get_active():
++
++            # if scaling is enabled make sure we fit onto the root window
++            if self.vncViewer.get_scaling():
++                w, h = self.window.get_widget("menubar3").size_request()
++                rootw = src.get_screen().get_width()
++                rooth = src.get_screen().get_height() - h
++                self.vncViewer.set_size_request(rootw, rooth)
++            else:
++                self.vncViewer.set_size_request(-1, -1)
++
+             self.window.get_widget("vmm-details").fullscreen()
+             if self.config.get_console_keygrab() == 1:
+                 gtk.gdk.keyboard_grab(self.vncViewer.window, False, 0L)
+-- 
