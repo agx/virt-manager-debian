@@ -1,8 +1,8 @@
 virt-manager (0.6.1-4) unstable; urgency=low
 
   * [24b33f6] add ${misc:Depends}
-  * [8e2899f] make fullscreen mode more usful if the guests resolution is
-    large then the one of the host.
+  * [8e2899f] make fullscreen mode more useful if the guests resolution is
+    larger than the one of the host.
   * [17b69af] gtk-vnc 0.3.8 uses cairo so no need to forbid scaling with
     compiz
 
@@ -39,7 +39,7 @@ virt-manager (0.6.1-1) experimental; urgency=low
               0008-qemu-session-can-t-write-to-the-pool-so-use-curren.patch
               0009-allow-non-root-users-for-ssh-connections.patch
   * [2d72548] depend on recent virtinst helper
-  * [4a55e79] remove files that we're added by the intial merge from
+  * [4a55e79] remove files that were added by the intial merge from
     ubuntu
 
  -- Guido Günther <agx@sigxcpu.org>  Thu, 29 Jan 2009 17:51:29 +0100
