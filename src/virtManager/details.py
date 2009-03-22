@@ -49,16 +49,18 @@ HW_LIST_COL_TYPE = 4
 HW_LIST_COL_DEVICE = 5
 
 # Types for the hw list model: numbers specify what order they will be listed
-HW_LIST_TYPE_CPU = 0
-HW_LIST_TYPE_MEMORY = 1
-HW_LIST_TYPE_BOOT = 2
-HW_LIST_TYPE_DISK = 3
-HW_LIST_TYPE_NIC = 4
-HW_LIST_TYPE_INPUT = 5
-HW_LIST_TYPE_GRAPHICS = 6
-HW_LIST_TYPE_SOUND = 7
-HW_LIST_TYPE_CHAR = 8
-HW_LIST_TYPE_HOSTDEV = 9
+HW_LIST_TYPE_GENERAL = 0
+HW_LIST_TYPE_STATS = 1
+HW_LIST_TYPE_CPU = 2
+HW_LIST_TYPE_MEMORY = 3
+HW_LIST_TYPE_BOOT = 4
+HW_LIST_TYPE_DISK = 5
+HW_LIST_TYPE_NIC = 6
+HW_LIST_TYPE_INPUT = 7
+HW_LIST_TYPE_GRAPHICS = 8
+HW_LIST_TYPE_SOUND = 9
+HW_LIST_TYPE_CHAR = 10
+HW_LIST_TYPE_HOSTDEV = 11
 
 # Console pages
 PAGE_UNAVAILABLE = 0
@@ -66,10 +68,10 @@ PAGE_SCREENSHOT = 1
 PAGE_AUTHENTICATE = 2
 PAGE_VNCVIEWER = 3
 
+# Main tab pages
 PAGE_CONSOLE = 0
-PAGE_OVERVIEW = 1
-PAGE_DETAILS = 2
-PAGE_DYNAMIC_OFFSET = 3
+PAGE_DETAILS = 1
+PAGE_DYNAMIC_OFFSET = 2
 
 class vmmDetails(gobject.GObject):
     __gsignals__ = {
@@ -107,7 +109,6 @@ class vmmDetails(gobject.GObject):
         self.vm = vm
 
         topwin = self.window.get_widget("vmm-details")
-        topwin.hide_all()
         self.err = vmmErrorDialog(topwin,
                                   0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
                                   _("Unexpected Error"),
@@ -185,7 +186,7 @@ class vmmDetails(gobject.GObject):
 
         self.addhw = None
         self.choose_cd = None
-        
+
         self.cpu_usage_graph = sparkline.Sparkline()
         self.cpu_usage_graph.set_property("reversed", True)
         self.window.get_widget("graph-table").attach(self.cpu_usage_graph, 1, 2, 0, 1)
@@ -201,7 +202,7 @@ class vmmDetails(gobject.GObject):
         self.disk_io_graph.set_property("rgb", map(lambda x: x/255.0,
                                         [0x82, 0x00, 0x3B, 0x29, 0x5C, 0x45]))
         self.window.get_widget("graph-table").attach(self.disk_io_graph, 1, 2, 2, 3)
- 
+
         self.network_traffic_graph = sparkline.Sparkline()
         self.network_traffic_graph.set_property("reversed", True)
         self.network_traffic_graph.set_property("filled", False)
@@ -222,9 +223,13 @@ class vmmDetails(gobject.GObject):
         else:
             self.vncViewer.set_keyboard_grab(False)
         self.vncViewer.set_pointer_grab(True)
-        if not topwin.is_composited():
-            self.vncViewer.set_scaling(True)
-            self.window.get_widget("details-menu-view-scale-display").set_active(True)
+
+        self.scale_type = self.config.get_console_scaling()
+
+        self.window.get_widget("details-menu-view-scale-always").set_active(self.scale_type == self.config.CONSOLE_SCALE_ALWAYS)
+        self.window.get_widget("details-menu-view-scale-never").set_active(self.scale_type == self.config.CONSOLE_SCALE_NEVER)
+        self.window.get_widget("details-menu-view-scale-fullscreen").set_active(self.scale_type == self.config.CONSOLE_SCALE_FULLSCREEN)
+        self.update_scaling()
 
         self.vncViewer.connect("vnc-pointer-grab", self.notify_grabbed)
         self.vncViewer.connect("vnc-pointer-ungrab", self.notify_ungrabbed)
@@ -300,7 +305,9 @@ class vmmDetails(gobject.GObject):
 
             "on_details_menu_view_fullscreen_activate": self.toggle_fullscreen,
             "on_details_menu_view_toolbar_activate": self.toggle_toolbar,
-            "on_details_menu_view_scale_display_activate": self.scale_display,
+            "on_details_menu_view_scale_always_toggled": self.set_scale_type,
+            "on_details_menu_view_scale_fullscreen_toggled": self.set_scale_type,
+            "on_details_menu_view_scale_never_toggled": self.set_scale_type,
 
             "on_details_menu_send_cad_activate": self.send_key,
             "on_details_menu_send_cab_activate": self.send_key,
@@ -318,11 +325,13 @@ class vmmDetails(gobject.GObject):
             "on_details_menu_send_caf12_activate": self.send_key,
             "on_details_menu_send_printscreen_activate": self.send_key,
 
+            "on_console_auth_password_activate": self.auth_login,
             "on_console_auth_login_clicked": self.auth_login,
             })
 
         self.vm.connect("status-changed", self.update_widget_states)
         self.vm.connect("resources-sampled", self.refresh_resources)
+        self.vm.connect("config-changed", self.refresh_vm_info)
         self.window.get_widget("hw-list").get_selection().connect("changed", self.hw_selected)
 
         self.update_widget_states(self.vm, self.vm.status())
@@ -331,7 +340,7 @@ class vmmDetails(gobject.GObject):
         self.pixbuf_memory = gtk.gdk.pixbuf_new_from_file(config.get_icon_dir() + "/icon_cpu.png")
         self.prepare_hw_list()
         self.hw_selected()
-        self.refresh_resources(self.vm)
+        self.refresh_vm_info()
 
 
     # Black magic todo with scrolled windows. Basically the behaviour we want
@@ -424,11 +433,32 @@ class vmmDetails(gobject.GObject):
         else:
             self.vncViewer.set_keyboard_grab(False)
 
-    def scale_display(self, src):
-        if src.get_active():
-            self.vncViewer.set_scaling(True)
-        else:
+    def set_scale_type(self, src):
+        if not src.get_active():
+            return
+
+        if src == self.window.get_widget("details-menu-view-scale-always"):
+            self.scale_type = self.config.CONSOLE_SCALE_ALWAYS
+        elif src == self.window.get_widget("details-menu-view-scale-fullscreen"):
+            self.scale_type = self.config.CONSOLE_SCALE_FULLSCREEN
+        elif src == self.window.get_widget("details-menu-view-scale-never"):
+            self.scale_type = self.config.CONSOLE_SCALE_NEVER
+
+        self.update_scaling()
+
+    def update_scaling(self):
+        curscale = self.vncViewer.get_scaling()
+        fs = self.window.get_widget("control-fullscreen").get_active()
+
+        if (self.scale_type == self.config.CONSOLE_SCALE_NEVER
+            and curscale == True):
             self.vncViewer.set_scaling(False)
+        elif (self.scale_type == self.config.CONSOLE_SCALE_ALWAYS
+              and curscale == False):
+            self.vncViewer.set_scaling(True)
+        elif (self.scale_type == self.config.CONSOLE_SCALE_FULLSCREEN
+              and curscale != fs):
+            self.vncViewer.set_scaling(fs)
 
     def control_fullscreen(self, src):
         menu = self.window.get_widget("details-menu-view-fullscreen")
@@ -438,6 +468,16 @@ class vmmDetails(gobject.GObject):
     def toggle_fullscreen(self, src):
         self.window.get_widget("control-fullscreen").set_active(src.get_active())
         if src.get_active():
+
+            # if scaling is enabled make sure we fit onto the root window
+            if self.vncViewer.get_scaling():
+                ignore, h = self.window.get_widget("menubar3").size_request()
+                rootw = src.get_screen().get_width()
+                rooth = src.get_screen().get_height() - h
+                self.vncViewer.set_size_request(rootw, rooth)
+            else:
+                self.vncViewer.set_size_request(-1, -1)
+
             self.window.get_widget("vmm-details").fullscreen()
             if self.config.get_console_keygrab() == 1:
                 gtk.gdk.keyboard_grab(self.vncViewer.window, False, 0L)
@@ -458,6 +498,7 @@ class vmmDetails(gobject.GObject):
             tabs.set_border_width(6)
             if self.window.get_widget("details-menu-view-toolbar").get_active():
                 self.window.get_widget("details-toolbar").show()
+        self.update_scaling()
 
     def auth_login(self, ignore):
         self.set_password()
@@ -520,8 +561,10 @@ class vmmDetails(gobject.GObject):
             return
         dialog.show_all()
         dialog.present()
+
         self.engine.increment_window_counter()
         self.update_widget_states(self.vm, self.vm.status())
+        self.vm.update_xml()
 
     def show_help(self, src):
         # From the Details window, show the help document from the Details page
@@ -531,7 +574,8 @@ class vmmDetails(gobject.GObject):
         self.window.get_widget("details-pages").set_current_page(PAGE_CONSOLE)
 
     def activate_performance_page(self):
-        self.window.get_widget("details-pages").set_current_page(PAGE_OVERVIEW)
+        self.window.get_widget("details-pages").set_current_page(PAGE_DETAILS)
+        self.window.get_widget("hw-panel").set_current_page(HW_LIST_TYPE_STATS)
 
     def activate_config_page(self):
         self.window.get_widget("details-pages").set_current_page(PAGE_DETAILS)
@@ -602,46 +646,47 @@ class vmmDetails(gobject.GObject):
 
 
     def hw_selected(self, src=None):
-        vmlist = self.window.get_widget("hw-list")
-        selection = vmlist.get_selection()
-        active = selection.get_selected()
-        if active[1] != None:
-            pagetype = active[0].get_value(active[1], HW_LIST_COL_TYPE)
+        pagetype = self.get_hw_selection(HW_LIST_COL_TYPE)
+        if not pagetype:
             self.window.get_widget("hw-panel").set_sensitive(True)
-            self.window.get_widget("hw-panel").show_all()
-
-            pagenum = pagetype
-            if pagetype == HW_LIST_TYPE_CPU:
-                self.window.get_widget("config-vcpus-apply").set_sensitive(False)
-                self.refresh_config_cpu()
-            elif pagetype == HW_LIST_TYPE_MEMORY:
-                self.window.get_widget("config-memory-apply").set_sensitive(False)
-                self.refresh_config_memory()
-            elif pagetype == HW_LIST_TYPE_BOOT:
-                self.refresh_boot_page()
-                self.window.get_widget("config-boot-options-apply").set_sensitive(False)
-            elif pagetype == HW_LIST_TYPE_DISK:
-                self.refresh_disk_page()
-            elif pagetype == HW_LIST_TYPE_NIC:
-                self.refresh_network_page()
-            elif pagetype == HW_LIST_TYPE_INPUT:
-                self.refresh_input_page()
-            elif pagetype == HW_LIST_TYPE_GRAPHICS:
-                self.refresh_graphics_page()
-            elif pagetype == HW_LIST_TYPE_SOUND:
-                self.refresh_sound_page()
-            elif pagetype == HW_LIST_TYPE_CHAR:
-                self.refresh_char_page()
-            elif pagetype == HW_LIST_TYPE_HOSTDEV:
-                self.refresh_hostdev_page()
-            else:
-                pagenum = -1
-
-            self.window.get_widget("hw-panel").set_current_page(pagenum)
-        else:
-            self.window.get_widget("hw-panel").set_sensitive(False)
-            selection.select_path(0)
+            self.window.get_widget("hw-list").get_selection().select_path(0)
             self.window.get_widget("hw-panel").set_current_page(0)
+            return
+
+        self.window.get_widget("hw-panel").set_sensitive(True)
+        self.window.get_widget("hw-panel").show_all()
+
+        if pagetype == HW_LIST_TYPE_GENERAL:
+            pass
+        elif pagetype == HW_LIST_TYPE_STATS:
+            self.refresh_stats_page()
+        elif pagetype == HW_LIST_TYPE_CPU:
+            self.window.get_widget("config-vcpus-apply").set_sensitive(False)
+            self.refresh_config_cpu()
+        elif pagetype == HW_LIST_TYPE_MEMORY:
+            self.window.get_widget("config-memory-apply").set_sensitive(False)
+            self.refresh_config_memory()
+        elif pagetype == HW_LIST_TYPE_BOOT:
+            self.refresh_boot_page()
+            self.window.get_widget("config-boot-options-apply").set_sensitive(False)
+        elif pagetype == HW_LIST_TYPE_DISK:
+            self.refresh_disk_page()
+        elif pagetype == HW_LIST_TYPE_NIC:
+            self.refresh_network_page()
+        elif pagetype == HW_LIST_TYPE_INPUT:
+            self.refresh_input_page()
+        elif pagetype == HW_LIST_TYPE_GRAPHICS:
+            self.refresh_graphics_page()
+        elif pagetype == HW_LIST_TYPE_SOUND:
+            self.refresh_sound_page()
+        elif pagetype == HW_LIST_TYPE_CHAR:
+            self.refresh_char_page()
+        elif pagetype == HW_LIST_TYPE_HOSTDEV:
+            self.refresh_hostdev_page()
+        else:
+            pagetype = -1
+
+        self.window.get_widget("hw-panel").set_current_page(pagetype)
 
     def control_vm_pause(self, src):
         if self.ignorePause:
@@ -674,12 +719,11 @@ class vmmDetails(gobject.GObject):
 
     def control_vm_migrate(self, src):
         # get selected submenu(destination hostname)
-        hostname = self.window.get_widget("details-menu-migrate_menu").get_active().get_image().get_stock()[0]
-        for key in self.engine.connections.keys():
-            if self.engine.get_connection(key).get_hostname() == hostname:
-                host_uri = key
-                break
-        self.emit("action-migrate-domain", self.vm.get_connection().get_uri(), self.vm.get_uuid(), host_uri)
+        info = self.window.get_widget("details-menu-migrate_menu").get_active().get_image().get_stock()[0]
+        hostname = info.split(" ")[0]
+
+        self.emit("action-migrate-domain", self.vm.get_connection().get_uri(),
+                  self.vm.get_uuid(), hostname)
 
     def set_migrate_menu(self):
         menu = self.window.get_widget("details-menu-migrate_menu")
@@ -798,43 +842,60 @@ class vmmDetails(gobject.GObject):
     def switch_page(self, ignore1=None, ignore2=None, newpage=None):
         self.page_refresh(newpage)
 
-    def refresh_resources(self, ignore=None):
+    def refresh_resources(self, ignore):
+        details = self.window.get_widget("details-pages")
+        page = details.get_current_page()
+
+        if self.is_visible():
+            # Force an xml update, so we check for changed xml on every tick
+            self.vm.update_xml()
+
+        if (page == PAGE_DETAILS and
+            self.get_hw_selection(HW_LIST_COL_TYPE) == HW_LIST_TYPE_STATS):
+            self.refresh_stats_page()
+
+    def refresh_vm_info(self, ignore=None):
         details = self.window.get_widget("details-pages")
         self.page_refresh(details.get_current_page())
 
     def page_refresh(self, page):
-        if page == PAGE_OVERVIEW:
-            self.refresh_summary()
-        elif page == PAGE_DETAILS:
-            # Add / remove new devices
-            self.repopulate_hw_list()
+        if page != PAGE_DETAILS:
+            return
 
-            # Now refresh desired page
-            hw_list = self.window.get_widget("hw-list")
-            selection = hw_list.get_selection()
-            active = selection.get_selected()
-            if active[1] != None:
-                pagetype = active[0].get_value(active[1], HW_LIST_COL_TYPE)
-                if pagetype == HW_LIST_TYPE_CPU:
-                    self.refresh_config_cpu()
-                elif pagetype == HW_LIST_TYPE_MEMORY:
-                    self.refresh_config_memory()
-                elif pagetype == HW_LIST_TYPE_DISK:
-                    self.refresh_disk_page()
-                elif pagetype == HW_LIST_TYPE_NIC:
-                    self.refresh_network_page()
-                elif pagetype == HW_LIST_TYPE_INPUT:
-                    self.refresh_input_page()
-                elif pagetype == HW_LIST_TYPE_GRAPHICS:
-                    self.refresh_graphics_page()
-                elif pagetype == HW_LIST_TYPE_SOUND:
-                    self.refresh_sound_page()
-                elif pagetype == HW_LIST_TYPE_CHAR:
-                    self.refresh_char_page()
-                elif pagetype == HW_LIST_TYPE_HOSTDEV:
-                    self.refresh_hostdev_page()
+        # This function should only be called when the VM xml actually
+        # changes (not everytime it is refreshed). This saves us from blindly
+        # parsing the xml every tick
 
-    def refresh_summary(self):
+        pagetype = self.get_hw_selection(HW_LIST_COL_TYPE)
+
+        # Add / remove new devices
+        self.repopulate_hw_list()
+
+        if pagetype == HW_LIST_TYPE_GENERAL:
+            # Nothing to refresh at this point
+            pass
+        elif pagetype == HW_LIST_TYPE_STATS:
+            self.refresh_stats_page()
+        elif pagetype == HW_LIST_TYPE_CPU:
+            self.refresh_config_cpu()
+        elif pagetype == HW_LIST_TYPE_MEMORY:
+            self.refresh_config_memory()
+        elif pagetype == HW_LIST_TYPE_DISK:
+            self.refresh_disk_page()
+        elif pagetype == HW_LIST_TYPE_NIC:
+            self.refresh_network_page()
+        elif pagetype == HW_LIST_TYPE_INPUT:
+            self.refresh_input_page()
+        elif pagetype == HW_LIST_TYPE_GRAPHICS:
+            self.refresh_graphics_page()
+        elif pagetype == HW_LIST_TYPE_SOUND:
+            self.refresh_sound_page()
+        elif pagetype == HW_LIST_TYPE_CHAR:
+            self.refresh_char_page()
+        elif pagetype == HW_LIST_TYPE_HOSTDEV:
+            self.refresh_hostdev_page()
+
+    def refresh_stats_page(self):
         def _rx_tx_text(rx, tx, unit):
             return '<span color="#82003B">%(rx)d %(unit)s in</span>\n<span color="#295C45">%(tx)d %(unit)s out</span>' % locals()
 
@@ -853,11 +914,11 @@ class vmmDetails(gobject.GObject):
                                           int(round(host_memory/1024.0)))
         if self.config.get_stats_enable_disk_poll():
             dsk_txt = _rx_tx_text(self.vm.disk_read_rate(),
-                                  self.vm.disk_write_rate(), "KBytes/s")
+                                  self.vm.disk_write_rate(), "KB/s")
 
         if self.config.get_stats_enable_net_poll():
             net_txt = _rx_tx_text(self.vm.network_rx_rate(),
-                                  self.vm.network_tx_rate(), "KBytes/s")
+                                  self.vm.network_tx_rate(), "KB/s")
 
         self.window.get_widget("overview-cpu-usage-text").set_text(cpu_txt)
         self.window.get_widget("overview-memory-usage-text").set_text(mem_txt)
@@ -939,7 +1000,7 @@ class vmmDetails(gobject.GObject):
         else:
             perms = "Read/Write"
         if diskinfo[7] == True:
-            perms += ", Sharable"
+            perms += ", Shareable"
         self.window.get_widget("disk-permissions").set_text(perms)
         bus = diskinfo[8] or _("Unknown")
         self.window.get_widget("disk-bus").set_text(bus)
@@ -1192,6 +1253,10 @@ class vmmDetails(gobject.GObject):
         self.vncTunnel = None
 
     def try_login(self, src=None):
+        if not self.vm.vm:
+            # VM was removed, skip login attempt
+            return
+
         if self.vm.get_id() < 0:
             self.activate_unavailable_page(_("Guest not running"))
             self.schedule_retry()
@@ -1293,42 +1358,35 @@ class vmmDetails(gobject.GObject):
     def control_vm_screenshot(self, src):
         # If someone feels kind they could extend this code to allow
         # user to choose what image format they'd like to save in....
-        fcdialog = gtk.FileChooserDialog(_("Save Virtual Machine Screenshot"),
-                                         self.window.get_widget("vmm-details"),
-                                         gtk.FILE_CHOOSER_ACTION_SAVE,
-                                         (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                                          gtk.STOCK_SAVE, gtk.RESPONSE_ACCEPT),
-                                         None)
-        fcdialog.set_default_response(gtk.RESPONSE_ACCEPT)
-        png = gtk.FileFilter()
-        png.set_name("PNG files")
-        png.add_pattern("*.png")
-        fcdialog.add_filter(png)
-        fcdialog.set_do_overwrite_confirmation(True)
-        if fcdialog.run() == gtk.RESPONSE_ACCEPT:
-            fcdialog.hide()
-            filename = fcdialog.get_filename()
-            if not(filename.endswith(".png")):
-                filename += ".png"
-            image = self.vncViewer.get_pixbuf()
+        path = util.browse_local(self.window.get_widget("vmm-details"),
+                                 _("Save Virtual Machine Screenshot"),
+                                 _type = ("*.png", "PNG files"),
+                                 dialog_type = gtk.FILE_CHOOSER_ACTION_SAVE)
+        if not path:
+            return
 
-            # Save along with a little metadata about us & the domain
-            image.save(filename, 'png',
-                                    { 'tEXt::Hypervisor URI': self.vm.get_connection().get_uri(),
-                                      'tEXt::Domain Name': self.vm.get_name(),
-                                      'tEXt::Domain UUID': self.vm.get_uuid(),
-                                      'tEXt::Generator App': self.config.get_appname(),
-                                      'tEXt::Generator Version': self.config.get_appversion() })
-            msg = gtk.MessageDialog(self.window.get_widget("vmm-details"),
-                                    gtk.DIALOG_MODAL,
-                                    gtk.MESSAGE_INFO,
-                                    gtk.BUTTONS_OK,_("The screenshot has been saved to:\n%s") % file)
-            msg.set_title(_("Screenshot saved"))
-            msg.run()
-            msg.destroy()
-        else:
-            fcdialog.hide()
-        fcdialog.destroy()
+        filename = path
+        if not(filename.endswith(".png")):
+            filename += ".png"
+        image = self.vncViewer.get_pixbuf()
+
+        # Save along with a little metadata about us & the domain
+        image.save(filename, 'png',
+                   { 'tEXt::Hypervisor URI': self.vm.get_connection().get_uri(),
+                     'tEXt::Domain Name': self.vm.get_name(),
+                     'tEXt::Domain UUID': self.vm.get_uuid(),
+                     'tEXt::Generator App': self.config.get_appname(),
+                     'tEXt::Generator Version': self.config.get_appversion() })
+
+        msg = gtk.MessageDialog(self.window.get_widget("vmm-details"),
+                                gtk.DIALOG_MODAL,
+                                gtk.MESSAGE_INFO,
+                                gtk.BUTTONS_OK,
+                                (_("The screenshot has been saved to:\n%s") %
+                                 filename))
+        msg.set_title(_("Screenshot saved"))
+        msg.run()
+        msg.destroy()
 
 
     # ------------------------------
@@ -1483,7 +1541,7 @@ class vmmDetails(gobject.GObject):
             return
 
         self.remove_device(info[0], info[1])
-        self.refresh_resources()
+        self.vm.update_xml()
 
     def prepare_hw_list(self):
         hw_list_model = gtk.ListStore(str, str, int, gtk.gdk.Pixbuf, int, gobject.TYPE_PYOBJECT)
@@ -1520,6 +1578,10 @@ class vmmDetails(gobject.GObject):
     def populate_hw_list(self):
         hw_list_model = self.window.get_widget("hw-list").get_model()
         hw_list_model.clear()
+        hw_list_model.append(["Overview", None, 0, self.pixbuf_processor,
+                              HW_LIST_TYPE_GENERAL, []])
+        hw_list_model.append(["Performance", None, 0, self.pixbuf_memory,
+                              HW_LIST_TYPE_STATS, []])
         hw_list_model.append(["Processor", None, 0, self.pixbuf_processor, HW_LIST_TYPE_CPU, []])
         hw_list_model.append(["Memory", None, 0, self.pixbuf_memory, HW_LIST_TYPE_MEMORY, []])
         hw_list_model.append(["Boot Options", None, 0, self.pixbuf_memory, HW_LIST_TYPE_BOOT, []])
@@ -1718,7 +1780,7 @@ class vmmDetails(gobject.GObject):
         self.addhw.show()
 
     def add_hardware_done(self, ignore=None):
-        self.refresh_resources()
+        self.vm.update_xml()
 
     def toggle_cdrom(self, src):
         info = self.get_hw_selection(HW_LIST_COL_DEVICE)

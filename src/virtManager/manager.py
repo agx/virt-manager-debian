@@ -30,6 +30,7 @@ import libvirt
 from virtManager.connection import vmmConnection
 from virtManager.asyncjob import vmmAsyncJob
 from virtManager.error import vmmErrorDialog
+from virtManager.delete import vmmDeleteDialog
 from virtManager import util as util
 
 VMLIST_SORT_ID = 1
@@ -112,13 +113,16 @@ class vmmManager(gobject.GObject):
     def __init__(self, config, engine):
         self.__gobject_init__()
         self.window = gtk.glade.XML(config.get_glade_dir() + "/vmm-manager.glade", "vmm-manager", domain="virt-manager")
-        self.window.get_widget("vmm-manager").hide_all()
         self.err = vmmErrorDialog(self.window.get_widget("vmm-manager"),
                                   0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
                                   _("Unexpected Error"),
                                   _("An unexpected error occurred"))
         self.config = config
         self.engine = engine
+
+        self.delete_dialog = None
+        self.startup_error = None
+
         self.prepare_vmlist()
 
         self.config.on_vmlist_domain_id_visible_changed(self.toggle_domain_id_visible_widget)
@@ -321,12 +325,26 @@ class vmmManager(gobject.GObject):
             self.enable_polling(None, None, init_val, typ)
 
         # store any error message from the restore-domain callback
-        self.domain_restore_error = ""
+        self.restore_err = ""
+        self.restore_err_details = ""
 
         self.window.get_widget("menu_file_restore_saved").set_sensitive(False)
 
         self.engine.connect("connection-added", self._add_connection)
         self.engine.connect("connection-removed", self._remove_connection)
+
+        # Select first list entry
+        vmlist = self.window.get_widget("vm-list")
+        if len(vmlist.get_model()) == 0:
+            self.startup_error = _("Could not populate a default connection. "
+                                   "Make sure the appropriate virtualization "
+                                   "packages are installed (kvm, qemu, etc.) "
+                                   "and that libvirtd has been restarted to "
+                                   "notice the changes.\n\n"
+                                   "A hypervisor connection can be manually "
+                                   "added via \nFile->Add Connection")
+        else:
+            vmlist.get_selection().select_iter(vmlist.get_model().get_iter_first())
 
     def show(self):
         win = self.window.get_widget("vmm-manager")
@@ -335,6 +353,11 @@ class vmmManager(gobject.GObject):
             return
         win.show_all()
         self.engine.increment_window_counter()
+
+        if self.startup_error:
+            self.err.val_err(_("Error determining default hypervisor."),
+                             self.startup_error, _("Startup Error"))
+            self.startup_error = None
 
     def close(self, src=None, src2=None):
         if self.is_visible():
@@ -372,52 +395,41 @@ class vmmManager(gobject.GObject):
     def restore_saved(self, src=None):
         conn = self.current_connection()
         if conn.is_remote():
-            self.err.val_err(_("Restoring virtual machines over remote connections is not yet supported"))
+            self.err.val_err(_("Restoring virtual machines over remote "
+                               "connections is not yet supported"))
             return
 
-        # get filename
-        fcdialog = gtk.FileChooserDialog(_("Restore Virtual Machine"),
-                                              self.window.get_widget("vmm-manager"),
-                                              gtk.FILE_CHOOSER_ACTION_OPEN,
-                                              (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                                               gtk.STOCK_OPEN, gtk.RESPONSE_ACCEPT),
-                                              None)
-        fcdialog.set_default_response(gtk.RESPONSE_ACCEPT)
-        fcdialog.set_current_folder(self.config.get_default_save_dir(self.current_connection()))
-        # pop up progress dialog
-        response = fcdialog.run()
-        fcdialog.hide()
-        if(response == gtk.RESPONSE_ACCEPT):
-            file_to_load = fcdialog.get_filename()
-            if self.is_valid_saved_image(file_to_load):
+        path = util.browse_local(self.window.get_widget("vmm-manager"),
+                                 _("Restore Virtual Machine"),
+                                 self.config.get_default_save_dir(conn))
+
+        if path:
+            if conn.is_valid_saved_image(path):
                 progWin = vmmAsyncJob(self.config,
                                       self.restore_saved_callback,
-                                      [file_to_load],
+                                      [path],
                                       _("Restoring Virtual Machine"))
                 progWin.run()
             else:
-                self.err.val_err(_("The file '%s' does not appear to be a valid saved machine image") % file_to_load)
+                self.err.val_err(_("The file '%s' does not appear to be a "
+                                   "valid saved machine image") % path)
                 return
 
-        fcdialog.destroy()
-        if(self.domain_restore_error != ""):
-            self.err.val_err(self.domain_restore_error)
-            self.domain_restore_error = ""
-
-    def is_valid_saved_image(self, savfile):
-        try:
-            f = open(savfile, "r")
-            magic = f.read(16)
-            if magic != "LinuxGuestRecord" and magic != "LibvirtQemudSave":
-                return False
-            return True
-        except:
-            return False
+        if self.restore_err != "":
+            self.err.show_err(self.restore_err, self.restore_err_details,
+                              title=_("Error restoring domain"))
+            self.restore_err = ""
+            self.restore_details = ""
 
     def restore_saved_callback(self, file_to_load, ignore1=None):
-        status = self.current_connection().restore(file_to_load)
-        if(status != 0):
-            self.domain_restore_error = _("Error restoring domain '%s'. Is the domain already running?") % file_to_load
+        try:
+            self.current_connection().restore(file_to_load)
+        except Exception, e:
+            self.restore_err = (_("Error restoring domain '%s': %s") %
+                                  (file_to_load, str(e)))
+            self.restore_err_details = "".join(traceback.format_exc())
+            return
+
 
     def vm_view_changed(self, src):
         vmlist = self.window.get_widget("vm-list")
@@ -526,6 +538,7 @@ class vmmManager(gobject.GObject):
         _iter = model.append(None, row)
         path = model.get_path(_iter)
         self.rows[conn.get_uri()] = model[path]
+        return _iter
 
     def vm_removed(self, connection, uri, vmuuid):
         vmlist = self.window.get_widget("vm-list")
@@ -702,7 +715,6 @@ class vmmManager(gobject.GObject):
             # Nothing is selected
             self.window.get_widget("vm-open").set_sensitive(False)
             self.window.get_widget("vm-delete").set_sensitive(False)
-            self.window.get_widget("vm-new").set_sensitive(False)
             self.window.get_widget("menu_edit_details").set_sensitive(False)
             self.window.get_widget("menu_edit_delete").set_sensitive(False)
             self.window.get_widget("menu_host_details").set_sensitive(False)
@@ -717,7 +729,6 @@ class vmmManager(gobject.GObject):
                 self.window.get_widget("vm-delete").set_sensitive(True)
             else:
                 self.window.get_widget("vm-delete").set_sensitive(False)
-            self.window.get_widget("vm-new").set_sensitive(False)
             self.window.get_widget("menu_edit_details").set_sensitive(True)
             self.window.get_widget("menu_edit_delete").set_sensitive(True)
             self.window.get_widget("menu_host_details").set_sensitive(True)
@@ -730,10 +741,8 @@ class vmmManager(gobject.GObject):
             else:
                 self.window.get_widget("vm-delete").set_sensitive(False)
             if conn.get_state() == vmmConnection.STATE_ACTIVE:
-                self.window.get_widget("vm-new").set_sensitive(True)
                 self.window.get_widget("menu_file_restore_saved").set_sensitive(True)
             else:
-                self.window.get_widget("vm-new").set_sensitive(False)
                 self.window.get_widget("menu_file_restore_saved").set_sensitive(False)
             self.window.get_widget("menu_edit_details").set_sensitive(False)
             self.window.get_widget("menu_edit_delete").set_sensitive(False)
@@ -801,39 +810,37 @@ class vmmManager(gobject.GObject):
             return False
 
     def new_vm(self, ignore=None):
-        conn = self.current_connection()
-        self.emit("action-show-create", conn.get_uri())
+        self.emit("action-show-create", self.current_connection_uri())
 
     def delete_vm(self, ignore=None):
         conn = self.current_connection()
         vm = self.current_vm()
         if vm is None:
-            # Delete the connection handle
-            if conn is None:
-                return
-
-            result = self.err.yes_no(_("Are you sure you want to permanently delete the connection %s?") % self.rows[conn.get_uri()][ROW_NAME])
-            if not result:
-                return
-            self.engine.remove_connection(conn.get_uri())
+            self._do_delete_connection(conn)
         else:
-            # Delete the VM itself
+            self._do_delete_vm(vm)
 
-            if vm.is_active():
-                return
+    def _do_delete_connection(self, conn):
+        if conn is None:
+            return
 
-            # are you sure you want to delete this VM?
-            result = self.err.yes_no(_("Are you sure you want to permanently delete the virtual machine %s?") % vm.get_name())
-            if not result:
-                return
-            conn = vm.get_connection()
-            try:
-                vm.delete()
-            except Exception, e:
-                self.err.show_err(_("Error deleting domain: %s" % str(e)),\
-                                  "".join(traceback.format_exc()))
-                return
-            conn.tick(noStatsUpdate=True)
+        result = self.err.yes_no(_("This will remove the connection \"%s\","
+                                   "are you sure?") %
+                                   self.rows[conn.get_uri()][ROW_NAME])
+        if not result:
+            return
+        self.engine.remove_connection(conn.get_uri())
+
+    def _do_delete_vm(self, vm):
+        if vm.is_active():
+            return
+
+        if not self.delete_dialog:
+            self.delete_dialog = vmmDeleteDialog(self.config, vm)
+        else:
+            self.delete_dialog.set_vm(vm)
+
+        self.delete_dialog.show()
 
     def show_about(self, src):
         self.emit("action-show-about")
@@ -1110,14 +1117,11 @@ class vmmManager(gobject.GObject):
 
     def migrate(self, ignore):
         vm = self.current_vm()
-        # get selected submenu(destination hostname)
-        hostname = self.vmmenumigrate.get_active().get_image().get_stock()[0]
-        for key in self.engine.connections.keys():
-            if self.engine.get_connection(key).get_hostname() == hostname:
-                host_uri = key
-                break
+        label = self.vmmenumigrate.get_active().get_image().get_stock()[0]
+        hostname = label.split(" ")[0]
         if vm is not None:
-            self.emit("action-migrate-domain", vm.get_connection().get_uri(), vm.get_uuid(), host_uri)
+            self.emit("action-migrate-domain", vm.get_connection().get_uri(),
+                      vm.get_uuid(), hostname)
 
     def set_migrate_submenu(self, src):
         self.engine.populate_migrate_menu(self.vmmenumigrate, self.migrate)
@@ -1132,7 +1136,8 @@ class vmmManager(gobject.GObject):
         # add the connection to the treeModel
         vmlist = self.window.get_widget("vm-list")
         if not self.rows.has_key(conn.get_uri()):
-            self._append_connection(vmlist.get_model(), conn)
+            row = self._append_connection(vmlist.get_model(), conn)
+            vmlist.get_selection().select_iter(row)
 
     def _remove_connection(self, engine, conn):
         model = self.window.get_widget("vm-list").get_model()

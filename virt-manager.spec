@@ -7,7 +7,7 @@
 %define _extra_release %{?dist:%{dist}}%{!?dist:%{?extra_release:%{extra_release}}}
 
 Name: virt-manager
-Version: 0.6.1
+Version: 0.7.0
 Release: 1%{_extra_release}
 Summary: Virtual Machine Manager
 
@@ -51,9 +51,13 @@ Requires: vte >= 0.12.2
 # For online help
 Requires: scrollkeeper
 # For console widget
-Requires: gtk-vnc-python >= 0.3.4
+Requires: gtk-vnc-python >= 0.3.8
 # For local authentication against PolicyKit
+%if 0%{?fedora} >= 11
+Requires: PolicyKit-authentication-agent
+%elif 0%{?fedora} >= 9
 Requires: PolicyKit-gnome
+%endif
 
 BuildRequires: pygtk2-devel
 BuildRequires: gtk2-devel

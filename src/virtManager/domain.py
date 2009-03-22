@@ -23,7 +23,9 @@ import libvirt
 import libxml2
 import os
 import logging
-import virtinst.util as util
+
+from virtManager import util
+import virtinst.util as vutil
 
 class vmmDomain(gobject.GObject):
     __gsignals__ = {
@@ -33,6 +35,9 @@ class vmmDomain(gobject.GObject):
         "resources-sampled": (gobject.SIGNAL_RUN_FIRST,
                               gobject.TYPE_NONE,
                               []),
+        "config-changed": (gobject.SIGNAL_RUN_FIRST,
+                           gobject.TYPE_NONE,
+                           []),
         }
 
     def __init__(self, config, connection, vm, uuid):
@@ -49,13 +54,16 @@ class vmmDomain(gobject.GObject):
                            "netRxRate"  : 10.0,
                          }
 
-        self._update_status()
-        self.xml = None
+        self._xml = None
+        self._orig_inactive_xml = None
+        self._valid_xml = False
 
         self._mem_stats = None
         self._cpu_stats = None
         self._network_traffic = None
         self._disk_io = None
+
+        self._update_status()
 
         self.config.on_stats_enable_mem_poll_changed(self.toggle_sample_mem_stats)
         self.config.on_stats_enable_cpu_poll_changed(self.toggle_sample_cpu_stats)
@@ -67,11 +75,39 @@ class vmmDomain(gobject.GObject):
         self.toggle_sample_network_traffic()
         self.toggle_sample_disk_io()
 
-
     def get_xml(self):
-        if self.xml is None:
-            self.xml = self.vm.XMLDesc(0)
-        return self.xml
+        # Get domain xml. If cached xml is invalid, update.
+        if self._xml is None or not self._valid_xml:
+            self.update_xml()
+        return self._xml
+
+    def update_xml(self):
+        # Force an xml update. Signal 'config-changed' if domain xml has
+        # changed since last refresh
+
+        origxml = self._xml
+        self._xml = self.vm.XMLDesc(libvirt.VIR_DOMAIN_XML_SECURE)
+        self._valid_xml = True
+
+        if origxml != self._xml:
+            self.emit("config-changed")
+
+    def invalidate_xml(self):
+        # Mark cached xml as invalid
+        self._valid_xml = False
+
+    def get_inactive_xml(self):
+        # FIXME: We only allow the user to change the inactive xml once.
+        #        We should eventually allow them to continually change it,
+        #        possibly see the inactive config? and not choke if they try
+        #        to remove a device twice.
+        if self._orig_inactive_xml is None:
+            self.refresh_inactive_xml()
+        return self._orig_inactive_xml
+
+    def refresh_inactive_xml(self):
+        self._orig_inactive_xml = self.vm.XMLDesc(libvirt.VIR_DOMAIN_XML_INACTIVE | libvirt.VIR_DOMAIN_XML_SECURE)
+        print "xml refresh to: %s" % self._orig_inactive_xml
 
     def release_handle(self):
         del(self.vm)
@@ -117,7 +153,8 @@ class vmmDomain(gobject.GObject):
         return False
 
     def is_hvm(self):
-        os_type = util.get_xml_path(self.get_xml(), "/domain/os/type")
+        os_type = vutil.get_xml_path(self.get_xml(), "/domain/os/type")
+        # FIXME: This should be static, not parse xml everytime
         # XXX libvirt bug - doesn't work for inactive guests
         #os_type = self.vm.OSType()
         logging.debug("OS Type: %s" % os_type)
@@ -126,7 +163,8 @@ class vmmDomain(gobject.GObject):
         return False
 
     def get_type(self):
-        return util.get_xml_path(self.get_xml(), "/domain/@type")
+        # FIXME: This should be static, not parse xml everytime
+        return vutil.get_xml_path(self.get_xml(), "/domain/@type")
 
     def is_vcpu_hotplug_capable(self):
         # Read only connections aren't allowed to change it
@@ -166,6 +204,11 @@ class vmmDomain(gobject.GObject):
         status = self._normalize_status(status)
 
         if status != self.lastStatus:
+            if self.lastStatus in [ libvirt.VIR_DOMAIN_SHUTDOWN,
+                                    libvirt.VIR_DOMAIN_SHUTOFF,
+                                    libvirt.VIR_DOMAIN_CRASHED ]:
+                # Domain just started. Invalidate inactive xml
+                self._orig_inactive_xml = None
             self.lastStatus = status
             self.emit("status-changed", status)
 
@@ -200,7 +243,7 @@ class vmmDomain(gobject.GObject):
                                self.connection.host_active_processor_count()))
             # Due to timing diffs between getting wall time & getting
             # the domain's time, its possible to go a tiny bit over
-            # 100% utilization. This freaks out users of the data, so
+            # 100% vutilization. This freaks out users of the data, so
             # we hard limit it.
             if pcentCpuTime > 100.0:
                 pcentCpuTime = 100.0
@@ -216,6 +259,9 @@ class vmmDomain(gobject.GObject):
     def _sample_network_traffic(self):
         rx = 0
         tx = 0
+        if not self.is_active():
+            return rx, tx
+
         for netdev in self.get_network_devices():
             try:
                 io = self.vm.interfaceStats(netdev[4])
@@ -232,6 +278,9 @@ class vmmDomain(gobject.GObject):
     def _sample_disk_io(self):
         rd = 0
         wr = 0
+        if not self.is_active():
+            return rd, wr
+
         for disk in self.get_disk_devices():
             try:
                 io = self.vm.blockStats(disk[2])
@@ -258,8 +307,9 @@ class vmmDomain(gobject.GObject):
         if self.connection.get_state() != self.connection.STATE_ACTIVE:
             return
 
-        # Clear cached XML
-        self.xml = None
+        # Invalidate cached xml
+        self.invalidate_xml()
+
         info = self.vm.info()
         expected = self.config.get_stats_history_length()
         current = len(self.record)
@@ -419,7 +469,7 @@ class vmmDomain(gobject.GObject):
         return self.record[0]["vcpuCount"]
 
     def vcpu_max_count(self):
-        cpus = util.get_xml_path(self.get_xml(), "/domain/vcpu")
+        cpus = vutil.get_xml_path(self.get_xml(), "/domain/vcpu")
         return int(cpus)
 
     def cpu_time_vector(self):
@@ -521,7 +571,7 @@ class vmmDomain(gobject.GObject):
 
     def save(self, filename, ignore1=None, background=True):
         if background:
-            conn = libvirt.open(self.connection.uri)
+            conn = util.dup_conn(self.config, self.connection)
             vm = conn.lookupByID(self.get_id())
         else:
             vm = self.vm
@@ -585,12 +635,13 @@ class vmmDomain(gobject.GObject):
         return self._parse_device_xml(_parse_serial_consoles)
 
     def get_graphics_console(self):
-        self.xml = None
-        typ = util.get_xml_path(self.get_xml(),
+        self.update_xml()
+
+        typ = vutil.get_xml_path(self.get_xml(),
                                 "/domain/devices/graphics/@type")
         port = None
         if typ == "vnc":
-            port = util.get_xml_path(self.get_xml(),
+            port = vutil.get_xml_path(self.get_xml(),
                                      "/domain/devices/graphics[@type='vnc']/@port")
             if port is not None:
                 port = int(port)
@@ -639,7 +690,7 @@ class vmmDomain(gobject.GObject):
                         bus = child.prop("bus")
                     elif child.name == "readonly":
                         readonly = True
-                    elif child.name == "sharable":
+                    elif child.name == "shareable":
                         sharable = True
 
                 if srcpath == None:
@@ -924,7 +975,8 @@ class vmmDomain(gobject.GObject):
         return xml[0:index] + devxml + xml[index:]
 
     def get_device_xml(self, dev_type, dev_id_info):
-        vmxml = self.vm.XMLDesc(0)
+        self.update_xml()
+        vmxml = self.get_xml()
         doc = None
         ctx = None
 
@@ -1031,7 +1083,7 @@ class vmmDomain(gobject.GObject):
     def _remove_xml_device(self, dev_type, dev_id_info):
         """Remove device 'devxml' from devices section of 'xml, return
            result"""
-        vmxml = self.vm.XMLDesc(0)
+        vmxml = self.get_xml_to_define()
         doc = libxml2.parseDoc(vmxml)
         ctx = None
 
@@ -1059,6 +1111,16 @@ class vmmDomain(gobject.GObject):
             if doc != None:
                 doc.freeDoc()
 
+    def get_xml_to_define(self):
+        # FIXME: This isn't sufficient, since we pull stuff like disk targets
+        #        from the active XML. This all needs proper fixing in the long
+        #        term.
+        if self.is_active():
+            return self.get_inactive_xml()
+        else:
+            self.update_xml()
+            return self.get_xml()
+
     def attach_device(self, xml):
         """Hotplug device to running guest"""
         if self.is_active():
@@ -1071,7 +1133,7 @@ class vmmDomain(gobject.GObject):
 
     def add_device(self, xml):
         """Redefine guest with appended device"""
-        vmxml = self.vm.XMLDesc(0)
+        vmxml = self.get_xml_to_define()
 
         newxml = self._add_xml_device(vmxml, xml)
 
@@ -1079,7 +1141,7 @@ class vmmDomain(gobject.GObject):
         self.get_connection().define_domain(newxml)
 
         # Invalidate cached XML
-        self.xml = None
+        self.invalidate_xml()
 
     def remove_device(self, dev_type, dev_id_info):
         newxml = self._remove_xml_device(dev_type, dev_id_info)
@@ -1088,7 +1150,7 @@ class vmmDomain(gobject.GObject):
         self.get_connection().define_domain(newxml)
 
         # Invalidate cached XML
-        self.xml = None
+        self.invalidate_xml()
 
     def _change_cdrom(self, newdev, dev_id_info):
         # If vm is shutoff, remove device, and redefine with media
@@ -1202,7 +1264,7 @@ class vmmDomain(gobject.GObject):
 
     def set_boot_device(self, boot_type):
         logging.debug("Setting boot device to type: %s" % boot_type)
-        xml = self.get_xml()
+        xml = self.get_xml_to_define()
         doc = None
         try:
             doc = libxml2.parseDoc(xml)
@@ -1228,7 +1290,7 @@ class vmmDomain(gobject.GObject):
                 doc.freeDoc()
 
         # Invalidate cached xml
-        self.xml = None
+        self.invalidate_xml()
 
     def toggle_sample_cpu_stats(self, ignore1=None, ignore2=None,
                                 ignore3=None, ignore4=None):

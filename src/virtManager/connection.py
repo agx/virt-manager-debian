@@ -36,6 +36,10 @@ from virtManager.network import vmmNetwork
 from virtManager.netdev import vmmNetDevice
 from virtManager.storagepool import vmmStoragePool
 
+XEN_SAVE_MAGIC = "LinuxGuestRecord"
+QEMU_SAVE_MAGIC = "LibvirtQemudSave"
+TEST_SAVE_MAGIC = "TestGuestMagic"
+
 def get_local_hostname():
     try:
         return gethostbyaddr(gethostname())[0]
@@ -105,6 +109,8 @@ class vmmConnection(gobject.GObject):
         self.pools = {}
         # Host network devices. name -> vmmNetDevice object
         self.netdevs = {}
+        # Mapping of hal IDs to net names
+        self.hal_to_netdev = {}
         # Virtual networks UUUID -> vmmNetwork object
         self.nets = {}
         # Virtual machines. UUID -> vmmDomain object
@@ -121,12 +127,16 @@ class vmmConnection(gobject.GObject):
             # Get a connection to the SYSTEM bus
             self.bus = dbus.SystemBus()
             # Get a handle to the HAL service
-            hal_object = self.bus.get_object('org.freedesktop.Hal', '/org/freedesktop/Hal/Manager')
-            self.hal_iface = dbus.Interface(hal_object, 'org.freedesktop.Hal.Manager')
+            hal_object = self.bus.get_object('org.freedesktop.Hal',
+                                             '/org/freedesktop/Hal/Manager')
+            self.hal_iface = dbus.Interface(hal_object,
+                                            'org.freedesktop.Hal.Manager')
 
             # Track device add/removes so we can detect newly inserted CD media
-            self.hal_iface.connect_to_signal("DeviceAdded", self._net_phys_device_added)
-            self.hal_iface.connect_to_signal("DeviceRemoved", self._net_phys_device_removed)
+            self.hal_iface.connect_to_signal("DeviceAdded",
+                                             self._net_phys_device_added)
+            self.hal_iface.connect_to_signal("DeviceRemoved",
+                                             self._net_phys_device_removed)
 
             # find all bonding master devices and register them
             # XXX bonding stuff is linux specific
@@ -153,14 +163,16 @@ class vmmConnection(gobject.GObject):
             self.hal_iface = None
 
     def _net_phys_device_added(self, path):
-        logging.debug("Got physical device %s" % path)
         obj = self.bus.get_object("org.freedesktop.Hal", path)
         objif = dbus.Interface(obj, "org.freedesktop.Hal.Device")
+
         if objif.QueryCapability("net"):
+            logging.debug("Got physical net device %s" % path)
             name = objif.GetPropertyString("net.interface")
             # XXX ...but this is Linux specific again - patches welcomed
             #sysfspath = objif.GetPropertyString("linux.sysfs_path")
-            # XXX hal gives back paths to /sys/devices/pci0000:00/0000:00:1e.0/0000:01:00.0/net/eth0
+            # XXX hal gives back paths to like:
+            # /sys/devices/pci0000:00/0000:00:1e.0/0000:01:00.0/net/eth0
             # which doesnt' work so well - we want this:
             sysfspath = "/sys/class/net/" + name
 
@@ -181,7 +193,7 @@ class vmmConnection(gobject.GObject):
             mac = objif.GetPropertyString("net.address")
 
             # Add the main NIC
-            self._net_device_added(name, mac, sysfspath)
+            self._net_device_added(name, mac, sysfspath, path)
 
             # Add any associated VLANs
             self._net_tag_device_added(name, sysfspath)
@@ -205,7 +217,7 @@ class vmmConnection(gobject.GObject):
                         vlanpath = pvlanpath
                     self._net_device_added(vlanname, vlanmac, vlanpath)
 
-    def _net_device_added(self, name, mac, sysfspath):
+    def _net_device_added(self, name, mac, sysfspath, halpath=None):
         # Race conditions mean we can occassionally see device twice
         if self.netdevs.has_key(name):
             return
@@ -218,23 +230,41 @@ class vmmConnection(gobject.GObject):
         logging.debug("Adding net device %s %s %s (bridge: %s)" % (name, mac, sysfspath, str(bridge)))
 
         dev = vmmNetDevice(self.config, self, name, mac, shared, bridge)
+        self._add_net_dev(name, halpath, dev)
+
+    def _add_net_dev(self, name, halpath, dev):
+        if halpath:
+            self.hal_to_netdev[halpath] = name
         self.netdevs[name] = dev
         self.emit("netdev-added", dev.get_name())
 
     def _net_phys_device_removed(self, path):
-        obj = self.bus.get_object("org.freedesktop.Hal", path)
-        objif = dbus.Interface(obj, "org.freedesktop.Hal.Device")
-        if objif.QueryCapability("net"):
-            name = objif.GetPropertyString("net.interface")
+        if self.hal_to_netdev.has_key(path):
+            name = self.hal_to_netdev[path]
+            logging.debug("Removing physical net device %s from list." % name)
 
-            if self.netdevs.has_key(name):
-                logging.debug("Removing physical net device %s from list." % name)
-                dev = self.netdevs[name]
-                self.emit("netdev-removed", dev.get_name())
-                del self.netdevs[name]
+            dev = self.netdevs[name]
+            self.emit("netdev-removed", dev.get_name())
+            del self.netdevs[name]
+            del self.hal_to_netdev[path]
+
+    def _acquire_tgt(self):
+        logging.debug("In acquire tgt.")
+        try:
+            bus = dbus.SessionBus()
+            ka = bus.get_object('org.gnome.KrbAuthDialog',
+                                '/org/gnome/KrbAuthDialog')
+            ret = ka.acquireTgt("", dbus_interface='org.gnome.KrbAuthDialog')
+        except Exception, e:
+            logging.info("Cannot acquire tgt" + str(e))
+            ret = False
+        return ret
 
     def is_read_only(self):
         return self.readOnly
+
+    def is_active(self):
+        return self.state == self.STATE_ACTIVE
 
     def get_type(self):
         if self.vmm is None:
@@ -260,15 +290,58 @@ class vmmConnection(gobject.GObject):
     def get_capabilities(self):
         return virtinst.CapabilitiesParser.parse(self.vmm.getCapabilities())
 
+    def is_kvm_supported(self):
+        if self.is_qemu_session():
+            return False
+
+        caps = self.get_capabilities()
+        for guest in caps.guests:
+            for dom in guest.domains:
+                if dom.hypervisor_type == "kvm":
+                    return True
+        return False
+
     def is_remote(self):
         return virtinst.util.is_uri_remote(self.uri)
 
+    def is_storage_capable(self):
+        return virtinst.util.is_storage_capable(self.vmm)
+
+    def is_nodedev_capable(self):
+        return virtinst.NodeDeviceParser.is_nodedev_capable(self.vmm)
+
     def is_qemu_session(self):
-        (scheme, ignore, ignore, \
+        (scheme, ignore, ignore,
          path, ignore, ignore) = virtinst.util.uri_split(self.uri)
         if path == "/session" and scheme.startswith("qemu"):
             return True
         return False
+
+    def is_test_conn(self):
+        (scheme, ignore, ignore,
+         ignore, ignore, ignore) = virtinst.util.uri_split(self.uri)
+        if scheme.startswith("test"):
+            return True
+        return False
+
+    def get_pretty_desc(self):
+        (scheme, ignore, hostname,
+         path, ignore, ignore) = virtinst.util.uri_split(self.uri)
+
+        scheme = scheme.split("+")[0]
+
+        if scheme == "qemu":
+            desc = "QEMU"
+            if self.is_kvm_supported():
+                desc += "/KVM"
+        else:
+            desc = scheme.capitalize()
+
+        if path == "/session":
+            desc += " Usermode"
+        if hostname:
+            desc += " (%s)" % hostname
+        return desc
 
     def get_uri(self):
         return self.uri
@@ -284,6 +357,69 @@ class vmmConnection(gobject.GObject):
 
     def get_pool(self, uuid):
         return self.pools[uuid]
+
+    def get_devices(self, devtype=None, devcap=None):
+        if not self.is_nodedev_capable():
+            return []
+
+        devs = self.vmm.listDevices(devtype, 0)
+        retdevs = []
+
+        for name in devs:
+            dev = self.vmm.nodeDeviceLookupByName(name)
+            vdev = virtinst.NodeDeviceParser.parse(dev.XMLDesc(0))
+
+            if devcap and vdev.capability_type != devcap:
+                continue
+
+            retdevs.append(vdev)
+
+        return retdevs
+
+    def is_valid_saved_image(self, path):
+        # FIXME: Not really sure why we are even doing this check? If libvirt
+        # isn't exporting this information, seems like we shouldn't be duping
+        # the validation. Maintain existing behavior until someone insists
+        # otherwise I suppose.
+        magic = ""
+
+        # If running on PolKit or remote, we may not be able to access
+        if not self.is_remote() and os.access(path, os.R_OK):
+            try:
+                f = open(path, "r")
+                magic = f.read(16)
+            except:
+                logging.exception("Reading save image file header failed.")
+                return False
+        else:
+            return True
+
+        driver = self.get_driver()
+        if driver == "xen" and not magic.startswith(XEN_SAVE_MAGIC):
+            return False
+
+        # Libvirt should validate the magic for other drivers
+        return True
+
+
+    def get_pool_by_path(self, path):
+        for pool in self.pools.values():
+            if pool.get_target_path() == path:
+                return pool
+        return None
+
+    def get_pool_by_name(self, name):
+        for p in self.pools.values():
+            if p.get_name() == name:
+                return p
+        return None
+
+    def get_vol_by_path(self, path):
+        for pool in self.pools.values():
+            for vol in pool.get_volumes().values():
+                if vol.get_path() == path:
+                    return vol
+        return None
 
     def open(self):
         if self.state != self.STATE_DISCONNECTED:
@@ -412,11 +548,11 @@ class vmmConnection(gobject.GObject):
                 try:
                     self.vmm = libvirt.openReadOnly(self.uri)
                     self.readOnly = True
-                    logging.info("Read/write connection failed to %s,"
-                            "falling back on read-only." % self.uri)
+                    logging.exception("Read/write connection failed for %s,"
+                            " falling back on read-only." % self.uri)
                     return
                 except:
-                    pass
+                    logging.exception("Readonly connection failed.")
 
             return exc_info
 
@@ -424,21 +560,39 @@ class vmmConnection(gobject.GObject):
     def _open_thread(self):
         logging.debug("Background thread is running")
 
-        open_error = self._try_open()
+        done = False
+        while not done:
+            open_error = self._try_open()
+            done = True
 
-        if not open_error:
-            self.state = self.STATE_ACTIVE
-        else:
-            self.state = self.STATE_DISCONNECTED
+            if not open_error:
+                self.state = self.STATE_ACTIVE
+            else:
+                self.state = self.STATE_DISCONNECTED
 
-            (_type, value, stacktrace) = open_error
-            # Detailed error message, in English so it can be Googled.
-            self.connectError = \
-                    ("Unable to open connection to hypervisor URI '%s':\n" %
-                     str(self.uri)) + \
-                    str(_type) + " " + str(value) + "\n" + \
-                    traceback.format_exc (stacktrace)
-            logging.error(self.connectError)
+                if self.uri.find("+ssh://") > 0:
+                    hint = "\nMaybe you need to install ssh-askpass " + \
+                           "in order to authenticate."
+                else:
+                    hint = ""
+
+                (_type, value, stacktrace) = open_error
+
+                if (type(_type) == type(libvirt.libvirtError) and
+                    value.get_error_code() == libvirt.VIR_ERR_AUTH_FAILED and
+                    "GSSAPI Error" in value.get_error_message() and
+                    "No credentials cache found" in value.get_error_message()):
+                    if self._acquire_tgt():
+                        done = False
+                        continue
+
+                # Detailed error message, in English so it can be Googled.
+                self.connectError = (("Unable to open connection to hypervisor"
+                                      " URI '%s':\n" % str(self.uri)) +
+                                      str(_type) + " " + str(value) + "\n" +
+                                      traceback.format_exc (stacktrace) + hint)
+                logging.error(self.connectError)
+
 
         # We want to kill off this thread asap, so schedule a gobject
         # idle even to inform the UI of result
@@ -573,10 +727,15 @@ class vmmConnection(gobject.GObject):
         self.vmm.defineXML(xml)
 
     def restore(self, frm):
-        status = self.vmm.restore(frm)
-        if(status == 0):
+        self.vmm.restore(frm)
+        try:
+            # FIXME: This isn't correct in the remote case. Why do we even
+            #        do this? Seems like we should provide an option for this
+            #        to the user.
             os.remove(frm)
-        return status
+        except:
+            logging.debug("Couldn't remove save file '%s'used for restore." %
+                          frm)
 
     def _update_nets(self):
         """Return lists of start/stopped/new networks"""

@@ -125,9 +125,9 @@ class vmmEngine(gobject.GObject):
         if self.connections[hvuri]["windowHost"] is not None:
             self.connections[hvuri]["windowHost"].close()
             self.connections[hvuri]["windowHost"] = None
-        if self.connections[hvuri]["windowCreate"] is not None:
-            self.connections[hvuri]["windowCreate"].close()
-            self.connections[hvuri]["windowCreate"] = None
+        if (self.windowCreate and self.windowCreate.conn and
+            self.windowCreate.conn.get_uri() == hvuri):
+            self.windowCreate.close()
 
     def reschedule_timer(self, ignore1,ignore2,ignore3,ignore4):
         self.schedule_timer()
@@ -342,21 +342,18 @@ class vmmEngine(gobject.GObject):
         return True
 
     def show_create(self, uri):
-        con = self.get_connection(uri)
-
-        if self.connections[uri]["windowCreate"] == None:
-            create = vmmCreate(self.get_config(), con)
+        if self.windowCreate == None:
+            create = vmmCreate(self.get_config(), self)
             create.connect("action-show-console", self._do_show_console)
             create.connect("action-show-help", self._do_show_help)
-            self.connections[uri]["windowCreate"] = create
-        self.connections[uri]["windowCreate"].show()
+            self.windowCreate = create
+        self.windowCreate.show(uri)
 
     def add_connection(self, uri, readOnly=None, autoconnect=False):
         conn = vmmConnection(self.get_config(), uri, readOnly)
         self.connections[uri] = {
             "connection": conn,
             "windowHost": None,
-            "windowCreate": None,
             "windowDetails": {},
             "windowConsole": {},
             }
@@ -393,39 +390,37 @@ class vmmEngine(gobject.GObject):
     def save_domain(self, src, uri, uuid):
         con = self.get_connection(uri, False)
         if con.is_remote():
-            self.err.val_err(_("Saving virtual machines over remote connections is not yet supported."))
+            # FIXME: This should work with remote storage stuff
+            self.err.val_err(_("Saving virtual machines over remote "
+                               "connections is not yet supported."))
             return
-        
+
         vm = con.get_vm(uuid)
         status = vm.status()
         if status in [ libvirt.VIR_DOMAIN_SHUTDOWN,
                        libvirt.VIR_DOMAIN_SHUTOFF,
                        libvirt.VIR_DOMAIN_CRASHED,
                        libvirt.VIR_DOMAIN_PAUSED ]:
-            logging.warning("Save requested, but machine is shutdown / shutoff / paused")
-        else:
-            fcdialog = gtk.FileChooserDialog(_("Save Virtual Machine"),
-                                             src.window.get_widget("vmm-details"),
-                                             gtk.FILE_CHOOSER_ACTION_SAVE,
-                                             (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                                              gtk.STOCK_SAVE, gtk.RESPONSE_ACCEPT),
-                                              None)
-            fcdialog.set_default_response(gtk.RESPONSE_ACCEPT)
-            fcdialog.set_current_folder(self.config.get_default_save_dir(con))
-            fcdialog.set_do_overwrite_confirmation(True)
-            response = fcdialog.run()
-            fcdialog.hide()
-            if(response == gtk.RESPONSE_ACCEPT):
-                file_to_save = fcdialog.get_filename()
-                progWin = vmmAsyncJob(self.config, self._save_callback,
-                                      [vm, file_to_save],
-                                      _("Saving Virtual Machine"))
-                progWin.run()
-                fcdialog.destroy()
+            logging.warning("Save requested, but machine is shutdown / "
+                            "shutoff / paused")
+            return
 
-            if self._save_callback_info != []:
-                self.err.show_err(_("Error saving domain: %s" % self._save_callback_info[0]), self._save_callback_info[1])
-                self._save_callback_info = []
+        path = util.browse_local(src.window.get_widget("vmm-details"),
+                                 _("Save Virtual Machine"),
+                                 self.config.get_default_save_dir(con),
+                                 dialog_type=gtk.FILE_CHOOSER_ACTION_SAVE)
+
+        if path:
+            progWin = vmmAsyncJob(self.config, self._save_callback,
+                                  [vm, path],
+                                  _("Saving Virtual Machine"))
+            progWin.run()
+
+        if self._save_callback_info != []:
+            self.err.show_err(_("Error saving domain: %s") %
+                                self._save_callback_info[0],
+                                self._save_callback_info[1])
+            self._save_callback_info = []
 
     def _save_callback(self, vm, file_to_save, ignore1=None):
         try:
@@ -532,7 +527,18 @@ class vmmEngine(gobject.GObject):
         else:
             logging.warning("Reboot requested, but machine is already shutting down / shutoff")
 
-    def migrate_domain(self, uri, uuid, desturi):
+    def migrate_domain(self, uri, uuid, desthost):
+        desturi = None
+        for key in self.connections.keys():
+            if self.get_connection(key).get_hostname() == desthost:
+                desturi = key
+                break
+
+        if desturi == None:
+            logging.debug("Could not find dest uri for migrate hostname: %s"
+                          % desthost)
+            return
+
         conn = self.get_connection(uri, False)
         vm = conn.get_vm(uuid)
         destconn = self.get_connection(desturi, False)
