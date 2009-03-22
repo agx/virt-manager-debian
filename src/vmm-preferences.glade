@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8" standalone="no"?>
 <!DOCTYPE glade-interface SYSTEM "glade-2.0.dtd">
-<!--Generated with glade3 3.4.5 on Mon Jan 12 09:31:21 2009 -->
+<!--Generated with glade3 3.4.5 on Thu Feb 12 14:51:35 2009 -->
 <glade-interface>
   <widget class="GtkWindow" id="vmm-preferences">
     <property name="title" translatable="yes">Preferences</property>
@@ -66,6 +66,7 @@
                                 <property name="can_focus">True</property>
                                 <property name="adjustment">0 0 300 5 5 0</property>
                                 <property name="climb_rate">0.01</property>
+                                <signal name="value_changed" handler="on_prefs_stats_history_length_changed"/>
                               </widget>
                               <packing>
                                 <property name="left_attach">1</property>
@@ -80,6 +81,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="adjustment">0 0 60 1 5 0</property>
+                                <signal name="value_changed" handler="on_prefs_stats_update_interval_changed"/>
                               </widget>
                               <packing>
                                 <property name="left_attach">1</property>
@@ -298,15 +300,41 @@
                         <child>
                           <widget class="GtkTable" id="table3">
                             <property name="visible">True</property>
-                            <property name="n_rows">4</property>
+                            <property name="n_rows">6</property>
                             <property name="n_columns">1</property>
-                            <property name="row_spacing">2</property>
+                            <property name="row_spacing">3</property>
+                            <child>
+                              <widget class="GtkComboBox" id="prefs-console-scaling">
+                                <property name="visible">True</property>
+                                <property name="items" translatable="yes">Never
+Fullscreen only
+Always</property>
+                                <signal name="changed" handler="on_prefs_console_scaling_changed"/>
+                              </widget>
+                              <packing>
+                                <property name="top_attach">5</property>
+                                <property name="bottom_attach">6</property>
+                                <property name="x_padding">5</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkLabel" id="label17">
+                                <property name="visible">True</property>
+                                <property name="xalign">0</property>
+                                <property name="label" translatable="yes">Graphical Console Scaling:</property>
+                              </widget>
+                              <packing>
+                                <property name="top_attach">4</property>
+                                <property name="bottom_attach">5</property>
+                              </packing>
+                            </child>
                             <child>
                               <widget class="GtkComboBox" id="prefs-console-keygrab">
                                 <property name="visible">True</property>
                                 <property name="items" translatable="yes">Never
 When fullscreen
 On mouse over</property>
+                                <signal name="changed" handler="on_prefs_console_keygrab_changed"/>
                               </widget>
                               <packing>
                                 <property name="top_attach">3</property>
@@ -338,6 +366,7 @@ On mouse over</property>
                                 <property name="items" translatable="yes">Never
 For all new domains
 For all domains</property>
+                                <signal name="changed" handler="on_prefs_console_popup_changed"/>
                               </widget>
                               <packing>
                                 <property name="top_attach">1</property>
@@ -470,7 +499,7 @@ For all domains</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="label" translatable="no">gtk-help</property>
+                <property name="label">gtk-help</property>
                 <property name="use_stock">True</property>
                 <property name="response_id">0</property>
                 <signal name="clicked" handler="on_prefs_help_clicked"/>
@@ -500,7 +529,7 @@ For all domains</property>
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
                     <property name="receives_default">True</property>
-                    <property name="label" translatable="no">gtk-close</property>
+                    <property name="label">gtk-close</property>
                     <property name="use_stock">True</property>
                     <property name="response_id">0</property>
                     <signal name="clicked" handler="on_prefs_close_clicked"/>
