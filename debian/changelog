@@ -1,3 +1,20 @@
+virt-manager (0.7.0-1) unstable; urgency=low
+
+  [ Guido Günther ]
+  * [7ec628a] Imported Upstream version 0.7.0
+        - e0f0b017caa9: ctrl-alt-backspace fixed (Closes: #520762)
+        - 6126a50801de: migration uris fixed (Closes: #520772)
+  * [4b493f6] drop patches applied upstream: 
+          0002-remove-disambiguity-in-storage-dialog.patch
+          0003-hint-to-ssh-askpass.patch
+          0004-make-fullscreen-mode-more-useful.patch
+          0005-gtk-vnc-0.3.8-handles- rescaling-with-compiz.patch
+
+  [ Paul Menzel ]
+  * [90f0ac9] Fix typo in changelog of Debian package.
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 23 Mar 2009 08:11:31 +0100
+
 virt-manager (0.6.1-4) unstable; urgency=low
 
   * [24b33f6] add ${misc:Depends}
