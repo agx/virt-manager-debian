@@ -1,1 +1,2 @@
 0001-use-usr-share-gconf-for-schema-data.patch
+0002-close-nc-connection-on-EOF.patch
