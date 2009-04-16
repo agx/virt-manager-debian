@@ -1,3 +1,9 @@
+virt-manager (0.7.0-2) unstable; urgency=low
+
+  * [2f604a6] close nc connection on EOF (Closes: #519979, #521137)
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 16 Apr 2009 17:34:29 +0200
+
 virt-manager (0.7.0-1) unstable; urgency=low
 
   [ Guido Günther ]
