@@ -1,3 +1,14 @@
+virt-manager (0.7.0-3) unstable; urgency=low
+
+  * [61b67c1] don't crop vnc display (Closes: #525764) - thanks to
+    Laurent Léonard for testing
+  * [4522aa1] make check match return value of self.get_config_keymap()
+    In the "Add hardware" wizard summary, the keymap field is set to
+    "None" instead of "Same as host" when "Same as host" option is used.
+    (Closes: #528447) - thanks to Laurent Léonard
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 20 May 2009 19:07:00 +0200
+
 virt-manager (0.7.0-2) unstable; urgency=low
 
   * [2f604a6] close nc connection on EOF (Closes: #519979, #521137)
