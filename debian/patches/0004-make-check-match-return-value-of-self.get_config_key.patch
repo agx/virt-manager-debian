@@ -1,0 +1,30 @@
+From: =?utf-8?q?Guido=20G=C3=BCnther?= <agx@sigxcpu.org>
+Date: Wed, 20 May 2009 19:02:30 +0200
+Subject: [PATCH] make check match return value of self.get_config_keymap()
+MIME-Version: 1.0
+Content-Type: text/plain; charset=utf-8
+Content-Transfer-Encoding: 8bit
+
+In the "Add hardware" wizard summary, the keymap field is set to "None"
+instead of "Same as host" when "Same as host" option is used.
+
+Closes: #528447
+Thanks: Laurent Léonard
+---
+ src/virtManager/addhardware.py |    2 +-
+ 1 files changed, 1 insertions(+), 1 deletions(-)
+
+diff --git a/src/virtManager/addhardware.py b/src/virtManager/addhardware.py
+index 4648c88..de289d4 100644
+--- a/src/virtManager/addhardware.py
++++ b/src/virtManager/addhardware.py
+@@ -522,7 +522,7 @@ class vmmAddHardware(gobject.GObject):
+                         self.window.get_widget("summary-graphics-password").set_text(_("Yes"))
+                     else:
+                         self.window.get_widget("summary-graphics-password").set_text(_("No"))
+-                    if self.get_config_keymap() != "":
++                    if self.get_config_keymap() is not None:
+                         self.window.get_widget("summary-graphics-keymap").set_text(str(self.get_config_keymap()))
+                     else:
+                         self.window.get_widget("summary-graphics-keymap").set_text(_("Same as host"))
+-- 
