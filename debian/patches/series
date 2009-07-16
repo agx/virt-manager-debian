@@ -2,3 +2,4 @@
 0002-close-nc-connection-on-EOF.patch
 0003-don-t-crop-vnc-display.patch
 0004-make-check-match-return-value-of-self.get_config_key.patch
+0005-Enable-Xen-HVM-virtual-machines-creation.patch

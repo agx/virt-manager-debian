@@ -1,0 +1,31 @@
+From: =?utf-8?q?Laurent=20L=C3=A9onard?= <laurent@open-minds.org>
+Date: Wed, 15 Jul 2009 23:52:50 +0200
+Subject: [PATCH] Enable Xen HVM virtual machines creation.
+
+Closes: #536301
+---
+ src/virtManager/create.py |   10 ++++++++++
+ 1 files changed, 10 insertions(+), 0 deletions(-)
+
+diff --git a/src/virtManager/create.py b/src/virtManager/create.py
+index 3682c41..9734267 100644
+--- a/src/virtManager/create.py
++++ b/src/virtManager/create.py
+@@ -690,6 +690,16 @@ class vmmCreate(gobject.GObject):
+         net_list.set_active(default)
+ 
+     def change_caps(self, gtype=None, dtype=None):
++
++        if gtype == None:
++            # If none specified, prefer HVM. This way, the default install
++            # options won't be limited because we default to PV. If hvm not
++            # supported, differ to guest_lookup
++            for g in self.caps.guests:
++                if g.os_type == "hvm":
++                    gtype = "hvm"
++                    break
++
+         (newg,
+          newdom) = virtinst.CapabilitiesParser.guest_lookup(conn=self.conn.vmm,
+                                                             caps=self.caps,
+-- 
