@@ -1,3 +1,10 @@
+virt-manager (0.7.0-4) unstable; urgency=low
+
+  [ Laurent Léonard ]
+  * [78b1652] Enable Xen HVM virtual machines creation. (Closes: #536301)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 17 Jul 2009 10:03:35 +0200
+
 virt-manager (0.7.0-3) unstable; urgency=low
 
   * [61b67c1] don't crop vnc display (Closes: #525764) - thanks to
