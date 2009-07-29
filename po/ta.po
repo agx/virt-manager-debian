@@ -1,967 +1,1459 @@
-# translation of ta.po to Tamil
+# translation of virt-manager.tip.ta.po to Tamil
 # This file is distributed under the same license as the PACKAGE package.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER.
 #
 # Felix <ifelix@redhat.com>, 2006.
 # I felix <ifelix@redhat.com>, 2007.
+# I. Felix <ifelix@redhat.com>, 2009.
 msgid ""
 msgstr ""
-"Project-Id-Version: ta\n"
+"Project-Id-Version: virt-manager.tip.ta\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2009-03-09 20:26-0400\n"
-"PO-Revision-Date: 2007-04-17 14:08+0530\n"
-"Last-Translator: I felix <ifelix@redhat.com>\n"
+"POT-Creation-Date: 2009-07-28 20:55-0400\n"
+"PO-Revision-Date: 2009-06-02 17:23+0530\n"
+"Last-Translator: I. Felix <ifelix@redhat.com>\n"
 "Language-Team: Tamil <fedora-trans-ta@redhat.com>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 "X-Generator: KBabel 1.11.4\n"
-"Plural-Forms: nplurals=2; plural=(n != 1);\n"
+"Plural-Forms: nplurals=2; plural=(n!=1);\\n\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
+"\n"
 "\n"
 "\n"
 "\n"
 
 #: ../src/virt-manager.desktop.in.in.h:1
-#, fuzzy
 msgid "Manage virtual machines"
-msgstr "மெய்நிகர் கணினியை சேமிக்கவும்"
+msgstr "மெய்நிகர் கணினிகளை மேலாளவும்"
 
-#: ../src/virt-manager.desktop.in.in.h:2 ../src/vmm-manager.glade.h:17
+#: ../src/virt-manager.desktop.in.in.h:2 ../src/virtManager/systray.py:101
+#: ../src/vmm-manager.glade.h:11
 msgid "Virtual Machine Manager"
 msgstr "மெய்நிகர் கணினி மேலாளர்"
 
 #: ../src/virt-manager.py.in:55
-#, fuzzy
 msgid "Error starting Virtual Machine Manager"
-msgstr "மெய்நிகர் கணினி மேலாளர்"
+msgstr "பிழையை துவக்கும் மெய்நிகர் கணினி மேலாளர்"
 
 #. ...the risk is we catch too much though
 #. Damned if we do, damned if we dont :-)(
-#: ../src/virt-manager.py.in:284
-#, fuzzy, python-format
+#: ../src/virt-manager.py.in:288
+#, python-format
 msgid "Unable to initialize GTK: %s"
-msgstr "GTKஐ ஆரம்பிக்க முடியவில்லை: "
+msgstr "GTKஐ ஆரம்பிக்க முடியவில்லை: %s"
 
 #: ../src/virt-manager.schemas.in.h:1
-msgid "Install sound device for local VM"
+msgid "Default image path"
 msgstr ""
 
 #: ../src/virt-manager.schemas.in.h:2
-msgid "Install sound device for remote VM"
-msgstr ""
+#, fuzzy
+msgid "Default media path"
+msgstr "தவறான ஊடக பாதை"
 
 #: ../src/virt-manager.schemas.in.h:3
-msgid "Poll cpu stats"
+msgid "Default path for choosing VM images"
 msgstr ""
 
 #: ../src/virt-manager.schemas.in.h:4
-msgid "Poll disk i/o stats"
+msgid "Default path for choosing media"
 msgstr ""
 
 #: ../src/virt-manager.schemas.in.h:5
-#, fuzzy
-msgid "Poll memory usage stats"
-msgstr "நினைவக பயன்பாடு"
+msgid "Default path for saving VM snaphots"
+msgstr ""
 
 #: ../src/virt-manager.schemas.in.h:6
-msgid "Poll net i/o stats"
+msgid "Default path for saving screenshots from VMs"
 msgstr ""
 
 #: ../src/virt-manager.schemas.in.h:7
-msgid "Show VCPU count in summary"
+msgid "Default path for stored VM snapshots"
 msgstr ""
 
 #: ../src/virt-manager.schemas.in.h:8
-msgid "Show cpu usage in summary"
+msgid "Default restore path"
 msgstr ""
 
 #: ../src/virt-manager.schemas.in.h:9
-#, fuzzy
-msgid "Show disk I/O in summary"
-msgstr "பிணைய போக்குவரத்து"
+msgid "Default save domain path"
+msgstr ""
 
 #: ../src/virt-manager.schemas.in.h:10
-msgid "Show domain id in summary"
+msgid "Default screenshot path"
 msgstr ""
 
 #: ../src/virt-manager.schemas.in.h:11
-msgid "Show memory usage in summary"
-msgstr ""
+msgid "Install sound device for local VM"
+msgstr "உள்ளமை VMக்கு ஒலிச் சாதனத்தை நிறுவு"
 
 #: ../src/virt-manager.schemas.in.h:12
-#, fuzzy
-msgid "Show network I/O in summary"
-msgstr "பிணைய போக்குவரத்து"
+msgid "Install sound device for remote VM"
+msgstr "தொலை VM ஒலி சாதனத்தை நிறுவு"
 
 #: ../src/virt-manager.schemas.in.h:13
-msgid "Show run state in summary"
-msgstr ""
+msgid "Poll disk i/o stats"
+msgstr "பூல் வட்டு i/o நிலை"
 
 #: ../src/virt-manager.schemas.in.h:14
-msgid "Show the cpu usage field in the domain list summary view"
-msgstr ""
+msgid "Poll net i/o stats"
+msgstr "போல் நெட் i/o நிலை"
 
 #: ../src/virt-manager.schemas.in.h:15
-msgid "Show the disk I/O field in the domain list summary view"
+msgid "Show system tray icon"
 msgstr ""
 
 #: ../src/virt-manager.schemas.in.h:16
-msgid "Show the domain id field in the domain list summary view"
+msgid "Show system tray icon while app is running"
 msgstr ""
 
 #: ../src/virt-manager.schemas.in.h:17
-msgid "Show the memory usage field in the domain list summary view"
+msgid "Stats type in manager view"
 msgstr ""
 
 #: ../src/virt-manager.schemas.in.h:18
-msgid "Show the network I/O field in the domain list summary view"
-msgstr ""
+msgid "The length of the list of URLs"
+msgstr "URLs பட்டியலின் நீளம்"
 
 #: ../src/virt-manager.schemas.in.h:19
-msgid "Show the run state field in the domain list summary view"
-msgstr ""
+msgid "The number of samples to keep in the statistics history"
+msgstr "பல மாதிரிகள் புள்ளிவிவரங்களின் வரலாற்றைக் கொண்டுள்ளது"
 
 #: ../src/virt-manager.schemas.in.h:20
-msgid "Show the virtual CPU count field in the domain list summary view"
-msgstr ""
-
-#: ../src/virt-manager.schemas.in.h:21
-msgid "The length of the list of URLs"
-msgstr ""
-
-#: ../src/virt-manager.schemas.in.h:22
-msgid "The number of samples to keep in the statistics history"
-msgstr ""
-
-#: ../src/virt-manager.schemas.in.h:23
 msgid ""
 "The number of urls to keep in the history for the install media address page."
-msgstr ""
+msgstr "ஊடக முகவரி பக்கங்களை நிறுவுவதற்காக பல urls வரலாற்றைக் கொண்டுள்ளன."
+
+#: ../src/virt-manager.schemas.in.h:21
+msgid "The statistics history length"
+msgstr "வரலாறு நீளத்தின் புள்ளி விவரம்"
+
+#: ../src/virt-manager.schemas.in.h:22
+msgid "The statistics update interval"
+msgstr "புள்ளிவிவரங்களின் மேம்படுத்தல் இடைவேளை"
+
+#: ../src/virt-manager.schemas.in.h:23
+msgid "The statistics update interval in seconds"
+msgstr "நொடியில் புள்ளிவிவரங்களின் மேம்படுத்தல் இடைவேளை ஏற்படும்"
 
 #: ../src/virt-manager.schemas.in.h:24
-msgid "The statistics history length"
+msgid "Type of stats to graph (cpu, disk, net) in manager view"
 msgstr ""
 
 #: ../src/virt-manager.schemas.in.h:25
-msgid "The statistics update interval"
-msgstr ""
+msgid "When to grab keyboard input for the console"
+msgstr "பணியகத்திற்கு விசைப்பலகை உள்ளீட்டை எப்போது எடுக்கிறது"
 
 #: ../src/virt-manager.schemas.in.h:26
-msgid "The statistics update interval in seconds"
-msgstr ""
+msgid "When to pop up a console for a guest"
+msgstr "ஒரு விருந்தினருக்கு ஒரு பணியகத்தை எப்போது துண்டிக்கிறது"
 
 #: ../src/virt-manager.schemas.in.h:27
-msgid "When to grab keyboard input for the console"
-msgstr ""
+msgid "When to scale the VM graphical console"
+msgstr "VM வரைகலை பணியகத்தை எப்போமு அளவிட வேண்டும்"
 
 #: ../src/virt-manager.schemas.in.h:28
-msgid "When to pop up a console for a guest"
-msgstr ""
-
-#: ../src/virt-manager.schemas.in.h:29
-msgid "When to scale the VM graphical console"
-msgstr ""
-
-#: ../src/virt-manager.schemas.in.h:30
 msgid ""
 "When to scale the VM graphical console. 0 = never, 1 = only when in full "
 "screen mode, 2 = Always"
 msgstr ""
+"VM வரைகலை பணியகத்தை அளவிடுகிறது. 0 = ஒருபோதும், 1 = முழுத்திரை முறைமையில், 2 = "
+"எப்போதும்"
+
+#: ../src/virt-manager.schemas.in.h:29
+msgid "Whether or not the app will poll VM disk i/o statistics"
+msgstr "app VM வட்டு i/o புள்ளிவிவரங்களை போல் செய்யுமா அல்லது இல்லையா"
+
+#: ../src/virt-manager.schemas.in.h:30
+msgid "Whether or not the app will poll VM network i/o statistics"
+msgstr "app VM பிணைய i/o புள்ளிவிவரங்களை போல் செய்யுமா அல்லது இல்லையா"
 
 #: ../src/virt-manager.schemas.in.h:31
-msgid "Whether or not the app will poll VM disk i/o statistics"
-msgstr ""
-
-#: ../src/virt-manager.schemas.in.h:32
-msgid "Whether or not the app will poll VM network i/o statistics"
-msgstr ""
-
-#: ../src/virt-manager.schemas.in.h:33
-msgid "Whether or not the app will poll connection and VM cpu usage statistics"
-msgstr ""
-
-#: ../src/virt-manager.schemas.in.h:34
-msgid ""
-"Whether or not the app will poll connection and VM memory usage statistics"
-msgstr ""
-
-#: ../src/virt-manager.schemas.in.h:35
 msgid ""
 "Whether to grab keyboard input for a guest console. 0 = never, 1 = only when "
 "in full screen mode, 2 = when mouse is over console"
 msgstr ""
+"விருந்தினர் பணியகத்திற்கு விசைப்பலகை உள்ளீட்டை எடுக்கிறது. 0 = ஒருபோதும், 1 = "
+"முழுத்திரை முறைமையில், 2 = சுட்டி பணியகத்தில் மேல் இருக்கும் போது"
 
-#: ../src/virt-manager.schemas.in.h:36
+#: ../src/virt-manager.schemas.in.h:32
 msgid "Whether to install a sound device for local VMs or not"
-msgstr ""
+msgstr "உள்ளமை VMs ஒலிச் சாதனத்திற்கு நிறுவல் வேணுடுமா அல்லது இல்லையா"
 
-#: ../src/virt-manager.schemas.in.h:37
+#: ../src/virt-manager.schemas.in.h:33
 msgid "Whether to install a sound device for remote VMs or not"
-msgstr ""
+msgstr "தொலை VMs ஒலிச் சாதனத்திற்கு நிறுவல் வேணுடுமா அல்லது இல்லையா"
 
-#: ../src/virt-manager.schemas.in.h:38
+#: ../src/virt-manager.schemas.in.h:34
 msgid ""
 "Whether to pop up a console for a guest. 0 = never, 1 = only on creation of "
 "a new guest, 2 = On creation of any guest"
 msgstr ""
+"ஒரு விருந்தினருக்கு ஒரு பணியகத்தில் பாப்பப் செய்ய வேண்டுமா. 0 = ஒருபோதும், 1 = ஒரு "
+"புதிய விருந்தினரை உருவாக்கும் போது, 2 = எந்த விருந்தினரையும் உருவாக்கும் போது"
 
-#: ../src/virt-manager.schemas.in.h:39
+#: ../src/virt-manager.schemas.in.h:35
 msgid "Whether to show VM button toolbar in Details display"
-msgstr ""
+msgstr "VM பொத்தான் கருவிப்பட்டை காட்சியில் காட்ட வேண்டுமா"
 
-#: ../src/virt-manager.schemas.in.h:40
+#: ../src/virt-manager.schemas.in.h:36
 msgid "Whether to show notification when grabbing mouse"
-msgstr ""
+msgstr "சுட்டியை இழுக்கும் போது அறிக்கையை காட்ட வேண்டுமா"
 
-#: ../src/virt-manager.schemas.in.h:41
+#: ../src/virt-manager.schemas.in.h:37
 msgid ""
 "Whether to show the notification hint when grabbing the mouse in the console"
-msgstr ""
+msgstr "பணியகத்தில் சுட்டியை இழுக்கும் போது அறிக்கை துணுக்குகளைக் காட்ட வேண்டுமா"
 
-#: ../src/virt-manager.schemas.in.h:42
+#: ../src/virt-manager.schemas.in.h:38
 msgid ""
 "Whether to show toolbar containing Virtual Machine action buttons (such as "
 "Run, Pause, Shutdown) in the details display"
 msgstr ""
+"கருவிப்பட்டையை மெய்நிகர் கணினியில் செயல் பொத்தான்களை (இயக்கு, இடைநிறுத்து, பணிநிறுத்தம்) "
+"ஆகியவற்றை காட்சியில் காட்ட வேண்டுமா"
 
-#: ../src/virtManager/addhardware.py:62 ../src/virtManager/choosecd.py:40
-#: ../src/virtManager/create.py:80 ../src/virtManager/createnet.py:53
-#: ../src/virtManager/createpool.py:52 ../src/virtManager/createvol.py:54
-#: ../src/virtManager/details.py:114 ../src/virtManager/engine.py:59
-#: ../src/virtManager/host.py:54 ../src/virtManager/manager.py:117
+#: ../src/virtManager/addhardware.py:79 ../src/virtManager/choosecd.py:40
+#: ../src/virtManager/clone.py:108 ../src/virtManager/create.py:85
+#: ../src/virtManager/createnet.py:53 ../src/virtManager/createpool.py:52
+#: ../src/virtManager/createvol.py:54 ../src/virtManager/delete.py:61
+#: ../src/virtManager/details.py:123 ../src/virtManager/engine.py:66
+#: ../src/virtManager/host.py:54 ../src/virtManager/manager.py:155
+#: ../src/virtManager/storagebrowse.py:54
 msgid "Unexpected Error"
-msgstr ""
+msgstr "எதிர்பாராத பிழை"
 
-#: ../src/virtManager/addhardware.py:63 ../src/virtManager/choosecd.py:41
-#: ../src/virtManager/create.py:81 ../src/virtManager/createnet.py:54
-#: ../src/virtManager/createpool.py:53 ../src/virtManager/createvol.py:55
-#: ../src/virtManager/details.py:115 ../src/virtManager/engine.py:60
-#: ../src/virtManager/host.py:55 ../src/virtManager/manager.py:118
+#: ../src/virtManager/addhardware.py:80 ../src/virtManager/choosecd.py:41
+#: ../src/virtManager/clone.py:109 ../src/virtManager/create.py:86
+#: ../src/virtManager/createnet.py:54 ../src/virtManager/createpool.py:53
+#: ../src/virtManager/createvol.py:55 ../src/virtManager/delete.py:62
+#: ../src/virtManager/details.py:124 ../src/virtManager/engine.py:67
+#: ../src/virtManager/host.py:55 ../src/virtManager/manager.py:156
+#: ../src/virtManager/storagebrowse.py:55
 msgid "An unexpected error occurred"
+msgstr "ஒரு எதிர்பாராத பிழை ஏற்பட்டுவிட்டது"
+
+#: ../src/virtManager/addhardware.py:398 ../src/virtManager/addhardware.py:403
+#: ../src/virtManager/addhardware.py:406 ../src/virtManager/addhardware.py:409
+#, fuzzy
+msgid "Not supported for this guest type."
+msgstr "பணியகம் விருந்தினருக்கு துணை புரியவில்லை"
+
+#: ../src/virtManager/addhardware.py:412
+#, fuzzy
+msgid "Connection does not support host device enumeration"
+msgstr "சேமிப்பக மேலாண்மைக்கு இணைப்புகள் துணைபுரியவில்லை.ில்லை"
+
+#: ../src/virtManager/addhardware.py:416
+msgid "Libvirt version does not support video devices."
 msgstr ""
 
-#: ../src/virtManager/addhardware.py:256
+#: ../src/virtManager/addhardware.py:440
 #, python-format
 msgid "Uncaught error validating hardware input: %s"
-msgstr ""
+msgstr "கண்டறியப்படாத பிழை வன்பொருள் உள்ளீட்டை சரிபார்க்கிறது: %s"
 
-#: ../src/virtManager/addhardware.py:441 ../src/virtManager/create.py:575
-msgid "Shared physical device"
-msgstr ""
+#: ../src/virtManager/addhardware.py:634
+msgid "Disk image:"
+msgstr "வட்டு படம்:"
 
-#: ../src/virtManager/addhardware.py:444 ../src/virtManager/create.py:578
+#: ../src/virtManager/addhardware.py:635
+msgid "Disk size:"
+msgstr "வட்டு அளவு:"
+
+#: ../src/virtManager/addhardware.py:636 ../src/vmm-add-hardware.glade.h:35
+msgid "Device type:"
+msgstr "சாதன வகை:"
+
+#: ../src/virtManager/addhardware.py:637
 #, fuzzy
-msgid "Virtual network"
-msgstr "மெய்நிகர் கணினி (_M)"
+msgid "Bus type:"
+msgstr "மூல வகை:"
 
-#: ../src/virtManager/addhardware.py:447 ../src/virtManager/create.py:581
-msgid "Usermode networking"
-msgstr ""
+#: ../src/virtManager/addhardware.py:639 ../src/vmm-create.glade.h:42
+#: ../src/vmm-host.glade.h:39
+msgid "Storage"
+msgstr "சேமிப்பகம்"
 
-#: ../src/virtManager/addhardware.py:463
+#: ../src/virtManager/addhardware.py:649
+#, fuzzy
+msgid "Network type:"
+msgstr "பிணையப் பெயர்:"
+
+#: ../src/virtManager/addhardware.py:650
+msgid "Target:"
+msgstr "இலக்கு:"
+
+#: ../src/virtManager/addhardware.py:651 ../src/vmm-details.glade.h:57
+msgid "MAC address:"
+msgstr "MAC முகவரி:"
+
+#: ../src/virtManager/addhardware.py:652 ../src/virtManager/addhardware.py:700
+#: ../src/virtManager/addhardware.py:742 ../src/vmm-add-hardware.glade.h:49
+#: ../src/vmm-details.glade.h:66
+msgid "Model:"
+msgstr "மாதிரி:"
+
+#: ../src/virtManager/addhardware.py:654 ../src/vmm-manager.glade.h:7
+#, fuzzy
+msgid "Network"
+msgstr "பிணையம்:"
+
+#: ../src/virtManager/addhardware.py:659
 msgid "Absolute movement"
-msgstr ""
+msgstr "சரியான இயக்கம்"
 
-#: ../src/virtManager/addhardware.py:465
+#: ../src/virtManager/addhardware.py:661
 msgid "Relative movement"
-msgstr ""
+msgstr "தொடர்பான இயக்கம்"
 
-#: ../src/virtManager/addhardware.py:470 ../src/virtManager/addhardware.py:931
-#: ../src/virtManager/details.py:1070
+#: ../src/virtManager/addhardware.py:664 ../src/virtManager/addhardware.py:690
+#: ../src/virtManager/addhardware.py:708 ../src/virtManager/addhardware.py:735
+#: ../src/vmm-add-hardware.glade.h:68 ../src/vmm-create-net.glade.h:50
+#: ../src/vmm-create-pool.glade.h:16 ../src/vmm-details.glade.h:107
+msgid "Type:"
+msgstr "வகை:"
+
+#: ../src/virtManager/addhardware.py:665 ../src/vmm-add-hardware.glade.h:48
+#: ../src/vmm-details.glade.h:65
+msgid "Mode:"
+msgstr "முறைமை:"
+
+#: ../src/virtManager/addhardware.py:667
+#, fuzzy
+msgid "Pointer"
+msgstr "<b>பாயின்டர்</b>"
+
+#: ../src/virtManager/addhardware.py:673
+#: ../src/virtManager/addhardware.py:1316 ../src/virtManager/details.py:1123
 msgid "VNC server"
-msgstr ""
+msgstr "VNC சேவையகம்"
 
 #. XXX inclined to just not give this choice at all
-#: ../src/virtManager/addhardware.py:472 ../src/virtManager/addhardware.py:933
-#: ../src/virtManager/details.py:1072
+#: ../src/virtManager/addhardware.py:673
+#: ../src/virtManager/addhardware.py:1318 ../src/virtManager/details.py:1125
 msgid "Local SDL window"
-msgstr ""
+msgstr "உள்ளமை SDL சாளரம்"
 
-#: ../src/virtManager/addhardware.py:476 ../src/virtManager/details.py:1082
-#: ../src/vmm-add-hardware.glade.h:29
-#, fuzzy
-msgid "Automatically allocated"
-msgstr "தானாக பணியகங்களை திறக்கவும்:"
-
-#: ../src/virtManager/addhardware.py:480
-msgid "Yes"
-msgstr ""
-
-#: ../src/virtManager/addhardware.py:482 ../src/vmm-add-hardware.glade.h:55
-msgid "No"
-msgstr ""
-
-#: ../src/virtManager/addhardware.py:486 ../src/vmm-add-hardware.glade.h:66
-msgid "Same as host"
-msgstr ""
-
-#: ../src/virtManager/addhardware.py:489 ../src/virtManager/addhardware.py:490
-#: ../src/virtManager/addhardware.py:491 ../src/virtManager/addhardware.py:492
-#: ../src/virtManager/details.py:1088 ../src/virtManager/details.py:1089
+#: ../src/virtManager/addhardware.py:674 ../src/virtManager/addhardware.py:675
+#: ../src/virtManager/addhardware.py:676 ../src/virtManager/addhardware.py:677
+#: ../src/virtManager/details.py:1141 ../src/virtManager/details.py:1142
 msgid "N/A"
-msgstr ""
+msgstr "N/A"
 
-#: ../src/virtManager/addhardware.py:562
+#: ../src/virtManager/addhardware.py:686
+msgid "Yes"
+msgstr "ஆம்"
+
+#: ../src/virtManager/addhardware.py:686
+msgid "No"
+msgstr "இல்லை"
+
+#: ../src/virtManager/addhardware.py:687 ../src/vmm-add-hardware.glade.h:65
+msgid "Same as host"
+msgstr "புரவலனைப் போல"
+
+#: ../src/virtManager/addhardware.py:691 ../src/vmm-add-hardware.glade.h:27
+#: ../src/vmm-details.glade.h:22
+msgid "Address:"
+msgstr "முகவரி:"
+
+#: ../src/virtManager/addhardware.py:692 ../src/vmm-add-hardware.glade.h:64
+#: ../src/vmm-details.glade.h:78
+msgid "Port:"
+msgstr "துறை:"
+
+#: ../src/virtManager/addhardware.py:693 ../src/vmm-add-hardware.glade.h:53
+#: ../src/vmm-details.glade.h:74
+msgid "Password:"
+msgstr "கடவுச்சொல்:"
+
+#: ../src/virtManager/addhardware.py:694 ../src/vmm-add-hardware.glade.h:43
+#: ../src/vmm-details.glade.h:53
+msgid "Keymap:"
+msgstr "கீமேப்:"
+
+#: ../src/virtManager/addhardware.py:696
 #, fuzzy
-msgid "Unable to complete install: "
-msgstr "GTKஐ ஆரம்பிக்க முடியவில்லை: "
+msgid "Graphics"
+msgstr "<b>வரைகலை</b>"
 
-#: ../src/virtManager/addhardware.py:564 ../src/virtManager/addhardware.py:606
-#: ../src/virtManager/addhardware.py:608 ../src/virtManager/addhardware.py:627
-#: ../src/virtManager/create.py:733
+#: ../src/virtManager/addhardware.py:702 ../src/vmm-details.glade.h:90
+msgid "Sound"
+msgstr "ஒலி"
+
+#: ../src/virtManager/addhardware.py:729
+#, fuzzy
+msgid "Protocol:"
+msgstr "Proc"
+
+#: ../src/virtManager/addhardware.py:736 ../src/vmm-add-hardware.glade.h:36
+#: ../src/vmm-host.glade.h:19
+msgid "Device:"
+msgstr "சாதனம்:"
+
+#: ../src/virtManager/addhardware.py:738
+#, fuzzy
+msgid "Physical Host Device"
+msgstr "<b>வெளிப்புற புரவல சாதனம்<க்கி</b>"
+
+#: ../src/virtManager/addhardware.py:744 ../src/virtManager/details.py:1932
+#, fuzzy
+msgid "Video"
+msgstr "காட்சி (_V)"
+
+#: ../src/virtManager/addhardware.py:778
 #, python-format
-msgid "Unable to complete install: '%s'"
-msgstr ""
+msgid "Unable to add device: %s"
+msgstr "சாதனத்தை சேர்க்க முடியவில்லை: %s"
 
-#: ../src/virtManager/addhardware.py:569
-#, fuzzy
+#: ../src/virtManager/addhardware.py:820
 msgid "Creating Storage File"
-msgstr "புதிய சேமிப்பக கோப்பினை காட்டவும் அல்லது உருவாக்கவும்"
+msgstr "சேமிப்பக கோப்பினை உருவாக்கவும்"
 
-#: ../src/virtManager/addhardware.py:570
-#, fuzzy
-msgid "Allocation of disk storage may take a few minutes "
-msgstr "வட்டு சேமிப்பக ஒதுக்கீடு மற்றும்"
+#: ../src/virtManager/addhardware.py:821
+msgid "Allocation of disk storage may take a few minutes to complete."
+msgstr "வட்டு சேமிப்பக ஒதுக்கீடு முடிவடைவதற்கு ஒரு சில நிமிடங்கள் எடுக்கும்.றும்"
 
-#: ../src/virtManager/addhardware.py:588
+#: ../src/virtManager/addhardware.py:845
 msgid "Are you sure you want to add this device?"
-msgstr ""
+msgstr "இந்த சாதனத்தை சேர்க்க நீங்கள் விரும்புகிறீர்களா?"
 
-#: ../src/virtManager/addhardware.py:590
+#: ../src/virtManager/addhardware.py:847
 msgid ""
 "This device could not be attached to the running machine. Would you like to "
 "make the device available after the next VM shutdown?\n"
 "\n"
 "Warning: this will overwrite any other changes that require a VM reboot."
 msgstr ""
+"இந்த சாதனம் கணினியை இயக்க இணைக்கப்படவில்லை. இந்த சாதனத்தை அடுத்த VM பணிநிறுத்தத்திற்கு "
+"பின் சாதனத்தை இருக்க செய்ய வேண்டுமா?\n"
+"\n"
+"எச்சரிக்கை: ஒரு VM மறுதுவக்கத்தில் மாற்றங்கள் வேறு ஏதாவது மாற்றங்களை மேலெழுதும்."
 
-#: ../src/virtManager/addhardware.py:634 ../src/virtManager/create.py:768
+#: ../src/virtManager/addhardware.py:875 ../src/virtManager/addhardware.py:877
+#: ../src/virtManager/create.py:1503
+#, python-format
+msgid "Unable to complete install: '%s'"
+msgstr "'%s' நிறுவலை முடிக்க இயலவில்லை: "
+
+#: ../src/virtManager/addhardware.py:883
 msgid "Locate Storage Partition"
 msgstr "சேமிப்பக பகிர்தலை காட்டவும்"
 
-#: ../src/virtManager/addhardware.py:640 ../src/virtManager/create.py:773
+#: ../src/virtManager/addhardware.py:891
 msgid "Locate or Create New Storage File"
 msgstr "புதிய சேமிப்பக கோப்பினை காட்டவும் அல்லது உருவாக்கவும்"
 
-#: ../src/virtManager/addhardware.py:735
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1054
 msgid "Hardware Type Required"
-msgstr "வன்பொருள் துணை தேவைப்படுகிறது"
+msgstr "வன்பொருள் வகை தேவைப்படுகிறது"
 
-#: ../src/virtManager/addhardware.py:736
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1055
 msgid "You must specify what type of hardware to add."
-msgstr "விருந்தினர் நிறுவலுக்கு ஒரு பகிர்வு அல்லது சேமிக்க ஒரு கோப்பினை கொடுக்க வேண்டும்"
+msgstr "சேர்ப்பதற்கு எந்த வகையான வன்பொருள் தேவைப்படுகிறத்து என நீங்கள் குறிப்பிட வேண்டும்."
 
-#: ../src/virtManager/addhardware.py:741
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1060
 msgid "Storage Path Required"
-msgstr "ISO பாதை தேவைப்படுகிறது"
+msgstr "சேமிப்பக பாதை தேவைப்படுகிறது"
 
-#: ../src/virtManager/addhardware.py:742
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1061
 msgid "You must specify a partition or a file for disk storage."
-msgstr "விருந்தினர் நிறுவலுக்கு ஒரு பகிர்வு அல்லது சேமிக்க ஒரு கோப்பினை கொடுக்க வேண்டும்"
+msgstr "வட்டு சேமிப்பிற்கு ஒரு பகுதி அல்லது ஒரு கோப்பினை நீங்கள் குறிப்பிட வேண்டும்."
 
-#: ../src/virtManager/addhardware.py:745
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1064
 msgid "Target Device Required"
-msgstr "நிறுவல் ஊடகம் தேவைப்படுகிறது"
+msgstr "இலக்குச் சாதனம் தேவைப்படுகிறது"
 
-#: ../src/virtManager/addhardware.py:746
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1065
 msgid "You must select a target device for the disk."
-msgstr "விருந்தினர் நிறுவலுக்கு ஒரு பகிர்வு அல்லது சேமிக்க ஒரு கோப்பினை கொடுக்க வேண்டும்"
+msgstr "வட்டிற்காக ஒரு இலக்கு சாதனத்தை நீங்கள் கட்டாயம் தேர்ந்தெடுக்க வேண்டும்."
 
-#: ../src/virtManager/addhardware.py:778
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1092
 msgid "Invalid Storage Parameters"
-msgstr "தவறான சேமிப்பக முகவரி"
+msgstr "தவறான சேமிப்பக அளவுருக்கள்"
 
-#: ../src/virtManager/addhardware.py:782 ../src/virtManager/create.py:1021
+#. Fatal errors are reported when setting 'size'
+#: ../src/virtManager/addhardware.py:1096 ../src/virtManager/create.py:1275
 msgid "Not Enough Free Space"
-msgstr ""
+msgstr "போதிய இடைவெளி இல்லை"
 
-#: ../src/virtManager/addhardware.py:787 ../src/virtManager/create.py:1026
+#: ../src/virtManager/addhardware.py:1101 ../src/virtManager/create.py:1281
 #, python-format
 msgid "Disk \"%s\" is already in use by another guest!"
-msgstr ""
+msgstr "வட்டு \"%s\" ஏற்கனவை மற்றொரு விருந்தினரால் பயன்படுத்தப்படுகிறது!"
 
-#: ../src/virtManager/addhardware.py:788 ../src/virtManager/create.py:1026
+#: ../src/virtManager/addhardware.py:1102 ../src/virtManager/create.py:1283
 msgid "Do you really want to use the disk?"
-msgstr ""
+msgstr "உண்மையாகவே இந்த வட்டை பயன்படுத்த நீங்கள் விரும்புகிறீர்களா?"
 
-#: ../src/virtManager/addhardware.py:795 ../src/virtManager/create.py:1033
+#: ../src/virtManager/addhardware.py:1109
 msgid "Virtual Network Required"
-msgstr ""
+msgstr "மெய்நிகர் பிணையம் தேவைப்படுகிறது"
 
-#: ../src/virtManager/addhardware.py:796 ../src/virtManager/create.py:1034
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1110
 msgid "You must select one of the virtual networks."
-msgstr "ஒரு புதிய மெய்நிகர் கணினியை உருவாக்கவும்"
+msgstr "ஒரு மெய்நிகர் பிணையங்களை நீங்கள் தேர்வு செய்தாக வேண்டும்."
 
-#: ../src/virtManager/addhardware.py:799 ../src/virtManager/create.py:1037
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1113
 msgid "Physical Device Required"
-msgstr "நிறுவல் ஊடகம் தேவைப்படுகிறது"
+msgstr "வெளிப்புற இயக்கி தேவைப்படுகிறது"
 
-#: ../src/virtManager/addhardware.py:800 ../src/virtManager/create.py:1038
+#: ../src/virtManager/addhardware.py:1114
 msgid "You must select a physical device."
-msgstr ""
+msgstr "ஒரு வெளிப்புறச் சாதனத்தை நீங்கள் தேர்த்தாக வேண்டும்."
 
-#: ../src/virtManager/addhardware.py:806 ../src/virtManager/addhardware.py:812
-#: ../src/virtManager/create.py:1044
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1120
+#: ../src/virtManager/addhardware.py:1126
 msgid "Invalid MAC address"
-msgstr "தவறான PV ஊடக முகவரி"
+msgstr "தவறான MAC முகவரி"
 
-#: ../src/virtManager/addhardware.py:807 ../src/virtManager/create.py:1045
+#: ../src/virtManager/addhardware.py:1121
 msgid "No MAC address was entered. Please enter a valid MAC address."
-msgstr ""
+msgstr "MAC முகவரி உள்ளிடப்படவில்லை. ஒரு சரியான MAC முகவரியை உள்ளீடவும்."
 
-#: ../src/virtManager/addhardware.py:825
+#: ../src/virtManager/addhardware.py:1139
 msgid "Unsupported networking type"
-msgstr ""
+msgstr "துணைபுரியாத பிணைய வகை"
 
-#: ../src/virtManager/addhardware.py:829
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1143
 msgid "Invalid Network Parameter"
-msgstr "தவறான கணினி பெயர்"
+msgstr "தவறான பிணைய அளவுரு"
 
-#: ../src/virtManager/addhardware.py:834 ../src/virtManager/addhardware.py:837
-#: ../src/virtManager/create.py:1078 ../src/virtManager/create.py:1080
+#: ../src/virtManager/addhardware.py:1148
+#: ../src/virtManager/addhardware.py:1151
 msgid "Mac address collision"
-msgstr ""
+msgstr "Mac முகவரி கோலிஸசன்"
 
-#: ../src/virtManager/addhardware.py:838 ../src/virtManager/create.py:1081
+#: ../src/virtManager/addhardware.py:1152
 msgid "Are you sure you want to use this address?"
-msgstr ""
+msgstr "இந்த முகவரியை நீங்கள் பயன்படுத்த விரும்புகிறீல்களா?"
 
-#: ../src/virtManager/addhardware.py:853
+#: ../src/virtManager/addhardware.py:1167
 msgid "Graphics device parameter error"
-msgstr ""
+msgstr "வரைகலை இயக்கியின் அளவுரு பிழை"
 
-#: ../src/virtManager/addhardware.py:860
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1174
 msgid "Sound device parameter error"
-msgstr "பிணைய பயன்பாடு:"
+msgstr "ஒலிச் சாதனத்தின் அளவுரு பிழை"
 
-#: ../src/virtManager/addhardware.py:880 ../src/virtManager/create.py:1150
+#: ../src/virtManager/addhardware.py:1181
+msgid "Physical Device Requried"
+msgstr "வெளிப்புற சாதனம் தேவைப்படுகிறது"
+
+#: ../src/virtManager/addhardware.py:1182
+msgid "A device must be selected."
+msgstr "ஒரு சாதனம் தேர்ந்தெடுக்கப்பட்டுள்ளது."
+
+#: ../src/virtManager/addhardware.py:1189
+msgid "Host device parameter error"
+msgstr "புரவல சாதனத்தின் அளவுரு பிழை"
+
+#: ../src/virtManager/addhardware.py:1231
+#, fuzzy, python-format
+msgid "%s device parameter error."
+msgstr "புரவல சாதனத்தின் அளவுரு பிழை"
+
+#: ../src/virtManager/addhardware.py:1242
+#, fuzzy
+msgid "Video device parameter error."
+msgstr "புரவல சாதனத்தின் அளவுரு பிழை"
+
+#: ../src/virtManager/addhardware.py:1263 ../src/virtManager/create.py:653
 msgid "Bridge"
-msgstr ""
+msgstr "பிரிட்ஜ்"
 
-#: ../src/virtManager/addhardware.py:882 ../src/virtManager/create.py:1152
+#: ../src/virtManager/addhardware.py:1265 ../src/virtManager/create.py:656
 msgid "Not bridged"
-msgstr ""
+msgstr "பிரிட்ஜ் இல்லை"
 
 #. [xml value, label]
-#: ../src/virtManager/addhardware.py:889
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1272
 msgid "Hypervisor default"
-msgstr "Hypervisor:"
+msgstr "Hypervisor முன்னிருப்பு"
 
-#: ../src/virtManager/addhardware.py:923 ../src/virtManager/details.py:1041
+#: ../src/virtManager/addhardware.py:1308 ../src/virtManager/details.py:1094
 msgid "EvTouch USB Graphics Tablet"
-msgstr ""
+msgstr "EvTouch USB வரைகலை டாப்லெட்"
 
 #. XXX libvirt needs to support 'model' for input devices to distinguish
 #. wacom from evtouch tablets
 #. model.append([_("Wacom Graphics Tablet"), "tablet", "usb", True])
-#: ../src/virtManager/addhardware.py:927 ../src/virtManager/details.py:1043
+#: ../src/virtManager/addhardware.py:1312 ../src/virtManager/details.py:1096
 msgid "Generic USB Mouse"
-msgstr ""
+msgstr "பொதுலான USB சுட்டி"
 
-#: ../src/virtManager/asyncjob.py:39 ../src/vmm-progress.glade.h:2
+#: ../src/virtManager/addhardware.py:1352
+msgid "No Devices Available"
+msgstr "சாதனங்கள்  எதுவும் கிடைக்கப் பெறவல்்லை."
+
+#: ../src/virtManager/asyncjob.py:41 ../src/vmm-progress.glade.h:2
 msgid "Please wait a few moments..."
 msgstr "சில கணங்கள் காத்திருக்கவும்..."
 
-#: ../src/virtManager/asyncjob.py:39 ../src/vmm-progress.glade.h:1
+#: ../src/virtManager/asyncjob.py:42 ../src/vmm-progress.glade.h:1
 msgid "Operation in progress"
 msgstr "செயல்பாடு நடைபெறுகிறது"
 
-#: ../src/virtManager/asyncjob.py:75 ../src/virtManager/asyncjob.py:88
+#: ../src/virtManager/asyncjob.py:89 ../src/virtManager/asyncjob.py:102
 #: ../src/vmm-progress.glade.h:3
 msgid "Processing..."
 msgstr "நடைபெறுகிறது..."
 
-#: ../src/virtManager/asyncjob.py:103
+#: ../src/virtManager/asyncjob.py:117
 msgid "Completed"
 msgstr "முடிந்தது"
 
-#: ../src/virtManager/choosecd.py:104 ../src/virtManager/choosecd.py:113
-#, fuzzy
+#: ../src/virtManager/choosecd.py:99 ../src/virtManager/choosecd.py:109
 msgid "Invalid Media Path"
-msgstr "தவறான FV ஊடக முகவரி"
+msgstr "தவறான ஊடக பாதை"
 
-#: ../src/virtManager/choosecd.py:105
+#: ../src/virtManager/choosecd.py:100
 msgid "A media path must be specified."
-msgstr ""
+msgstr "ஊடகப் பாதை குறிப்பிடப்பட வேண்டும்."
 
-#: ../src/virtManager/choosecd.py:133 ../src/virtManager/create.py:738
+#: ../src/virtManager/choosecd.py:128 ../src/virtManager/create.py:989
 msgid "Locate ISO Image"
 msgstr "ISO உருவை காட்டவும்"
 
-#: ../src/virtManager/connect.py:74 ../src/virtManager/manager.py:852
-#: ../src/vmm-create-net.glade.h:31 ../src/vmm-create-pool.glade.h:9
+#: ../src/virtManager/clone.py:213 ../src/virtManager/clone.py:433
+#, fuzzy
+msgid "Details..."
+msgstr "விவரங்கள்"
+
+#: ../src/virtManager/clone.py:244
+#, fuzzy
+msgid "Usermode"
+msgstr "புரவலன்பெயர்:"
+
+#: ../src/virtManager/clone.py:254 ../src/virtManager/create.py:623
+msgid "Isolated network"
+msgstr "தனிப்பட்ட ிகர் பிணையம்"
+
+#: ../src/virtManager/clone.py:256 ../src/virtManager/create.py:625
+#, python-format
+msgid "NAT to %s"
+msgstr "NAT க்கு %s"
+
+#: ../src/virtManager/clone.py:258
+#, fuzzy
+msgid "NAT"
+msgstr "N/A"
+
+#: ../src/virtManager/clone.py:262
+#, fuzzy
+msgid "Virtual Network"
+msgstr "மெய்நிகர் இணைப்புகள்"
+
+#: ../src/virtManager/clone.py:334
+msgid "Nothing to clone."
+msgstr ""
+
+#: ../src/virtManager/clone.py:426
+msgid "Clone this disk"
+msgstr ""
+
+#: ../src/virtManager/clone.py:430
+#, python-format
+msgid "Share disk with %s"
+msgstr ""
+
+#: ../src/virtManager/clone.py:441
+msgid "Storage cannot be shared or cloned."
+msgstr ""
+
+#: ../src/virtManager/clone.py:494
+msgid "One or more disks cannot be cloned or shared."
+msgstr ""
+
+#: ../src/virtManager/clone.py:595
+#, fuzzy, python-format
+msgid "Error changing MAC address: %s"
+msgstr "நினைவக மதிப்பினை மாற்றுவதில் பிழை: %s"
+
+#: ../src/virtManager/clone.py:622
+msgid "Cloning will overwrite the existing file"
+msgstr ""
+
+#: ../src/virtManager/clone.py:624
+#, fuzzy
+msgid ""
+"Using an existing image will overwrite the path during the clone process. "
+"Are you sure you want to use this path?"
+msgstr ""
+"மூல சாதனத்திற்கு இந்த வகையான ஒரு பூல் முறையை கட்டுகிறது, இந்த பூலை நீங்கள் கட்ட "
+"விரும்புகிறீல்களா? "
+
+#: ../src/virtManager/clone.py:635
+#, fuzzy, python-format
+msgid "Error changing storage path: %s"
+msgstr "ஆட்டோ துவக்கியின் மதிப்பினை மாற்றுவதில் பிழை: %s"
+
+#: ../src/virtManager/clone.py:686
+msgid "Skipping disks may cause data to be overwritten."
+msgstr ""
+
+#: ../src/virtManager/clone.py:687
+#, python-format
+msgid ""
+"The following disk devices will not be cloned:\n"
+"\n"
+"%s\n"
+"Running the new guest could overwrite data in these disk images."
+msgstr ""
+
+#: ../src/virtManager/clone.py:707 ../src/virtManager/createpool.py:261
+#: ../src/virtManager/createvol.py:143
+#, python-format
+msgid "Uncaught error validating input: %s"
+msgstr "மதிக்ககூடிய உள்ளீட்டின் போது பிடிக்கப்படாத பிழை: %s"
+
+#: ../src/virtManager/clone.py:714
+#, fuzzy, python-format
+msgid "Creating virtual machine clone '%s'"
+msgstr "மெய்நிகர் கணினியை உருவாக்குகிறது"
+
+#: ../src/virtManager/clone.py:718 ../src/virtManager/delete.py:142
+#, fuzzy
+msgid " and selected storage (this may take a while)"
+msgstr "சேமிப்பக பூல் உருவாக்குவதற்கு கொஞ்ச நேரம் எடுக்கும்..."
+
+#: ../src/virtManager/clone.py:752
+#, fuzzy, python-format
+msgid "Error creating virtual machine clone '%s': %s"
+msgstr "பிழையை உருவாக்கும் மெய்நிகர் பிணையம்: %s"
+
+#: ../src/virtManager/clone.py:784
+msgid "No storage to clone."
+msgstr ""
+
+#: ../src/virtManager/clone.py:790
+#, fuzzy
+msgid "Connection does not support managed storage cloning."
+msgstr "சேமிப்பக மேலாண்மைக்கு இணைப்புகள் துணைபுரியவில்லை.ில்லை"
+
+#: ../src/virtManager/clone.py:793
+msgid "Cannot clone unmanaged remote storage."
+msgstr ""
+
+#: ../src/virtManager/clone.py:795 ../src/virtManager/delete.py:342
+#, fuzzy
+msgid "No write access to parent directory."
+msgstr "இலக்கு அடைவை தேர்ந்தெடு"
+
+#: ../src/virtManager/clone.py:797 ../src/virtManager/delete.py:340
+msgid "Path does not exist."
+msgstr ""
+
+#: ../src/virtManager/clone.py:818
+msgid "Removable"
+msgstr ""
+
+#: ../src/virtManager/clone.py:821
+msgid "Read Only"
+msgstr ""
+
+#: ../src/virtManager/clone.py:823
+msgid "No write access"
+msgstr ""
+
+#: ../src/virtManager/clone.py:826
+msgid "Shareable"
+msgstr ""
+
+#: ../src/virtManager/connect.py:74 ../src/virtManager/manager.py:828
+#: ../src/virtManager/storagebrowse.py:102 ../src/vmm-create-net.glade.h:31
+#: ../src/vmm-create-pool.glade.h:9 ../src/vmm-create.glade.h:32
 msgid "Name"
 msgstr "பெயர்"
 
-#: ../src/virtManager/connection.py:1066
-#, fuzzy
+#: ../src/virtManager/connection.py:1104
 msgid "Disconnected"
-msgstr "இணைப்பு (_n)"
+msgstr "இணைப்பு துண்டிக்கப்பட்டது"
 
-#: ../src/virtManager/connection.py:1068
-#, fuzzy
+#: ../src/virtManager/connection.py:1106
 msgid "Connecting"
-msgstr "இணைப்பு (_n)"
+msgstr "இணைப்படுகிறது"
 
-#: ../src/virtManager/connection.py:1071
+#: ../src/virtManager/connection.py:1109
 msgid "Active (RO)"
-msgstr ""
+msgstr "செயல்பாட்டிலுள்ள (RO)"
 
-#: ../src/virtManager/connection.py:1073 ../src/virtManager/host.py:329
-#: ../src/virtManager/host.py:552 ../src/vmm-host.glade.h:5
+#: ../src/virtManager/connection.py:1111 ../src/virtManager/host.py:324
+#: ../src/virtManager/host.py:548 ../src/vmm-host.glade.h:5
 msgid "Active"
-msgstr ""
+msgstr "செயல்பாட்டிலுள்ள"
 
-#: ../src/virtManager/connection.py:1075 ../src/virtManager/create.py:1138
-#: ../src/virtManager/host.py:334 ../src/virtManager/host.py:373
-#: ../src/virtManager/host.py:552 ../src/virtManager/host.py:584
+#: ../src/virtManager/connection.py:1113 ../src/virtManager/create.py:619
+#: ../src/virtManager/host.py:329 ../src/virtManager/host.py:368
+#: ../src/virtManager/host.py:548 ../src/virtManager/host.py:580
 msgid "Inactive"
-msgstr ""
+msgstr "செயலிழந்த"
 
-#: ../src/virtManager/connection.py:1077 ../src/virtManager/details.py:1006
+#: ../src/virtManager/connection.py:1115 ../src/virtManager/create.py:1573
+#: ../src/virtManager/create.py:1574 ../src/virtManager/create.py:1576
+#: ../src/virtManager/details.py:930 ../src/virtManager/details.py:1059
 msgid "Unknown"
-msgstr ""
+msgstr "தெரியாத"
 
-#: ../src/virtManager/create.py:304 ../src/virtManager/createpool.py:268
-#: ../src/virtManager/createvol.py:147
+#: ../src/virtManager/create.py:229
+msgid "Error listing CD-ROM devices."
+msgstr "CD-ROMஐ இணைக்கும் போது பிழை: %s"
+
+#: ../src/virtManager/create.py:258
+msgid ""
+"Fully allocating storage will take longer now, but the OS install phase will "
+"be quicker. \n"
+"\n"
+"Skipping allocation can also cause space issues on the host machine, if the "
+"maximum image size exceeds available storage space."
+msgstr ""
+"Fully allocating storage will take longer now, but the OS install phase will "
+"be quicker. \n"
+"\n"
+"Skipping allocation can also cause space issues on the host machine, if the "
+"maximum image size exceeds available storage space."
+
+#: ../src/virtManager/create.py:278
+msgid "No active connection to install on."
+msgstr "நிறுவுவதற்கு இணைப்புகள் எதுவும் கிடைக்கப் பெறவில்லை."
+
+#: ../src/virtManager/create.py:323
+msgid "Connection is read only."
+msgstr "இணைப்புகள் இப்போது தயாராக உள்ளன."
+
+#: ../src/virtManager/create.py:333
+msgid "No guests are supported for this connection."
+msgstr "இந்த இணைப்புக்கு எந்த விருந்தினரும் துணைபுரியவில்லை."
+
+#: ../src/virtManager/create.py:355
 #, python-format
-msgid "Uncaught error validating input: %s"
-msgstr ""
+msgid "%s installs not available for paravirt guests."
+msgstr "%s நிறுவல்கள் பாராவிட் விருந்தினருக்கு கிடைக்கப் பெறவில்லை."
 
-#: ../src/virtManager/create.py:547
-msgid "Paravirtualized"
-msgstr "பகுதி மெய்நிகராக்கப்பட்டது"
+#: ../src/virtManager/create.py:359
+msgid "URL installs not available for remote connections."
+msgstr "URL நிறுவலுக்கு தொலை இணைப்புகளுக்கு கிடைக்க பெறவில்லை.இல்லை."
 
-#: ../src/virtManager/create.py:551
-msgid "Fully virtualized"
-msgstr "முழுவதும் மெய்நிகராக்கப்பட்டது"
+#: ../src/virtManager/create.py:361 ../src/virtManager/create.py:451
+msgid "Connection does not support storage management."
+msgstr "சேமிப்பக மேலாண்மைக்கு இணைப்புகள் துணைபுரியவில்லை.ில்லை"
 
-#: ../src/virtManager/create.py:615
-msgid "UUID Error"
-msgstr ""
+#: ../src/virtManager/create.py:373
+msgid "No install options available for this connection."
+msgstr "இந்த இணைப்புக்கு நிறுவுவக்கூடிய விருப்பங்கள் இல்லை."
 
-#: ../src/virtManager/create.py:622
-msgid "Failed to set up usermode networking"
-msgstr ""
+#: ../src/virtManager/create.py:406
+#, python-format
+msgid "Up to %(maxmem)s available on the host"
+msgstr "%(maxmem)s வரை மட்டுமே புரவலன் இருக்கிறது"
 
-#: ../src/virtManager/create.py:636
-msgid "Error setting up graphics device:"
-msgstr ""
+#: ../src/virtManager/create.py:420
+#, python-format
+msgid "Hypervisor only supports %d virtual CPUs."
+msgstr "ஹைப்பர்வைசர் %d மெய்நிகர் CPUகளுக்கு மட்டுமே துணைபுரிகிறது."
 
-#: ../src/virtManager/create.py:645
-msgid "Error setting up sound device:"
-msgstr ""
+#: ../src/virtManager/create.py:430
+#, python-format
+msgid "Up to %(numcpus)d available"
+msgstr "%(numcpus)d வரை கிடைக்கபெறுகிறது"
 
-#: ../src/virtManager/create.py:674
-msgid "Creating Virtual Machine"
-msgstr "மெய்நிகர் கணினியை உருவாக்குகிறது"
+#: ../src/virtManager/create.py:499
+msgid "Only URL installs are supported for paravirt."
+msgstr "URL நிறுவல் மட்டும் paravirtக்கு துணைபுரிகிறது."
 
-#: ../src/virtManager/create.py:675
-msgid "The virtual machine is now being created. "
-msgstr "மெய்நிகர் கணினி இப்போது உருவாக்கப்படுகிறது."
+#: ../src/virtManager/create.py:576 ../src/virtManager/create.py:585
+#: ../src/virtManager/create.py:734 ../src/virtManager/create.py:736
+msgid "Generic"
+msgstr "பொதுவான"
 
-#: ../src/virtManager/create.py:719
-msgid "Guest installation failed to complete"
-msgstr ""
+#: ../src/virtManager/create.py:606
+msgid "Usermode Networking"
+msgstr "பயனர்முறைமை பிணையம்"
 
-#: ../src/virtManager/create.py:887
+#. FIXME: Should we use 'default' even if it's inactive?
+#: ../src/virtManager/create.py:617
+msgid "Virtual network"
+msgstr "மெய்நிகர் பிணையம்"
+
+#: ../src/virtManager/create.py:627
+msgid "NAT to any device"
+msgstr "NAT உடன் ஏதாவது சாதனம்"
+
+#: ../src/virtManager/create.py:638
+msgid "No virtual networks available"
+msgstr "மெய்நிகர் பிணையங்கள்்ணை கள் எதுவும் கிடைக்கப் பெறவில்லை."
+
+#: ../src/virtManager/create.py:661
+#, python-format
+msgid "Host device %s %s"
+msgstr "புரவலச் சாதனம் %s %s"
+
+#: ../src/virtManager/create.py:673
+msgid "No networking."
+msgstr "பிணையங்கள் இல்லை. பிணையம்"
+
+#: ../src/virtManager/create.py:718
+msgid "Local CDROM/ISO"
+msgstr "உள்ளமை CDROM/ISO"
+
+#: ../src/virtManager/create.py:720
+msgid "URL Install Tree"
+msgstr "URL மரத்தை நிறுவவும்"
+
+#: ../src/virtManager/create.py:722
+msgid "PXE Install"
+msgstr "PXE நிறுவல்"
+
+#: ../src/virtManager/create.py:725 ../src/virtManager/details.py:931
+msgid "None"
+msgstr "ஒன்றுமில்லை்லை"
+
+#: ../src/virtManager/create.py:998
+msgid "Locate existing storage"
+msgstr "இருக்கும் சேமிப்பகத்தை காண்"
+
+#: ../src/virtManager/create.py:1069
+#, python-format
+msgid "Step %(current_page)d of %(max_page)d"
+msgstr "படி %(current_page)d ஆல் %(max_page)d"
+
+#: ../src/virtManager/create.py:1128
+#, python-format
+msgid "Uncaught error validating install parameters: %s"
+msgstr "உருப்படிகளை நிறுவும் உள்ள செல்லுபடியாகும்ீட்டின் போது பிடிக்கப்படாத பிழை: %s"
+
+#: ../src/virtManager/create.py:1142
 msgid "Invalid System Name"
 msgstr "தவறான கணினி பெயர்"
 
-#: ../src/virtManager/create.py:921
-msgid "Invalid FV OS Type"
-msgstr "தவறான FV OS வகை"
+#: ../src/virtManager/create.py:1166
+msgid "An install media selection is required."
+msgstr "ஒரு நிறுவப்பட்ட ஊடக்கப் பாதை தேவைப்படுகிறது."
 
-#: ../src/virtManager/create.py:928
-msgid "Invalid FV OS Variant"
-msgstr "தவறான FV OS மாறி"
+#: ../src/virtManager/create.py:1176
+msgid "An install tree is required."
+msgstr "ஒரு நிறுவப்பட்ட மரம்் தேவைப்படுகிறது."
 
-#: ../src/virtManager/create.py:938
-msgid "An install media path is required."
-msgstr ""
+#: ../src/virtManager/create.py:1191
+msgid "Error setting installer parameters."
+msgstr "பிழை அமைவுகள் நிறுவலர் உருப்படிகள்."
 
-#: ../src/virtManager/create.py:945
-msgid "ISO Path Not Found"
-msgstr "ISO பாதை காணப்படவில்லை"
+#: ../src/virtManager/create.py:1209
+msgid "Error setting install media location."
+msgstr "ஊடக உள்ளமை நிறுவல் அமைவுகளில் பிழை."
 
-#: ../src/virtManager/create.py:951
-msgid "CD-ROM Path Error"
-msgstr ""
+#: ../src/virtManager/create.py:1219
+msgid "Error setting OS information."
+msgstr "பிழை அமைவுகளில் OS தகவல்."
 
-#: ../src/virtManager/create.py:956
-msgid "An install url is required."
-msgstr ""
+#: ../src/virtManager/create.py:1236
+msgid "Error setting CPUs."
+msgstr "பிழை அமைவுகளில் CPUs."
 
-#: ../src/virtManager/create.py:960
-msgid "Invalid Install URL"
-msgstr ""
+#: ../src/virtManager/create.py:1243
+msgid "Error setting guest memory."
+msgstr "விருந்தினர் நினைவகத்தில் பிழை அமைவுகள்."
 
-#: ../src/virtManager/create.py:966
-#, fuzzy
-msgid "Kickstart URL Error"
-msgstr "கிக்ஸ்டார்ட் U_RL:"
+#: ../src/virtManager/create.py:1261
+msgid "A storage path must be specified."
+msgstr "சேமிப்பப் பாதை குறிப்பிடப்பட வேண்டும்."
 
-#: ../src/virtManager/create.py:967
-msgid "Kickstart location must be an NFS, HTTP or FTP source"
-msgstr ""
+#: ../src/virtManager/create.py:1270
+msgid "Storage parameter error."
+msgstr "சேமிப்பக அளவுரு பிழை."
 
-#: ../src/virtManager/create.py:982
-msgid "Storage Address Required"
-msgstr "சேமிப்பக முகவரி தேவைப்படுகிறது"
+#: ../src/virtManager/create.py:1296
+msgid "Virtual Network is not active."
+msgstr "மெய்நிகர் பிணையம் செயல்பாட்டில் இல்லை"
 
-#: ../src/virtManager/create.py:983
-#, fuzzy
-msgid ""
-"You must specify a partition or a file for storage for the guest install."
-msgstr "விருந்தினர் நிறுவலுக்கு ஒரு பகிர்வு அல்லது சேமிக்க ஒரு கோப்பினை கொடுக்க வேண்டும்"
-
-#: ../src/virtManager/create.py:1017
-#, fuzzy
-msgid "Invalid Storage Address"
-msgstr "தவறான சேமிப்பக முகவரி"
-
-#: ../src/virtManager/create.py:1062
-#, fuzzy
-msgid "Network Parameter Error"
-msgstr "பிணைய பயன்பாடு:"
-
-#: ../src/virtManager/create.py:1066
-#, fuzzy
-msgid "Virtual Network is Inactive"
-msgstr "மெய்நிகர் CPUகள்"
-
-#: ../src/virtManager/create.py:1067
+#: ../src/virtManager/create.py:1297
 #, python-format
 msgid ""
 "Virtual Network '%s' is not active. Would you like to start the network now?"
-msgstr ""
+msgstr "'%s'மெய்நிகர் பிணையம் செயல்பாட்டில் இல்லை. இப்போது நீங்கள் துவக்க விரும்புகிறீர்களா?"
 
-#: ../src/virtManager/create.py:1089
-msgid "VCPU Count Error"
-msgstr ""
+#: ../src/virtManager/create.py:1309
+#, python-format
+msgid "Could not start virtual network '%s': %s"
+msgstr "மெய்நிகர் பிணையத்தை துவக்க முடியாது '%s': %s"
 
-#: ../src/virtManager/create.py:1094
-msgid "Memory Amount Error"
-msgstr ""
+#: ../src/virtManager/create.py:1323
+#, python-format
+msgid "Network device required for %s install."
+msgstr "பிணைய சாதனத்திற்கு %s நிறுவல் தேவைப்படுகிறது."
 
-#: ../src/virtManager/create.py:1099
-msgid "Max Memory Amount Error"
+#: ../src/virtManager/create.py:1345
+msgid "Error with network parameters."
+msgstr "பிணைய அளவுருக்களுடன் பிழை."
+
+#: ../src/virtManager/create.py:1350 ../src/virtManager/create.py:1352
+msgid "Mac address collision."
+msgstr "Mac முகவரி கோலிஸசன்."
+
+#: ../src/virtManager/create.py:1353
+#, python-format
+msgid "%s Are you sure you want to use this address?"
+msgstr "%s இந்த முகவரியை நீங்கள் பயன்படுத்த விரும்புகிறீர்்களா?"
+
+#: ../src/virtManager/create.py:1396
+#, python-format
+msgid "Error setting UUID: %s"
+msgstr "பிழை அமைவுகள் UUID: %s"
+
+#: ../src/virtManager/create.py:1404
+msgid "Error setting up graphics device:"
+msgstr "வரைகலை இயக்கியை அமைப்பதில் பிழை:"
+
+#: ../src/virtManager/create.py:1414
+msgid "Error setting up sound device:"
+msgstr "ஒலி இயக்கியை அமைப்பதில் பிழை:"
+
+#: ../src/virtManager/create.py:1438
+msgid "Creating Virtual Machine"
+msgstr "மெய்நிகர் கணினியை உருவாக்குகிறது"
+
+#: ../src/virtManager/create.py:1439
+msgid ""
+"The virtual machine is now being created. Allocation of disk storage and "
+"retrieval of the installation images may take a few minutes to complete."
 msgstr ""
+"The virtual machine is now being created. Allocation of disk storage and "
+"retrieval of the installation images may take a few minutes to complete."
+
+#: ../src/virtManager/create.py:1491
+msgid "Guest installation failed to complete"
+msgstr "விருந்தினர் நிறுவல் முடிவடைவதில் தோல்வி"
+
+#: ../src/virtManager/create.py:1612
+msgid "Detecting"
+msgstr "கண்டுபிடிக்கப்படுகிறது"
 
 #: ../src/virtManager/createnet.py:97 ../src/virtManager/createnet.py:260
-#: ../src/virtManager/host.py:361 ../src/vmm-create-net.glade.h:30
+#: ../src/virtManager/host.py:356 ../src/vmm-create-net.glade.h:30
 #: ../src/vmm-host.glade.h:28
 msgid "NAT to any physical device"
-msgstr ""
+msgstr "NAT க்கு ஏதாவது வெளிப்புறச் சாதனம்"
 
 #: ../src/virtManager/createnet.py:100 ../src/virtManager/createnet.py:258
-#: ../src/virtManager/host.py:359
+#: ../src/virtManager/host.py:354
 #, python-format
 msgid "NAT to physical device %s"
-msgstr ""
+msgstr "NAT to வெளிச் சாதனம் %s"
 
 #: ../src/virtManager/createnet.py:155
-#, fuzzy, python-format
+#, python-format
 msgid "%d addresses"
-msgstr "MAC முகவரி"
+msgstr "%d முகவரிகள்"
 
 #: ../src/virtManager/createnet.py:157
 msgid "Public"
-msgstr ""
+msgstr "பொதுவான"
 
 #: ../src/virtManager/createnet.py:159 ../src/vmm-create-net.glade.h:42
 msgid "Private"
-msgstr ""
+msgstr "தனிபட்ட"
 
 #: ../src/virtManager/createnet.py:161
 msgid "Reserved"
-msgstr ""
+msgstr "முன்பதிவு செய்யப்பட்டது"
 
 #: ../src/virtManager/createnet.py:163
 msgid "Other"
-msgstr ""
+msgstr "மற்ற"
 
-#: ../src/virtManager/createnet.py:262 ../src/virtManager/host.py:364
-#: ../src/virtManager/host.py:384 ../src/vmm-create-net.glade.h:29
+#: ../src/virtManager/createnet.py:262 ../src/virtManager/host.py:359
+#: ../src/virtManager/host.py:379 ../src/vmm-create-net.glade.h:29
 msgid "Isolated virtual network"
-msgstr ""
+msgstr "தனிப்பட்ட மெய்நிகர் பிணையம்"
 
 #: ../src/virtManager/createnet.py:303
-#, fuzzy, python-format
+#, python-format
 msgid "Error creating virtual network: %s"
-msgstr "ஒரு புதிய மெய்நிகர் கணினியை உருவாக்கவும்"
+msgstr "பிழையை உருவாக்கும் மெய்நிகர் பிணையம்: %s"
 
 #: ../src/virtManager/createnet.py:312 ../src/virtManager/createnet.py:315
-#, fuzzy
 msgid "Invalid Network Name"
-msgstr "தவறான கணினி பெயர்"
+msgstr "தவறான பிணையப் பெயர்"
 
 #: ../src/virtManager/createnet.py:313
-#, fuzzy
 msgid "Network name must be non-blank and less than 50 characters"
-msgstr ""
-"கணினி பெயர் வெறுமையாக இருக்கக்கூடாது, 50 எழுத்துக்களுக்கு குறைவாக இருக்கக்கூடாது "
+msgstr "கணினி பெயர் வெறுமையாகவம் 50 எழுத்துக்களுக்கு குறைவாக இருக்கக்கூடாது "
 
 #: ../src/virtManager/createnet.py:316
-#, fuzzy
 msgid "Network name may contain alphanumeric and '_' characters only"
-msgstr "கணினி பெயர் எழுத்துக்கள் மற்றும் '_' ஐ கொண்டிருக்கலாம்"
+msgstr "கணினி பெயர் எழுத்துக்கள் மற்றும் '_' எண்கை கொண்டிருக்கலாம்"
 
 #: ../src/virtManager/createnet.py:322 ../src/virtManager/createnet.py:326
 #: ../src/virtManager/createnet.py:330
-#, fuzzy
 msgid "Invalid Network Address"
-msgstr "தவறான சேமிப்பக முகவரி"
+msgstr "தவறான பிணைய முகவரி"
 
 #: ../src/virtManager/createnet.py:323
 msgid "The network address could not be understood"
-msgstr ""
+msgstr "பிணைய முகவரி புரிந்து கொள்ளக்கூடியதாக இல்லை"
 
 #: ../src/virtManager/createnet.py:327
 msgid "The network must be an IPv4 address"
-msgstr ""
+msgstr "பிணையம் IPv4 முகவரியை பெற்றிருக்க வேண்டும்"
 
 #: ../src/virtManager/createnet.py:331
 msgid "The network prefix must be at least /4 (16 addresses)"
-msgstr ""
+msgstr "பிரிபிக்ஸ் பிணையம் குறைந்தபட்சம் /4 ஆக இருக்க வேண்டும்(16 முகவரிகள்)"
 
 #: ../src/virtManager/createnet.py:334
-#, fuzzy
 msgid "Check Network Address"
-msgstr "தவறான சேமிப்பக முகவரி"
+msgstr "பிணைய முகவரியை சரிபார்க்கவும்"
 
 #: ../src/virtManager/createnet.py:335
 msgid ""
 "The network should normally use a private IPv4 address. Use this non-private "
 "address anyway?"
 msgstr ""
+"பொதுவாகவே பிணையம் தனிபட்ட IPv4 முகவரியை பயன்படுத்துகிறது. இருப்பினும் பொதுவானதை "
+"பயன்படுத்தவும்?"
 
 #: ../src/virtManager/createnet.py:344 ../src/virtManager/createnet.py:347
 #: ../src/virtManager/createnet.py:351 ../src/virtManager/createnet.py:354
-#, fuzzy
 msgid "Invalid DHCP Address"
-msgstr "தவறான PV ஊடக முகவரி"
+msgstr "தவறான DHCP முகவரி"
 
 #: ../src/virtManager/createnet.py:345
 msgid "The DHCP start address could not be understood"
-msgstr ""
+msgstr "DHCP துவக்க முகவரி புரியும் படி இல்லை"
 
 #: ../src/virtManager/createnet.py:348
 msgid "The DHCP end address could not be understood"
-msgstr ""
+msgstr "DHCP முடிவு முகவரி புரியும் படி இல்லை"
 
 #: ../src/virtManager/createnet.py:352
 #, python-format
 msgid "The DHCP start address is not with the network %s"
-msgstr ""
+msgstr "DHCP ல் துவங்கும் முகவரி %s பிணையத்துடன் இல்லை"
 
 #: ../src/virtManager/createnet.py:355
 #, python-format
 msgid "The DHCP end address is not with the network %s"
-msgstr ""
+msgstr "DHCP முடிவு முகவரி %s பிணையத்துடன் இல்லை"
 
 #: ../src/virtManager/createnet.py:360
-#, fuzzy
 msgid "Invalid forwarding mode"
-msgstr "தவறான சேமிப்பக முகவரி"
+msgstr "தவறான முன்னோக்கு தொகுதி"
 
 #: ../src/virtManager/createnet.py:361
 msgid "Please select where the traffic should be forwarded"
-msgstr ""
+msgstr "டிராபிக் எங்கே முன்செல்லுகிறது என தேர்வு செய்யவும்"
 
-#: ../src/virtManager/createpool.py:245
+#: ../src/virtManager/createpool.py:238
 msgid "Choose source path"
-msgstr ""
+msgstr "மூலப் பாதையைத் தேர்ந்தெடு"
 
-#: ../src/virtManager/createpool.py:251
+#: ../src/virtManager/createpool.py:244
 msgid "Choose target directory"
-msgstr ""
+msgstr "இலக்கு அடைவை தேர்ந்தெடு"
 
-#: ../src/virtManager/createpool.py:284
-#, fuzzy
+#: ../src/virtManager/createpool.py:275
 msgid "Creating storage pool..."
-msgstr "புதிய சேமிப்பக கோப்பினை காட்டவும் அல்லது உருவாக்கவும்"
+msgstr "சேமிப்பக பூலை உருவாக்கவும்..."
 
-#: ../src/virtManager/createpool.py:285
+#: ../src/virtManager/createpool.py:276
 msgid "Creating the storage pool may take a while..."
-msgstr ""
+msgstr "சேமிப்பக பூல் உருவாக்குவதற்கு கொஞ்ச நேரம் எடுக்கும்..."
 
-#: ../src/virtManager/createpool.py:313
+#: ../src/virtManager/createpool.py:304
 #, python-format
 msgid "Error creating pool: %s"
-msgstr ""
+msgstr "பிழையை உருவாக்கும் பூல்: %s"
 
-#: ../src/virtManager/createpool.py:342 ../src/virtManager/createpool.py:361
-#, fuzzy
+#: ../src/virtManager/createpool.py:333 ../src/virtManager/createpool.py:354
 msgid "Pool Parameter Error"
-msgstr "பிணைய பயன்பாடு:"
+msgstr "பூல் அளவுரு பிழை"
 
-#: ../src/virtManager/createpool.py:366
+#: ../src/virtManager/createpool.py:359
 msgid ""
 "Building a pool of this type will format the source device. Are you sure you "
 "want to 'build' this pool?"
 msgstr ""
+"மூல சாதனத்திற்கு இந்த வகையான ஒரு பூல் முறையை கட்டுகிறது, இந்த பூலை நீங்கள் கட்ட "
+"விரும்புகிறீல்களா? "
 
-#: ../src/virtManager/createpool.py:378
+#: ../src/virtManager/createpool.py:372
 msgid "Format the source device."
+msgstr "மூலச்சாதனத்தை முறை படுத்துவும்."
+
+#: ../src/virtManager/createpool.py:374
+msgid "Create a logical volume group from the source device."
 msgstr ""
 
-#: ../src/virtManager/createvol.py:160
-#, fuzzy
+#: ../src/virtManager/createvol.py:154
 msgid "Creating storage volume..."
 msgstr "புதிய சேமிப்பக கோப்பினை காட்டவும் அல்லது உருவாக்கவும்"
 
-#: ../src/virtManager/createvol.py:161
+#: ../src/virtManager/createvol.py:155
 msgid "Creating the storage volume may take a while..."
-msgstr ""
+msgstr "சேமிப்பக தொகுதியை உருவாக்குவதற்கு கொஞ்ச நேரம் எடுக்கும்..."
 
-#: ../src/virtManager/createvol.py:189
+#: ../src/virtManager/createvol.py:183
 #, python-format
 msgid "Error creating vol: %s"
-msgstr ""
+msgstr "பிழையை உருவாக்கும் ஒலி: %s"
 
-#: ../src/virtManager/createvol.py:209
-#, fuzzy
+#: ../src/virtManager/createvol.py:203
 msgid "Volume Parameter Error"
-msgstr "பிணைய பயன்பாடு:"
+msgstr "ஒலி அளவுருவில் பிழை"
 
-#: ../src/virtManager/details.py:179
-msgid "Close tab"
+#: ../src/virtManager/delete.py:98
+#, fuzzy
+msgid "Delete"
+msgstr "பூலை அழி"
+
+#: ../src/virtManager/delete.py:139
+#, fuzzy, python-format
+msgid "Deleting virtual machine '%s'"
+msgstr "மெய்நிகர் கணினியை அழிக்கவும்"
+
+#: ../src/virtManager/delete.py:174
+#, python-format
+msgid "Deleting path '%s'"
 msgstr ""
 
-#: ../src/virtManager/details.py:398
+#: ../src/virtManager/delete.py:185
+#, fuzzy, python-format
+msgid "Error deleting virtual machine '%s': %s"
+msgstr "தொகுதியை அழிக்கும் பிழை: %s"
+
+#: ../src/virtManager/delete.py:201
+msgid "Additionally, there were errors removing certain storage devices: \n"
+msgstr ""
+
+#: ../src/virtManager/delete.py:205
+msgid "Errors encountered while removing certain storage devices."
+msgstr ""
+
+#: ../src/virtManager/delete.py:286
+#, fuzzy
+msgid "Storage Path"
+msgstr "மூலப் பாதை:"
+
+#: ../src/virtManager/delete.py:287
+#, fuzzy
+msgid "Target"
+msgstr "இலக்கு:"
+
+#: ../src/virtManager/delete.py:335
+msgid "Cannot delete iscsi share."
+msgstr ""
+
+#: ../src/virtManager/delete.py:338
+#, fuzzy
+msgid "Cannot delete unmanaged remote storage."
+msgstr "மேலாண் செய்யகப்பட்ட அல்லது வேறு இருக்கும் சேமிப்பகம்"
+
+#: ../src/virtManager/delete.py:344
+msgid "Cannot delete unmanaged block device."
+msgstr ""
+
+#: ../src/virtManager/delete.py:364
+#, fuzzy
+msgid "Storage is read-only."
+msgstr "இணைப்புகள் இப்போது தயாராக உள்ளன."
+
+#: ../src/virtManager/delete.py:366
+msgid "No write access to path."
+msgstr ""
+
+#: ../src/virtManager/delete.py:369
+msgid "Storage is marked as shareable."
+msgstr ""
+
+#: ../src/virtManager/delete.py:383
+#, python-format
+msgid ""
+"Storage is in use by the following virtual machines:\n"
+"- %s "
+msgstr ""
+
+#: ../src/virtManager/details.py:159
+msgid "Close tab"
+msgstr "தத்தலை மூடு"
+
+#: ../src/virtManager/details.py:173
+msgid ""
+"Static SELinux security type tells libvirt to always start the guest process "
+"with the specified label. The administrator is responsible for making sure "
+"the images are labeled corectly on disk."
+msgstr ""
+
+#: ../src/virtManager/details.py:175
+msgid ""
+"The dynamic SELinux security type tells libvirt to automatically pick a "
+"unique label for the guest process and guest image, ensuring total isolation "
+"of the guest. (Default)"
+msgstr ""
+
+#: ../src/virtManager/details.py:377
 msgid "Press Ctrl+Alt to release pointer."
 msgstr "சுட்டியை விடுவிக்க Ctrl+Altஐ அழுத்தவும்"
 
-#: ../src/virtManager/details.py:406
+#: ../src/virtManager/details.py:385
 msgid "Pointer grabbed"
 msgstr "சுட்டி எடுக்கப்பட்டது"
 
-#: ../src/virtManager/details.py:407
-#, fuzzy
+#: ../src/virtManager/details.py:386
 msgid ""
 "The mouse pointer has been restricted to the virtual console window. To "
 "release the pointer, press the key pair: Ctrl+Alt"
 msgstr ""
 "சுட்டி நிலைக்காட்டி மெய்நிகர் பணியக சாளரத்தில் தடைசெய்யப்பட்டுள்ளது. இந்த நிலைக்காட்டியை "
-"விடுவிக்க Ctrl+Alt விசையை அழுத்தவும்"
+"இதைவிடுவிக்க Ctrl+Alt விசையை அழுத்தவும்"
 
-#: ../src/virtManager/details.py:408
+#: ../src/virtManager/details.py:387
 msgid "Do not show this notification in the future."
-msgstr ""
+msgstr "வரும்காலத்தில் இந்த அறிக்கை காட்ட வேண்டாம்."
 
-#: ../src/virtManager/details.py:522
+#: ../src/virtManager/details.py:510
 msgid "No serial devices found"
-msgstr ""
+msgstr "வரிசை சாதனங்கள் காணப்படவில்லை"
 
-#: ../src/virtManager/details.py:533
+#: ../src/virtManager/details.py:532
 msgid "Serial console not yet supported over remote connection."
-msgstr ""
+msgstr "தொடர் பணியகம் தொலை இணைப்புகளுக்கு துணையாக இல்லை."
 
-#: ../src/virtManager/details.py:536
+#: ../src/virtManager/details.py:535
 msgid "Serial console not available for inactive guest."
-msgstr ""
+msgstr "செயல்பாட்டிலில்லாத விருந்தினருக்கு தொடர் பணியகம் கிடைக்கப் பெறுவதில்லை."
 
-#: ../src/virtManager/details.py:538
+#: ../src/virtManager/details.py:537
 #, python-format
 msgid "Console for device type '%s' not yet supported."
-msgstr ""
+msgstr "'%s' சாதன வகைக்கான பணியகத்திற்கு துணை புரியவில்லை."
 
-#: ../src/virtManager/details.py:541
+#: ../src/virtManager/details.py:540
 #, python-format
 msgid "Can not access console path '%s'."
+msgstr "பணியக பாதை '%s'செயலில் இல்லை."
+
+#: ../src/virtManager/details.py:558
+msgid "No graphics console found."
 msgstr ""
 
-#: ../src/virtManager/details.py:816
+#: ../src/virtManager/details.py:563
+#, fuzzy, python-format
+msgid "Graphical Console %s"
+msgstr "வரைகலை பணியகம் அளவீடு:"
+
+#: ../src/virtManager/details.py:852
 msgid "paused"
 msgstr "இடை நிறுத்தம்"
 
-#: ../src/virtManager/details.py:829
+#: ../src/virtManager/details.py:865
 msgid "Console not available while paused"
-msgstr ""
+msgstr "இடைநிறுத்தும் போது பணியகம் கிடைக்கப் பெறவில்லை"
 
-#: ../src/virtManager/details.py:903 ../src/virtManager/details.py:904
-#: ../src/virtManager/details.py:905 ../src/virtManager/details.py:906
+#: ../src/virtManager/details.py:964 ../src/virtManager/details.py:965
+#: ../src/virtManager/details.py:966 ../src/virtManager/details.py:967
 msgid "Disabled"
-msgstr ""
+msgstr "காணப்படவில்லை"
 
-#: ../src/virtManager/details.py:1032
-#, fuzzy
+#: ../src/virtManager/details.py:1085
 msgid "Hypervisor Default"
-msgstr "Hypervisor:"
+msgstr "Hypervisor முன்னிருப்பு"
 
-#: ../src/virtManager/details.py:1045
+#: ../src/virtManager/details.py:1098
 msgid "Xen Mouse"
-msgstr ""
+msgstr "Xen மவுஸ்"
 
-#: ../src/virtManager/details.py:1047
+#: ../src/virtManager/details.py:1100
 msgid "PS/2 Mouse"
-msgstr ""
-
-#: ../src/virtManager/details.py:1054
-msgid "Absolute Movement"
-msgstr ""
-
-#: ../src/virtManager/details.py:1056
-msgid "Relative Movement"
-msgstr ""
+msgstr "PS/2 சுட்டி"
 
 #: ../src/virtManager/details.py:1107
-#, fuzzy
+msgid "Absolute Movement"
+msgstr "சரியான இயக்கம்"
+
+#: ../src/virtManager/details.py:1109
+msgid "Relative Movement"
+msgstr "தொடர்பான இயக்கம்"
+
+#: ../src/virtManager/details.py:1135 ../src/vmm-add-hardware.glade.h:29
+msgid "Automatically allocated"
+msgstr "தானாகவே ஒதுக்கப்பட்டது"
+
+#: ../src/virtManager/details.py:1160
 msgid "(Primary Console)"
-msgstr "தொடர் பணியகம் (_S)"
+msgstr "(முதன்மை பணியகம்)"
 
-#: ../src/virtManager/details.py:1165 ../src/virtManager/details.py:1262
+#: ../src/virtManager/details.py:1232 ../src/virtManager/details.py:1335
 msgid "Guest not running"
-msgstr ""
+msgstr "விருந்தினர் இயங்கவில்லை"
 
-#: ../src/virtManager/details.py:1168
+#: ../src/virtManager/details.py:1235
 msgid "Guest has crashed"
-msgstr ""
+msgstr "விருந்தினர் சுருக்கப்படார்"
 
-#: ../src/virtManager/details.py:1179
+#: ../src/virtManager/details.py:1247
 msgid ""
 "TCP/IP error: VNC connection to hypervisor host got refused or disconnected!"
 msgstr ""
+"TCP/IP பிழை: VNC இணைப்பு ஹைபர்வைசர் நிறுவுதல் நீக்கப்பட்டது அல்லது துண்டிக்கப்பட்டது!"
 
-#: ../src/virtManager/details.py:1271
+#: ../src/virtManager/details.py:1344
 msgid "Console not configured for guest"
-msgstr ""
+msgstr "பணியகம் விருந்தினருக்கு கட்டமைக்கப்படவில்லை"
 
-#: ../src/virtManager/details.py:1283
+#: ../src/virtManager/details.py:1356
 msgid "Console not supported for guest"
-msgstr ""
+msgstr "பணியகம் விருந்தினருக்கு துணை புரியவில்லை"
 
-#: ../src/virtManager/details.py:1287
+#: ../src/virtManager/details.py:1360
 msgid "Console is not yet active for guest"
-msgstr ""
+msgstr "பணியகம் விருந்தினருக்கு செயல்பாட்டில் கூட இல்லை"
 
-#: ../src/virtManager/details.py:1291
+#: ../src/virtManager/details.py:1364
 msgid "Connecting to console for guest"
+msgstr "விருந்தினருக்காக பணியகம் இணைக்கபடுகிறது"
+
+#: ../src/virtManager/details.py:1401
+msgid "Unable to provide requested credentials to the VNC server"
 msgstr ""
 
-#: ../src/virtManager/details.py:1328
+#: ../src/virtManager/details.py:1402
+#, fuzzy, python-format
+msgid "The credential type %s is not supported"
+msgstr "'%s' சாதன வகைக்கான பணியகத்திற்கு துணை புரியவில்லை."
+
+#: ../src/virtManager/details.py:1403
+#, fuzzy
+msgid "Unable to authenticate"
+msgstr "சாதனத்தை சேர்க்க முடியவில்லை: %s"
+
+#: ../src/virtManager/details.py:1407
 msgid "Unsupported console authentication type"
-msgstr ""
+msgstr "துணைபுரியாத பணியக அங்கீகார வகை"
 
-#: ../src/virtManager/details.py:1363
+#: ../src/virtManager/details.py:1478
 msgid "Save Virtual Machine Screenshot"
 msgstr "மெய்நிகர் கணினி திரைப்பிடிப்பை சேமிக்கவும்"
 
-#: ../src/virtManager/details.py:1386
+#: ../src/virtManager/details.py:1503
 #, python-format
 msgid ""
 "The screenshot has been saved to:\n"
@@ -970,401 +1462,462 @@ msgstr ""
 "திரைப்பிடிப்பு சேமிக்கப்பட்ட இடம்:\n"
 "%s"
 
-#: ../src/virtManager/details.py:1388
+#: ../src/virtManager/details.py:1505
 msgid "Screenshot saved"
 msgstr "திரைப்பிடிப்பு சேமிக்கப்பட்டது"
 
-#: ../src/virtManager/details.py:1512
+#: ../src/virtManager/details.py:1610
+#, fuzzy, python-format
+msgid "Error Setting Security data: %s"
+msgstr "net autostartஐ அமைப்பதில் பிழை: %s"
+
+#: ../src/virtManager/details.py:1646
+#, fuzzy, python-format
+msgid "Error setting CPU pinning: %s"
+msgstr "பிழை அமைவுகளில் CPUs."
+
+#: ../src/virtManager/details.py:1669
+#, fuzzy, python-format
+msgid "Error changing vcpu value: %s"
+msgstr "ஆட்டோ துவக்கியின் மதிப்பினை மாற்றுவதில் பிழை: %s"
+
+#: ../src/virtManager/details.py:1674 ../src/virtManager/details.py:1738
+msgid "These changes will take effect after the next guest reboot. "
+msgstr ""
+
+#: ../src/virtManager/details.py:1733
 #, python-format
 msgid "Error changing memory values: %s"
-msgstr ""
+msgstr "நினைவக மதிப்பினை மாற்றுவதில் பிழை: %s"
 
-#: ../src/virtManager/details.py:1527
+#: ../src/virtManager/details.py:1751
 #, python-format
 msgid "Error changing autostart value: %s"
-msgstr ""
+msgstr "ஆட்டோ துவக்கியின் மதிப்பினை மாற்றுவதில் பிழை: %s"
 
-#: ../src/virtManager/details.py:1535
+#: ../src/virtManager/details.py:1758
 #, python-format
 msgid "Error changing boot device: %s"
-msgstr ""
+msgstr "துவக்க சாதனத்தை மாற்றும் போது பிழை: %s"
 
-#: ../src/virtManager/details.py:1653
+#: ../src/virtManager/details.py:1887
 msgid "Tablet"
-msgstr ""
+msgstr "டெப்லெட்"
 
-#: ../src/virtManager/details.py:1655
-#, fuzzy
+#: ../src/virtManager/details.py:1890
 msgid "Mouse"
-msgstr "இடைநிறுத்தம்"
+msgstr "சுண்டி"
 
-#: ../src/virtManager/details.py:1657 ../src/vmm-add-hardware.glade.h:44
-#: ../src/vmm-details.glade.h:43
-#, fuzzy
+#: ../src/virtManager/details.py:1892 ../src/vmm-details.glade.h:52
 msgid "Input"
-msgstr "அறிமுகம்"
+msgstr "இறக்கு"
 
-#: ../src/virtManager/details.py:1668
-msgid "Display"
-msgstr ""
+#: ../src/virtManager/details.py:1900
+#, fuzzy, python-format
+msgid "Display %s"
+msgstr "காட்சி"
 
-#: ../src/virtManager/details.py:1678
+#: ../src/virtManager/details.py:1907
 #, python-format
 msgid "Sound: %s"
-msgstr ""
+msgstr "ஒலி: %s"
 
-#: ../src/virtManager/details.py:1772
+#: ../src/virtManager/details.py:2004
 msgid "No Boot Device"
-msgstr ""
+msgstr "துவக்க சாதனம் எதுவும் இல்லை"
 
-#: ../src/virtManager/details.py:1796
+#: ../src/virtManager/details.py:2024
 #, python-format
 msgid "Error Removing CDROM: %s"
-msgstr ""
+msgstr "CDROM நீக்கும் போது பிழை: %s"
 
-#: ../src/virtManager/details.py:1813
+#: ../src/virtManager/details.py:2041
 #, python-format
 msgid "Error Connecting CDROM: %s"
-msgstr ""
+msgstr "CDROMஐ இணைக்கும் போது பிழை: %s"
 
-#: ../src/virtManager/details.py:1830
+#: ../src/virtManager/details.py:2058
 msgid "Are you sure you want to remove this device?"
-msgstr ""
+msgstr "இந்த சாதனத்தை நீங்கள் நீக்க விரும்புகிறீர்களா?"
 
-#: ../src/virtManager/details.py:1832
+#: ../src/virtManager/details.py:2060
 msgid ""
 "This device could not be removed from the running machine. Would you like to "
 "remove the device after the next VM shutdown? \n"
 "\n"
 "Warning: this will overwrite any other changes that require a VM reboot."
 msgstr ""
+"இயங்கி கொண்டுள்ள கணினியிலிருந்து இந்த சாதனத்தை நீக்க முடியவில்லை. அடுத்த VM பணிநிறுத்தம் "
+"செய்த பின்னும் இந்த சாதனத்தை நீக்க விரும்புகிறீர்களாn? \n"
+"\n"
+"எச்சரிக்கை:VMமறு பூட்டுவதற்கு தேவைப்படும் மற்ற மாற்றங்களையும் இது மேலெழுதுகிறது."
 
-#: ../src/virtManager/details.py:1844
+#: ../src/virtManager/details.py:2072
 #, python-format
 msgid "Error Removing Device: %s"
-msgstr ""
+msgstr "சாதனத்தை நீக்கும் போது பிழை: %s"
 
-#: ../src/virtManager/domain.py:590
+#: ../src/virtManager/domain.py:705
 msgid "Running"
 msgstr "இயங்குகிறது"
 
-#: ../src/virtManager/domain.py:592
+#: ../src/virtManager/domain.py:707
 msgid "Paused"
 msgstr "இடைநிறுத்தப்பட்டது"
 
-#: ../src/virtManager/domain.py:594
-#, fuzzy
+#: ../src/virtManager/domain.py:709
 msgid "Shuting Down"
 msgstr "பணி நிறுத்தம்"
 
-#: ../src/virtManager/domain.py:596
+#: ../src/virtManager/domain.py:711
 msgid "Shutoff"
 msgstr "நிறுத்தம்"
 
-#: ../src/virtManager/domain.py:598
+#: ../src/virtManager/domain.py:713
 msgid "Crashed"
 msgstr "முடிவுற்றது"
 
-#: ../src/virtManager/domain.py:600
+#: ../src/virtManager/domain.py:715
 msgid "Unknown status code"
 msgstr "தெரியாத நிலை குறியீடு"
 
-#: ../src/virtManager/domain.py:964
-#, python-format
-msgid "Error parsing domain xml: %s"
-msgstr ""
-
-#: ../src/virtManager/domain.py:1079
+#: ../src/virtManager/domain.py:1233
 #, python-format
 msgid "Unknown device type '%s'"
-msgstr ""
+msgstr "'%s' தெரியாத சாதன வகை"
 
-#: ../src/virtManager/domain.py:1105
+#: ../src/virtManager/domain.py:1256
 #, python-format
 msgid "Didn't find the specified device to remove. Device was: %s %s"
 msgstr ""
+"நீக்குவதற்காக குறிப்பிடப்பட்ட சாதனத்தை கண்டுபிடிக்க முடியவில்லை. அச்சாதனமானது: %s %s"
 
-#: ../src/virtManager/engine.py:286
+#: ../src/virtManager/engine.py:334
 #, python-format
 msgid "Error bringing up domain details: %s"
+msgstr "செயற்கள விவரங்களுக்கு பிழையை கொண்டு வருகிறது: %s"
+
+#: ../src/virtManager/engine.py:440
+#, python-format
+msgid "Unknown connection URI %s"
 msgstr ""
 
 #. FIXME: This should work with remote storage stuff
-#: ../src/virtManager/engine.py:397
+#: ../src/virtManager/engine.py:448
 msgid "Saving virtual machines over remote connections is not yet supported."
-msgstr ""
+msgstr "தொலை இணைப்புகள் துணைபுரியாத போதும் மெய்நிகர் கணினியை சேமிக்கிறது."
 
-#: ../src/virtManager/engine.py:412
+#: ../src/virtManager/engine.py:463
 msgid "Save Virtual Machine"
 msgstr "மெய்நிகர் கணினியை சேமிக்கவும்"
 
-#: ../src/virtManager/engine.py:419
+#: ../src/virtManager/engine.py:472
 msgid "Saving Virtual Machine"
 msgstr "மெய்நிகர் கணினியை சேமிக்கவும்"
 
-#: ../src/virtManager/engine.py:423
+#: ../src/virtManager/engine.py:477
 #, python-format
 msgid "Error saving domain: %s"
-msgstr ""
+msgstr "பிழை சேமிக்கும் செயற்களம்: %s"
 
-#: ../src/virtManager/engine.py:443
-#, fuzzy, python-format
+#: ../src/virtManager/engine.py:496
+#, python-format
 msgid "About to poweroff virtual machine %s"
-msgstr "மெய்நிகர் கணினியை அழிக்கிறது %s"
+msgstr "மெய்நிகர் கணினியை பவர்ஆஃப்பை பற்றி %s"
 
-#: ../src/virtManager/engine.py:443
-#, fuzzy
+#: ../src/virtManager/engine.py:498
 msgid ""
 "This will immediately poweroff the VM without shutting down the OS and may "
 "cause data loss. Are you sure?"
 msgstr ""
-"இது உடனடியாக VMஐ அழிக்கும் மற்றும் அதன் வட்டு உருவை அழிக்கலாம். இதனை செய்ய வேண்டுமா?"
+"இது உடனடியாக VMஐ இயக்கத்தளத்தை பணிநிறுத்தம் செய்யாமல் மின்நிறுத்தம் செய்யும் செய்து தரவை "
+"இழக்க செய்யும்.  இதனை செய்ய வேண்டுமா?"
 
-#: ../src/virtManager/engine.py:449 ../src/virtManager/engine.py:512
-#: ../src/virtManager/engine.py:528
+#: ../src/virtManager/engine.py:508 ../src/virtManager/engine.py:588
+#: ../src/virtManager/engine.py:607
 #, python-format
 msgid "Error shutting down domain: %s"
-msgstr ""
+msgstr "டொமைனை பணிநிறுத்தும் போது பிழை: %s"
 
-#: ../src/virtManager/engine.py:466
+#: ../src/virtManager/engine.py:530
 #, python-format
 msgid "Error pausing domain: %s"
-msgstr ""
-
-#: ../src/virtManager/engine.py:482
-#, python-format
-msgid "Error unpausing domain: %s"
-msgstr ""
-
-#: ../src/virtManager/engine.py:498
-#, python-format
-msgid "Error starting domain: %s"
-msgstr ""
-
-#: ../src/virtManager/engine.py:537
-#, python-format
-msgid "Are you sure you want to migrate %s from %s to %s?"
-msgstr ""
+msgstr "பிழை இடைநிறுத்தும் செயற்களம்: %s"
 
 #: ../src/virtManager/engine.py:553
-#, fuzzy, python-format
-msgid "Error migrating domain: %s"
-msgstr "ஒரு புதிய மெய்நிகர் கணினியை உருவாக்கவும்"
-
-#: ../src/virtManager/engine.py:564
 #, python-format
-msgid "%s will be migrated from %s to %s."
-msgstr ""
+msgid "Error unpausing domain: %s"
+msgstr "டொமைனை இடைநிறுத்தாத போது பிழை: %s"
 
-#: ../src/virtManager/engine.py:588
-#, fuzzy
-msgid "No connections available."
-msgstr "இணைப்பு (_n)"
-
-#: ../src/virtManager/engine.py:613
-msgid "Connection hypervisors do not match."
-msgstr ""
+#: ../src/virtManager/engine.py:569
+#, python-format
+msgid "Error starting domain: %s"
+msgstr "பிழை துவக்கும் செயற்களம்: %s"
 
 #: ../src/virtManager/engine.py:615
-#, fuzzy
-msgid "Connection is disconnected."
-msgstr "இணைப்பு (_n)"
+#, python-format
+msgid "Are you sure you want to migrate %s from %s to %s?"
+msgstr "%s லிருந்து %sக்கு %sஐ மாற்ற நீங்கள் விரும்புகிறீர்களா?"
 
-#: ../src/virtManager/engine.py:617
+#: ../src/virtManager/engine.py:623
+#, python-format
+msgid "Migrating VM '%s'"
+msgstr "VM '%s'ஐ நகர்த்துகிறது"
+
+#: ../src/virtManager/engine.py:624
+#, python-format
+msgid "Migrating VM '%s' from %s to %s. This may take awhile."
+msgstr "Migrating VM '%s' from %s to %s. This may take awhile."
+
+#: ../src/virtManager/engine.py:681
+msgid "No connections available."
+msgstr "இணைப்புகள் எதுவும் கிடைக்கப் பெறவில்லை."
+
+#: ../src/virtManager/engine.py:708
+msgid "Connection hypervisors do not match."
+msgstr "இணைப்பு ஹைபர்வைசர்கள் பொருந்தவில்லை."
+
+#: ../src/virtManager/engine.py:710
+msgid "Connection is disconnected."
+msgstr "இணைப்புகள் துண்டிக்கப்பட்டன."
+
+#: ../src/virtManager/engine.py:712
 msgid "Cannot migrate to same connection."
-msgstr ""
+msgstr "அதே இணைப்பை மாற்ற முடியாது."
+
+#: ../src/virtManager/engine.py:742
+#, fuzzy, python-format
+msgid "Error setting clone parameters: %s"
+msgstr "பிழை அமைவுகள் நிறுவலர் உருப்படிகள்."
 
 #: ../src/virtManager/error.py:28
 msgid "Error"
-msgstr ""
+msgstr "பிழை"
 
 #. Expander section with details.
-#: ../src/virtManager/error.py:46 ../src/vmm-details.glade.h:31
-#, fuzzy
+#: ../src/virtManager/error.py:46 ../src/vmm-details.glade.h:35
 msgid "Details"
-msgstr "விவரங்கள் (_D)"
+msgstr "விவரங்கள்"
 
-#: ../src/virtManager/error.py:96
-#, fuzzy
+#: ../src/virtManager/error.py:106
 msgid "Input Error"
-msgstr "அறிமுகம்"
+msgstr "இறக்குமதி பிழை"
 
 #: ../src/virtManager/host.py:72
 msgid "Copy Volume Path"
-msgstr ""
+msgstr "தொகுதி பாதையை நகலெடு"
 
-#: ../src/virtManager/host.py:212
+#: ../src/virtManager/host.py:207
 #, python-format
 msgid "%(currentmem)s of %(maxmem)s"
-msgstr ""
+msgstr "%(maxmem)sஇல் %(currentmem)s  "
 
-#: ../src/virtManager/host.py:236
-#, fuzzy, python-format
+#: ../src/virtManager/host.py:231
+#, python-format
 msgid "Are you sure you want to permanently delete the network %s?"
-msgstr ""
-"இது உடனடியாக VMஐ அழிக்கும் மற்றும் அதன் வட்டு உருவை அழிக்கலாம். இதனை செய்ய வேண்டுமா?"
+msgstr "நிரந்தரமாக இந்த பிணையம் %sஐ நீங்கள் அழிக்க விரும்புகிறீர்ளா?"
 
-#: ../src/virtManager/host.py:243
+#: ../src/virtManager/host.py:238
 #, python-format
 msgid "Error deleting network: %s"
-msgstr ""
+msgstr "பிழையை அழிக்கும் பிணையம்: %s"
 
-#: ../src/virtManager/host.py:254
+#: ../src/virtManager/host.py:249
 #, python-format
 msgid "Error starting network: %s"
-msgstr ""
+msgstr "பிழையை துவக்கும் பிணையம்: %s"
 
-#: ../src/virtManager/host.py:265
+#: ../src/virtManager/host.py:260
 #, python-format
 msgid "Error stopping network: %s"
-msgstr ""
+msgstr "பிழையை நிறுத்தும் பிணையம்: %s"
 
-#: ../src/virtManager/host.py:274
+#: ../src/virtManager/host.py:269
 #, python-format
 msgid "Error launching network wizard: %s"
-msgstr ""
+msgstr "பிணைய வித்தையை கண்டுபிடிப்பதில் பிழை: %s"
 
-#: ../src/virtManager/host.py:285
+#: ../src/virtManager/host.py:280
 #, python-format
 msgid "Error setting net autostart: %s"
-msgstr ""
+msgstr "net autostartஐ அமைப்பதில் பிழை: %s"
 
-#: ../src/virtManager/host.py:293 ../src/virtManager/host.py:344
-#: ../src/virtManager/host.py:528 ../src/virtManager/host.py:553
+#: ../src/virtManager/host.py:288 ../src/virtManager/host.py:339
+#: ../src/virtManager/host.py:524 ../src/virtManager/host.py:549
 msgid "On Boot"
-msgstr ""
+msgstr "துவக்கத்தில்"
 
-#: ../src/virtManager/host.py:294 ../src/virtManager/host.py:346
-#: ../src/virtManager/host.py:378 ../src/virtManager/host.py:529
-#: ../src/virtManager/host.py:553 ../src/virtManager/host.py:586
-#: ../src/vmm-details.glade.h:60
+#: ../src/virtManager/host.py:289 ../src/virtManager/host.py:341
+#: ../src/virtManager/host.py:373 ../src/virtManager/host.py:525
+#: ../src/virtManager/host.py:549 ../src/virtManager/host.py:582
+#: ../src/vmm-details.glade.h:71
 msgid "Never"
-msgstr ""
+msgstr "இல்லை"
 
-#: ../src/virtManager/host.py:414 ../src/virtManager/host.py:424
+#: ../src/virtManager/host.py:410 ../src/virtManager/host.py:420
 #, python-format
 msgid "Error starting pool '%s': %s"
-msgstr ""
+msgstr "பூல் '%s'ஐ துவக்குகையில் பிழை: %s"
 
-#: ../src/virtManager/host.py:433
-#, fuzzy, python-format
+#: ../src/virtManager/host.py:429
+#, python-format
 msgid "Are you sure you want to permanently delete the pool %s?"
-msgstr ""
-"இது உடனடியாக VMஐ அழிக்கும் மற்றும் அதன் வட்டு உருவை அழிக்கலாம். இதனை செய்ய வேண்டுமா?"
+msgstr "நிரந்தரமாக இந்த பூல் %sஐ நீங்கள் அழிக்க விரும்புகிறீர்ளா?"
 
-#: ../src/virtManager/host.py:440
+#: ../src/virtManager/host.py:436
 #, python-format
 msgid "Error deleting pool: %s"
-msgstr ""
+msgstr "பூலை அழிப்பத்தில் பிழை: %s"
 
-#: ../src/virtManager/host.py:448
-#, fuzzy, python-format
+#: ../src/virtManager/host.py:444
+#, python-format
 msgid "Are you sure you want to permanently delete the volume %s?"
-msgstr ""
-"இது உடனடியாக VMஐ அழிக்கும் மற்றும் அதன் வட்டு உருவை அழிக்கலாம். இதனை செய்ய வேண்டுமா?"
+msgstr "நிரந்தரமாக இந்த ஒலி %sஐ நீங்கள் அழிக்க விரும்புகிறீர்ளா?"
 
-#: ../src/virtManager/host.py:457
+#: ../src/virtManager/host.py:453
 #, python-format
 msgid "Error deleting volume: %s"
-msgstr ""
+msgstr "தொகுதியை அழிக்கும் பிழை: %s"
 
-#: ../src/virtManager/host.py:468
+#: ../src/virtManager/host.py:464
 #, python-format
 msgid "Error launching pool wizard: %s"
-msgstr ""
+msgstr "பூல் வழிகாட்டியை துவக்கும் போது பிழை: %s"
 
-#: ../src/virtManager/host.py:483
+#: ../src/virtManager/host.py:479 ../src/virtManager/storagebrowse.py:237
 #, python-format
 msgid "Error launching volume wizard: %s"
-msgstr ""
+msgstr "தொகுதி வழிகாட்டியை துவக்கும் போது பிழை: %s"
 
-#: ../src/virtManager/host.py:520
+#: ../src/virtManager/host.py:516
 #, python-format
 msgid "Error setting pool autostart: %s"
+msgstr "பூல் தானியக்க துவக்க அமைத்தலில் பிழை: %s"
+
+#. Shutdown menu
+#: ../src/virtManager/manager.py:86 ../src/virtManager/manager.py:250
+#: ../src/virtManager/systray.py:136
+#, fuzzy
+msgid "_Reboot"
+msgstr "மறுதுவக்கம்"
+
+#: ../src/virtManager/manager.py:92 ../src/virtManager/manager.py:245
+#: ../src/virtManager/manager.py:256 ../src/virtManager/systray.py:143
+#: ../src/virtManager/systray.py:161
+#, fuzzy
+msgid "_Shut Down"
+msgstr "பணி நிறுத்தம்"
+
+#: ../src/virtManager/manager.py:98 ../src/virtManager/manager.py:262
+#: ../src/virtManager/systray.py:150
+#, fuzzy
+msgid "_Force Off"
+msgstr "கட்டாய ஆஃப்"
+
+#: ../src/virtManager/manager.py:225 ../src/virtManager/systray.py:129
+#: ../src/vmm-details.glade.h:124 ../src/vmm-manager.glade.h:19
+msgid "_Run"
+msgstr "இயக்கவும் (_R)"
+
+#: ../src/virtManager/manager.py:231 ../src/virtManager/systray.py:116
+#: ../src/vmm-details.glade.h:123 ../src/vmm-manager.glade.h:18
+msgid "_Pause"
+msgstr "இடை நிறுத்தம் (_P)"
+
+#: ../src/virtManager/manager.py:238 ../src/virtManager/systray.py:122
+msgid "_Resume"
 msgstr ""
 
-#: ../src/virtManager/manager.py:378
+#: ../src/virtManager/manager.py:272 ../src/vmm-details.glade.h:122
+msgid "_Migrate"
+msgstr "மாற்றுதல் (_M)"
+
+#: ../src/virtManager/manager.py:321
+#, fuzzy
+msgid "_Details"
+msgstr "விவரங்கள்"
+
+#: ../src/virtManager/manager.py:381
+msgid ""
+"Could not populate a default connection. Make sure the appropriate "
+"virtualization packages are installed (kvm, qemu, etc.) and that libvirtd "
+"has been restarted to notice the changes.\n"
+"\n"
+"A hypervisor connection can be manually added via \n"
+"File->Add Connection"
+msgstr ""
+"Could not populate a default connection. Make sure the appropriate "
+"virtualization packages are installed (kvm, qemu, etc.) and that libvirtd "
+"has been restarted to notice the changes.\n"
+"\n"
+"A hypervisor connection can be manually added via \n"
+"File->Add Connection"
+
+#: ../src/virtManager/manager.py:400
+msgid "Error determining default hypervisor."
+msgstr "முன்னிருப்பு ஹைப்பர்வைசரை வரையறுப்பதில் பிழை"
+
+#: ../src/virtManager/manager.py:401
+msgid "Startup Error"
+msgstr "துவக்க பிழை"
+
+#: ../src/virtManager/manager.py:428
 msgid "Restoring virtual machines over remote connections is not yet supported"
-msgstr ""
+msgstr "தொலை இணப்புகளில் மெய்நிகர் கணினிகளை மறுசேமிப்பது இன்னும் துணைபுரியவில்லை"
 
-#: ../src/virtManager/manager.py:383
+#: ../src/virtManager/manager.py:433
 msgid "Restore Virtual Machine"
 msgstr "மெய்நிகர் கணினியை மீட்டெடுக்கவும்"
 
-#: ../src/virtManager/manager.py:391
-msgid "Restoring Virtual Machine"
-msgstr "மெய்நிகர் கணினியை மீட்டெடுக்கிறது"
-
-#: ../src/virtManager/manager.py:394
+#: ../src/virtManager/manager.py:441
 #, python-format
 msgid "The file '%s' does not appear to be a valid saved machine image"
 msgstr "கோப்பு '%s' சரியான சேமிக்கப்பட்ட கணினிஉருவாக தோன்றவில்லை"
 
-#: ../src/virtManager/manager.py:400
+#: ../src/virtManager/manager.py:446
+msgid "Restoring Virtual Machine"
+msgstr "மெய்நிகர் கணினியை மீட்டெடுக்கிறது"
+
+#: ../src/virtManager/manager.py:452
 msgid "Error restoring domain"
-msgstr ""
+msgstr "டொமைனை மறுசேமிக்கும் போது பிழை"
 
-#: ../src/virtManager/manager.py:408
-#, fuzzy, python-format
+#: ../src/virtManager/manager.py:460
+#, python-format
 msgid "Error restoring domain '%s': %s"
-msgstr "செயற்களம் '%s'ஐ மீட்டெடுப்பதில் பிழை. செயற்களம் ஏற்கனவே இயக்கத்தில் உள்ளதா?"
+msgstr "செயற்களம் '%s'ஐ மீட்டெடுப்பதில் பிழை: %s"
 
-#: ../src/virtManager/manager.py:808
+#: ../src/virtManager/manager.py:785
 #, fuzzy, python-format
-msgid "Are you sure you want to permanently delete the connection %s?"
-msgstr ""
-"இது உடனடியாக VMஐ அழிக்கும் மற்றும் அதன் வட்டு உருவை அழிக்கலாம். இதனை செய்ய வேண்டுமா?"
+msgid ""
+"This will remove the connection:\n"
+"\n"
+"%s\n"
+"\n"
+"Are you sure?"
+msgstr "இந்த இணைப்பினை நீங்கள் \"%s\",நீக்க விரும்புகிறீர்களா?"
 
-#. are you sure you want to delete this VM?
-#: ../src/virtManager/manager.py:819
-#, python-format
-msgid "Are you sure you want to permanently delete the virtual machine %s?"
-msgstr ""
-
-#: ../src/virtManager/manager.py:826
-#, python-format
-msgid "Error deleting domain: %s"
-msgstr ""
-
-#: ../src/virtManager/manager.py:853
-msgid "ID"
-msgstr "ID"
-
-#: ../src/virtManager/manager.py:854 ../src/vmm-manager.glade.h:15
-msgid "Status"
-msgstr "நிலை"
-
-#: ../src/virtManager/manager.py:855
+#: ../src/virtManager/manager.py:831
 msgid "CPU usage"
 msgstr "CPU பயன்பாடு"
 
-#: ../src/virtManager/manager.py:856 ../src/vmm-manager.glade.h:6
-#, fuzzy
-msgid "CPUs"
-msgstr "VCPUs"
-
-#: ../src/virtManager/manager.py:857
-msgid "Memory usage"
-msgstr "நினைவக பயன்பாடு"
-
-#. FIXME: add KBytes/s tooltip
-#: ../src/virtManager/manager.py:859 ../src/vmm-manager.glade.h:8
-#: ../src/vmm-preferences.glade.h:7
-#, fuzzy
-msgid "Disk I/O"
-msgstr "வட்டு"
-
-#: ../src/virtManager/manager.py:860 ../src/vmm-manager.glade.h:12
-#: ../src/vmm-preferences.glade.h:14
-#, fuzzy
-msgid "Network I/O"
-msgstr "பிணையம்"
-
-#: ../src/virtManager/manager.py:1020
+#: ../src/virtManager/manager.py:908
 msgid "Disabled in preferences dialog."
-msgstr ""
+msgstr "முன்னுரிமைகள் உரையாடலில் செயல்நீக்கம்."
 
-#: ../src/virtManager/manager.py:1153
+#: ../src/virtManager/manager.py:927 ../src/vmm-preferences.glade.h:15
+msgid "Network I/O"
+msgstr "பிணையம் I/O"
+
+#: ../src/virtManager/manager.py:932 ../src/vmm-preferences.glade.h:7
+msgid "Disk I/O"
+msgstr "வட்டு I/O"
+
+#: ../src/virtManager/manager.py:937
+msgid "CPU Usage"
+msgstr "CPU பயன்பாடு"
+
+#: ../src/virtManager/manager.py:1078
 msgid ""
 "Unable to open a connection to the Xen hypervisor/daemon.\n"
 "\n"
@@ -1372,12 +1925,11 @@ msgstr ""
 "Xen hypervisor/டீமானை திறக்க முடியவில்லை.\n"
 "\n"
 
-#: ../src/virtManager/manager.py:1158 ../src/virtManager/manager.py:1166
+#: ../src/virtManager/manager.py:1083 ../src/virtManager/manager.py:1091
 msgid "Virtual Machine Manager Connection Failure"
 msgstr "மெய்நிகர் கணினி மேலாளர் இணைப்பு செயலிழக்கப்பட்டது"
 
-#: ../src/virtManager/manager.py:1160
-#, fuzzy
+#: ../src/virtManager/manager.py:1085
 msgid ""
 "Unable to open a connection to the libvirt management daemon.\n"
 "\n"
@@ -1385,17 +1937,51 @@ msgstr ""
 "Xen hypervisor/டீமானை திறக்க முடியவில்லை.\n"
 "\n"
 
-#: ../src/virtManager/opticalhelper.py:140
+#: ../src/virtManager/opticalhelper.py:105
 msgid "No media present"
 msgstr "ஊடகம் எதுவும் இல்லை"
 
-#: ../src/virtManager/util.py:55
-#, python-format
-msgid "Couldn't create default storage pool '%s': %s"
+#. Arguments to pass to util.browse_local for local storage
+#: ../src/virtManager/storagebrowse.py:67
+msgid "Choose local storage"
 msgstr ""
 
+#: ../src/virtManager/storagebrowse.py:109
+#, fuzzy
+msgid "Size"
+msgstr "அளவு:"
+
+#: ../src/virtManager/storagebrowse.py:116 ../src/vmm-create-pool.glade.h:6
+msgid "Format"
+msgstr "முறை"
+
+#: ../src/virtManager/storagebrowse.py:123
+msgid "Used By"
+msgstr ""
+
+#: ../src/virtManager/storagebrowse.py:163
+#, fuzzy
+msgid "Cannot use local storage on remote connection."
+msgstr "அதே இணைப்பை மாற்ற முடியாது."
+
+#: ../src/virtManager/systray.py:275
+#, fuzzy
+msgid "No virtual machines"
+msgstr "உள்ளமை மெய்நிகர் கணினி"
+
+#: ../src/virtManager/systray.py:324
+#, fuzzy
+msgid "No VMs available"
+msgstr "சாதனங்கள்  எதுவும் கிடைக்கப் பெறவல்்லை."
+
+#: ../src/virtManager/util.py:59
+#, python-format
+msgid "Couldn't create default storage pool '%s': %s"
+msgstr "முன்னிருப்பு சேமிப்பக பூல் '%s'ஐ உருவாக்க முடியவில்லை: %s"
+
 #: ../src/vmm-about.glade.h:1
-msgid "Copyright (C) 2006 Red Hat Inc."
+#, fuzzy
+msgid "Copyright (C) 2006-2009 Red Hat Inc."
 msgstr "காப்புரிமை (C) 2006 Red Hat Inc."
 
 #: ../src/vmm-about.glade.h:2
@@ -1409,306 +1995,263 @@ msgstr "மொழிபெயர்பாளர்-சன்மானம்"
 
 #: ../src/vmm-add-hardware.glade.h:1
 #, fuzzy
-msgid "<b>Graphics</b>"
-msgstr "<b>மெய்நிகர் CPUகள்:</b>"
+msgid "<b>Character Device</b>"
+msgstr "<b>பூட் இயக்கி</b>"
 
-#: ../src/vmm-add-hardware.glade.h:2 ../src/vmm-create.glade.h:6
-msgid "<b>Network</b>"
-msgstr "<b>பிணையம்</b>"
+#: ../src/vmm-add-hardware.glade.h:2
+#, fuzzy
+msgid "<b>Device Parameters</b>"
+msgstr "<b>பூட் இயக்கி</b>"
 
 #: ../src/vmm-add-hardware.glade.h:3
-#, fuzzy
-msgid "<b>Pointer</b>"
-msgstr "<b>பணியகங்கள்</b>"
+msgid "<b>Physical Host Device</b>"
+msgstr "<b>வெளிப்புற புரவல சாதனம்<க்கி</b>"
 
-#: ../src/vmm-add-hardware.glade.h:4 ../src/vmm-details.glade.h:9
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:4 ../src/vmm-details.glade.h:11
 msgid "<b>Sound Device</b>"
-msgstr "<b>சேமிப்பகம்</b>"
+msgstr "<b>ஒலிச் சாதனம்</b>"
 
-#: ../src/vmm-add-hardware.glade.h:5 ../src/vmm-create.glade.h:7
-#, fuzzy
-msgid "<b>Sound</b>"
-msgstr "<b>சேமிப்பகம்</b>"
+#: ../src/vmm-add-hardware.glade.h:5
+msgid "<b>Source:</b>"
+msgstr "<b>மூலங்கள்</b>"
 
 #: ../src/vmm-add-hardware.glade.h:6
-#, fuzzy
-msgid "<b>Source:</b>"
-msgstr "<b>சேமிப்பகம்</b>"
+msgid "<b>Target:</b>"
+msgstr "<b>இலக்கு:</b>"
 
-#: ../src/vmm-add-hardware.glade.h:7 ../src/vmm-create.glade.h:8
-msgid "<b>Storage</b>"
-msgstr "<b>சேமிப்பகம்</b>"
+#: ../src/vmm-add-hardware.glade.h:7
+#, fuzzy
+msgid "<b>Video Device</b>"
+msgstr "<b>பூட் இயக்கி</b>"
 
 #: ../src/vmm-add-hardware.glade.h:8
-#, fuzzy
-msgid "<b>Target:</b>"
-msgstr "<b>சேமிப்பகம்</b>"
+msgid "<b>Virtual display</b>"
+msgstr "<b>மெய்நிகர் காட்சி</b>"
 
 #: ../src/vmm-add-hardware.glade.h:9
-#, fuzzy
-msgid "<b>Virtual display</b>"
-msgstr "<b>மெய்நிகர் CPUகள்:</b>"
+msgid "<b>Virtual pointer</b>"
+msgstr "<b>மெய்நிகர் பாயின்டர்:</b>"
 
 #: ../src/vmm-add-hardware.glade.h:10
-#, fuzzy
-msgid "<b>Virtual pointer</b>"
-msgstr "<b>மெய்நிகர் CPUகள்:</b>"
-
-#: ../src/vmm-add-hardware.glade.h:11 ../src/vmm-create.glade.h:11
 msgid "<small><b>Example:</b> /dev/hdc2</small>"
 msgstr "<small><b>எடுத்துக்காட்டு:</b> /dev/hdc2</small>"
 
-#: ../src/vmm-add-hardware.glade.h:12
+#: ../src/vmm-add-hardware.glade.h:11
 msgid ""
 "<small><b>Tip:</b> Automatically allocating the port ensures that every "
 "virtual machine uses a unique port. If two machines try to use the same "
 "port, one of them will fail to start.</small>"
 msgstr ""
+"<small><b>துணுக்கு:</b> தானாக துறையை ஒதுக்கி ஒவ்வொரு மெய்நிகர் கணினியும் ஒரு "
+"தனிப்பட்ட துறையை பயன்படுத்துகிறது என்பதை உறுதிப்படுத்துகிறது. இரண்டு கணினிகள் ஒரே "
+"துறையை பயன்படுத்த முயற்சித்தால், ஒன்றை துவக்க முடியாது.</small>"
 
-#: ../src/vmm-add-hardware.glade.h:13 ../src/vmm-create.glade.h:17
+#: ../src/vmm-add-hardware.glade.h:12
 msgid ""
 "<small><b>Tip:</b> Choose this option if your host is disconnected, "
 "connected via wireless, or dynamically configured with NetworkManager.</"
 "small>"
 msgstr ""
+"<small><b>துணுக்கு:</b> உங்கள் புரவலன் துண்டிக்கப்பட்டால் இந்த விருப்பத்தை தேர்ந்தெடுத்த, "
+"வயர்லெஸ் மூலம் இணைக்கவும் அல்லது NetworkManager உடன் மாறும் நிலையில் கட்டமைக்கவும்.</"
+"small>"
 
-#: ../src/vmm-add-hardware.glade.h:14
+#: ../src/vmm-add-hardware.glade.h:13
 msgid ""
 "<small><b>Tip:</b> Choose this option if your host is statically connected "
 "to wired ethernet, to gain the ability to migrate the virtual machine.</"
 "small>"
 msgstr ""
+"<small><b>துணுக்கு:</b> உங்கள் புரவலன் நிலையாக ஈத்தர்நெட்டுடன் இணைக்கப்படும் போது இந்த "
+"விருப்பத்தை தேர்ந்தெடுக்கவும். இது மெய்நிகர் கணினி இடம்பெயர செய்யும்.</small>"
 
-#: ../src/vmm-add-hardware.glade.h:15
+#: ../src/vmm-add-hardware.glade.h:14
 msgid ""
 "<small><b>Tip:</b> VNC server is strongly recommended because it allows the "
 "virtual display to be embedded inside this application. It may also be used "
 "to allow access to the virtual display from a remote system.</small>"
 msgstr ""
+"<small><b>Tip:</b> VNC server is strongly recommended because it allows the "
+"virtual display to be embedded inside this application. It may also be used "
+"to allow access to the virtual display from a remote system.</small>"
 
-#: ../src/vmm-add-hardware.glade.h:16
+#: ../src/vmm-add-hardware.glade.h:15
 msgid ""
 "<small><b>Tip:</b>Adding a graphics tablet (and configuring it as the "
 "default pointer in the virtual machine) will ensure the virtual cursor moves "
 "in sync with the local desktop cursor.</small>"
 msgstr ""
+"<small><b>துணுக்கு:</b>ஒரு வரைகலை அட்டவணை (மற்றும் முன்னிருப்பு சுட்டி மெய்நிகர் "
+"கணினியில்) உள்ளமை பணிமேடை நிலைக்காட்டியுடன் மெய்நிகர் நிலைகாட்டி நகர்தலை உறுதிபடுத்த "
+"சேர்க்கப்படுகிறது.</small>"
 
-#: ../src/vmm-add-hardware.glade.h:17
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:16
 msgid ""
 "<small><b>Warning:</b>If you do not allocate the entire disk now, space will "
 "be allocated as needed while the virtual machine is running. If sufficient "
 "free space is not available on the host, this may result in data corruption "
 "on the virtual machine.</small>"
 msgstr ""
-"<small><b>எச்சரிக்கை:</b> நீங்கள் முழு வடையும் VM உருவாக்கத்தில் ஒதுக்கவில்லையெனில், "
-"விருந்தினர் இயங்கும் போது வெற்று இடம் தேவையானவை என ஒதுக்கப்படும். போதுமான இடம் "
-"புரவலனில் இல்லையெனில், விருந்தினரில் தகவல் அழிப்பு ஏற்படும்.</small>"
+"<small><b>எச்சரிக்கை:</b> நீங்கள் முழுவடையும் மெய்நிகர் கணினி உருவாக்கத்தில் "
+"ஒதுக்கவில்லையெனில், விருந்தினர் இயங்கும் போது வெற்று இடம் தேவையானவை என ஒதுக்கப்படும். "
+"போதுமான இடம் புரவலனில் இல்லையெனில், விருந்தினரில் தகவல் அழிப்பு ஏற்படும்.</small>"
 
-#: ../src/vmm-add-hardware.glade.h:18
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:17
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Adding Virtual "
 "Hardware</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ஒரு புதிய "
-"மெய்நிகர் கணினியை உருவாக்கவும் </span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">மெய்நிகர் "
+"வன்பொருளை சேர்க்கிறது </span>"
 
-#: ../src/vmm-add-hardware.glade.h:19
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:18
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Finish Adding "
 "Virtual Hardware</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ஒரு புதிய "
-"மெய்நிகர் கணினியை உருவாக்கவும் </span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">மெய்நிகர் "
+"வன்பொருளை சேர்ப்பது முடிவடைகிறது </span>"
 
-#: ../src/vmm-add-hardware.glade.h:20
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:19
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Graphics</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">சேமிப்பக இடத்தை "
-"ஒதுக்குகிறது</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">வரைகலை</span>"
+
+#: ../src/vmm-add-hardware.glade.h:20
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Host Device</"
+"span>"
+msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">புரவல சாதனம்்பகம்</"
+"span>"
 
 #: ../src/vmm-add-hardware.glade.h:21
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Input</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">சேமிப்பக இடத்தை "
-"ஒதுக்குகிறது</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Input</span>"
 
-#: ../src/vmm-add-hardware.glade.h:22 ../src/vmm-create.glade.h:27
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:22
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Network</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">சேமிப்பக இடத்தை "
-"ஒதுக்குகிறது</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">பிணையம்</span>"
 
 #: ../src/vmm-add-hardware.glade.h:23
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Sound</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">நினைவகம் மற்றும் "
-"CPUஐ ஒதுக்கவும்</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ஒலி</span>"
 
-#: ../src/vmm-add-hardware.glade.h:24 ../src/vmm-create.glade.h:28
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:24
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Storage</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">சேமிப்பக இடத்தை "
-"ஒதுக்குகிறது</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">சேமிப்பகம்</span>"
 
 #: ../src/vmm-add-hardware.glade.h:25
-msgid "Absolute"
+#, fuzzy
+msgid ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Video Device</"
+"span>"
 msgstr ""
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">புரவல சாதனம்்பகம்</"
+"span>"
 
 #: ../src/vmm-add-hardware.glade.h:26
 msgid "Add new virtual hardware"
-msgstr ""
+msgstr "புதிய மெய்நிகர் வன்பொருளைச் சேர்"
 
-#: ../src/vmm-add-hardware.glade.h:27 ../src/vmm-details.glade.h:20
-#, fuzzy
-msgid "Address:"
-msgstr "MAC முகவரி"
-
-#: ../src/vmm-add-hardware.glade.h:28 ../src/vmm-create.glade.h:33
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:28
 msgid "Allocate entire virtual disk now"
 msgstr "இப்போது முழு மெய்நிகர் வட்டையும் ஒதுக்க வேண்டுமா?"
 
-#: ../src/vmm-add-hardware.glade.h:30 ../src/vmm-create.glade.h:34
+#: ../src/vmm-add-hardware.glade.h:30
+msgid "Bind Host:"
+msgstr ""
+
+#: ../src/vmm-add-hardware.glade.h:31 ../src/vmm-clone.glade.h:13
+#: ../src/vmm-create.glade.h:12
 msgid "Browse..."
 msgstr "உலாவுதல்..."
 
-#: ../src/vmm-add-hardware.glade.h:31 ../src/vmm-create.glade.h:36
-msgid "Connection type:"
-msgstr ""
-
-#: ../src/vmm-add-hardware.glade.h:32 ../src/vmm-details.glade.h:33
+#: ../src/vmm-add-hardware.glade.h:32 ../src/vmm-details.glade.h:37
 msgid "Device Model:"
-msgstr ""
+msgstr "சாதனத்தின் மாதிரி:"
 
 #: ../src/vmm-add-hardware.glade.h:33
 msgid "Device Type Field"
-msgstr ""
+msgstr "சாதன வகை புலம்"
 
-#: ../src/vmm-add-hardware.glade.h:34
-msgid "Device type:"
-msgstr ""
-
-#: ../src/vmm-add-hardware.glade.h:35 ../src/vmm-create.glade.h:38
-#, fuzzy
-msgid "Disk image:"
-msgstr "வட்டு பயன்பாடு:"
-
-#: ../src/vmm-add-hardware.glade.h:36 ../src/vmm-create.glade.h:39
-#, fuzzy
-msgid "Disk size:"
-msgstr "வட்டு பயன்பாடு:"
+#: ../src/vmm-add-hardware.glade.h:34 ../src/vmm-details.glade.h:38
+msgid "Device Type:"
+msgstr "சாதனத்தின் வகை :"
 
 #: ../src/vmm-add-hardware.glade.h:37
-msgid "EvTouch Tablet"
-msgstr ""
-
-#: ../src/vmm-add-hardware.glade.h:38 ../src/vmm-create.glade.h:41
-#, fuzzy
 msgid "F_ile (disk image):"
-msgstr "வட்டு பயன்பாடு:"
+msgstr "கோப்பு (வட்டு படம்): (_i)"
 
-#: ../src/vmm-add-hardware.glade.h:39 ../src/vmm-create.glade.h:43
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:38
 msgid "File Location Field"
-msgstr "கோப்பு இடம் (_L):"
+msgstr "கோப்பு இடத்தின் புலம்"
+
+#: ../src/vmm-add-hardware.glade.h:39
+msgid "File Size Field"
+msgstr "கோப்பு அளவு ம"
 
 #: ../src/vmm-add-hardware.glade.h:40
-#, fuzzy
-msgid "File Size Field"
-msgstr "கோப்பு அளவு (_S):"
+msgid "Hardware Type Select"
+msgstr "வன்பொருள் வகையை தேர்ந்தெடு"
 
 #: ../src/vmm-add-hardware.glade.h:41
-#, fuzzy
-msgid "Graphics"
-msgstr "வரைகலை பணியகம் (_G)"
+msgid "Hardware type:"
+msgstr "வன்பொருள் வகை:"
 
 #: ../src/vmm-add-hardware.glade.h:42
 #, fuzzy
-msgid "Hardware Type Select"
-msgstr "வன்பொருள் துணை தேவைப்படுகிறது"
+msgid "Host:"
+msgstr "புரவலன்பெயர்:"
 
-#: ../src/vmm-add-hardware.glade.h:43
-#, fuzzy
-msgid "Hardware type:"
-msgstr "வன்பொருள்"
-
-#: ../src/vmm-add-hardware.glade.h:45 ../src/vmm-details.glade.h:44
-msgid "Keymap:"
-msgstr ""
-
-#: ../src/vmm-add-hardware.glade.h:46
+#: ../src/vmm-add-hardware.glade.h:44
 msgid "Listen on all public network interfaces "
-msgstr ""
+msgstr "அனைத்து பொது பிணைய முகப்புகளையும் கேள்"
 
-#: ../src/vmm-add-hardware.glade.h:47 ../src/vmm-create.glade.h:58
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:45
 msgid "Loc_ation:"
-msgstr "ISO இடம் (_L):"
+msgstr "இடம்: (_a)"
 
-#: ../src/vmm-add-hardware.glade.h:48 ../src/vmm-details.glade.h:46
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:46 ../src/vmm-details.glade.h:56
 msgid "MAC Address Field"
-msgstr "MAC முகவரி"
+msgstr "MAC முகவரி மூலம்"
 
-#: ../src/vmm-add-hardware.glade.h:49 ../src/vmm-create.glade.h:61
-#: ../src/vmm-details.glade.h:47
-#, fuzzy
-msgid "MAC address:"
-msgstr "MAC முகவரி"
-
-#: ../src/vmm-add-hardware.glade.h:50 ../src/vmm-create-vol.glade.h:22
-#: ../src/vmm-create.glade.h:62 ../src/vmm-details.glade.h:48
+#: ../src/vmm-add-hardware.glade.h:47 ../src/vmm-create-vol.glade.h:22
+#: ../src/vmm-create.glade.h:29 ../src/vmm-details.glade.h:58
 msgid "MB"
 msgstr "MB"
 
-#: ../src/vmm-add-hardware.glade.h:51 ../src/vmm-details.glade.h:55
-msgid "Mode:"
-msgstr ""
+#: ../src/vmm-add-hardware.glade.h:50
+msgid "Network Device Select"
+msgstr "பிணையச் சாதனத்தை தேர்ந்தெடு"
+
+#: ../src/vmm-add-hardware.glade.h:51
+msgid "Other:"
+msgstr "மற்ற:"
 
 #: ../src/vmm-add-hardware.glade.h:52
-msgid "Model:"
-msgstr ""
+msgid "Partition Location Field"
+msgstr "மூல இடத்தை பிரித்தல்"
 
-#: ../src/vmm-add-hardware.glade.h:53 ../src/vmm-create.glade.h:70
-msgid "Network"
-msgstr "பிணையம்"
+#: ../src/vmm-add-hardware.glade.h:54
+#, fuzzy
+msgid "Path:"
+msgstr "துறை:"
 
-#: ../src/vmm-add-hardware.glade.h:54 ../src/vmm-create.glade.h:71
-msgid "Network Device Select"
-msgstr ""
+#: ../src/vmm-add-hardware.glade.h:55
+msgid "Please indicate how you would like to view the virtual display."
+msgstr "மெய்நிகர் காட்சியினை காட்ட நீங்கள் எவ்வளவு விரும்புகிறீர்கள் என சுட்டிக் காட்டவும்."
 
 #: ../src/vmm-add-hardware.glade.h:56
-msgid "Other:"
-msgstr ""
-
-#: ../src/vmm-add-hardware.glade.h:57
-msgid "Partition Location Field"
-msgstr ""
-
-#: ../src/vmm-add-hardware.glade.h:58 ../src/vmm-details.glade.h:63
-msgid "Password:"
-msgstr "கடவுச்சொல்:"
-
-#: ../src/vmm-add-hardware.glade.h:59
-msgid "Please indicate how you would like to view the virtual display."
-msgstr ""
-
-#: ../src/vmm-add-hardware.glade.h:60
-#, fuzzy
 msgid ""
 "Please indicate how you'd like to assign space on this physical host system "
 "for your new virtual storage device."
@@ -1717,175 +2260,284 @@ msgstr ""
 "ஒதுக்குவீர்கள் என்பதை குறிப்பிடவும். இந்த இடம் மெய்நிகர் கணினியின் இயக்கத்தளத்தை உருவாக்க "
 "பயன்படும்."
 
-#: ../src/vmm-add-hardware.glade.h:61
+#: ../src/vmm-add-hardware.glade.h:57
 msgid ""
 "Please indicate how you'd like to connect your new virtual network device to "
 "the host network."
 msgstr ""
+"புரவல பிணையத்தோடு உங்கள் புதிய மெய்நிகர் பிணைய சாதனத்தை எவ்வாறு விரும்பிகிறீர்கள் என "
+"சுட்டிக் காட்டவும்."
 
-#: ../src/vmm-add-hardware.glade.h:62
+#: ../src/vmm-add-hardware.glade.h:58
 msgid ""
 "Please indicate what kind of pointer device to connect to the virtual "
 "machine."
 msgstr ""
+"மெய்நிகர் கணினிக்கு எந்த வகையான சுட்டி சாதனம் தேவைப்படுகிறது என்பதைக் சுட்டிக் காட்டவும்"
 
-#: ../src/vmm-add-hardware.glade.h:63
+#: ../src/vmm-add-hardware.glade.h:59
 msgid ""
-"Please indicate what sound device type\n"
+"Please indicate what physical device\n"
 "to connect to the virtual machine."
 msgstr ""
+"மெய்நிகர் கணினியுடன் இணைப்பதற்கு எந்த வகையான\n"
+" வெளிப்புறச்ச் சாதனம் தேவைப்படுகிறது என சுட்டிக் காட்டவும்."
 
-#: ../src/vmm-add-hardware.glade.h:65 ../src/vmm-details.glade.h:66
+#: ../src/vmm-add-hardware.glade.h:61
+msgid ""
+"Please indicate what sound device type to connect to the virtual machine."
+msgstr ""
+"மெய்நிகர் கணினியுடன் இணைப்பதற்கு எந்த வகையான ஒலிச் சாதனம் தேவைப்படுகிறது என சுட்டிக் "
+"காட்டவும்."
+
+#: ../src/vmm-add-hardware.glade.h:62
 #, fuzzy
-msgid "Port:"
-msgstr "துறை (_P):"
+msgid ""
+"Please indicate what video device type\n"
+"to connect to the virtual machine."
+msgstr ""
+"மெய்நிகர் கணினியுடன் இணைப்பதற்கு எந்த வகையான ஒலிச் சாதனம் தேவைப்படுகிறது என சுட்டிக் "
+"காட்டவும்."
+
+#: ../src/vmm-add-hardware.glade.h:66
+msgid "Set fixed MAC _address for this NIC?"
+msgstr "NIC முகவரிக்காக MACஐ முடிவாக அமை? (_a)"
 
 #: ../src/vmm-add-hardware.glade.h:67
-#, fuzzy
-msgid "Set fixed MAC _address for this NIC?"
-msgstr "குறிப்பிட்ட MAC முகவரி:"
-
-#: ../src/vmm-add-hardware.glade.h:68 ../src/vmm-create.glade.h:87
-msgid "Shared Physical Device"
-msgstr ""
-
-#: ../src/vmm-add-hardware.glade.h:69 ../src/vmm-details.glade.h:78
-msgid "Sound"
-msgstr ""
-
-#: ../src/vmm-add-hardware.glade.h:70 ../src/vmm-create.glade.h:89
-#: ../src/vmm-host.glade.h:39
-#, fuzzy
-msgid "Storage"
-msgstr "<b>சேமிப்பகம்</b>"
-
-#: ../src/vmm-add-hardware.glade.h:71 ../src/vmm-create.glade.h:90
-msgid "Target:"
-msgstr ""
-
-#: ../src/vmm-add-hardware.glade.h:72
-#, fuzzy
 msgid ""
 "This assistant will guide you through adding a new piece of virtual "
 "hardware. First select what type of hardware you wish to add:"
 msgstr ""
-"இந்த உதவியாளர் உங்களை ஒரு புதிய மெய்நிகர் கணினியை உருவாக்க உதவும். நீங்கள் உருவாக்க "
-"நினைக்கும் மெய்நிகர் பற்றி சில தகவலான இவற்றைக் கேட்கும்:"
+"இந்த உதவியாளர் உங்களை ஒரு புதிய மெய்நிகர் வன்பொருளை சேர்ப்பதால் உதவுவார். நீங்கள் எந்த "
+"வகையான வன்பொருளை சேர்க்க விரும்புகிறீர்களோ அதை தேர்ந்தெடுக்கவும்:"
 
-#: ../src/vmm-add-hardware.glade.h:73 ../src/vmm-create-net.glade.h:50
-#: ../src/vmm-create-pool.glade.h:16 ../src/vmm-details.glade.h:95
+#: ../src/vmm-add-hardware.glade.h:69
 #, fuzzy
-msgid "Type:"
-msgstr "வகை"
+msgid "Use Telnet:"
+msgstr "புரவலன்பெயர்:"
 
-#: ../src/vmm-add-hardware.glade.h:74 ../src/vmm-details.glade.h:98
-msgid "VNC"
-msgstr "VNC"
-
-#: ../src/vmm-add-hardware.glade.h:75
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:70
 msgid "Virtual Network Select"
 msgstr "மெய்நிகர் CPUகள்"
 
-#: ../src/vmm-add-hardware.glade.h:76 ../src/vmm-create.glade.h:99
+#: ../src/vmm-add-hardware.glade.h:71
 msgid "_Block device (partition):"
-msgstr ""
+msgstr "சாதனத்தை தடு (_B) (பகிர்வு):"
 
-#: ../src/vmm-add-hardware.glade.h:77 ../src/vmm-create.glade.h:102
+#: ../src/vmm-add-hardware.glade.h:72
 msgid "_Device:"
-msgstr ""
+msgstr "சாதனம் :(_D)"
 
-#: ../src/vmm-add-hardware.glade.h:78 ../src/vmm-create-net.glade.h:53
-#: ../src/vmm-create.glade.h:103
+#: ../src/vmm-add-hardware.glade.h:73 ../src/vmm-create-net.glade.h:53
+#: ../src/vmm-create.glade.h:49
 msgid "_Finish"
 msgstr "முடிவு (_F)"
 
-#: ../src/vmm-add-hardware.glade.h:79 ../src/vmm-create.glade.h:107
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:74
 msgid "_Location:"
-msgstr "ISO இடம் (_L):"
+msgstr "இடம்: (_L)"
 
-#: ../src/vmm-add-hardware.glade.h:80 ../src/vmm-create.glade.h:108
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:75
 msgid "_MAC address:"
-msgstr "MAC முகவரி"
+msgstr "MAC முகவரி: (_M)"
 
-#: ../src/vmm-add-hardware.glade.h:81 ../src/vmm-create.glade.h:112
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:76
 msgid "_Network:"
-msgstr "பிணையம்"
+msgstr "பிணையம்: (_N)"
 
-#: ../src/vmm-add-hardware.glade.h:82 ../src/vmm-create.glade.h:115
+#: ../src/vmm-add-hardware.glade.h:77
 msgid "_Shared physical device"
-msgstr ""
+msgstr "பகிரப்பட்ட பருநிலை சாதனம் (_S)"
 
-#: ../src/vmm-add-hardware.glade.h:83 ../src/vmm-create.glade.h:116
+#: ../src/vmm-add-hardware.glade.h:78
 msgid "_Size:"
 msgstr "அளவு (_S):"
 
-#: ../src/vmm-add-hardware.glade.h:84 ../src/vmm-create.glade.h:119
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:79
 msgid "_Virtual network"
-msgstr "மெய்நிகர் கணினி (_M)"
+msgstr "மெய்நிகர் பிணையம் (_V)"
+
+#: ../src/vmm-add-hardware.glade.h:80 ../src/vmm-create-pool.glade.h:17
+msgid "label"
+msgstr "விவரச்சீட்டு"
 
 #: ../src/vmm-choose-cd.glade.h:1
 msgid "<b>CD Source Device Or File</b>"
-msgstr ""
+msgstr "<b>குறுவட்டு மூலச் சாதனம் அல்லது கோப்பு </b>"
 
 #: ../src/vmm-choose-cd.glade.h:2
 msgid "Choose A CD Source Device"
-msgstr ""
+msgstr " ஒரு குறுவட்டு மூலச் சாதனத்தை தேர்ந்தெடு"
 
 #: ../src/vmm-choose-cd.glade.h:3
 msgid "ISO _Location:"
 msgstr "ISO இடம் (_L):"
 
-#: ../src/vmm-choose-cd.glade.h:4 ../src/vmm-create.glade.h:100
+#: ../src/vmm-choose-cd.glade.h:4
 msgid "_Browse..."
 msgstr "உலாவுதல் (_B)..."
 
-#: ../src/vmm-choose-cd.glade.h:5 ../src/vmm-create.glade.h:101
-msgid "_CD-ROM or DVD:"
+#: ../src/vmm-choose-cd.glade.h:5
+#, fuzzy
+msgid "_CD-ROM or DVD"
 msgstr "குறுவட்டு அல்லது டிவிடி (_C):"
 
 #: ../src/vmm-choose-cd.glade.h:6
-msgid "_ISO Image Location:"
+#, fuzzy
+msgid "_Device Media:"
+msgstr "சாதன முறை:"
+
+#: ../src/vmm-choose-cd.glade.h:7
+#, fuzzy
+msgid "_ISO Image Location"
 msgstr "_ISO உரு இடம்:"
 
-#: ../src/vmm-choose-cd.glade.h:7 ../src/vmm-create.glade.h:114
-msgid "_Path to install media:"
-msgstr "ஊடகத்தை நிறுவும் பாதை (_P):"
+#: ../src/vmm-clone.glade.h:1
+#, fuzzy
+msgid "<span color='#484848'>MAC:</span>"
+msgstr "<span color='#484848'>CPUs:</span>"
+
+#: ../src/vmm-clone.glade.h:2
+#, fuzzy
+msgid "<span color='#484848'>Name:</span>"
+msgstr "<span color='#484848'>OS:</span>"
+
+#: ../src/vmm-clone.glade.h:3
+#, fuzzy
+msgid "<span color='#484848'>Networking:</span>"
+msgstr "<span color='#484848'>சேமிப்பகம்:</span>"
+
+#: ../src/vmm-clone.glade.h:4
+#, fuzzy
+msgid "<span color='#484848'>New Path:</span>"
+msgstr "<span color='#484848'>CPUs:</span>"
+
+#: ../src/vmm-clone.glade.h:5
+#, fuzzy
+msgid "<span color='#484848'>Path:</span>"
+msgstr "<span color='#484848'>CPUs:</span>"
+
+#: ../src/vmm-clone.glade.h:6
+#, fuzzy
+msgid "<span color='#484848'>Size:</span>"
+msgstr "<span color='#484848'>OS:</span>"
+
+#: ../src/vmm-clone.glade.h:7 ../src/vmm-create.glade.h:6
+msgid "<span color='#484848'>Storage:</span>"
+msgstr "<span color='#484848'>சேமிப்பகம்:</span>"
+
+#: ../src/vmm-clone.glade.h:8
+#, fuzzy
+msgid "<span color='#484848'>Target:</span>"
+msgstr "<span color='#484848'>சேமிப்பகம்:</span>"
+
+#: ../src/vmm-clone.glade.h:9
+#, fuzzy
+msgid "<span color='#484848'>Type:</span>"
+msgstr "<span color='#484848'>OS:</span>"
+
+#: ../src/vmm-clone.glade.h:10
+#, fuzzy
+msgid "<span size='large' color='white'>Clone virtual machine</span>"
+msgstr ""
+"<span size='large' color='white'>ஒரு புதிய மெய்நிகர் கணினியை த்தை உருவாக்கவும் </"
+"span>"
+
+#: ../src/vmm-clone.glade.h:11
+msgid ""
+"<span size='small'>Cloning creates a new, independent copy of the original "
+"disk. Sharing\n"
+"uses the existing disk image for both the original and the new machine.</"
+"span>"
+msgstr ""
+
+#: ../src/vmm-clone.glade.h:14
+#, fuzzy
+msgid "C_lone Virtual Machine"
+msgstr "மெய்நிகர் கணினியை அழிக்கவும்"
+
+#: ../src/vmm-clone.glade.h:15
+#, fuzzy
+msgid "Change MAC address"
+msgstr "MAC முகவரி:"
+
+#: ../src/vmm-clone.glade.h:16
+#, fuzzy
+msgid "Change storage path"
+msgstr "மூலப் பாதையைத் தேர்ந்தெடு"
+
+#: ../src/vmm-clone.glade.h:17
+#, fuzzy
+msgid "Clone Virtual Machine"
+msgstr "மெய்நிகர் கணினியை அழிக்கவும்"
+
+#: ../src/vmm-clone.glade.h:18
+msgid "Create a clone based on:"
+msgstr ""
+
+#: ../src/vmm-clone.glade.h:19
+#, fuzzy
+msgid "Create a new disk (clone) for the virtual machine"
+msgstr "மெய்நிகர் கணினியின் சேமிப்பகத்தை செயல்படுத்துளவும்"
+
+#: ../src/vmm-clone.glade.h:20
+msgid "Existing disk"
+msgstr ""
+
+#: ../src/vmm-clone.glade.h:21
+#, fuzzy
+msgid "New MAC:"
+msgstr "புதிய VM"
+
+#: ../src/vmm-clone.glade.h:22
+#, fuzzy
+msgid "No networking devices"
+msgstr "பிணையங்கள் இல்லை. பிணையம்"
+
+#: ../src/vmm-clone.glade.h:23
+msgid "No storage to clone"
+msgstr ""
+
+#: ../src/vmm-clone.glade.h:24 ../src/vmm-delete.glade.h:3
+#: ../src/vmm-storage-browse.glade.h:5
+msgid "gtk-cancel"
+msgstr ""
+
+#: ../src/vmm-clone.glade.h:25
+msgid "gtk-help"
+msgstr ""
+
+#: ../src/vmm-clone.glade.h:26
+msgid "gtk-ok"
+msgstr ""
 
 #: ../src/vmm-create-net.glade.h:1
-#, fuzzy
 msgid "<b>DHCP</b>"
-msgstr "<b>CPUகள்</b>"
+msgstr "<b>DHCP</b>"
 
 #: ../src/vmm-create-net.glade.h:2
-#, fuzzy
 msgid "<b>Example:</b> network1"
-msgstr "<b>எடுத்துக்காட்டு:</b> system1"
+msgstr "<b>எடுத்துக்காட்டு:</b> network1"
 
 #: ../src/vmm-create-net.glade.h:3
-#, fuzzy
 msgid "<b>Forwarding</b>"
-msgstr "<b>சேமிப்பகம்</b>"
+msgstr "<b>முன்னோக்கிய</b>"
 
 #: ../src/vmm-create-net.glade.h:4
 msgid ""
 "<b>Hint:</b> The network should be choosen from one of the IPv4 private "
 "address ranges. eg 10.0.0.0/8,  172.16.0.0/12, or 192.168.0.0/16"
 msgstr ""
+"<b>Hint:</b> ஒரு IPv4 தனியான முகவரி வரம்புகளிலிருந்து பிணையம் "
+"தேர்ந்தெடுக்கப்பட்டுள்ளது . எகா 10.0.0.0/8,  172.16.0.0/12, அல்லது 192.168.0.0/16"
 
 #: ../src/vmm-create-net.glade.h:5
-#, fuzzy
 msgid "<b>IPv4 network</b>"
-msgstr "<b>பிணையம்</b>"
+msgstr "<b>IPv4 பிணையம்</b>"
 
-#: ../src/vmm-create-net.glade.h:6 ../src/vmm-create.glade.h:10
-#, fuzzy
+#: ../src/vmm-create-net.glade.h:6
 msgid "<b>Summary</b>"
-msgstr "<b>சுருக்கம்:</b>"
+msgstr "<b>சுருக்கம்</b>"
 
 #: ../src/vmm-create-net.glade.h:7
 msgid ""
@@ -1893,122 +2545,113 @@ msgid ""
 "network configuration in virtual machines, these parameters can be left with "
 "their default values."
 msgstr ""
+"<b>Tip:</b> Unless you wish to reserve some addresses to allow static "
+"network configuration in virtual machines, these parameters can be left with "
+"their default values."
 
 #: ../src/vmm-create-net.glade.h:8
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Choosing an "
 "IPv4 address space</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">சேமிப்பக இடத்தை "
-"ஒதுக்குகிறது</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">IPv4 முகவரி "
+"இடைவெளியை தேர்ந்தெடுக்கிறது</span>"
 
 #: ../src/vmm-create-net.glade.h:9
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Connecting to "
 "physical network</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">சேமிப்பக இடத்தை "
-"ஒதுக்குகிறது</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">வெளிப்புற "
+"பிணையத்துடன் இணைக்கிறது </span>"
 
 #: ../src/vmm-create-net.glade.h:10
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Creating a new "
 "virtual network </span>"
 msgstr ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ஒரு புதிய "
-"மெய்நிகர் கணினியை உருவாக்கவும் </span>"
+"மெய்நிகர் பிணையத்தை உருவாக்கவும் </span>"
 
 #: ../src/vmm-create-net.glade.h:11
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Naming your "
 "virtual network </span>"
 msgstr ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">உங்கள் மெய்நிகர் "
-"கணினியின் பெயர் </span>"
+"பிணையத்தின் பெயர் </span>"
 
 #: ../src/vmm-create-net.glade.h:12
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to create "
 "network</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">நிறுவலை துவக்க "
-"தயாராக உள்ளது</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">பிணையத்தை "
+"உருவாக்கதயாராக உள்ளது</span>"
 
 #: ../src/vmm-create-net.glade.h:13
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Selecting the "
 "DHCP range</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">சேமிப்பக இடத்தை "
-"ஒதுக்குகிறது</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">DHCP வரம்பை "
+"தேர்ந்தெடுக்கிறது</span>"
 
 #: ../src/vmm-create-net.glade.h:14
-#, fuzzy
 msgid "A <b>name</b> for your new virtual network"
-msgstr "உங்கள் புதிய மெய்நிகர் கணினிக்கு ஒரு <b>பெயர்</b>"
+msgstr "A <b>பெயர்</b> உங்களுடைய புதிய மெய்நிகர் பிணையத்திற்கான"
 
 #: ../src/vmm-create-net.glade.h:15
 msgid "Broadcast:"
-msgstr ""
+msgstr "ஒலிபரப்பு:"
 
 #: ../src/vmm-create-net.glade.h:16
 msgid "Complete"
-msgstr "முடிக்கவும்"
+msgstr "முடிவடைந்த"
 
 #: ../src/vmm-create-net.glade.h:17
-#, fuzzy
 msgid "Connectivity:"
-msgstr "இணைப்பு (_n)"
+msgstr "தொடர்பு:"
 
 #: ../src/vmm-create-net.glade.h:18
-#, fuzzy
 msgid "Create a new virtual network"
-msgstr "ஒரு புதிய மெய்நிகர் கணினியை உருவாக்கவும்"
+msgstr "ஒரு புதிய மெய்நிகர் பிணையத்தை உருவாக்கவும்"
 
 #: ../src/vmm-create-net.glade.h:19
 msgid "DHCP"
-msgstr ""
+msgstr "DHCP"
 
 #: ../src/vmm-create-net.glade.h:20
-#, fuzzy
 msgid "Desination:"
-msgstr "இலக்கு"
+msgstr "இலக்கு:"
 
 #: ../src/vmm-create-net.glade.h:21
-#, fuzzy
 msgid "End Address"
-msgstr "MAC முகவரி"
+msgstr "முடிவு முகவரி"
 
 #: ../src/vmm-create-net.glade.h:22
-#, fuzzy
 msgid "End address:"
-msgstr "MAC முகவரி"
+msgstr "முடிவு முகவரி:"
 
 #: ../src/vmm-create-net.glade.h:23
 msgid "End:"
-msgstr ""
+msgstr "முடிவு:"
 
 #: ../src/vmm-create-net.glade.h:24
 msgid "Forwarding"
-msgstr ""
+msgstr "முன்னே செல்லுதல்"
 
 #: ../src/vmm-create-net.glade.h:25
 msgid "Forwarding to physical network"
-msgstr ""
+msgstr "வெளிப்புற பிணையத்துக்கு முன்னே செல்லுதல்"
 
 #: ../src/vmm-create-net.glade.h:26
 msgid "Gateway:"
-msgstr ""
+msgstr "கேட்வே:"
 
 #: ../src/vmm-create-net.glade.h:27
 msgid "IPv4"
-msgstr ""
+msgstr "IPv4"
 
 #: ../src/vmm-create-net.glade.h:28
 msgid "Intro"
@@ -2016,86 +2659,80 @@ msgstr "அறிமுகம்"
 
 #: ../src/vmm-create-net.glade.h:32
 msgid "Net Name Field"
-msgstr ""
+msgstr "நெட் பெயர் புலம்"
 
 #: ../src/vmm-create-net.glade.h:33
 msgid "Netmask:"
-msgstr ""
+msgstr "நெட்மாஸ்க்:"
 
 #: ../src/vmm-create-net.glade.h:34
-#, fuzzy
 msgid "Network Range"
-msgstr "பிணைய பயன்பாடு:"
+msgstr "பிணைய வரம்பு"
 
 #: ../src/vmm-create-net.glade.h:35
-#, fuzzy
 msgid "Network _Name:"
-msgstr "பிணைய பயன்பாடு:"
+msgstr "பிணையப் பெயர்: (_N)"
 
 #: ../src/vmm-create-net.glade.h:36
-#, fuzzy
 msgid "Network name:"
-msgstr "பிணைய பயன்பாடு:"
+msgstr "பிணையப் பெயர்:"
 
 #: ../src/vmm-create-net.glade.h:37 ../src/vmm-host.glade.h:30
-#, fuzzy
 msgid "Network:"
-msgstr "பிணையம்"
+msgstr "பிணையம்:"
 
 #: ../src/vmm-create-net.glade.h:38
-#, fuzzy
 msgid "Physical Network"
-msgstr "மெய்நிகர் CPUகள்"
+msgstr "வெளிப்புற பிணையம்"
 
 #: ../src/vmm-create-net.glade.h:39
-#, fuzzy
 msgid "Please choose a name for your virtual network:"
-msgstr "உங்கள் மெய்நிகர் கணினியின் பெயரை தேர்வு செய்யவும்:"
+msgstr "உங்கள் மெய்நிகர் பிணையத்திற்கு ஒரு பெயரை தேர்வு செய்யவும்:"
 
 #: ../src/vmm-create-net.glade.h:40
 msgid ""
 "Please choose the range of addresses the DHCP server will allocate to "
 "virtual machines attached to the virtual network."
 msgstr ""
+"மெய்நிகர் பிணையத்தோடு இணைக்கப்பட்டுள்ள மெய்நிகர் கணினிகளுக்கு வரம்பும்பு முகவரிகளை  "
+"சேவையகம் ஒதுக்கியுள்ளதை தேர்ந்தெடுக்கவும்.DHCP"
 
 #: ../src/vmm-create-net.glade.h:41
 msgid ""
 "Please indicate whether this virtual network should be connected to the "
 "physical network."
 msgstr ""
+"வெளிப்புற பிணையத்தோடு இந்த மெய்நிகர் பிணையம் இணைக்கப்பட்டுள்ளதா என சுட்டிக் காட்டவும்."
 
 #: ../src/vmm-create-net.glade.h:43
-#, fuzzy
 msgid "Size:"
-msgstr "அளவு (_S):"
+msgstr "அளவு:"
 
 #: ../src/vmm-create-net.glade.h:44
-#, fuzzy
 msgid "Start Address"
-msgstr "MAC முகவரி"
+msgstr "துவக்க முகவரி"
 
 #: ../src/vmm-create-net.glade.h:45
-#, fuzzy
 msgid "Start address:"
-msgstr "MAC முகவரி"
+msgstr "துவக்க முகவரி:"
 
 #: ../src/vmm-create-net.glade.h:46
-#, fuzzy
 msgid "Start:"
-msgstr "நிலை:"
+msgstr "துவக்கம்:"
 
 #: ../src/vmm-create-net.glade.h:47
 msgid ""
 "The <b>address range</b> from which the <b>DHCP</b> server will allocate "
 "addresses for virtual machines"
 msgstr ""
+"<b>DHCP</b> சேவையகம் மெய்நிகர் கணினிகளுக்கு முகவரிகளை ஒதுக்கியுள்ளது இந்த <b>முகவரி "
+"வரம்பு</b>"
 
 #: ../src/vmm-create-net.glade.h:48
 msgid "The IPv4 <b>address</b> and <b>netmask</b> to assign"
-msgstr ""
+msgstr "IPv4 நியமிக்க <b>முகவரி</b> மற்றும் <b>நெட் மாஸ்க்</b> "
 
 #: ../src/vmm-create-net.glade.h:49
-#, fuzzy
 msgid ""
 "This assistant will guide you through creating a new virtual network. You "
 "will be asked for some information about the virtual network you'd like to "
@@ -2106,81 +2743,72 @@ msgstr ""
 
 #: ../src/vmm-create-net.glade.h:51
 msgid "Whether to <b>forward</b> traffic to the physical network"
-msgstr ""
+msgstr "<b>முன்னால்</b>வெளிப்புற பிணையத்திலிருந்து டிராபிக்கு"
 
 #: ../src/vmm-create-net.glade.h:52
 msgid "You will need to choose an IPv4 address space for the virtual network:"
-msgstr ""
+msgstr "மெய்நிகர் பிணையத்தின் IPv4 முகவரி இடைவெளியை நீங்கள் தேர்ந்தெடுக்க வேண்டும்:"
 
 #: ../src/vmm-create-pool.glade.h:1
 msgid "<span size='x-large'>Add Storage Pool</span>"
-msgstr ""
+msgstr "<span size='x-large'>சேமிப்பக பூலை சேர்</span>"
 
 #: ../src/vmm-create-pool.glade.h:2
 msgid "Add a New Storage Pool"
-msgstr ""
+msgstr "ஒரு புதிய சேமிப்பக பூலை சேர்"
 
 #: ../src/vmm-create-pool.glade.h:3
-#, fuzzy
 msgid "Browse"
-msgstr "உலாவுதல்..."
+msgstr "உலாவுதல்"
 
 #: ../src/vmm-create-pool.glade.h:4
 msgid "Build Pool:"
-msgstr ""
+msgstr "பூல் உருவாக்கு:"
 
-#: ../src/vmm-create-pool.glade.h:5
-#, fuzzy
+#: ../src/vmm-create-pool.glade.h:5 ../src/vmm-create.glade.h:21
 msgid "Finish"
-msgstr "முடிவு (_F)"
-
-#: ../src/vmm-create-pool.glade.h:6
-msgid "Format"
-msgstr ""
+msgstr "முடிவு பெற்றது"
 
 #: ../src/vmm-create-pool.glade.h:7 ../src/vmm-create-vol.glade.h:21
-#, fuzzy
 msgid "Format:"
-msgstr "துறை (_P):"
+msgstr "முறை:"
 
 #: ../src/vmm-create-pool.glade.h:8
-#, fuzzy
 msgid "Host Name:"
-msgstr "புரவலன் (_H):"
+msgstr "புரவலன் பெயர்:"
 
 #: ../src/vmm-create-pool.glade.h:10 ../src/vmm-create-vol.glade.h:24
-#: ../src/vmm-details.glade.h:56 ../src/vmm-host.glade.h:29
+#: ../src/vmm-create.glade.h:33 ../src/vmm-details.glade.h:67
+#: ../src/vmm-host.glade.h:29
 msgid "Name:"
 msgstr "பெயர்:"
 
-#: ../src/vmm-create-pool.glade.h:11 ../src/vmm-details.glade.h:80
+#: ../src/vmm-create-pool.glade.h:11 ../src/vmm-details.glade.h:92
 msgid "Source Path:"
-msgstr ""
+msgstr "மூலப் பாதை:"
 
 #: ../src/vmm-create-pool.glade.h:12
 msgid ""
 "Specify a storage location to be later split into virtual machine storage."
 msgstr ""
+"பிற்காலத்தில் மெயிநிகர் கணினியின் சேமிகப்பகத்திலிருந்து பிரிவதற்கு ஒரு சேமிப்பக இடத்தை "
+"குறிப்பிடவும்."
 
 #: ../src/vmm-create-pool.glade.h:13
 msgid "Step 1 of 2"
-msgstr ""
+msgstr "படி 2ஆல் 1"
 
 #: ../src/vmm-create-pool.glade.h:14
 msgid "Step 2 of 2"
-msgstr ""
+msgstr "படி 2 ஆல் 2"
 
 #: ../src/vmm-create-pool.glade.h:15
 msgid "Target Path:"
-msgstr ""
-
-#: ../src/vmm-create-pool.glade.h:17
-msgid "label"
-msgstr ""
+msgstr "இலக்கு பாதை:"
 
 #: ../src/vmm-create-vol.glade.h:1
 msgid "<span size='large'>Storage Volume Quota</span>"
-msgstr ""
+msgstr "<span size='large'>சேமிப்பக தொகுதி ஒதுக்கீடு</span>"
 
 #: ../src/vmm-create-vol.glade.h:2
 msgid ""
@@ -2199,614 +2827,304 @@ msgid ""
 "  allocated to volume\n"
 "  at this time.</i></span>"
 msgstr ""
+"<span size='small'><i><u>Name</u>: Name of the\n"
+"  volume to create. File\n"
+"  extension may be\n"
+"  appended\n"
+"\n"
+"<u>Format</u>: File/Partition\n"
+"  format of the volume\n"
+"\n"
+"<u>Capacity</u>: Maximum\n"
+"  size of the volume.\n"
+"\n"
+"<u>Allocation</u>: Actual size\n"
+"  allocated to volume\n"
+"  at this time.</i></span>"
 
 #: ../src/vmm-create-vol.glade.h:16
 msgid "<span size='x-large'>New Storage Volume</span>"
-msgstr ""
+msgstr "<span size='x-large'>புதிய சேமிப்பகத்தின் அளவு</span>"
 
 #: ../src/vmm-create-vol.glade.h:17
-#, fuzzy
 msgid "Add a Storage Volume"
-msgstr "கணினி பெயர் (_N):"
+msgstr "ஒரு சேமிப்பக தொகுதியை சேர்"
 
 #: ../src/vmm-create-vol.glade.h:18
-#, fuzzy
 msgid "Allocation:"
-msgstr "ISO இடம் (_L):"
+msgstr "ஒதுக்கீடு:"
 
 #: ../src/vmm-create-vol.glade.h:19
 msgid "Create _Volume"
-msgstr ""
+msgstr "ஒலியினை உருவாக்கு (_V)"
 
 #: ../src/vmm-create-vol.glade.h:20
 msgid "Create a storage unit that can be used directly by a virtual machine."
-msgstr ""
+msgstr "மெய்நிகர் கணினியால் நேரடியாக பயன்படுத்தப்படும் சேமிப்பக குழுவினை உருவாக்கு."
 
 #: ../src/vmm-create-vol.glade.h:23
 msgid "Max Capacity:"
-msgstr ""
+msgstr "அதிகபட்ச கொள்ளவு:"
 
 #: ../src/vmm-create-vol.glade.h:25
-#, fuzzy
 msgid "available space:"
-msgstr "இல்லை"
+msgstr "கிடைக்கக்கூடிய இடம்:"
 
 #: ../src/vmm-create.glade.h:1
-msgid "<b>CPUs:</b>"
-msgstr "<b>CPUகள்:</b>"
+msgid "(Insert host mem)"
+msgstr "(புரவல நினைவை உள்நுழைக்கவும்)"
 
 #: ../src/vmm-create.glade.h:2
-msgid "<b>Example:</b> system1"
-msgstr "<b>எடுத்துக்காட்டு:</b> system1"
+msgid "<span color='#484848'>CPUs:</span>"
+msgstr "<span color='#484848'>CPUs:</span>"
 
 #: ../src/vmm-create.glade.h:3
-#, fuzzy
-msgid "<b>Install media</b>"
-msgstr "<b>ஆரம்ப நினைவகம்:</b>"
+msgid "<span color='#484848'>Install:</span>"
+msgstr "<span color='#484848'>நிறுவல்:</span>"
 
 #: ../src/vmm-create.glade.h:4
-msgid "<b>Memory:</b>"
-msgstr "<b>நினைவகம்:</b>"
+msgid "<span color='#484848'>Memory:</span>"
+msgstr "<span color='#484848'>நினைவகம்:</span>"
 
 #: ../src/vmm-create.glade.h:5
-msgid "<b>Memory</b> and <b>CPU</b> allocation"
-msgstr "<b>நினைவகம்</b>மற்றும் <b>CPU</b> ஒதுக்கீடு"
+msgid "<span color='#484848'>OS:</span>"
+msgstr "<span color='#484848'>OS:</span>"
+
+#: ../src/vmm-create.glade.h:7
+msgid "<span size='large' color='white'>Create a new virtual machine</span>"
+msgstr ""
+"<span size='large' color='white'>ஒரு புதிய மெய்நிகர் கணினியை த்தை உருவாக்கவும் </"
+"span>"
+
+#: ../src/vmm-create.glade.h:8
+msgid "Advanced options"
+msgstr "முன்னேற்றமடைந்த விருப்பங்கள்ு சேர்"
 
 #: ../src/vmm-create.glade.h:9
-#, fuzzy
-msgid ""
-"<b>Storage</b> details - which disk partitions or files the virtual machine "
-"should use"
-msgstr ""
-"<b>சேமிப்பக</b> விவரங்கள் - வட்டு பகிர்வுகள் அல்லது கோப்புகளை கணினி பயன்படுத்த வேண்டும்"
+msgid "Allocate entire disk now"
+msgstr "இப்போது முழு ிகர் வட்டையும் ஒவும் வேண்டுமா?"
 
-#: ../src/vmm-create.glade.h:12
-msgid "<small><b>Example:</b> ftp://hostname.example.com/ks/ks.cfg</small>"
-msgstr ""
-"<small><b>எடுத்துக்காட்டு:</b> ftp://hostname.example.com/ks/ks.cfg</small>"
+#: ../src/vmm-create.glade.h:10 ../src/vmm-details.glade.h:24
+#: ../src/vmm-host.glade.h:9
+msgid "Architecture:"
+msgstr "கட்டடக்கலை:"
+
+#: ../src/vmm-create.glade.h:11
+msgid "Automatically detect operating system based on install media"
+msgstr "நிறுவல் ஊடகத்தை பொருத்து தானாக இயக்கத்தளத்தை கண்டறிகிறது"
 
 #: ../src/vmm-create.glade.h:13
-msgid ""
-"<small><b>Example:</b> http://servername.example.com/distro/i386/tree</small>"
-msgstr ""
-"<small><b>எடுத்துக்காட்டு:</b> http://servername.example.com/distro/i386/tree</"
-"small>"
+msgid "CPUs:"
+msgstr "CPUs:"
 
 #: ../src/vmm-create.glade.h:14
-#, fuzzy
-msgid ""
-"<small><b>Example:</b> updates=http://hostname.example.com/updates.img</"
-"small>"
-msgstr ""
-"<small><b>எடுத்துக்காட்டு:</b> ftp://hostname.example.com/ks/ks.cfg</small>"
+msgid "Choose Memory and CPU settings"
+msgstr "நினைவக மற்றும் CPU அமைவுகளை தேர்ந்தெடு"
 
 #: ../src/vmm-create.glade.h:15
-msgid ""
-"<small><b>Note:</b> The host CPU(s) in this machine do not have support for "
-"full virtualization.</small>"
-msgstr ""
-"<small><b>குறிப்பு:</b> இந்த கணினியிலுள்ள CPU(கள்) முழுவதும் மெய்நிகராக்கத்திற்கு "
-"துணைபுரிவதில்லை.</small>"
+msgid "Choose an operating systen type and version"
+msgstr "ஒரு கணினியின் செயல்பாட்டு வகை மற்றும் பதிப்பினை தேர்ந்தெடு"
 
 #: ../src/vmm-create.glade.h:16
-msgid ""
-"<small><b>Note:</b> The host CPU(s) in this machine support full "
-"virtualization, but it is not enabled by the BIOS.</small>"
-msgstr ""
-"<small><b>குறிப்பு:</b> இந்த கணினியிலுள்ள புரவலன் CPU(கள்) முழுவதும் "
-"மெய்நிகராக்கத்திற்கு துணைபுரியும் ஆனால் இது BIOSஆல் செயல்படுத்தப்படவில்லை.</small>"
+#, fuzzy
+msgid "Choose how you would like to install the operating system"
+msgstr "செயல்பாட்டிலுள்ள கணினியை எவ்வாறு நீங்கள் நிறுவ விரும்புகிறீர்கள் என தேர்வு செய்யவும்"
+
+#: ../src/vmm-create.glade.h:17 ../src/vmm-host.glade.h:13
+#: ../src/vmm-open-connection.glade.h:6
+msgid "Connection:"
+msgstr "இணைப்பு:"
 
 #: ../src/vmm-create.glade.h:18
-msgid ""
-"<small><b>Tip:</b> Choose this option if your host is statically connected "
-"to wired ethernet, to gain the ability to migrate the virtual system. (To "
-"share a physical device, configure it as a bridge.)</small>"
-msgstr ""
+msgid "Create a disk image on the computer's hard drive"
+msgstr "கணினிகளின் ஹர்ட் இயக்கியில் ஒரு வட்டு உருவத்தை உருவாக்கு"
 
 #: ../src/vmm-create.glade.h:19
-#, fuzzy
-msgid ""
-"<small><b>Tip:</b> For best performance, the number of virtual CPUs should "
-"be less than (or equal to) the number of physical CPUs on the host system.</"
-"small>"
-msgstr ""
-"<small><b>துணுக்கு:</b> நல்ல செயல்திறனுக்கு, மெய்நிகர் CPUகளின் எண்ணிக்கை புரவலன் "
-"கணினியில் தருக்க CPUகளை விட குறைவாக (அல்லது சமமாக) இருக்க வேண்டும்.</small>"
+msgid "Enable storage for this virtual machine"
+msgstr "மெய்நிகர் கணினியின் சேமிப்பகத்தை செயல்படுத்துளவும்"
 
 #: ../src/vmm-create.glade.h:20
-#, fuzzy
-msgid ""
-"<small><b>Tip:</b> You may add additional storage, including network-mounted "
-"storage, to your virtual machine after it has been created using the same "
-"tools you would on a physical system.</small>"
-msgstr ""
-"<small><b>துணுக்கு:</b> நீங்கள் பருநிலை கணினியில் பயன்படுத்திய கருவியால் மெய்நிகர் "
-"கணினியை உருவாக்கிய பின் பிணையம் ஏற்றப்பட்ட சேமிப்பகத்தையும் சேர்த்து, நீங்கள் கூடுதல் "
-"சேமிப்பகத்தை சேர்க்கலாம்.</small>"
-
-#: ../src/vmm-create.glade.h:21
-#, fuzzy
-msgid ""
-"<small><b>Warning:</b> If you do not allocate the entire disk now, space "
-"will be allocated as needed while the virtual machine is running. If "
-"sufficient free space is not available on the host, this may result in data "
-"corruption on the virtual machine.</small>"
-msgstr ""
-"<small><b>எச்சரிக்கை:</b> நீங்கள் முழு வடையும் VM உருவாக்கத்தில் ஒதுக்கவில்லையெனில், "
-"விருந்தினர் இயங்கும் போது வெற்று இடம் தேவையானவை என ஒதுக்கப்படும். போதுமான இடம் "
-"புரவலனில் இல்லையெனில், விருந்தினரில் தகவல் அழிப்பு ஏற்படும்.</small>"
+msgid "Enter your virtual machine details"
+msgstr "உங்களுடைய மெய்நிகர்ய ய்நிகர் கணினி விவரங்களை உள்ளிடவும்"
 
 #: ../src/vmm-create.glade.h:22
-#, fuzzy
-msgid ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Finish Virtual "
-"Machine Creation</span>"
-msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ஒரு மெய்நிகராக்க "
-"முறையை தேர்வு செய்யவும்</span>"
+msgid "GB"
+msgstr "GB"
 
 #: ../src/vmm-create.glade.h:23
-#, fuzzy
-msgid ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Installation "
-"Media</span>"
-msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">நிறுவல் ஊடகத்தை "
-"கண்டறிவும்</span>"
+msgid "ISO"
+msgstr "ISO"
 
 #: ../src/vmm-create.glade.h:24
-#, fuzzy
-msgid ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Installation "
-"Method</span>"
-msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ஒரு மெய்நிகராக்க "
-"முறையை தேர்வு செய்யவும்</span>"
+msgid "Install"
+msgstr "நிறுவல்"
 
 #: ../src/vmm-create.glade.h:25
-#, fuzzy
-msgid ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Installation "
-"Source</span>"
-msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">நிறுவல் ஊடகத்தை "
-"கண்டறிவும்</span>"
+msgid "Kernel Options:"
+msgstr "கர்னல் விருப்பங்கள் (_K):"
 
 #: ../src/vmm-create.glade.h:26
-#, fuzzy
-msgid ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Memory and CPU "
-"Allocation</span>"
-msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">நினைவகம் மற்றும் "
-"CPUஐ ஒதுக்கவும்</span>"
+msgid "Kickstart URL:"
+msgstr "கிக்ஸ்டார்ட் URL:"
 
-#: ../src/vmm-create.glade.h:29
-#, fuzzy
-msgid ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Virtual Machine "
-"Creation </span>"
-msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">உங்கள் மெய்நிகர் "
-"கணினியின் பெயர் </span>"
+#: ../src/vmm-create.glade.h:27
+msgid "Local install media (ISO image or CDROM)"
+msgstr "உள்ளமை நிறுவல் ஊடகம் (ISO படம்ு அல்லது CDROM)"
+
+#: ../src/vmm-create.glade.h:28
+msgid "Locate your install media"
+msgstr "உங்களுடைய ஊடக உள்ளமை நிறுவுாதை (_P):"
 
 #: ../src/vmm-create.glade.h:30
-#, fuzzy
-msgid ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Virtual Machine "
-"Name </span>"
-msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ஒரு புதிய "
-"மெய்நிகர் கணினியை உருவாக்கவும் </span>"
+msgid "Memory"
+msgstr "நினைவகம்"
 
 #: ../src/vmm-create.glade.h:31
-#, fuzzy
-msgid ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Virtualization "
-"Method</span>"
-msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ஒரு மெய்நிகராக்க "
-"முறையை தேர்வு செய்யவும்</span>"
+msgid "Memory (RAM):"
+msgstr "நினைவகம் (RAM):"
 
-#: ../src/vmm-create.glade.h:32
-#, fuzzy
-msgid "A <b>name</b> for your new virtual machine"
-msgstr "உங்கள் புதிய மெய்நிகர் கணினிக்கு ஒரு <b>பெயர்</b>"
+#: ../src/vmm-create.glade.h:34
+msgid "Network Boot (PXE)"
+msgstr "பிணைய பூட்(_N) (PXE)"
 
 #: ../src/vmm-create.glade.h:35
-msgid "CPU architecture:"
-msgstr "CPU வடிவமைப்பு:"
+msgid "Network Install (HTTP, FTP, or NFS)"
+msgstr "பிணைய நிறுவல்(_r) (HTTP, FTP, அல்லது NFS)"
+
+#: ../src/vmm-create.glade.h:36
+msgid "New VM"
+msgstr "புதிய VM"
 
 #: ../src/vmm-create.glade.h:37
-#, fuzzy
-msgid "Create a new virtual machine"
-msgstr "ஒரு புதிய மெய்நிகர் கணினியை உருவாக்கவும்"
+msgid "OS Type:"
+msgstr "OS வகை:"
+
+#: ../src/vmm-create.glade.h:38
+msgid "PXE"
+msgstr "PXE"
+
+#: ../src/vmm-create.glade.h:39
+msgid "Provide the operating system URL"
+msgstr "செயல்பாட்டிலுள்ள கணினியின் URLஐ வழங்கவும்"
 
 #: ../src/vmm-create.glade.h:40
-msgid "Enable audio:"
-msgstr ""
+msgid "Select managed or other existing storage"
+msgstr "மேலாண் செய்யகப்பட்ட அல்லது வேறு இருக்கும் சேமிப்பகம்"
 
-#: ../src/vmm-create.glade.h:42
-#, fuzzy
-msgid "F_ully virtualized:"
-msgstr "முழுவதும் மெய்நிகராக்கப்பட்டது (_u):"
+#: ../src/vmm-create.glade.h:41
+msgid "Set a fixed mac address"
+msgstr "ஒரு நிரந்தரமான mac முகவரியை அமை"
+
+#: ../src/vmm-create.glade.h:43
+msgid "URL"
+msgstr "URL"
 
 #: ../src/vmm-create.glade.h:44
-#, fuzzy
-msgid "File Size Select"
-msgstr "கோப்பு அளவு (_S):"
+msgid "URL:"
+msgstr "URL:"
 
-#: ../src/vmm-create.glade.h:45 ../src/vmm-host.glade.h:23
-#: ../src/vmm-open-connection.glade.h:10
-msgid "Hypervisor:"
-msgstr "Hypervisor:"
+#: ../src/vmm-create.glade.h:45
+msgid "Use CDROM or DVD"
+msgstr "CDROM அல்லது DVDஐ பயன்படுத்தவும்"
 
 #: ../src/vmm-create.glade.h:46
-#, fuzzy
-msgid "ISO Location Field"
-msgstr "ISO இடம் (_L):"
+msgid "Use ISO image:"
+msgstr "ISO படத்தை பயன்படுத்தவும்:ட்டவும்"
 
 #: ../src/vmm-create.glade.h:47
-#, fuzzy
-msgid "ISO _location:"
-msgstr "ISO இடம் (_L):"
+msgid "Version:"
+msgstr "பதிப்புகள்:"
 
 #: ../src/vmm-create.glade.h:48
-#, fuzzy
-msgid "Initial memory:"
-msgstr "<b>ஆரம்ப நினைவகம்:</b>"
+msgid "Virt Type:"
+msgstr "மெய்நிகர் வகை:"
 
-#: ../src/vmm-create.glade.h:49
+#: ../src/vmm-delete.glade.h:1
 #, fuzzy
-msgid "Install URL Field"
-msgstr "நிறுவல் ஊடகம் தேவைப்படுகிறது"
+msgid "Delete Confirmation"
+msgstr "பூலை அழி"
 
-#: ../src/vmm-create.glade.h:50
-#, fuzzy
-msgid "Installation media _URL:"
-msgstr "ஊடக _URLஐ நிறுவவும்:"
-
-#: ../src/vmm-create.glade.h:51
-#, fuzzy
-msgid "Installation source:"
-msgstr "<b>நிறுவல் மூலம்:</b>"
-
-#: ../src/vmm-create.glade.h:52
-#, fuzzy
-msgid ""
-"Involves hardware simulation, allowing for a greater range of virtual "
-"devices and operating systems (does not require OS modification)."
-msgstr ""
-"வன்பொருள் கணக்கிடுதல் பெரிய அளவில் இயக்கத்தளங்களை அனுமதிப்பதை உள்ளடக்கியது (இயக்கத்தள "
-"மாற்றம் தேவைபடுவதில்லை). பகுதி மெய்நிகராக்கப்பட்ட கணினிகளை விட மெதுவானது."
-
-#: ../src/vmm-create.glade.h:53
-msgid "Kernel arguments:"
+#: ../src/vmm-delete.glade.h:2
+msgid "Delete associated storage files"
 msgstr ""
 
-#: ../src/vmm-create.glade.h:54
-#, fuzzy
-msgid "Kickstart Field"
-msgstr "<b>கிக்ஸ்டார்ட் மூலம்:</b>"
-
-#: ../src/vmm-create.glade.h:55
-msgid "Kickstart U_RL:"
-msgstr "கிக்ஸ்டார்ட் U_RL:"
-
-#: ../src/vmm-create.glade.h:56
-#, fuzzy
-msgid "Kickstart source:"
-msgstr "<b>கிக்ஸ்டார்ட் மூலம்:</b>"
-
-#: ../src/vmm-create.glade.h:57
-#, fuzzy
-msgid ""
-"Lightweight method of virtualizing machines. Limits operating system choices "
-"because the OS must be specially modified to support paravirtualization, but "
-"performs better than fully virtualized."
+#: ../src/vmm-delete.glade.h:4
+msgid "gtk-delete"
 msgstr ""
-"மெய்நிகர் கணினிகளின் Lightweight முறை. இயக்கத்தள விருப்பங்களை வரைமுறைப்படுத்தும் "
-"ஏனெனில் இயக்கத்தளம் பகுதி மெய்நிகராக்கத்திற்கு துணை புரிய சிறப்பாக மாற்றப்பட்டுள்ளது. இது "
-"முழு மெய்நிகர் கணினிகளை விட நல்ல செயல்திறனை கொண்டுள்ளது."
-
-#: ../src/vmm-create.glade.h:59
-msgid "Logical host CPUs:"
-msgstr "தருக்க புரவலன் CPUகள்:"
-
-#: ../src/vmm-create.glade.h:60
-msgid "MAC Field"
-msgstr ""
-
-#: ../src/vmm-create.glade.h:63
-#, fuzzy
-msgid "Machine name:"
-msgstr "<b>கணினி பெயர்:</b>"
-
-#: ../src/vmm-create.glade.h:64
-msgid "Max Mem Select"
-msgstr ""
-
-#: ../src/vmm-create.glade.h:65
-#, fuzzy
-msgid "Maximum memory:"
-msgstr "<b>அதிகபட்ச நினைவகம்:</b>"
-
-#: ../src/vmm-create.glade.h:66
-#, fuzzy
-msgid "Maximum virtual CPUs:"
-msgstr "மெய்நிகர் CPUகள்"
-
-#: ../src/vmm-create.glade.h:67
-msgid "Media Path Select"
-msgstr ""
-
-#: ../src/vmm-create.glade.h:68
-msgid "Method"
-msgstr ""
-
-#: ../src/vmm-create.glade.h:69
-msgid "Name Field"
-msgstr ""
-
-#: ../src/vmm-create.glade.h:72
-#, fuzzy
-msgid "Network Select"
-msgstr "பிணையம்"
-
-#: ../src/vmm-create.glade.h:73
-msgid "Network install t_ree (HTTP, FTP, or NFS)"
-msgstr ""
-
-#: ../src/vmm-create.glade.h:74
-msgid "OS _Type:"
-msgstr "OS வகை (_T):"
-
-#: ../src/vmm-create.glade.h:75
-msgid "OS _Variant:"
-msgstr "OS மாறி (_V):"
-
-#: ../src/vmm-create.glade.h:76
-#, fuzzy
-msgid "Operating system:"
-msgstr "<b>இயக்கத்தளம்:</b>"
-
-#: ../src/vmm-create.glade.h:77
-#, fuzzy
-msgid "Partition Field"
-msgstr "பகிர்தல் (_a):"
-
-#: ../src/vmm-create.glade.h:78
-#, fuzzy
-msgid "Please choose a name for your virtual machine:"
-msgstr "உங்கள் மெய்நிகர் கணினியின் பெயரை தேர்வு செய்யவும்:"
-
-#: ../src/vmm-create.glade.h:79
-#, fuzzy
-msgid ""
-"Please choose the operating system you will be installing on the virtual "
-"machine:"
-msgstr "நீங்கள் நிறுவும் விருந்தினர் இயக்கத்தள வகையை தேர்வு செய்யவும்:"
-
-#: ../src/vmm-create.glade.h:80
-#, fuzzy
-msgid ""
-"Please enter the memory configuration for this virtual machine. You can "
-"specify the maximum amount of memory the virtual machine should be able to "
-"use, and optionally a lower amount to grab on startup. Warning: setting "
-"virtual machine memory too high will cause out-of-memory errors in your host "
-"domain!"
-msgstr ""
-"இந்த VMஇன் நினைவக கட்டமைப்பை உள்ளிடவும். நீங்கள் VMஇல் பயன்படுத்தப்படும் அதிகபட்ச நினைவக "
-"அளவை குறிப்பிடவும், விருப்பமாக குறைந்த அளவை துவக்கத்தில் குறிப்பிடவும். எச்சரிக்கை: VM "
-"நினைவகத்தில் அதிக அளவாக அமைத்தால் புரவலன் செயற்களத்தில் நினைவகம் நிறைந்ததாக பிழைகள் "
-"ஏற்படும்."
-
-#: ../src/vmm-create.glade.h:81
-#, fuzzy
-msgid ""
-"Please enter the number of virtual CPUs this virtual machine should start up "
-"with."
-msgstr "இந்த VM துவக்க வேண்டிய மெய்நிகர் CPUகளின் எண்ணிக்கையை உள்ளிடவும்."
-
-#: ../src/vmm-create.glade.h:82
-#, fuzzy
-msgid ""
-"Please indicate how you'd like to assign space from the host for your new "
-"virtual machine. This space will be used to install the virtual machine's "
-"operating system."
-msgstr ""
-"உங்கள் புதிய மெய்நிகர் கணினிக்கு எவ்வாறு இந்த பருநிலை புரவலன் கணினியில் இடம் "
-"ஒதுக்குவீர்கள் என்பதை குறிப்பிடவும். இந்த இடம் மெய்நிகர் கணினியின் இயக்கத்தளத்தை உருவாக்க "
-"பயன்படும்."
-
-#: ../src/vmm-create.glade.h:83
-#, fuzzy
-msgid ""
-"Please indicate how you'd like to connect your new virtual machine to the "
-"host network."
-msgstr ""
-"உங்கள் புதிய மெய்நிகர் கணினிக்கு எவ்வாறு இந்த பருநிலை புரவலன் கணினியில் இடம் "
-"ஒதுக்குவீர்கள் என்பதை குறிப்பிடவும். இந்த இடம் மெய்நிகர் கணினியின் இயக்கத்தளத்தை உருவாக்க "
-"பயன்படும்."
-
-#: ../src/vmm-create.glade.h:84
-#, fuzzy
-msgid ""
-"Please indicate where installation media is available for the operating "
-"system you would like to install on this virtual machine. Optionally you can "
-"provide the URL for a kickstart file:"
-msgstr ""
-"நீங்கள் நிறுவ நினைக்கும் இந்தப் <b>பகுதி மெய்நிகராக்கப்பட்ட</b> மெய்நிகர் கணினியில் "
-"இயக்கத்தளத்திற்கான நிறுவல் ஊடகத்தை குறிப்பிடவும். விருப்பமாக, உங்கள் கணினியை வரையறுக்க "
-"நீங்கள் ஒரு கிக்ஸ்டார்ட் கோப்பினை குறிக்கும் URL ஐ கொடுக்கலாம்:"
-
-#: ../src/vmm-create.glade.h:85
-#, fuzzy
-msgid ""
-"Please indicate where installation media is available for the operating "
-"system you would like to install on this virtual machine:"
-msgstr ""
-"நீங்கள் நிறுவ நினைக்கும் இந்தப் <b>முழு மெய்நிகராக்கப்பட்ட</b> மெய்நிகர் கணினியில் "
-"இயக்கத்தளத்திற்கான நிறுவல் ஊடகத்தை குறிப்பிடவும்."
-
-#: ../src/vmm-create.glade.h:86
-#, fuzzy
-msgid "Set fixed MAC _address for your virtual machine?"
-msgstr "உங்கள் மெய்நிகர் கணினியின் பெயரை தேர்வு செய்யவும்:"
-
-#: ../src/vmm-create.glade.h:88
-msgid "Startup Mem Select"
-msgstr ""
-
-#: ../src/vmm-create.glade.h:91
-#, fuzzy
-msgid ""
-"The <b>location</b> of the files necessary for installing an operating "
-"system on the virtual machine"
-msgstr "மெய்நிகர் கணினியில் இயக்கத்தளத்தை நிறுவ தேவைப்படும் கோப்புகளின் <b>இடம்</b>"
-
-#: ../src/vmm-create.glade.h:92
-#, fuzzy
-msgid ""
-"This assistant will guide you through creating a new virtual machine. You "
-"will be asked for some information about the virtual machine you'd like to "
-"create, such as:"
-msgstr ""
-"இந்த உதவியாளர் உங்களை ஒரு புதிய மெய்நிகர் கணினியை உருவாக்க உதவும். நீங்கள் உருவாக்க "
-"நினைக்கும் மெய்நிகர் பற்றி சில தகவலான இவற்றைக் கேட்கும்:"
-
-#: ../src/vmm-create.glade.h:93 ../src/vmm-details.glade.h:94
-msgid "Total memory on host machine:"
-msgstr "புரவலன் கணினியிலுள்ள மொத்த நினைவகம்:"
-
-#: ../src/vmm-create.glade.h:94 ../src/vmm-details.glade.h:100
-#, fuzzy
-msgid "Virtual CPU Select"
-msgstr "மெய்நிகர் CPUகள்"
-
-#: ../src/vmm-create.glade.h:95
-#, fuzzy
-msgid "Virtual CPUs:"
-msgstr "மெய்நிகர் CPUகள்"
-
-#: ../src/vmm-create.glade.h:96
-#, fuzzy
-msgid "Virtualization method:"
-msgstr "<b>மெய்நிகரக்க முறை:</b>"
-
-#: ../src/vmm-create.glade.h:97
-#, fuzzy
-msgid ""
-"Whether the virtual machine will be <b>fully virtualized</b> or <b>para-"
-"virtualized</b>"
-msgstr ""
-"இந்த கணினி <b>முழுவதும் மெய்நிகராக்கப்பட்டதா</b> அல்லது <b>பகுதி மெய்நிகராக்கப்பட்டதா</"
-"b>"
-
-#: ../src/vmm-create.glade.h:98
-#, fuzzy
-msgid ""
-"You will need to choose a virtualization method for your new virtual machine:"
-msgstr "உங்கள் புதிய கணினிக்கு ஒரு மெய்நிகராக்க முறையை தேர்ந்தெடுக்க வேண்டும்:"
-
-#: ../src/vmm-create.glade.h:104
-#, fuzzy
-msgid "_ISO image location:"
-msgstr "_ISO உரு இடம்:"
-
-#: ../src/vmm-create.glade.h:105
-msgid "_Kernel parameters:"
-msgstr ""
-
-#: ../src/vmm-create.glade.h:106
-msgid "_Local install media (ISO image or CDROM)"
-msgstr ""
-
-#: ../src/vmm-create.glade.h:109
-#, fuzzy
-msgid "_Max memory (MB):"
-msgstr "VM அதிகபட்ச நினைவகம் (MB)(_M):"
-
-#: ../src/vmm-create.glade.h:110
-#, fuzzy
-msgid "_Name:"
-msgstr "பெயர்:"
-
-#: ../src/vmm-create.glade.h:111
-#, fuzzy
-msgid "_Network boot (PXE)"
-msgstr "பிணையம்"
-
-#: ../src/vmm-create.glade.h:113
-msgid "_Paravirtualized:"
-msgstr "பகுதி மெய்நிகராக்கப்பட்டது (_P):"
-
-#: ../src/vmm-create.glade.h:117
-#, fuzzy
-msgid "_Startup memory (MB):"
-msgstr "VM துவக்க நினைவகம் (MB) (_S):"
-
-#: ../src/vmm-create.glade.h:118
-#, fuzzy
-msgid "_Virtual CPUs:"
-msgstr "மெய்நிகர் CPUகள்"
 
 #: ../src/vmm-details.glade.h:1
 msgid ""
 "0 KBytes/s\n"
 "0KBytes/s"
 msgstr ""
+"0 Kபைட்ஸ்/s\n"
+"0Kபைட்ஸ்/s"
 
 #: ../src/vmm-details.glade.h:3
-#, fuzzy
 msgid "<b>Autostart</b>"
-msgstr "<b>சுருக்கம்:</b>"
+msgstr "<b>தானியக்கி</b>"
 
 #: ../src/vmm-details.glade.h:4 ../src/vmm-host.glade.h:1
 msgid "<b>Basic details</b>"
 msgstr "<b>அடிப்படை விவரங்கள்</b>"
 
 #: ../src/vmm-details.glade.h:5
-#, fuzzy
 msgid "<b>Boot Device</b>"
-msgstr "<b>பணியகங்கள்</b>"
+msgstr "<b>பூட் இயக்கி</b>"
 
 #: ../src/vmm-details.glade.h:6
 msgid "<b>CPUs</b>"
 msgstr "<b>CPUகள்</b>"
 
 #: ../src/vmm-details.glade.h:7
+#, fuzzy
+msgid "<b>Machine Details</b>"
+msgstr "<b>அடிப்படை விவரங்கள்</b>"
+
+#: ../src/vmm-details.glade.h:8
 msgid "<b>Memory</b>"
 msgstr "<b>நினைவகம்</b>"
 
-#: ../src/vmm-details.glade.h:8 ../src/vmm-host.glade.h:3
+#: ../src/vmm-details.glade.h:9 ../src/vmm-host.glade.h:3
 msgid "<b>Performance</b>"
 msgstr "<b>செயல்திறன்</b>"
 
 #: ../src/vmm-details.glade.h:10
+#, fuzzy
+msgid "<b>Security</b>"
+msgstr "<b>சுருக்கம்</b>"
+
+#: ../src/vmm-details.glade.h:12
 msgid "<b>The console is currently unavailable</b>"
 msgstr "<b>பணியகம் தற்போது இல்லை</b>"
 
-#: ../src/vmm-details.glade.h:11
+#: ../src/vmm-details.glade.h:13
 msgid ""
 "<b>Tip:</b> 'Source device' refers to the name of the device as seen from "
 "the host OS."
 msgstr ""
+"<b>துணுக்கு:</b> 'மூலச் சாதனம்' என்ற பெயர் புரவல OS காணப்படும் சாதனத்திலிருந்து "
+"குறிப்பிடப் படுகிறது."
 
-#: ../src/vmm-details.glade.h:12
+#: ../src/vmm-details.glade.h:14
 msgid ""
 "<b>Tip:</b> 'source' refers to information seen from the host OS, while "
 "'target' refers to information seen from the guest OS"
 msgstr ""
+"<b>துணுக்கு:</b> 'மூலம்' என்பது புரவலன் OSலிருந்து தெரியும் தகவல், 'இலக்கு' என்பது "
+"விருந்தினர் OSஇலிருந்து தெரியும் தகவலாகும்"
 
-#: ../src/vmm-details.glade.h:13
+#: ../src/vmm-details.glade.h:15
 msgid ""
 "<b>Tip:</b> A graphics tablet configured as the default pointer in the guest "
 "OS will ensure that the virtual cursor moves in sync with the local desktop "
 "cursor."
 msgstr ""
+"<b>Tip:</b> A graphics tablet configured as the default pointer in the guest "
+"OS will ensure that the virtual cursor moves in sync with the local desktop "
+"cursor."
 
-#: ../src/vmm-details.glade.h:14
+#: ../src/vmm-details.glade.h:16
 msgid ""
 "<b>Tip:</b> For best performance, the number of virtual CPUs should be less "
 "than (or equal to) the number of physical CPUs on the host system."
@@ -2814,566 +3132,564 @@ msgstr ""
 "<b>துணுக்கு:</b> நல்ல செயல்திறனுக்கு, மெய்நிகர் CPUகளின் எண்ணிக்கை புரவலன் கணினியில் "
 "பருநிலை CPUகளை விட குறைவாக (அல்லது சமமாக) இருக்க வேண்டும்."
 
-#: ../src/vmm-details.glade.h:15
-#, fuzzy
-msgid "<b>Virtual Disk</b>"
-msgstr "<b>மெய்நிகர் CPUகள்:</b>"
-
-#: ../src/vmm-details.glade.h:16
-#, fuzzy
-msgid "<b>Virtual Display</b>"
-msgstr "<b>மெய்நிகர் CPUகள்:</b>"
-
 #: ../src/vmm-details.glade.h:17
-#, fuzzy
-msgid "<b>Virtual Network Interface</b>"
-msgstr "<b>பிணையம்</b>"
+msgid "<b>Virtual Disk</b>"
+msgstr "<b>மெய்நிகர் வட்டு</b>"
 
 #: ../src/vmm-details.glade.h:18
-#, fuzzy
-msgid "<b>Virtual Pointer</b>"
-msgstr "<b>மெய்நிகர் CPUகள்:</b>"
+msgid "<b>Virtual Display</b>"
+msgstr "<b>மெய்நிகராக்க காட்சி</b>"
 
 #: ../src/vmm-details.glade.h:19
-#, fuzzy
-msgid "<b>insert type</b>"
-msgstr "<b>பணியகங்கள்</b>"
+msgid "<b>Virtual Network Interface</b>"
+msgstr "<b>மெய்நிகராக்க பிணைய இடைவேளி</b>"
+
+#: ../src/vmm-details.glade.h:20
+msgid "<b>Virtual Pointer</b>"
+msgstr "<b>மெய்நிகர் பாயின்டர்கள்</b>"
 
 #: ../src/vmm-details.glade.h:21
-msgid "Always"
-msgstr ""
+msgid "<b>insert type</b>"
+msgstr "<b>வகையினை உள்நுழைக்கவும்</b>"
 
-#: ../src/vmm-details.glade.h:22
+#: ../src/vmm-details.glade.h:23
+msgid "Always"
+msgstr "எப்போதும்"
+
+#: ../src/vmm-details.glade.h:25
 msgid "Auth"
 msgstr "Auth"
 
-#: ../src/vmm-details.glade.h:23
+#: ../src/vmm-details.glade.h:26
 msgid "Block"
-msgstr ""
+msgstr "தடு"
 
-#: ../src/vmm-details.glade.h:24
+#: ../src/vmm-details.glade.h:27
 msgid "Boot"
-msgstr ""
+msgstr "துவக்கு"
 
-#: ../src/vmm-details.glade.h:25
-#, fuzzy
+#: ../src/vmm-details.glade.h:28
 msgid ""
 "CPU\n"
 "usage:"
-msgstr "CPU பயன்பாடு:"
+msgstr ""
+"CPU\n"
+"பயன்பாடு:"
 
-#: ../src/vmm-details.glade.h:27
+#: ../src/vmm-details.glade.h:30
 msgid "Change allocation:"
 msgstr "ஒதுக்கீட்டை மாற்றவும்"
 
-#: ../src/vmm-details.glade.h:28
+#: ../src/vmm-details.glade.h:31
 msgid "Char"
-msgstr ""
+msgstr "எழுத்து"
 
-#: ../src/vmm-details.glade.h:29
-#, fuzzy
+#: ../src/vmm-details.glade.h:32
 msgid "Console"
-msgstr "தொடர் பணியகம் (_S)"
+msgstr "பணியகம்"
 
-#: ../src/vmm-details.glade.h:30
+#: ../src/vmm-details.glade.h:33
+#, fuzzy
+msgid "Consoles"
+msgstr "பணியகம்"
+
+#: ../src/vmm-details.glade.h:34
 msgid "Current allocation:"
 msgstr "நடப்பு ஒதுக்கீடு:"
 
-#: ../src/vmm-details.glade.h:32
-#, fuzzy
-msgid "Device Mode:"
-msgstr "OS வகை (_T):"
-
-#: ../src/vmm-details.glade.h:34
-#, fuzzy
-msgid "Device Type:"
-msgstr "OS வகை (_T):"
-
-#: ../src/vmm-details.glade.h:35
-msgid "Device virtual machine will boot from:"
-msgstr ""
-
 #: ../src/vmm-details.glade.h:36
+msgid "Device Mode:"
+msgstr "சாதன முறை:"
+
+#: ../src/vmm-details.glade.h:39
+msgid "Device virtual machine will boot from:"
+msgstr "சாதன மெய்நிகர் கணினி பூட்டிலிருந்து : "
+
+#: ../src/vmm-details.glade.h:40 ../src/vmm-manager.glade.h:4
 msgid "Disk"
 msgstr "வட்டு"
 
-#: ../src/vmm-details.glade.h:37
-#, fuzzy
+#: ../src/vmm-details.glade.h:41
 msgid ""
 "Disk\n"
 "I/O:"
-msgstr "வட்டு"
+msgstr ""
+"வட்டு\n"
+"I/O:"
 
-#: ../src/vmm-details.glade.h:39
-msgid "Force Off"
+#: ../src/vmm-details.glade.h:43
+msgid "Dynamic"
 msgstr ""
 
-#: ../src/vmm-details.glade.h:40
-#, fuzzy
-msgid "Fullscreen"
-msgstr "முழுத்திரை (_F)"
+#: ../src/vmm-details.glade.h:44
+msgid "Emulator:"
+msgstr ""
 
-#: ../src/vmm-details.glade.h:41
+#: ../src/vmm-details.glade.h:45
+msgid "Force Off"
+msgstr "கட்டாய ஆஃப்"
+
+#: ../src/vmm-details.glade.h:46
+msgid "Fullscreen"
+msgstr "முழுத்திரை"
+
+#: ../src/vmm-details.glade.h:47
+msgid "Heads:"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:48
 #, fuzzy
+msgid "Host CPUs:"
+msgstr "CPUs:"
+
+#: ../src/vmm-details.glade.h:49
 msgid "How many virtual CPUs should be allocated for this machine?"
 msgstr "இந்த கணினிக்கு எத்தனை மெய்நிகர் CPUகள் ஒதுக்கப்பட்டன?"
 
-#: ../src/vmm-details.glade.h:42
-#, fuzzy
+#: ../src/vmm-details.glade.h:50
 msgid "How much memory should be allocated for this machine?"
 msgstr "இந்த கணினிக்கு எவ்வளவு நினைவகம் ஒதுக்கப்பட்டுள்ளது?"
 
-#: ../src/vmm-details.glade.h:45
-msgid "Login"
-msgstr "புகுபதிவு"
-
-#: ../src/vmm-details.glade.h:49
-msgid "Max Memory Select"
-msgstr ""
-
-#: ../src/vmm-details.glade.h:50
-msgid "Maximum allocation:"
-msgstr "அதிகபட்ச ஒதுக்கீடு:"
-
-#: ../src/vmm-details.glade.h:51
-#, fuzzy
-msgid "Mem"
-msgstr "நினைவகம்"
-
-#: ../src/vmm-details.glade.h:52
-#, fuzzy
-msgid ""
-"Memory\n"
-"usage:"
-msgstr "நினைவக பயன்பாடு:"
+#: ../src/vmm-details.glade.h:51 ../src/vmm-host.glade.h:23
+#: ../src/vmm-open-connection.glade.h:10
+msgid "Hypervisor:"
+msgstr "Hypervisor:"
 
 #: ../src/vmm-details.glade.h:54
 #, fuzzy
-msgid "Memory Select"
-msgstr "நினைவக பயன்பாடு"
+msgid "Label:"
+msgstr "விவரச்சீட்டு"
 
-#: ../src/vmm-details.glade.h:57
-#, fuzzy
+#: ../src/vmm-details.glade.h:55
+msgid "Login"
+msgstr "புகுபதிவு"
+
+#: ../src/vmm-details.glade.h:59
+msgid "Max Memory Select"
+msgstr "அதிகபட்ச நினைவகத்தை தேர்ந்தெடு"
+
+#: ../src/vmm-details.glade.h:60
+msgid "Maximum allocation:"
+msgstr "அதிகபட்ச ஒதுக்கீடு:"
+
+#: ../src/vmm-details.glade.h:61
+msgid "Mem"
+msgstr "நினைவகம்"
+
+#: ../src/vmm-details.glade.h:62
+msgid ""
+"Memory\n"
+"usage:"
+msgstr ""
+"நினைவக \n"
+"பயன்பாடு:"
+
+#: ../src/vmm-details.glade.h:64
+msgid "Memory Select"
+msgstr "நினைவகத்தை தேர்ந்தெடு"
+
+#: ../src/vmm-details.glade.h:68
 msgid "Net"
 msgstr "பிணையம்"
 
-#: ../src/vmm-details.glade.h:58
-#, fuzzy
+#: ../src/vmm-details.glade.h:69
 msgid ""
 "Network\n"
 "I/O:"
-msgstr "பிணையம்"
-
-#: ../src/vmm-details.glade.h:61
-msgid "Only when Fullscreen"
 msgstr ""
+"பிணேயம்\n"
+"I/O:"
 
-#: ../src/vmm-details.glade.h:62 ../src/vmm-host.glade.h:32
-msgid "Overview"
-msgstr "கண்ணோட்டம்"
+#: ../src/vmm-details.glade.h:72
+msgid "Only when Fullscreen"
+msgstr "முழுத்தினையின் போது மட்டும்"
 
-#: ../src/vmm-details.glade.h:64
+#: ../src/vmm-details.glade.h:73
+#, fuzzy
+msgid "Over"
+msgstr "மற்ற"
+
+#: ../src/vmm-details.glade.h:75
 msgid "Pause"
 msgstr "இடைநிறுத்தம்"
 
-#: ../src/vmm-details.glade.h:65
-#, fuzzy
+#: ../src/vmm-details.glade.h:76
 msgid "Permissions:"
-msgstr "பகிர்தல் (_a):"
+msgstr "அனுமதிகள்:"
 
-#: ../src/vmm-details.glade.h:67
-#, fuzzy
-msgid "Proc"
-msgstr "செயலி"
-
-#: ../src/vmm-details.glade.h:68
-msgid "Reboot"
+#: ../src/vmm-details.glade.h:77
+msgid "Physical CPU pinning:"
 msgstr ""
 
-#: ../src/vmm-details.glade.h:69
+#: ../src/vmm-details.glade.h:79
+msgid "Proc"
+msgstr "Proc"
+
+#: ../src/vmm-details.glade.h:80
+msgid "RAM:"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:81
+msgid "Reboot"
+msgstr "மறுதுவக்கம்"
+
+#: ../src/vmm-details.glade.h:82
 msgid "Run"
 msgstr "இயக்கவும்"
 
-#: ../src/vmm-details.glade.h:70
-#, fuzzy
+#: ../src/vmm-details.glade.h:83
 msgid "S_hut Down"
 msgstr "பணி நிறுத்தம் (_h)"
 
-#: ../src/vmm-details.glade.h:71
+#: ../src/vmm-details.glade.h:84
 msgid "Save this password in your keyring"
 msgstr "உங்கள் keyringஇல் இந்த கடவுச்சொல்லை சேமிக்கவும்"
 
-#: ../src/vmm-details.glade.h:72
+#: ../src/vmm-details.glade.h:85
 msgid "Scale Display"
-msgstr ""
+msgstr "காட்சியின் அளவு"
 
-#: ../src/vmm-details.glade.h:73
+#: ../src/vmm-details.glade.h:86
 msgid "Screenshot"
 msgstr "திரைப்பிடிப்பு"
 
-#: ../src/vmm-details.glade.h:74
+#: ../src/vmm-details.glade.h:87
 msgid "Send Key"
-msgstr ""
+msgstr "விசையை அனுப்பு"
 
-#: ../src/vmm-details.glade.h:75
-#, fuzzy
-msgid "Serial Consoles"
-msgstr "தொடர் பணியகம் (_S)"
-
-#: ../src/vmm-details.glade.h:76
-#, fuzzy
+#: ../src/vmm-details.glade.h:88
 msgid "Shut Down"
 msgstr "பணி நிறுத்தம்"
 
-#: ../src/vmm-details.glade.h:77
+#: ../src/vmm-details.glade.h:89
 msgid "Shut down"
 msgstr "பணி நிறுத்தம்"
 
-#: ../src/vmm-details.glade.h:79
-#, fuzzy
+#: ../src/vmm-details.glade.h:91
 msgid "Source Device:"
-msgstr "<b>சேமிப்பகம்</b>"
+msgstr "மூலச் சாதனம்:"
 
-#: ../src/vmm-details.glade.h:81
+#: ../src/vmm-details.glade.h:93
 msgid "Source device:"
-msgstr ""
+msgstr "மூலச் சாதனம்:"
 
-#: ../src/vmm-details.glade.h:82
+#: ../src/vmm-details.glade.h:94
 msgid "Source model:"
-msgstr ""
+msgstr "மூல மாதிரி:"
 
-#: ../src/vmm-details.glade.h:83
+#: ../src/vmm-details.glade.h:95
 msgid "Source path:"
-msgstr ""
+msgstr "மூலப் பாதை:"
 
-#: ../src/vmm-details.glade.h:84
+#: ../src/vmm-details.glade.h:96
 msgid "Source type:"
-msgstr ""
+msgstr "மூல வகை:"
 
-#: ../src/vmm-details.glade.h:85
-#, fuzzy
+#: ../src/vmm-details.glade.h:97
 msgid "Start virtual machine on host boot up"
 msgstr "மெய்நிகர் கணினி திரைப்பிடிப்பை சேமிக்கவும்"
 
-#: ../src/vmm-details.glade.h:86 ../src/vmm-preferences.glade.h:26
+#: ../src/vmm-details.glade.h:98
 #, fuzzy
+msgid "Static"
+msgstr "நிலை"
+
+#: ../src/vmm-details.glade.h:99 ../src/vmm-preferences.glade.h:27
 msgid "Stats"
 msgstr "நிலை"
 
-#: ../src/vmm-details.glade.h:87
+#: ../src/vmm-details.glade.h:100
 msgid "Status:"
 msgstr "நிலை:"
 
-#: ../src/vmm-details.glade.h:88
+#: ../src/vmm-details.glade.h:101
 msgid "Target Port:"
-msgstr ""
+msgstr "இலக்கு துறை:"
 
-#: ../src/vmm-details.glade.h:89
+#: ../src/vmm-details.glade.h:102
 msgid "Target bus:"
-msgstr ""
+msgstr "இலக்கு பஸ்:"
 
-#: ../src/vmm-details.glade.h:90
+#: ../src/vmm-details.glade.h:103
 msgid "Target device:"
-msgstr ""
+msgstr "இலக்குச் சாதனம்:"
 
-#: ../src/vmm-details.glade.h:91
+#: ../src/vmm-details.glade.h:104
 msgid "Target type:"
-msgstr ""
+msgstr "இ"
 
-#: ../src/vmm-details.glade.h:92
+#: ../src/vmm-details.glade.h:105
 msgid "Toolbar"
 msgstr "கருவிப்பட்டை"
 
-#: ../src/vmm-details.glade.h:93
-msgid "Total CPUs on host machine:"
-msgstr "புரவலன் கணினியிலுள்ள மொத்த CPUக்கள்:"
+#: ../src/vmm-details.glade.h:106
+msgid "Total memory on host machine:"
+msgstr "புரவலன் கணினியிலுள்ள மொத்த நினைவகம்:"
 
-#: ../src/vmm-details.glade.h:96
+#: ../src/vmm-details.glade.h:108
 msgid "UUID:"
 msgstr "UUID:"
 
-#: ../src/vmm-details.glade.h:97
+#: ../src/vmm-details.glade.h:109
 msgid "Unavailable"
 msgstr "இல்லை"
 
-#: ../src/vmm-details.glade.h:99
+#: ../src/vmm-details.glade.h:110
 #, fuzzy
+msgid "Username:"
+msgstr "புரவலன்பெயர்:"
+
+#: ../src/vmm-details.glade.h:111
+msgid "VNC"
+msgstr "VNC"
+
+#: ../src/vmm-details.glade.h:112
+msgid "Vid"
+msgstr ""
+
+#: ../src/vmm-details.glade.h:113
 msgid "View Manager"
-msgstr "மெய்நிகர் கணினி மேலாளர்"
+msgstr "மேலாளர் காட்சி"
 
-#: ../src/vmm-details.glade.h:101
+#: ../src/vmm-details.glade.h:114
 #, fuzzy
-msgid "Virtual Machine"
-msgstr "மெய்நிகர் கணினி (_M)"
+msgid "Virtual CPU Affinity Select"
+msgstr "மெய்நிகர் CPUஐ தேர்ந்தெடு"
 
-#: ../src/vmm-details.glade.h:102
+#: ../src/vmm-details.glade.h:115
+msgid "Virtual CPU Select"
+msgstr "மெய்நிகர் CPUஐ தேர்ந்தெடு"
+
+#: ../src/vmm-details.glade.h:116
+msgid "Virtual Machine"
+msgstr "மெய்நிகர் கணினி"
+
+#: ../src/vmm-details.glade.h:117
 msgid "Virtual _Machine"
 msgstr "மெய்நிகர் கணினி (_M)"
 
-#: ../src/vmm-details.glade.h:103 ../src/vmm-host.glade.h:41
-#: ../src/vmm-manager.glade.h:18
-msgid "_Contents"
-msgstr ""
+#: ../src/vmm-details.glade.h:118
+#, fuzzy
+msgid "_Clone..."
+msgstr "உலாவுதல் (_B)..."
 
-#: ../src/vmm-details.glade.h:104 ../src/vmm-host.glade.h:42
-#: ../src/vmm-manager.glade.h:20
+#: ../src/vmm-details.glade.h:119 ../src/vmm-host.glade.h:41
+#: ../src/vmm-manager.glade.h:12
+msgid "_Contents"
+msgstr "உள்ளடக்கங்கள் (_C)"
+
+#: ../src/vmm-details.glade.h:120 ../src/vmm-host.glade.h:42
+#: ../src/vmm-manager.glade.h:14
 msgid "_File"
 msgstr "கோப்பு (_F)"
 
-#: ../src/vmm-details.glade.h:105 ../src/vmm-host.glade.h:43
-#: ../src/vmm-manager.glade.h:21
+#: ../src/vmm-details.glade.h:121 ../src/vmm-host.glade.h:43
+#: ../src/vmm-manager.glade.h:15
 msgid "_Help"
 msgstr "உதவி (_H)"
 
-#: ../src/vmm-details.glade.h:106
-msgid "_Migrate"
-msgstr ""
-
-#: ../src/vmm-details.glade.h:107
-msgid "_Pause"
-msgstr "இடை நிறுத்தம் (_P)"
-
-#: ../src/vmm-details.glade.h:108
-msgid "_Run"
-msgstr "இயக்கவும் (_R)"
-
-#: ../src/vmm-details.glade.h:109
+#: ../src/vmm-details.glade.h:125
 msgid "_Save"
 msgstr "சேமிக்கவும் (_S)"
 
-#: ../src/vmm-details.glade.h:110
+#: ../src/vmm-details.glade.h:126
 msgid "_Take Screenshot"
 msgstr "திரைப்பிடிப்பு எடுக்கவும் (_T)"
 
-#: ../src/vmm-details.glade.h:111 ../src/vmm-manager.glade.h:22
+#: ../src/vmm-details.glade.h:127 ../src/vmm-manager.glade.h:21
 msgid "_View"
 msgstr "காட்சி (_V)"
 
 #: ../src/vmm-host.glade.h:2
 msgid "<b>IPv4 configuration</b>"
-msgstr ""
+msgstr "<b>IPv4 கட்டமைப்பு</b>"
 
 #: ../src/vmm-host.glade.h:4
-#, fuzzy
 msgid "<b>Volumes</b>"
-msgstr "<b>பணியகங்கள்</b>"
+msgstr "<b>ஒலியலைகள்</b>"
 
 #: ../src/vmm-host.glade.h:6
-#, fuzzy
 msgid "Add Network"
-msgstr "பிணையம்"
+msgstr "பிணையத்தை சேர்க்கவும்"
 
 #: ../src/vmm-host.glade.h:7
 msgid "Add Pool"
-msgstr ""
+msgstr "பூல் சேர்"
 
 #: ../src/vmm-host.glade.h:8
 msgid "Apply"
-msgstr ""
-
-#: ../src/vmm-host.glade.h:9
-#, fuzzy
-msgid "Architecture:"
-msgstr "CPU வடிவமைப்பு:"
+msgstr "செயல்படுத்து"
 
 #: ../src/vmm-host.glade.h:10
-#, fuzzy
 msgid "Autoconnect:"
-msgstr "இணைப்பு (_n)"
+msgstr "தானியிக்கி இணைப்பு:"
 
 #: ../src/vmm-host.glade.h:11
 msgid "Autostart:"
-msgstr ""
+msgstr "தானியக்க துவக்கம்:"
 
 #: ../src/vmm-host.glade.h:12
 msgid "CPU usage:"
 msgstr "CPU பயன்பாடு:"
 
-#: ../src/vmm-host.glade.h:13 ../src/vmm-open-connection.glade.h:6
-#, fuzzy
-msgid "Connection:"
-msgstr "இணைப்பு (_n)"
-
 #: ../src/vmm-host.glade.h:14
 msgid "DHCP end:"
-msgstr ""
+msgstr "DHCP முடிவு:"
 
 #: ../src/vmm-host.glade.h:15
 msgid "DHCP start:"
-msgstr ""
+msgstr "DHCP துவக்கம்:"
 
 #: ../src/vmm-host.glade.h:16
-#, fuzzy
 msgid "Delete Network"
-msgstr "பிணையம்"
+msgstr "பிணையத்தை நீக்கு"
 
 #: ../src/vmm-host.glade.h:17
 msgid "Delete Pool"
-msgstr ""
+msgstr "பூலை அழி"
 
 #: ../src/vmm-host.glade.h:18
-#, fuzzy
 msgid "Delete Volume"
-msgstr "கணினியை அழிக்கவும்"
-
-#: ../src/vmm-host.glade.h:19
-msgid "Device:"
-msgstr ""
+msgstr "ஒலியினை அழிக்கவும்"
 
 #: ../src/vmm-host.glade.h:20
 msgid "Forwarding:"
-msgstr ""
+msgstr "முன்னனுப்புதல்:"
 
-#: ../src/vmm-host.glade.h:21 ../src/vmm-manager.glade.h:10
-#, fuzzy
+#: ../src/vmm-host.glade.h:21 ../src/vmm-manager.glade.h:6
 msgid "Host Details"
-msgstr "விவரங்கள் (_t)"
+msgstr "புரவலத்தின் விவரங்கள்"
 
 #: ../src/vmm-host.glade.h:22 ../src/vmm-open-connection.glade.h:8
-#, fuzzy
 msgid "Hostname:"
-msgstr "புரவலன் (_H):"
+msgstr "புரவலன்பெயர்:"
 
 #: ../src/vmm-host.glade.h:24
-#, fuzzy
 msgid "Location:"
-msgstr "ISO இடம் (_L):"
+msgstr "இடம்:"
 
 #: ../src/vmm-host.glade.h:25
-#, fuzzy
 msgid "Logical CPUs:"
-msgstr "தருக்க புரவலன் CPUகள்:"
+msgstr "தருக்க CPUs:"
 
 #: ../src/vmm-host.glade.h:26
 msgid "Memory usage:"
 msgstr "நினைவக பயன்பாடு:"
 
 #: ../src/vmm-host.glade.h:27
-#, fuzzy
 msgid "Memory:"
-msgstr "நினைவகம்"
+msgstr "நினைவகம்:"
 
 #: ../src/vmm-host.glade.h:31
 msgid "New Volume"
-msgstr ""
+msgstr "புதிய ஒலி"
+
+#: ../src/vmm-host.glade.h:32
+msgid "Overview"
+msgstr "கண்ணோட்டம்"
 
 #: ../src/vmm-host.glade.h:33
-#, fuzzy
 msgid "Pool Type:"
-msgstr "வகை"
+msgstr "பூல் வகை:"
 
 #: ../src/vmm-host.glade.h:34
-#, fuzzy
 msgid "Start Network"
-msgstr "பிணையம்"
+msgstr "பிணையத்தை துவக்கு"
 
 #: ../src/vmm-host.glade.h:35
-#, fuzzy
 msgid "Start Pool"
-msgstr "நிலை"
+msgstr "பூலை துவக்கவும்"
 
 #: ../src/vmm-host.glade.h:36
-#, fuzzy
 msgid "State:"
 msgstr "நிலை:"
 
 #: ../src/vmm-host.glade.h:37
-#, fuzzy
 msgid "Stop Network"
-msgstr "பிணையம்"
+msgstr "பிணையத்தை நிறுத்தவும்"
 
 #: ../src/vmm-host.glade.h:38
 msgid "Stop Pool"
-msgstr ""
+msgstr "பூலை நிறுத்து"
 
 #: ../src/vmm-host.glade.h:40
-#, fuzzy
 msgid "Virtual Networks"
-msgstr "மெய்நிகர் CPUகள்"
+msgstr "மெய்நிகர் இணைப்புகள்"
 
 #: ../src/vmm-manager.glade.h:1
-#, fuzzy
 msgid "Add Connection..."
-msgstr "திறந்த இணைப்புகள்..."
+msgstr "இணைப்புகளை சேர்க்கவும்..."
 
 #: ../src/vmm-manager.glade.h:2
-msgid ""
-"All virtual machines\n"
-"Active virtual machines\n"
-"Inactive virtual machines"
-msgstr ""
-"அனைத்து மெய்நிகர் கணினிகள்\n"
-"செயலிலுள்ள மெய்நிகர் கணினிகள்\n"
-"செயலற்ற மெய்நிகர் கணினிகள்"
-
-#: ../src/vmm-manager.glade.h:5 ../src/vmm-preferences.glade.h:6
 #, fuzzy
-msgid "CPU Usage"
-msgstr "CPU பயன்பாடு"
+msgid "CPU"
+msgstr "CPUs"
 
-#: ../src/vmm-manager.glade.h:7
-#, fuzzy
+#: ../src/vmm-manager.glade.h:3
 msgid "Delete Virtual Machine"
-msgstr "மெய்நிகர் கணினியை மீட்டெடுக்கவும்"
+msgstr "மெய்நிகர் கணினியை அழிக்கவும்"
 
-#: ../src/vmm-manager.glade.h:9
-msgid "Domain ID"
-msgstr "செயற்கள குறியீடு"
+#: ../src/vmm-manager.glade.h:5
+msgid "Graph"
+msgstr ""
 
-#: ../src/vmm-manager.glade.h:11 ../src/vmm-preferences.glade.h:13
-#, fuzzy
-msgid "Memory Usage"
-msgstr "நினைவக பயன்பாடு"
-
-#: ../src/vmm-manager.glade.h:13
+#: ../src/vmm-manager.glade.h:8
 msgid "Restore a saved machine from a filesystem image"
 msgstr "ஒரு கோப்பு முறைமை உருவிலிருந்து சேமிக்கப்பட்ட கணினியை மீட்டெடுக்கவும்"
 
-#: ../src/vmm-manager.glade.h:14
+#: ../src/vmm-manager.glade.h:9
 msgid "Restore saved machine..."
 msgstr "சேமிக்கப்பட்ட கணினியை மீட்டெடுக்கவும்..."
 
-#: ../src/vmm-manager.glade.h:16
+#: ../src/vmm-manager.glade.h:10
 msgid "Virtual Machine Details"
 msgstr "மெய்நிகர் கணினி விவரங்கள்"
 
-#: ../src/vmm-manager.glade.h:19
+#: ../src/vmm-manager.glade.h:13
 msgid "_Edit"
 msgstr "திருத்துதல் (_E)"
 
-#: ../src/vmm-manager.glade.h:23
-msgid "_View:"
-msgstr "காட்சி (_V):"
+#: ../src/vmm-manager.glade.h:16
+#, fuzzy
+msgid "_New"
+msgstr "காட்சி (_V)"
+
+#: ../src/vmm-manager.glade.h:17
+msgid "_Open"
+msgstr ""
+
+#: ../src/vmm-manager.glade.h:20
+#, fuzzy
+msgid "_Shutdown"
+msgstr "பணி நிறுத்தம்"
 
 #: ../src/vmm-open-connection.glade.h:1
-#, fuzzy
 msgid "Add Connection"
-msgstr "இணைப்பு (_n)"
+msgstr "இணைப்பு சேர்"
 
 #: ../src/vmm-open-connection.glade.h:2
 msgid ""
 "Autoconnect\n"
 "   at Startup:"
 msgstr ""
+"தானாக இணை\n"
+"   துவக்கத்தில்:"
 
 #: ../src/vmm-open-connection.glade.h:4
 msgid "Co_nnect"
 msgstr "இணைப்பு (_n)"
 
 #: ../src/vmm-open-connection.glade.h:5
-#, fuzzy
 msgid "Connection Select"
-msgstr "இணைப்பு (_n)"
+msgstr "இணைப்பு தேர்ந்தெடுக்கப்பட்டது"
 
 #: ../src/vmm-open-connection.glade.h:7
-#, fuzzy
 msgid "Hostname Field"
-msgstr "புரவலன் (_H):"
+msgstr "புரவலப்பெயர் புலம்"
 
 #: ../src/vmm-open-connection.glade.h:9
-#, fuzzy
 msgid "Hypervisor Select"
-msgstr "Hypervisor:"
+msgstr "Hypervisor தேர்ந்தெடு"
 
 #: ../src/vmm-open-connection.glade.h:11
 msgid ""
@@ -3382,80 +3698,94 @@ msgid ""
 "Remote SSL/TLS with x509 certificate\n"
 "Remote tunnel over SSH"
 msgstr ""
+"Local\n"
+"Remote Password or Kerberos\n"
+"Remote SSL/TLS with x509 certificate\n"
+"Remote tunnel over SSH"
 
 #: ../src/vmm-open-connection.glade.h:15
 msgid ""
 "Xen\n"
-"QEMU"
+"QEMU/KVM"
 msgstr ""
 "Xen\n"
-"QEMU"
+"QEMU/KVM"
 
 #: ../src/vmm-preferences.glade.h:1
 msgid "<b>Consoles</b>"
 msgstr "<b>பணியகங்கள்</b>"
 
 #: ../src/vmm-preferences.glade.h:2
-#, fuzzy
 msgid "<b>Enable Stats Polling</b>"
-msgstr "<b>நிலை கண்காணிப்பு</b>"
+msgstr "<b>நிலை கண்காணிப்பு செயல்படுத்து</b>"
 
 #: ../src/vmm-preferences.glade.h:3
 #, fuzzy
-msgid "<b>New VM</b>"
-msgstr "<b>பிணையம்</b>"
+msgid "<b>General</b>"
+msgstr "<b>பாயின்டர்</b>"
 
 #: ../src/vmm-preferences.glade.h:4
-#, fuzzy
-msgid "<b>Stats Options</b>"
-msgstr "<b>நிலை கண்காணிப்பு</b>"
+msgid "<b>New VM</b>"
+msgstr "<b>புதிய VM</b>"
 
 #: ../src/vmm-preferences.glade.h:5
+msgid "<b>Stats Options</b>"
+msgstr "<b>நிலை விருப்பங்கள்</b>"
+
+#: ../src/vmm-preferences.glade.h:6
 msgid "Automatically open consoles:"
 msgstr "தானாக பணியகங்களை திறக்கவும்:"
 
 #: ../src/vmm-preferences.glade.h:8
-msgid "Grab keyboard input:"
-msgstr "விசைப்பலகை உள்ளீட்டை எடுக்கவும்:"
+msgid "Enable system tray icon"
+msgstr ""
 
 #: ../src/vmm-preferences.glade.h:9
 #, fuzzy
-msgid "Graphical Console Scaling:"
-msgstr "வரைகலை பணியகம் (_G)"
+msgid "General"
+msgstr "பொதுவான"
 
 #: ../src/vmm-preferences.glade.h:10
-#, fuzzy
-msgid "Install Audio Device:"
-msgstr "<b>நிறுவல் மூலம்:</b>"
+msgid "Grab keyboard input:"
+msgstr "விசைப்பலகை உள்ளீட்டை எடுக்கவும்:"
 
 #: ../src/vmm-preferences.glade.h:11
-#, fuzzy
-msgid "Local virtual machine"
-msgstr "மெய்நிகர் கணினியை சேமிக்கவும்"
+msgid "Graphical Console Scaling:"
+msgstr "வரைகலை பணியகம் அளவீடு:"
 
 #: ../src/vmm-preferences.glade.h:12
+msgid "Install Audio Device:"
+msgstr "ஆடியோ இயக்கியை நிறுவு:"
+
+#: ../src/vmm-preferences.glade.h:13
+msgid "Local virtual machine"
+msgstr "உள்ளமை மெய்நிகர் கணினி"
+
+#: ../src/vmm-preferences.glade.h:14
 msgid "Maintain history of"
 msgstr "வரலாற்றை பராமரிக்கவும்"
 
-#: ../src/vmm-preferences.glade.h:15
-#, fuzzy
+#: ../src/vmm-preferences.glade.h:16
 msgid ""
 "Never\n"
 "For all new domains\n"
 "For all domains"
 msgstr ""
 "ஒருபோதும்\n"
-"புதிய செயற்களங்களுக்கு\n"
-"அனைத்து செயற்களங்களுக்கு"
+"புதிய செயற்களங்களுக்கும்\n"
+"அனைத்து செயற்களங்களுக்கும்"
 
-#: ../src/vmm-preferences.glade.h:18
+#: ../src/vmm-preferences.glade.h:19
 msgid ""
 "Never\n"
 "Fullscreen only\n"
 "Always"
 msgstr ""
+"இல்லை\n"
+"முழுத்திரையின் போது மட்டும்\n"
+"எப்போதும்"
 
-#: ../src/vmm-preferences.glade.h:21
+#: ../src/vmm-preferences.glade.h:22
 msgid ""
 "Never\n"
 "When fullscreen\n"
@@ -3465,513 +3795,180 @@ msgstr ""
 "முழுதிரையின் போது\n"
 "சுட்டி முனை மேல் வரும் போது"
 
-#: ../src/vmm-preferences.glade.h:24
+#: ../src/vmm-preferences.glade.h:25
 msgid "Preferences"
 msgstr "முன்னுரிமைகள்"
 
-#: ../src/vmm-preferences.glade.h:25
-#, fuzzy
+#: ../src/vmm-preferences.glade.h:26
 msgid "Remote virtual machine"
-msgstr "மெய்நிகர் கணினியை மீட்டெடுக்கவும்"
+msgstr "தொலை மெய்நிகர் கணினி"
 
-#: ../src/vmm-preferences.glade.h:27
+#: ../src/vmm-preferences.glade.h:28
 msgid "Update status every"
 msgstr "நிலை மேம்படுத்தல்"
 
-#: ../src/vmm-preferences.glade.h:28
-#, fuzzy
-msgid "VM Details"
-msgstr "விவரங்கள் (_D)"
-
 #: ../src/vmm-preferences.glade.h:29
+msgid "VM Details"
+msgstr "VM விவரங்கள்"
+
+#: ../src/vmm-preferences.glade.h:30
 msgid "samples"
 msgstr "மாதிரிகள்"
 
-#: ../src/vmm-preferences.glade.h:30
+#: ../src/vmm-preferences.glade.h:31
 msgid "seconds"
 msgstr "வினாடிகள்"
 
-#~ msgid "20 bits/sec"
-#~ msgstr "20 bits/sec"
-
-#~ msgid "Disk usage:"
-#~ msgstr "வட்டு பயன்பாடு:"
-
-#~ msgid "Hardware"
-#~ msgstr "வன்பொருள்"
-
-#~ msgid "Network usage:"
-#~ msgstr "பிணைய பயன்பாடு:"
-
-#~ msgid "Shutdown"
-#~ msgstr "பணி நிறுத்தம்"
-
+#: ../src/vmm-storage-browse.glade.h:1
 #, fuzzy
-#~ msgid "disk\t"
-#~ msgstr "வட்டு"
+msgid "Choose Storage Volume"
+msgstr "ஒரு சேமிப்பக தொகுதியை சேர்"
 
+#: ../src/vmm-storage-browse.glade.h:2
 #, fuzzy
-#~ msgid "<b>Display</b>"
-#~ msgstr "<b>வட்டு உரு:</b>"
+msgid "Choose _Volume"
+msgstr "ஒலியினை உருவாக்கு (_V)"
 
+#: ../src/vmm-storage-browse.glade.h:3
 #, fuzzy
-#~ msgid ""
-#~ "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Access the "
-#~ "guest display</span>"
-#~ msgstr ""
-#~ "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">சேமிப்பக "
-#~ "இடத்தை ஒதுக்குகிறது</span>"
+msgid "_Browse Local"
+msgstr "உலாவுதல்"
 
+#: ../src/vmm-storage-browse.glade.h:4
 #, fuzzy
-#~ msgid ""
-#~ "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to add "
-#~ "hardware</span>"
-#~ msgstr ""
-#~ "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">நிறுவலை "
-#~ "துவக்க தயாராக உள்ளது</span>"
+msgid "_New Volume"
+msgstr "புதிய ஒலி"
 
-#~ msgid "File _Location:"
-#~ msgstr "கோப்பு இடம் (_L):"
+#~ msgid "Poll cpu stats"
+#~ msgstr "பூல் cpu நிலை"
 
-#~ msgid "File _Size:"
-#~ msgstr "கோப்பு அளவு (_S):"
+#~ msgid "Poll memory usage stats"
+#~ msgstr "பூல் நினைவக பயன்பாடு நிலை"
 
-#~ msgid "Normal Disk _Partition:"
-#~ msgstr "சாதாரண வட்டு பகிர்வு (_P):"
+#~ msgid "Show VCPU count in summary"
+#~ msgstr "சுருக்கத்தில் VCPU எண்ணிக்கையைக் காட்டு"
 
-#~ msgid "P_artition:"
-#~ msgstr "பகிர்தல் (_a):"
+#~ msgid "Show cpu usage in summary"
+#~ msgstr "சுருக்கத்தில் cpuன் பயன்பாட்டைக் காட்டு"
 
-#~ msgid "Simple F_ile:"
-#~ msgstr "எளிய கோப்பு (_i):"
-
-#, fuzzy
-#~ msgid "Delete Machine"
-#~ msgstr "கணினியை அழிக்கவும்"
-
-#~ msgid "Disk usage"
-#~ msgstr "வட்டு பயன்பாடு"
-
-#, fuzzy
-#~ msgid "Machine Details..."
-#~ msgstr "கணினி விவரங்கள்..."
-
-#~ msgid "Network traffic"
+#~ msgid "Show disk I/O in summary"
 #~ msgstr "பிணைய போக்குவரத்து"
 
-#~ msgid "Virtual CPUs"
-#~ msgstr "மெய்நிகர் CPUகள்"
+#~ msgid "Show domain id in summary"
+#~ msgstr "சுருக்கத்தில் செயற்களத்தின் குறியீட்டைக் காட்டு"
 
-#, fuzzy
-#~ msgid "32"
-#~ msgstr "2"
+#~ msgid "Show memory usage in summary"
+#~ msgstr "சுருக்கத்தில் நினைவகத்தின் பயன்பாட்டைக் காட்டு"
+
+#~ msgid "Show network I/O in summary"
+#~ msgstr "சுருக்கத்தில் பிணைய I/O வை காட்டு"
+
+#~ msgid "Show run state in summary"
+#~ msgstr "சுருக்கத்தில் திலை இயக்கத்தை காட்டு"
+
+#~ msgid "Show the cpu usage field in the domain list summary view"
+#~ msgstr "செயற்கள பட்டியலின் சுருக்கப் பார்யிவையில் cpuஆல் பயன்படுத்தப்பட்ட புலங்களை காட்டு"
+
+#~ msgid "Show the disk I/O field in the domain list summary view"
+#~ msgstr "செயற்கள பட்டியலின் சுருக்கப் பார்யிவையில் வட்டு I/O புலங்களை காட்டு"
+
+#~ msgid "Show the domain id field in the domain list summary view"
+#~ msgstr "செயற்கள பட்டியலின் சுருக்கப் பார்யிவையில் செயற்கள குறியீடு புலங்களை காட்டு"
+
+#~ msgid "Show the memory usage field in the domain list summary view"
+#~ msgstr "செயற்கள பட்டியலின் சுருக்கப் பார்யிவையில் நினைவக பயன்பாடு புலங்களை காட்டு"
+
+#~ msgid "Show the network I/O field in the domain list summary view"
+#~ msgstr "செயற்கள பட்டியலின் சுருக்கப் பார்யிவையில் பிணைய I/O புலங்களை காட்டு"
+
+#~ msgid "Show the run state field in the domain list summary view"
+#~ msgstr "செயற்கள பட்டியலின் சுருக்கப் பார்யிவையில் இயக்கும் நிலையிலுள்ள புலங்க்ளைக் காட்டு"
+
+#~ msgid "Show the virtual CPU count field in the domain list summary view"
+#~ msgstr ""
+#~ "செயற்கள பட்டியலின் சுருக்கப் பார்யிவையில் மெய்நிகர் CPU எண்ணிக்கை புலங்களை காட்டு"
 
 #~ msgid ""
-#~ "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Creating a "
-#~ "new virtual system </span>"
-#~ msgstr ""
-#~ "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">ஒரு புதிய "
-#~ "மெய்நிகர் கணினியை உருவாக்கவும் </span>"
+#~ "Whether or not the app will poll connection and VM cpu usage statistics"
+#~ msgstr "app VM cpu பயன்பாடு புள்ளிவிவரங்களை போல் செய்யுமா அல்லது இல்லையா"
 
 #~ msgid ""
-#~ "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Naming your "
-#~ "virtual system </span>"
-#~ msgstr ""
-#~ "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">உங்கள் மெய்நிகர் "
-#~ "கணினியின் பெயர் </span>"
+#~ "Whether or not the app will poll connection and VM memory usage statistics"
+#~ msgstr "app VM நினைவக பயன்பாடு புள்ளிவிவரங்களை போல் செய்யுமா அல்லது இல்லையா"
 
-#~ msgid ""
-#~ "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to "
-#~ "begin installation</span>"
-#~ msgstr ""
-#~ "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">நிறுவலை "
-#~ "துவக்க தயாராக உள்ளது</span>"
+#~ msgid "Shared physical device"
+#~ msgstr "பகிரப்பட்ட பருநிலை சாதனம்"
 
-#~ msgid "A <b>name</b> for your new virtual system"
-#~ msgstr "உங்கள் புதிய மெய்நிகர் கணினிக்கு ஒரு <b>பெயர்</b>"
-
-#~ msgid "CPU/memory"
-#~ msgstr "CPU/நினைவகம்"
-
-#~ msgid "Create a new virtual system"
-#~ msgstr "ஒரு புதிய மெய்நிகர் கணினியை உருவாக்கவும்"
+#~ msgid "Usermode networking"
+#~ msgstr "பயனர்முறைமை பிணையம்"
 
 #, fuzzy
-#~ msgid "Install type"
-#~ msgstr "நிறுவல் ஊடகம் தேவைப்படுகிறது"
-
-#, fuzzy
-#~ msgid "Local inst"
-#~ msgstr "உள்ளமை புரவலன் (_L)"
-
-#~ msgid "Please choose a name for your virtual system:"
-#~ msgstr "உங்கள் மெய்நிகர் கணினியின் பெயரை தேர்வு செய்யவும்:"
-
-#, fuzzy
-#~ msgid ""
-#~ "Please indicate where installation media is available for the operating "
-#~ "system you would like to install on this virtual operating system:"
-#~ msgstr ""
-#~ "நீங்கள் நிறுவ நினைக்கும் இந்தப் <b>முழு மெய்நிகராக்கப்பட்ட</b> மெய்நிகர் கணினியில் "
-#~ "இயக்கத்தளத்திற்கான நிறுவல் ஊடகத்தை குறிப்பிடவும்."
-
-#~ msgid "System _Name:"
-#~ msgstr "கணினி பெயர் (_N):"
-
-#~ msgid ""
-#~ "This assistant will guide you through creating a new virtual system. You "
-#~ "will be asked for some information about the virtual system you'd like to "
-#~ "create, such as:"
-#~ msgstr ""
-#~ "இந்த உதவியாளர் உங்களை ஒரு புதிய மெய்நிகர் கணினியை உருவாக்க உதவும். நீங்கள் உருவாக்க "
-#~ "நினைக்கும் மெய்நிகர் பற்றி சில தகவலான இவற்றைக் கேட்கும்:"
-
-#~ msgid "Type"
-#~ msgstr "வகை"
-
-#~ msgid "VMS"
-#~ msgstr "VMS"
-
-#~ msgid "_VCPUs:"
-#~ msgstr "_VCPUகள்:"
-
-#, fuzzy
-#~ msgid "<b>New VM Preferences</b>"
+#~ msgid "Performance"
 #~ msgstr "<b>செயல்திறன்</b>"
 
 #, fuzzy
-#~ msgid "Grab Keyboard"
-#~ msgstr "விசைப்பலகை உள்ளீட்டை எடுக்கவும்:"
+#~ msgid "Processor"
+#~ msgstr "நடைபெறுகிறது..."
 
-#, fuzzy
-#~ msgid "History Samples"
-#~ msgstr "மாதிரிகள்"
+#~ msgid "Error parsing domain xml: %s"
+#~ msgstr "டொமைன் xmlஐ பகுக்கும் போது பிழை: %s"
 
-#, fuzzy
-#~ msgid "Local VM"
-#~ msgstr "உள்ளமை புரவலன் (_L)"
+#~ msgid "ID"
+#~ msgstr "ID"
 
-#, fuzzy
-#~ msgid "Remote VM"
-#~ msgstr "தொலை புரவலன் (_R)"
+#~ msgid "Status"
+#~ msgstr "நிலை"
 
-#, fuzzy
-#~ msgid "Invalid Physical Device"
-#~ msgstr "நிறுவல் ஊடகம் தேவைப்படுகிறது"
+#~ msgid "Memory usage"
+#~ msgstr "நினைவக பயன்பாடு"
 
-#~ msgid "serial console"
-#~ msgstr "வரிசை பணியகம்"
+#~ msgid "<b>Network</b>"
+#~ msgstr "<b>பிணையம்</b>"
 
-#~ msgid "http://virt-manager.et.redhat.com/"
-#~ msgstr "http://virt-manager.et.redhat.com/"
+#~ msgid "<b>Sound</b>"
+#~ msgstr "<b>ஒலி</b>"
 
-#, fuzzy
-#~ msgid "Password Field"
-#~ msgstr "கடவுச்சொல்:"
+#~ msgid "<b>Storage</b>"
+#~ msgstr "<b>சேமிப்பகம்</b>"
 
-#~ msgid "Virtual Machine Console"
-#~ msgstr "மெய்நிகர் கணினி பணியகம்"
+#~ msgid "Absolute"
+#~ msgstr "வரம்பற்ற"
 
-#~ msgid "_Destroy"
-#~ msgstr "அழித்தல் (_D)"
+#~ msgid "Connection type:"
+#~ msgstr "இணைப்பு வகை:"
 
-#~ msgid "_Details"
-#~ msgstr "விவரங்கள் (_D)"
+#~ msgid "EvTouch Tablet"
+#~ msgstr "EvTouch டாப்லெட்"
 
-#, fuzzy
-#~ msgid "\t"
-#~ msgstr "5\t"
+#~ msgid "Shared Physical Device"
+#~ msgstr "பகிரப்பட்ட வெளிச் சாதனம்"
 
-#~ msgid "/xen/demo.img"
-#~ msgstr "/xen/demo.img"
+#~ msgid "summary-host-device"
+#~ msgstr "சுருக்க-புரவலச்-சாதனம்"
 
-#, fuzzy
-#~ msgid "256"
-#~ msgstr "256\t"
+#~ msgid "_Path to install media:"
+#~ msgstr "ஊடகத்தை நிறுவும் பாதை (_P):"
 
-#~ msgid "5 GB"
-#~ msgstr "5 GB"
+#~ msgid "Serial Consoles"
+#~ msgstr "தொடர் பணியகங்கள்"
 
-#~ msgid "demo"
-#~ msgstr "செய்முறை"
-
-#, fuzzy
-#~ msgid "1.59 GB of 2.2 GB"
-#~ msgstr "1 GB இல் 80 MB"
-
-#, fuzzy
-#~ msgid "2000 MB"
-#~ msgstr "200 MB"
-
-#, fuzzy
-#~ msgid "Net Name"
-#~ msgstr "பிணைய பயன்பாடு:"
-
-#, fuzzy
-#~ msgid "Net UUID"
-#~ msgstr "UUID:"
-
-#, fuzzy
-#~ msgid "Storage Location"
-#~ msgstr "_ISO உரு இடம்:"
-
-#~ msgid " free"
-#~ msgstr "வெற்று இடம்"
-
-#~ msgid " of "
-#~ msgstr " of "
-
-#~ msgid "/tmp"
-#~ msgstr "/tmp"
-
-#~ msgid "10 TB"
-#~ msgstr "10 TB"
+#~ msgid "Total CPUs on host machine:"
+#~ msgstr "புரவலன் கணினியிலுள்ள மொத்த CPUக்கள்:"
 
 #~ msgid ""
-#~ "<b>Tip:</b> You may only increase the size of file-based storage; you "
-#~ "can't decrease its size."
+#~ "All virtual machines\n"
+#~ "Active virtual machines\n"
+#~ "Inactive virtual machines"
 #~ msgstr ""
-#~ "<b>துணுக்கு:</b> நீங்கள் கோப்பு அடிப்படையிலான சேமிப்பக அளவினை அதிகரிக்கலாம்; அதன் "
-#~ "அளவினை குறைக்க முடியாது."
+#~ "அனைத்து மெய்நிகர் கணினிகள்\n"
+#~ "செயலிலுள்ள மெய்நிகர் கணினிகள்\n"
+#~ "செயலற்ற மெய்நிகர் கணினிகள்"
 
-#~ msgid ""
-#~ "MB\n"
-#~ "GB\n"
-#~ "TB"
-#~ msgstr ""
-#~ "MB\n"
-#~ "GB\n"
-#~ "TB"
+#~ msgid "Domain ID"
+#~ msgstr "செயற்கள குறியீடு"
 
-#~ msgid "Modify File Storage"
-#~ msgstr "கோப்பு சேமிப்பகத்தை மாற்றவும்"
+#~ msgid "Memory Usage"
+#~ msgstr "நினைவக பயன்பாடு"
 
-#~ msgid "_Mount Point (on virtual system):"
-#~ msgstr "ஏற்றப்புள்ளி (மெய்நிகர் கணினியில்) (_M):"
-
-#~ msgid " "
-#~ msgstr " "
-
-#~ msgid "2 GB"
-#~ msgstr "2 GB"
-
-#~ msgid "256\t"
-#~ msgstr "256\t"
-
-#~ msgid "400 MB"
-#~ msgstr "400 MB"
-
-#~ msgid "5\t"
-#~ msgstr "5\t"
-
-#, fuzzy
-#~ msgid "512 MB"
-#~ msgstr "500 MB"
-
-#, fuzzy
-#~ msgid "Architecture Select"
-#~ msgstr "CPU வடிவமைப்பு:"
-
-#~ msgid "Enable kernel / hardware acceleration"
-#~ msgstr "கர்னல் / வன்பொருள் முடுக்கத்தை செயல்படுத்தவும்"
-
-#~ msgid "FV install"
-#~ msgstr "FV நிறுவுதல்"
-
-#, fuzzy
-#~ msgid "OS Type Select"
-#~ msgstr "OS வகை (_T):"
-
-#, fuzzy
-#~ msgid "OS Variant Select"
-#~ msgstr "OS மாறி (_V):"
-
-#~ msgid "PVinstall"
-#~ msgstr "PVinstall"
-
-#~ msgid "http://"
-#~ msgstr "http://"
-
-#~ msgid ""
-#~ "i686\n"
-#~ "x86_64\n"
-#~ "ppc\n"
-#~ "sparc\n"
-#~ "mips\n"
-#~ "mipsel"
-#~ msgstr ""
-#~ "i686\n"
-#~ "x86_64\n"
-#~ "ppc\n"
-#~ "sparc\n"
-#~ "mips\n"
-#~ "mipsel"
-
-#~ msgid "para"
-#~ msgstr "பகுதி"
-
-#~ msgid "18%"
-#~ msgstr "18%"
-
-#~ msgid "200 MB"
-#~ msgstr "200 MB"
-
-#~ msgid "30 MB of 128 MB"
-#~ msgstr "30 MB of 128 MB"
-
-#~ msgid "8"
-#~ msgstr "8"
-
-#~ msgid "80 MB of 1 GB"
-#~ msgstr "1 GB இல் 80 MB"
-
-#, fuzzy
-#~ msgid "Host details..."
-#~ msgstr "கணினி விவரங்கள்..."
-
-#~ msgid "De_tails"
-#~ msgstr "விவரங்கள் (_t)"
-
-#~ msgid "Open connection"
-#~ msgstr "திறந்த இணைப்புகள்"
-
-#~ msgid "to complete."
-#~ msgstr "எடுக்கும்."
-
-#~ msgid "Storage Address Is Directory"
-#~ msgstr "சேமிப்பக முகவரி அடைவாகும்"
-
-#~ msgid ""
-#~ "You chose 'Simple File' storage for your storage method, but chose a "
-#~ "directory instead of a file. Please enter a new filename or choose an "
-#~ "existing file."
-#~ msgstr ""
-#~ "உங்கள் சேமிப்பக முறைக்கு 'எளிய கோப்பு' சேமிப்பகத்தைத் தேர்ந்தெடுத்துள்ளீர்கள், ஆனால் "
-#~ "கோப்பிற்குப் பதிலாக அடைவைத் தேர்ந்தெடுத்துள்ளீர்கள்"
-
-#~ msgid "Allocation of disk storage and retrieval of "
-#~ msgstr "வட்டு சேமிப்பக ஒதுக்கீடு மற்றும்"
-
-#, fuzzy
-#~ msgid "the installation images may take a few minutes "
-#~ msgstr "நிறுவல் உருக்களை எடுக்க சில நிமிடங்கள்"
-
-#, fuzzy
-#~ msgid "Invalid Mac address"
-#~ msgstr "தவறான சேமிப்பக முகவரி"
-
-#~ msgid "Verify that:\n"
-#~ msgstr "சரிபார்க்கப்பட்டது:\n"
-
-#~ msgid " - A Xen host kernel was booted\n"
-#~ msgstr " - ஒரு Xen புரவலன் கர்னல் துவக்கப்பட்டது\n"
-
-#~ msgid " - The Xen service has been started\n"
-#~ msgstr " - Xen சேவை துவக்கப்பட்டது\n"
-
-#, fuzzy
-#~ msgid " - The 'libvirtd' daemon has been started\n"
-#~ msgstr " - Xen சேவை துவக்கப்பட்டது\n"
-
-#~ msgid "Unable to open connection to hypervisor '%s'"
-#~ msgstr "hypervisor '%s'க்கு இணைப்பை திறக்க முடியவில்லை"
-
-#, fuzzy
-#~ msgid "Connected"
-#~ msgstr "இணைப்பு (_n)"
-
-#~ msgid "New machine..."
-#~ msgstr "புதிய கணினி..."
-
-#~ msgid "_Host:"
-#~ msgstr "புரவலன் (_H):"
-
-#~ msgid "Invalid PV media address"
-#~ msgstr "தவறான PV ஊடக முகவரி"
-
-#~ msgid "Invalid system name"
-#~ msgstr "தவறான கணினி பெயர்"
-
-#~ msgid "Invalid memory setting"
-#~ msgstr "தவறான நினைவக அமைவு"
-
-#~ msgid "System name must be non-blank and less than 50 characters"
-#~ msgstr ""
-#~ "கணினி பெயர் வெறுமையாக இருக்கக்கூடாது, 50 எழுத்துக்களுக்கு குறைவாக இருக்கக்கூடாது "
-
-#~ msgid "System name may contain alphanumeric and '_' characters only"
-#~ msgstr "கணினி பெயர் எழுத்துக்கள் மற்றும் '_' ஐ கொண்டிருக்கலாம்"
-
-#~ msgid "Hardware Support Required"
-#~ msgstr "வன்பொருள் துணை தேவைப்படுகிறது"
-
-#~ msgid ""
-#~ "Your hardware does not appear to support full virtualization. Only "
-#~ "paravirtualized guests will be available on this hardware."
-#~ msgstr ""
-#~ "உங்கள் வன்பொருள் முழு மெய்நிகராக்கத்திற்கு துணைபுரியாததால் தோன்றாது. இந்த வன்பொருளில் "
-#~ "பகுதி மெய்நிகராக்கப்பட்ட விருந்தினர்கள் இருக்கும்."
-
-#~ msgid "You must specify an ISO location for the guest installation"
-#~ msgstr "ஒரு ISO இடத்தை விருந்தினர் நிறுவலுக்கு குறிப்பிட வேண்டும்"
-
-#~ msgid ""
-#~ "You must specify a valid path to the ISO image for guest installation"
-#~ msgstr "விருந்தினர் நிறுவலில் ISO உருவுக்கு சரியான பாதையை குறிப்பிட வேண்டும்"
-
-#~ msgid "You must select the CDROM install media for guest installation"
-#~ msgstr "விருந்தினர் நிறுவலுக்கு குறுவட்டு நிறுவல் ஊடகத்தை தேர்ந்தெடுக்க வேண்டும்"
-
-#~ msgid "URL Required"
-#~ msgstr "URL தேவைப்படுகிறது"
-
-#~ msgid "You must specify a URL for the install image for the guest install"
-#~ msgstr "விருந்தினர் நிறுவலுக்கு நிறுவல் உருவுக்கு URL ஐ கொடுக்க வேண்டும்"
-
-#~ msgid "_Read only connection"
-#~ msgstr "வாசிப்பு மட்டும் இணைப்பு (_R)"
-
-#~ msgid "Guest Install Error"
-#~ msgstr "விருந்தினர் நிறுவல் பிழை"
-
-#~ msgid "00:16:3e:"
-#~ msgstr "00:16:3e:"
-
-#~ msgid ":"
-#~ msgstr ":"
-
-#~ msgid ""
-#~ "<b>Tip:</b> Acceptable values for hex digits are the numbers 0-9 and the "
-#~ "letters A-F"
-#~ msgstr ""
-#~ "<b>துணுக்கு:</b> எண்கள் 0-9 மற்றும் எழுத்துக்கள் A-F ஆகியவை ஏற்றுக்கொள்ளப்படும் "
-#~ "மதிப்புக்களாகும்"
-
-#~ msgid "Add Virtual NIC"
-#~ msgstr "மெய்நிகர் NICஐ சேர்க்கவும்"
-
-#~ msgid "Add virtual NIC with:"
-#~ msgstr "மெய்நிகர் NIC ஐ சேர்க்க:"
-
-#~ msgid "Randomly generated MAC address"
-#~ msgstr "குறிப்பில்லாமல் உருவாக்கப்பட்ட MAC முகவரி"
-
-#~ msgid "mac-addr-random"
-#~ msgstr "mac-addr-random"
-
-#~ msgid "<b>Disk size:</b>"
-#~ msgstr "<b>வட்டு அளவு:</b>"
-
-#~ msgid ""
-#~ "Press finish to create a new virtual machine with\n"
-#~ "this configuration."
-#~ msgstr ""
-#~ "முடிவு என்பதை அழுத்தி இந்த கட்டமைப்பில் புதிய மெய்நிகர் கணினியை\n"
-#~ "உருவாக்கவும்."
-
-#~ msgid ""
-#~ "<b>Tip:</b> File location paths are as seen from the physical host. Mount "
-#~ "points are as seen from the virtual machine."
-#~ msgstr ""
-#~ "<b>துணுக்கு:</b> கோப்பு இட பாதைகளை பருநிலை புரவலனிலிருந்து பார்க்கப்பட்டது. "
-#~ "ஏற்றப்புள்ளிகள் மெய்நிகர் கணினியிலிருந்து பார்க்கப்பட்டது."
+#~ msgid "_View:"
+#~ msgstr "காட்சி (_V):"

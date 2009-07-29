@@ -20,6 +20,8 @@
 
 import logging
 import gtk
+import libxml2
+import os.path
 
 import libvirt
 
@@ -64,18 +66,59 @@ def tooltip_wrapper(obj, txt, func="set_tooltip_text"):
         funcptr = getattr(obj, func)
         funcptr(txt)
     except:
-        # XXX: Catch a specific error here
-        pass
+        ver = gtk.gtk_version
+        if ver[0] >= 2 and ver[1] >= 12:
+            logging.exception("Couldn't set tooltip.")
 
-def browse_local(parent, dialog_name, start_folder=None, _type=None,
-                 dialog_type=gtk.FILE_CHOOSER_ACTION_OPEN,
-                 foldermode=False, confirm_func=None):
+def xml_parse_wrapper(xml, parse_func, *args, **kwargs):
+    """
+    Parse the passed xml string into an xpath context, which is passed
+    to parse_func, along with any extra arguments.
+    """
+
+    doc = None
+    ctx = None
+    ret = None
+    try:
+        doc = libxml2.parseDoc(xml)
+        ctx = doc.xpathNewContext()
+        ret = parse_func(doc, ctx, *args, **kwargs)
+    finally:
+        if ctx != None:
+            ctx.xpathFreeContext()
+        if doc != None:
+            doc.freeDoc()
+    return ret
+
+
+def browse_local(parent, dialog_name, config, conn, start_folder=None,
+                 _type=None, dialog_type=gtk.FILE_CHOOSER_ACTION_OPEN,
+                 confirm_func=None, browse_reason=None):
+    """
+    Helper function for launching a filechooser
+
+    @param parent: Parent window for the filechooser
+    @param dialog_name: String to use in the title bar of the filechooser.
+    @param config: vmmConfig used by calling class
+    @param conn: vmmConnection used by calling class
+    @param start_folder: Folder the filechooser is viewing at startup
+    @param _type: File extension to filter by (e.g. "iso", "png")
+    @param dialog_type: Maps to FileChooserDialog 'action'
+    @param confirm_func: Optional callback function if file is chosen.
+    @param browse_reason: The vmmConfig.CONFIG_DIR* reason we are browsing.
+        If set, this will override the 'folder' parameter with the gconf
+        value, and store the user chosen path.
+
+    """
 
     overwrite_confirm = False
     choose_button = gtk.STOCK_OPEN
     if dialog_type == gtk.FILE_CHOOSER_ACTION_SAVE:
         choose_button = gtk.STOCK_SAVE
         overwrite_confirm = True
+
+    if browse_reason:
+        start_folder = config.get_default_directory(conn, browse_reason)
 
     fcdialog = gtk.FileChooserDialog(dialog_name, parent,
                                      dialog_type,
@@ -110,12 +153,25 @@ def browse_local(parent, dialog_name, start_folder=None, _type=None,
     if(response == gtk.RESPONSE_ACCEPT):
         filename = fcdialog.get_filename()
         fcdialog.destroy()
-        return filename
+        ret = filename
     else:
         fcdialog.destroy()
-        return None
+        ret = None
 
-def dup_conn(config, conn, libconn=None):
+    if ret and browse_reason and not ret.startswith("/dev"):
+        config.set_default_directory(os.path.dirname(ret), browse_reason)
+
+    return ret
+
+def dup_lib_conn(config, libconn):
+    return _dup_all_conn(config, None, libconn=libconn,
+                         return_conn_class=False)
+
+def dup_conn(config, conn, return_conn_class=False):
+    return _dup_all_conn(config, conn, None,
+                         return_conn_class=return_conn_class)
+
+def _dup_all_conn(config, conn, libconn, return_conn_class):
 
     is_readonly = False
 
@@ -132,11 +188,52 @@ def dup_conn(config, conn, libconn=None):
     if is_test:
         # Skip duplicating a test conn, since it doesn't maintain state
         # between instances
-        return vmm
+        return return_conn_class and conn or vmm
+
+    if int(libvirt.getVersion()) >= 6000:
+        # Libvirt 0.6.0 implemented client side request threading: this
+        # removes the need to actually duplicate the connection.
+        return return_conn_class and conn or vmm
 
     logging.debug("Duplicating connection for async operation.")
     newconn = virtManager.connection.vmmConnection(config, uri, is_readonly)
     newconn.open()
     newconn.connectThreadEvent.wait()
 
-    return newconn.vmm
+    if return_conn_class:
+        return newconn
+    else:
+        return newconn.vmm
+
+def pretty_hv(gtype, domtype):
+    """
+    Convert XML <domain type='foo'> and <os><type>bar</type>
+    into a more human relevant string.
+    """
+
+    gtype = gtype.lower()
+    domtype = domtype.lower()
+
+    label = domtype
+    if domtype == "kvm":
+        if gtype == "xen":
+            label = "xenner"
+    elif domtype == "xen":
+        if gtype == "xen":
+            label = "xen (paravirt)"
+        elif gtype == "hvm":
+            label = "xen (fullvirt)"
+    elif domtype == "test":
+        if gtype == "xen":
+            label = "test (xen)"
+        elif gtype == "hvm":
+            label = "test (hvm)"
+
+    return label
+
+def idle_emit(self, signal, *args):
+    """
+    Safe wrapper for using 'self.emit' with gobject.idle_add
+    """
+    self.emit(signal, *args)
+    return False

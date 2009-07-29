@@ -21,7 +21,6 @@
 import gobject
 import gtk
 import gtk.glade
-import sparkline
 import traceback
 
 from virtinst import Storage
@@ -31,6 +30,7 @@ from virtManager.createnet import vmmCreateNetwork
 from virtManager.createpool import vmmCreatePool
 from virtManager.createvol import vmmCreateVolume
 from virtManager.error import vmmErrorDialog
+from virtManager.graphwidgets import Sparkline
 
 class vmmHost(gobject.GObject):
     __gsignals__ = {
@@ -62,10 +62,10 @@ class vmmHost(gobject.GObject):
         self.window.get_widget("overview-arch").set_text(self.conn.host_architecture())
         self.window.get_widget("config-autoconnect").set_active(conn.get_autoconnect())
 
-        netListModel = gtk.ListStore(str, str, str)
+        netListModel = gtk.ListStore(str, str, str, int)
         self.window.get_widget("net-list").set_model(netListModel)
 
-        volListModel = gtk.ListStore(str, str, str, str, str)
+        volListModel = gtk.ListStore(str, str, str, str)
         self.window.get_widget("vol-list").set_model(volListModel)
 
         self.volmenu = gtk.Menu()
@@ -81,12 +81,14 @@ class vmmHost(gobject.GObject):
         self.window.get_widget("vol-list").get_selection().connect("changed", self.vol_selected)
 
         netCol = gtk.TreeViewColumn("Networks")
+        netCol.set_spacing(6)
         net_txt = gtk.CellRendererText()
         net_img = gtk.CellRendererPixbuf()
-        netCol.pack_start(net_txt, True)
         netCol.pack_start(net_img, False)
+        netCol.pack_start(net_txt, True)
         netCol.add_attribute(net_txt, 'text', 1)
-        netCol.add_attribute(net_img, 'stock-id', 2)
+        netCol.add_attribute(net_img, 'icon-name', 2)
+        netCol.add_attribute(net_img, 'stock-size', 3)
         self.window.get_widget("net-list").append_column(netCol)
         netListModel.set_sort_column_id(1, gtk.SORT_ASCENDING)
 
@@ -112,13 +114,6 @@ class vmmHost(gobject.GObject):
         volFormatCol.set_sort_column_id(3)
         self.window.get_widget("vol-list").append_column(volFormatCol)
 
-        volPathCol = gtk.TreeViewColumn("Path")
-        vol_txt4 = gtk.CellRendererText()
-        volPathCol.pack_start(vol_txt4, False)
-        volPathCol.add_attribute(vol_txt4, 'text', 4)
-        volPathCol.set_sort_column_id(4)
-        self.window.get_widget("vol-list").append_column(volPathCol)
-
         volListModel.set_sort_column_id(1, gtk.SORT_ASCENDING)
 
         self.populate_networks(netListModel)
@@ -128,11 +123,11 @@ class vmmHost(gobject.GObject):
                                self.conn)
 
 
-        self.cpu_usage_graph = sparkline.Sparkline()
+        self.cpu_usage_graph = Sparkline()
         self.cpu_usage_graph.show()
         self.window.get_widget("performance-table").attach(self.cpu_usage_graph, 1, 2, 0, 1)
 
-        self.memory_usage_graph = sparkline.Sparkline()
+        self.memory_usage_graph = Sparkline()
         self.memory_usage_graph.show()
         self.window.get_widget("performance-table").attach(self.memory_usage_graph, 1, 2, 1, 2)
 
@@ -392,7 +387,8 @@ class vmmHost(gobject.GObject):
         model.clear()
         for uuid in self.conn.list_net_uuids():
             net = self.conn.get_net(uuid)
-            model.append([uuid, net.get_name(), gtk.STOCK_NETWORK])
+            model.append([uuid, net.get_name(), "network-idle",
+                          gtk.ICON_SIZE_LARGE_TOOLBAR])
 
         _iter = model.get_iter_first()
         if _iter:
@@ -631,7 +627,7 @@ class vmmHost(gobject.GObject):
         for key in vols.keys():
             vol = vols[key]
             model.append([key, vol.get_name(), vol.get_pretty_capacity(),
-                          vol.get_format() or "", vol.get_target_path() or ""])
+                          vol.get_format() or ""])
 
 
 # These functions are broken out, since they are used by storage browser
