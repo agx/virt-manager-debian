@@ -22,7 +22,6 @@ import gobject
 import libvirt
 import logging
 import os, sys
-import glob
 import traceback
 from time import time
 from socket import gethostbyaddr, gethostname
@@ -31,9 +30,9 @@ import threading
 import gtk
 import virtinst
 
+from virtManager import util
 from virtManager.domain import vmmDomain
 from virtManager.network import vmmNetwork
-from virtManager.netdev import vmmNetDevice
 from virtManager.storagepool import vmmStoragePool
 
 XEN_SAVE_MAGIC = "LinuxGuestRecord"
@@ -71,10 +70,6 @@ class vmmConnection(gobject.GObject):
                          [str, str]),
         "pool-stopped": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
                          [str, str]),
-        "netdev-added": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
-                         [str]),
-        "netdev-removed": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
-                           [str]),
         "resources-sampled": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
                               []),
         "state-changed": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
@@ -88,9 +83,11 @@ class vmmConnection(gobject.GObject):
     STATE_ACTIVE = 2
     STATE_INACTIVE = 3
 
-    def __init__(self, config, uri, readOnly = None):
+    def __init__(self, config, uri, readOnly=None, netdev_helper=None):
         self.__gobject_init__()
+
         self.config = config
+        self.netdev_helper = netdev_helper
 
         self.connectThread = None
         self.connectThreadEvent = threading.Event()
@@ -104,13 +101,10 @@ class vmmConnection(gobject.GObject):
         self.state = self.STATE_DISCONNECTED
         self.vmm = None
         self.storage_capable = None
+        self.dom_xml_flags = None
 
         # Connection Storage pools: UUID -> vmmStoragePool
         self.pools = {}
-        # Host network devices. name -> vmmNetDevice object
-        self.netdevs = {}
-        # Mapping of hal IDs to net names
-        self.hal_to_netdev = {}
         # Virtual networks UUUID -> vmmNetwork object
         self.nets = {}
         # Virtual machines. UUID -> vmmDomain object
@@ -121,132 +115,6 @@ class vmmConnection(gobject.GObject):
         self.record = []
         self.hostinfo = None
         self.autoconnect = self.config.get_conn_autoconnect(self.get_uri())
-
-        # Probe for network devices
-        try:
-            # Get a connection to the SYSTEM bus
-            self.bus = dbus.SystemBus()
-            # Get a handle to the HAL service
-            hal_object = self.bus.get_object('org.freedesktop.Hal',
-                                             '/org/freedesktop/Hal/Manager')
-            self.hal_iface = dbus.Interface(hal_object,
-                                            'org.freedesktop.Hal.Manager')
-
-            # Track device add/removes so we can detect newly inserted CD media
-            self.hal_iface.connect_to_signal("DeviceAdded",
-                                             self._net_phys_device_added)
-            self.hal_iface.connect_to_signal("DeviceRemoved",
-                                             self._net_phys_device_removed)
-
-            # find all bonding master devices and register them
-            # XXX bonding stuff is linux specific
-            bondMasters = self._net_get_bonding_masters()
-            logging.debug("Bonding masters are: %s" % bondMasters)
-            for bond in bondMasters:
-                sysfspath = "/sys/class/net/" + bond
-                mac = self._net_get_mac_address(bond, sysfspath)
-                if mac:
-                    self._net_device_added(bond, mac, sysfspath)
-                    # Add any associated VLANs
-                    self._net_tag_device_added(bond, sysfspath)
-
-            # Find info about all current present physical net devices
-            # This is OS portable...
-            for path in self.hal_iface.FindDeviceByCapability("net"):
-                self._net_phys_device_added(path)
-        except:
-            (_type, value, stacktrace) = sys.exc_info ()
-            logging.error("Unable to connect to HAL to list network devices: '%s'" + \
-                          str(_type) + " " + str(value) + "\n" + \
-                          traceback.format_exc (stacktrace))
-            self.bus = None
-            self.hal_iface = None
-
-    def _net_phys_device_added(self, path):
-        obj = self.bus.get_object("org.freedesktop.Hal", path)
-        objif = dbus.Interface(obj, "org.freedesktop.Hal.Device")
-
-        if objif.QueryCapability("net"):
-            logging.debug("Got physical net device %s" % path)
-            name = objif.GetPropertyString("net.interface")
-            # XXX ...but this is Linux specific again - patches welcomed
-            #sysfspath = objif.GetPropertyString("linux.sysfs_path")
-            # XXX hal gives back paths to like:
-            # /sys/devices/pci0000:00/0000:00:1e.0/0000:01:00.0/net/eth0
-            # which doesnt' work so well - we want this:
-            sysfspath = "/sys/class/net/" + name
-
-            # If running a device in bridged mode, there's a reasonable
-            # chance that the actual ethernet device has been renamed to
-            # something else. ethN -> pethN
-            psysfspath = sysfspath[0:len(sysfspath)-len(name)] + "p" + name
-            if os.path.exists(psysfspath):
-                logging.debug("Device %s named to p%s" % (name, name))
-                name = "p" + name
-                sysfspath = psysfspath
-
-            # Ignore devices that are slaves of a bond
-            if self._net_is_bonding_slave(name, sysfspath):
-                logging.debug("Skipping device %s in bonding slave" % name)
-                return
-
-            mac = objif.GetPropertyString("net.address")
-
-            # Add the main NIC
-            self._net_device_added(name, mac, sysfspath, path)
-
-            # Add any associated VLANs
-            self._net_tag_device_added(name, sysfspath)
-
-    def _net_tag_device_added(self, name, sysfspath):
-        logging.debug("Checking for VLANs on %s" % sysfspath)
-        for vlanpath in glob.glob(sysfspath + ".*"):
-            if os.path.exists(vlanpath):
-                logging.debug("Process VLAN %s" % vlanpath)
-                vlanmac = self._net_get_mac_address(name, vlanpath)
-                if vlanmac:
-                    (ignore,vlanname) = os.path.split(vlanpath)
-
-                    # If running a device in bridged mode, there's areasonable
-                    # chance that the actual ethernet device has beenrenamed to
-                    # something else. ethN -> pethN
-                    pvlanpath = vlanpath[0:len(vlanpath)-len(vlanname)] + "p" + vlanname
-                    if os.path.exists(pvlanpath):
-                        logging.debug("Device %s named to p%s" % (vlanname, vlanname))
-                        vlanname = "p" + vlanname
-                        vlanpath = pvlanpath
-                    self._net_device_added(vlanname, vlanmac, vlanpath)
-
-    def _net_device_added(self, name, mac, sysfspath, halpath=None):
-        # Race conditions mean we can occassionally see device twice
-        if self.netdevs.has_key(name):
-            return
-
-        bridge = self._net_get_bridge_owner(name, sysfspath)
-        shared = False
-        if bridge is not None:
-            shared = True
-
-        logging.debug("Adding net device %s %s %s (bridge: %s)" % (name, mac, sysfspath, str(bridge)))
-
-        dev = vmmNetDevice(self.config, self, name, mac, shared, bridge)
-        self._add_net_dev(name, halpath, dev)
-
-    def _add_net_dev(self, name, halpath, dev):
-        if halpath:
-            self.hal_to_netdev[halpath] = name
-        self.netdevs[name] = dev
-        self.emit("netdev-added", dev.get_name())
-
-    def _net_phys_device_removed(self, path):
-        if self.hal_to_netdev.has_key(path):
-            name = self.hal_to_netdev[path]
-            logging.debug("Removing physical net device %s from list." % name)
-
-            dev = self.netdevs[name]
-            self.emit("netdev-removed", dev.get_name())
-            del self.netdevs[name]
-            del self.hal_to_netdev[path]
 
     def _acquire_tgt(self):
         logging.debug("In acquire tgt.")
@@ -290,6 +158,29 @@ class vmmConnection(gobject.GObject):
     def get_capabilities(self):
         return virtinst.CapabilitiesParser.parse(self.vmm.getCapabilities())
 
+    def set_dom_flags(self, vm):
+        if self.dom_xml_flags != None:
+            # Already set
+            return
+
+        self.dom_xml_flags = []
+        for flags in [libvirt.VIR_DOMAIN_XML_SECURE,
+                      libvirt.VIR_DOMAIN_XML_INACTIVE,
+                      (libvirt.VIR_DOMAIN_XML_SECURE |
+                       libvirt.VIR_DOMAIN_XML_INACTIVE )]:
+            try:
+                vm.XMLDesc(flags)
+                self.dom_xml_flags.append(flags)
+            except libvirt.libvirtError, e:
+                logging.debug("%s does not support flags=%d : %s" %
+                              (self.get_uri(), flags, str(e)))
+
+    def has_dom_flags(self, flags):
+        if self.dom_xml_flags == None:
+            return False
+
+        return bool(self.dom_xml_flags.count(flags))
+
     def is_kvm_supported(self):
         if self.is_qemu_session():
             return False
@@ -324,24 +215,42 @@ class vmmConnection(gobject.GObject):
             return True
         return False
 
-    def get_pretty_desc(self):
+    def _get_pretty_desc(self, active, shorthost):
         (scheme, ignore, hostname,
          path, ignore, ignore) = virtinst.util.uri_split(self.uri)
 
+        hv = ""
+        rest = ""
         scheme = scheme.split("+")[0]
 
-        if scheme == "qemu":
-            desc = "QEMU"
-            if self.is_kvm_supported():
-                desc += "/KVM"
-        else:
-            desc = scheme.capitalize()
-
-        if path == "/session":
-            desc += " Usermode"
         if hostname:
-            desc += " (%s)" % hostname
-        return desc
+            if shorthost:
+                rest = hostname.split(".")[0]
+            else:
+                rest = hostname
+        else:
+            rest = "localhost"
+
+        if scheme == "qemu":
+            hv = "QEMU"
+            if active and self.is_kvm_supported():
+                hv += "/KVM"
+        else:
+            hv = scheme.capitalize()
+
+        if path and path != "/system":
+            if path == "/session":
+                hv += " Usermode"
+            else:
+                hv += " %s" % os.path.basename(path)
+
+        return "%s (%s)" % (rest, hv)
+
+    def get_pretty_desc_inactive(self, shorthost=True):
+        return self._get_pretty_desc(False, shorthost)
+
+    def get_pretty_desc_active(self, shorthost=True):
+        return self._get_pretty_desc(True, shorthost)
 
     def get_uri(self):
         return self.uri
@@ -352,8 +261,15 @@ class vmmConnection(gobject.GObject):
     def get_net(self, uuid):
         return self.nets[uuid]
 
+    def get_net_by_name(self, name):
+        for net in self.nets.values():
+            if net.get_name() == name:
+                return net
+
     def get_net_device(self, path):
-        return self.netdevs[path]
+        if not self.netdev_helper:
+            raise ValueError("No netdev helper specified.")
+        return self.netdev_helper.get_net_device(path)
 
     def get_pool(self, uuid):
         return self.pools[uuid]
@@ -425,12 +341,12 @@ class vmmConnection(gobject.GObject):
         if self.state != self.STATE_DISCONNECTED:
             return
 
-        self.state = self.STATE_CONNECTING
-        self.emit("state-changed")
+        self._change_state(self.STATE_CONNECTING)
 
         logging.debug("Scheduling background open thread for " + self.uri)
         self.connectThreadEvent.clear()
-        self.connectThread = threading.Thread(target = self._open_thread, name="Connect " + self.uri)
+        self.connectThread = threading.Thread(target = self._open_thread,
+                                              name = "Connect %s" % self.uri)
         self.connectThread.setDaemon(True)
         self.connectThread.start()
 
@@ -507,7 +423,9 @@ class vmmConnection(gobject.GObject):
 
     def _do_creds(self, creds, cbdata):
         try:
-            if len(creds) == 1 and creds[0][0] == libvirt.VIR_CRED_EXTERNAL and creds[0][2] == "PolicyKit":
+            if (len(creds) == 1 and
+                creds[0][0] == libvirt.VIR_CRED_EXTERNAL and
+                creds[0][2] == "PolicyKit"):
                 return self._do_creds_polkit(creds[0][1])
 
             for cred in creds:
@@ -515,15 +433,12 @@ class vmmConnection(gobject.GObject):
                     return -1
 
             return self._do_creds_dialog(creds)
-        except:
-            (_type, value, stacktrace) = sys.exc_info ()
+        except Exception, e:
             # Detailed error message, in English so it can be Googled.
-            self.connectError = \
-                ("Failed to get credentials '%s':\n" %
-                 str(self.uri)) + \
-                 str(_type) + " " + str(value) + "\n" + \
-                 traceback.format_exc (stacktrace)
-            logging.error(self.connectError)
+            self.connectError = ("Failed to get credentials for '%s':\n%s\n%s"
+                                 % (str(self.uri), str(e),
+                                    "".join(traceback.format_exc())))
+            logging.debug(self.connectError)
             return -1
 
     def _try_open(self):
@@ -540,22 +455,7 @@ class vmmConnection(gobject.GObject):
                                          self._do_creds,
                                          None], flags)
         except:
-            exc_info = sys.exc_info()
-
-            # If the previous attempt was read/write try to fall back
-            # on read-only connection, otherwise report the error.
-            if not self.readOnly:
-                try:
-                    self.vmm = libvirt.openReadOnly(self.uri)
-                    self.readOnly = True
-                    logging.exception("Read/write connection failed for %s,"
-                            " falling back on read-only." % self.uri)
-                    return
-                except:
-                    logging.exception("Readonly connection failed.")
-
-            return exc_info
-
+            return sys.exc_info()
 
     def _open_thread(self):
         logging.debug("Background thread is running")
@@ -586,51 +486,60 @@ class vmmConnection(gobject.GObject):
                         done = False
                         continue
 
+                tb = "".join(traceback.format_exception(_type, value,
+                                                        stacktrace))
+
                 # Detailed error message, in English so it can be Googled.
                 self.connectError = (("Unable to open connection to hypervisor"
-                                      " URI '%s':\n" % str(self.uri)) +
-                                      str(_type) + " " + str(value) + "\n" +
-                                      traceback.format_exc (stacktrace) + hint)
+                                      " URI '%s':\n%s\n%s"
+                                      % (str(self.uri), value, tb + hint)))
                 logging.error(self.connectError)
 
 
         # We want to kill off this thread asap, so schedule a gobject
         # idle even to inform the UI of result
         logging.debug("Background open thread complete, scheduling notify")
-        gtk.gdk.threads_enter()
-        try:
-            gobject.idle_add(self._open_notify)
-        finally:
-            gtk.gdk.threads_leave()
+        gobject.idle_add(self._open_notify)
         self.connectThread = None
 
     def _open_notify(self):
         logging.debug("Notifying open result")
-        gtk.gdk.threads_enter()
+
         try:
+            gobject.idle_add(util.idle_emit, self, "state-changed")
+
             if self.state == self.STATE_ACTIVE:
+                logging.debug("%s capabilities:\n%s" %
+                              (self.get_uri(), self.vmm.getCapabilities()))
+
                 self.tick()
-            self.emit("state-changed")
+                # If VMs disappeared since the last time we connected to
+                # this uri, remove their gconf entries so we don't pollute
+                # the database
+                self.config.reconcile_vm_entries(self.get_uri(),
+                                                 self.vms.keys())
 
             if self.state == self.STATE_DISCONNECTED:
-                self.emit("connect-error", self.connectError)
+                gobject.idle_add(util.idle_emit, self, "connect-error",
+                                 self.connectError)
                 self.connectError = None
         finally:
             self.connectThreadEvent.set()
-            gtk.gdk.threads_leave()
 
+    def _change_state(self, newstate):
+        if self.state != newstate:
+            self.state = newstate
+            self.emit("state-changed")
 
     def pause(self):
         if self.state != self.STATE_ACTIVE:
             return
-        self.state = self.STATE_INACTIVE
-        self.emit("state-changed")
+        self._change_state(self.STATE_INACTIVE)
 
     def resume(self):
         if self.state != self.STATE_INACTIVE:
             return
-        self.state = self.STATE_ACTIVE
-        self.emit("state-changed")
+        self._change_state(self.STATE_ACTIVE)
 
     def close(self):
         if self.vmm == None:
@@ -643,8 +552,7 @@ class vmmConnection(gobject.GObject):
         self.vms = {}
         self.activeUUIDs = []
         self.record = []
-        self.state = self.STATE_DISCONNECTED
-        self.emit("state-changed")
+        self._change_state(self.STATE_DISCONNECTED)
 
     def list_vm_uuids(self):
         return self.vms.keys()
@@ -653,7 +561,11 @@ class vmmConnection(gobject.GObject):
         return self.nets.keys()
 
     def list_net_device_paths(self):
-        return self.netdevs.keys()
+        if not self.netdev_helper:
+            return []
+        if self.is_remote():
+            return []
+        return self.netdev_helper.list_net_device_paths()
 
     def list_pool_uuids(self):
         return self.pools.keys()
@@ -686,10 +598,10 @@ class vmmConnection(gobject.GObject):
         if self.vmm is None:
             return ""
         mem = self.host_memory_size()
-        if mem > (1024*1024):
+        if mem > (10*1024*1024):
             return "%2.2f GB" % (mem/(1024.0*1024.0))
         else:
-            return "%2.2f MB" % (mem/1024.0)
+            return "%2.0f MB" % (mem/1024.0)
 
 
     def host_memory_size(self):
@@ -734,7 +646,7 @@ class vmmConnection(gobject.GObject):
             #        to the user.
             os.remove(frm)
         except:
-            logging.debug("Couldn't remove save file '%s'used for restore." %
+            logging.debug("Couldn't remove save file '%s' used for restore." %
                           frm)
 
     def _update_nets(self):
@@ -806,6 +718,9 @@ class vmmConnection(gobject.GObject):
 
         if self.storage_capable == None:
             self.storage_capable = virtinst.util.is_storage_capable(self.vmm)
+            if self.storage_capable is False:
+                logging.debug("Connection doesn't seem to support storage "
+                              "APIs. Skipping all storage polling.")
 
         if not self.storage_capable:
             return (stopPools, startPools, origPools, newPools, currentPools)
@@ -981,33 +896,42 @@ class vmmConnection(gobject.GObject):
         (startVMs, newVMs, oldVMs,
          self.vms, self.activeUUIDs) = self._update_vms()
 
-        # Update VM states
-        for uuid in oldVMs:
-            self.emit("vm-removed", self.uri, uuid)
-            oldVMs[uuid].release_handle()
-        for uuid in newVMs:
-            self.emit("vm-added", self.uri, uuid)
-        for uuid in startVMs:
-            self.emit("vm-started", self.uri, uuid)
+        def tick_send_signals():
+            """
+            Responsible for signaling the UI for any updates. All possible UI
+            updates need to go here to enable threading that doesn't block the
+            app with long tick operations.
+            """
 
-        # Update virtual network states
-        for uuid in oldNets:
-            self.emit("net-removed", self.uri, uuid)
-        for uuid in newNets:
-            self.emit("net-added", self.uri, uuid)
-        for uuid in startNets:
-            self.emit("net-started", self.uri, uuid)
-        for uuid in stopNets:
-            self.emit("net-stopped", self.uri, uuid)
+            # Update VM states
+            for uuid in oldVMs:
+                self.emit("vm-removed", self.uri, uuid)
+                oldVMs[uuid].release_handle()
+            for uuid in newVMs:
+                self.emit("vm-added", self.uri, uuid)
+            for uuid in startVMs:
+                self.emit("vm-started", self.uri, uuid)
 
-        for uuid in oldPools:
-            self.emit("pool-removed", self.uri, uuid)
-        for uuid in newPools:
-            self.emit("pool-added", self.uri, uuid)
-        for uuid in startPools:
-            self.emit("pool-started", self.uri, uuid)
-        for uuid in stopPools:
-            self.emit("pool-stopped", self.uri, uuid)
+            # Update virtual network states
+            for uuid in oldNets:
+                self.emit("net-removed", self.uri, uuid)
+            for uuid in newNets:
+                self.emit("net-added", self.uri, uuid)
+            for uuid in startNets:
+                self.emit("net-started", self.uri, uuid)
+            for uuid in stopNets:
+                self.emit("net-stopped", self.uri, uuid)
+
+            for uuid in oldPools:
+                self.emit("pool-removed", self.uri, uuid)
+            for uuid in newPools:
+                self.emit("pool-added", self.uri, uuid)
+            for uuid in startPools:
+                self.emit("pool-started", self.uri, uuid)
+            for uuid in stopPools:
+                self.emit("pool-stopped", self.uri, uuid)
+
+        gobject.idle_add(tick_send_signals)
 
         # Finally, we sample each domain
         now = time()
@@ -1021,6 +945,8 @@ class vmmConnection(gobject.GObject):
 
         if not noStatsUpdate:
             self._recalculate_stats(now)
+
+            gobject.idle_add(util.idle_emit, self, "resources-sampled")
 
         return 1
 
@@ -1077,7 +1003,6 @@ class vmmConnection(gobject.GObject):
         }
 
         self.record.insert(0, newStats)
-        self.emit("resources-sampled")
 
     def cpu_time_vector(self):
         vector = []
@@ -1107,10 +1032,10 @@ class vmmConnection(gobject.GObject):
 
     def pretty_current_memory(self):
         mem = self.current_memory()
-        if mem > (1024*1024):
+        if mem > (10*1024*1024):
             return "%2.2f GB" % (mem/(1024.0*1024.0))
         else:
-            return "%2.2f MB" % (mem/1024.0)
+            return "%2.0f MB" % (mem/1024.0)
 
     def current_memory_percentage(self):
         if len(self.record) == 0:
@@ -1189,51 +1114,12 @@ class vmmConnection(gobject.GObject):
         else:
             return _("Unknown")
 
-    def _net_get_bridge_owner(self, name, sysfspath):
-        # Now magic to determine if the device is part of a bridge
-        brportpath = os.path.join(sysfspath, "brport")
-        try:
-            if os.path.exists(brportpath):
-                brlinkpath = os.path.join(brportpath, "bridge")
-                dest = os.readlink(brlinkpath)
-                (ignore,bridge) = os.path.split(dest)
-                return bridge
-        except:
-            (_type, value, stacktrace) = sys.exc_info ()
-            logging.error("Unable to determine if device is shared:" +
-                            str(_type) + " " + str(value) + "\n" + \
-                            traceback.format_exc (stacktrace))
-
-        return None
-
-    def _net_get_mac_address(self, name, sysfspath):
-        mac = None
-        addrpath = sysfspath + "/address"
-        if os.path.exists(addrpath):
-            df = open(addrpath, 'r')
-            mac = df.readline().strip(" \n\t")
-            df.close()
-        return mac
-
-    def _net_get_bonding_masters(self):
-        masters = []
-        if os.path.exists("/sys/class/net/bonding_masters"):
-            f = open("/sys/class/net/bonding_masters")
-            while True:
-                rline = f.readline()
-                if not rline:
-                    break
-                if rline == "\x00":
-                    continue
-                rline = rline.strip("\n\t")
-                masters = rline[:].split(' ')
-        return masters
-
-    def _net_is_bonding_slave(self, name, sysfspath):
-        masterpath = sysfspath + "/master"
-        if os.path.exists(masterpath):
-            return True
-        return False
+    # Per-Connection preferences
+    def config_add_iso_path(self, path):
+        self.config.set_perhost(self.get_uri(), self.config.add_iso_path, path)
+    def config_get_iso_paths(self):
+        return self.config.get_perhost(self.get_uri(),
+                                       self.config.get_iso_paths)
 
 gobject.type_register(vmmConnection)
 

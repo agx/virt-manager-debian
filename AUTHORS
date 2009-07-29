@@ -12,6 +12,7 @@ The user interaction / interface design and artwork is
 done by:
 
    Máirín Duffy <duffy-at-redhat-dot-com>
+   Jeremy Perry <jeperry-at-redhat-dot-com>
 
 Further patches have been submitted by:
 
@@ -46,12 +47,18 @@ Further patches have been submitted by:
   S. Çağlar Onur <caglar-at-pardus-dot-org-dot-tr>
   Claes Strom <cs-at-clabbe-dot-com>
   Mike MacCana <mmaccana-at-au1-dot-ibm-dot-com>
+  Guido Günther <agx-at-sigxcpu-dot-org>
   Andrew Gillies <anaru-at-main-dot-com>
   Richard Laager <rlaager-at-wiktel-dot-com>
   James Ralston <ralston-at-pobox-dot-com>
   Radek Hladik <radek-at-eadresa-dot-cz>
   Michael Marineau (marineam-at-gentoo-dot-org)
   Vitaly Mayatskikh <vmayatsk-at-redhat-dot-com>
+  Gerrit Slomma <roadrunner_gs-at-web-dot-de>
+  Dan Walsh <dwalsh-at-redhat-dot-com>
+  Emmanuel Lacour <elacour-at-home-dn-dot-net>
+  Laurent Léonard <laurent-at-open-minds-dot-org>
+  Michal Novotny <minovotn-at-redhat-dot-com>
 
   <...send a patch & get your name here...>
 

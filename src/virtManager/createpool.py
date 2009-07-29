@@ -55,8 +55,6 @@ class vmmCreatePool(gobject.GObject):
 
         self._pool = None
         self._pool_class = Storage.StoragePool
-        self.error_msg = None
-        self.error_details = None
 
         self.window.signal_autoconnect({
             "on_pool_forward_clicked" : self.forward,
@@ -91,9 +89,6 @@ class vmmCreatePool(gobject.GObject):
         })
 
         self.set_initial_state()
-
-    def test(self, ignore1, ignore2=None):
-        print "test"
 
     def show(self):
         self.topwin.show()
@@ -230,10 +225,8 @@ class vmmCreatePool(gobject.GObject):
                                Storage.StoragePool.TYPE_NETFS ]:
             # Building for these simply entails creating a directory
             return (True, False)
-        elif self._pool.type in [Storage.StoragePool.TYPE_LOGICAL]:
-            # Build not yet implemented in virtinst
-            return (False, False)
-        elif self._pool.type in [Storage.StoragePool.TYPE_DISK]:
+        elif self._pool.type in [Storage.StoragePool.TYPE_LOGICAL,
+                                 Storage.StoragePool.TYPE_DISK]:
             # This is a dangerous operation, anything (False, True)
             # should be assumed to be one.
             return (False, True)
@@ -275,8 +268,6 @@ class vmmCreatePool(gobject.GObject):
         self.window.get_widget("pool-pages").prev_page()
 
     def finish(self):
-        self.error_msg = None
-        self.error_details = None
         self.topwin.set_sensitive(False)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
 
@@ -285,22 +276,22 @@ class vmmCreatePool(gobject.GObject):
                               text=_("Creating the storage pool may take a "
                                      "while..."))
         progWin.run()
+        error, details = progWin.get_error()
 
-        if self.error_msg is not None:
-            self.err.show_err(self.error_msg, self.error_details)
-            self.topwin.set_sensitive(True)
-            self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.TOP_LEFT_ARROW))
-            return
+        if error is not None:
+            self.err.show_err(error, details)
 
         self.topwin.set_sensitive(True)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.TOP_LEFT_ARROW))
-        self.close()
+
+        if not error:
+            self.close()
 
     def _async_pool_create(self, asyncjob):
         newconn = None
         try:
             # Open a seperate connection to install on since this is async
-            newconn = util.dup_conn(self.config, None, self._pool.conn)
+            newconn = util.dup_lib_conn(self.config, self._pool.conn)
             meter = vmmCreateMeter(asyncjob)
             self._pool.conn = newconn
 
@@ -310,9 +301,9 @@ class vmmCreatePool(gobject.GObject):
             poolobj.setAutostart(True)
             logging.debug("Pool creating succeeded.")
         except Exception, e:
-            self.error_msg = _("Error creating pool: %s") % str(e)
-            self.error_details = "".join(traceback.format_exc())
-            logging.error(self.error_msg + "\n" + self.error_details)
+            error = _("Error creating pool: %s") % str(e)
+            details = "".join(traceback.format_exc())
+            asyncjob.set_error(error, details)
 
     def page_changed(self, notebook, page, page_number):
         if page_number == PAGE_NAME:
@@ -347,16 +338,18 @@ class vmmCreatePool(gobject.GObject):
             target = self.get_config_target_path()
             host   = self.get_config_host()
             source = self.get_config_source_path()
-            format = self.get_config_format()
+            fmt    = self.get_config_format()
 
             try:
                 self._pool.target_path = target
-                if host is not None:
+                if host:
                     self._pool.host = host
-                if source is not None:
+                if source:
                     self._pool.source_path = source
-                if format is not None:
-                    self._pool.format = format
+                if fmt:
+                    self._pool.format = fmt
+
+                self._pool.get_xml_config()
             except ValueError, e:
                 return self.err.val_err(_("Pool Parameter Error"), str(e))
 
@@ -374,10 +367,14 @@ class vmmCreatePool(gobject.GObject):
 
     def update_build_doc(self, ignore1, ignore2):
         doc = ""
+        docstr = ""
         if self._pool.type == Storage.StoragePool.TYPE_DISK:
             docstr = _("Format the source device.")
-            doc = self._build_doc_str("build", docstr)
+        elif self._pool.type == Storage.StoragePool.TYPE_LOGICAL:
+            docstr = _("Create a logical volume group from the source device.")
 
+        if docstr:
+            doc = self._build_doc_str("build", docstr)
         self.window.get_widget("pool-info2").set_markup(doc)
 
     def update_doc_changed(self, ignore1, param, infobox):
@@ -402,8 +399,9 @@ class vmmCreatePool(gobject.GObject):
         if foldermode:
             mode = gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER
 
-        return util.browse_local(self.topwin, dialog_name, dialog_type=mode,
-                                 start_folder=startfolder,
-                                 foldermode=foldermode)
+        return util.browse_local(self.topwin, dialog_name,
+                                 self.config, self.conn,
+                                 dialog_type=mode,
+                                 start_folder=startfolder)
 
 gobject.type_register(vmmCreatePool)

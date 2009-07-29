@@ -60,23 +60,27 @@ def setup_i18n():
     gettext.install(gettext_app, gettext_dir)
     gettext.bindtextdomain(gettext_app, gettext_dir)
 
+def setup_glade_i18n():
+    import gtk.glade
+    gtk.glade.bindtextdomain(gettext_app, gettext_dir)
+    gtk.glade.textdomain(gettext_app)
+
 def setup_pypath():
     global glade_dir, icon_dir, data_dir
     # Hacks for find assets in local dir for dev purposes
     if os.path.exists(os.getcwd() + "/src/vmm-about.glade"):
         glade_dir = os.getcwd() + "/src"
-    if os.path.exists(os.getcwd() + "/pixmaps/icon_run.png"):
+    if os.path.exists(os.getcwd() + "/pixmaps/state_running.png"):
         icon_dir = os.getcwd() + "/pixmaps"
     if os.path.exists(os.getcwd() + "../gnome/help/virt-manager/C/virt-manager.xml"):
         data_dir = os.getcwd() + "../"
 
-    # First two are hacks to point python to local dir for source files
-    # in dev, the third is the main path if you have  normal install
+    # First 2 hacks are to point python to local dir for source files in dev,
+    # the third is the main path if you have  normal install
     if os.path.exists(os.getcwd() + "/src/virt-manager.py"):
-        sys.path.insert(0, os.getcwd() + "/src/graphWidgets/.libs")
+        pass
     elif os.path.exists(os.getcwd() + "/build/src/virt-manager.py"):
         sys.path.insert(0, os.getcwd() + "/src")
-        sys.path.insert(0, os.getcwd() + "/build/src/graphWidgets/.libs")
     else:
         sys.path.insert(0, pylib_dir)
         sys.path.insert(0, pyarchlib_dir)
@@ -164,7 +168,7 @@ def parse_commandline():
     optParser.add_option("-c", "--connect", dest="uri",
         help="Connect to hypervisor at URI", metavar="URI")
     optParser.add_option("--debug", action="store_true", dest="debug",
-        help="Print debug output to stdout (requires --no-fork)",
+        help="Print debug output to stdout (implies --no-fork)",
         default=False)
     optParser.add_option("--no-dbus", action="store_true", dest="nodbus",
         help="Disable DBus service for controlling UI")
@@ -284,7 +288,12 @@ def main():
         raise RuntimeError(_("Unable to initialize GTK: %s") % str(e))
     warnings.resetwarnings()
 
+    # Add our icon dir to icon theme
+    icon_theme = gtk.icon_theme_get_default()
+    icon_theme.prepend_search_path(icon_dir)
+
     gtk.gdk.threads_init()
+    setup_glade_i18n()
 
     import dbus
     import dbus.glib
@@ -299,7 +308,7 @@ def main():
                        icon_dir, data_dir)
 
     # Now we've got basic environment up & running we can fork
-    if not options.nofork:
+    if not options.nofork and not options.debug:
         drop_tty()
         drop_stdio()
 
@@ -366,6 +375,10 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except KeyboardInterrupt:
+        logging.debug("Received KeyboardInterrupt. Exiting application.")
+    except SystemExit:
+        raise
     except Exception, run_e:
         logging.exception(run_e)
         _show_startup_error(str(run_e), "".join(traceback.format_exc()))
