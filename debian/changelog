@@ -1,3 +1,18 @@
+virt-manager (0.8.0-1) experimental; urgency=low
+
+  [ Laurent Léonard ]
+  * [4fbe61d] Bump Standards-Version to 3.8.2.
+
+  [ Guido Günther ]
+  * [4eafeb9] Imported Upstream version 0.8.0
+  * [e8a42e6] drop patches applied upstream
+        0003-don-t-crop-vnc-display.patch
+        0004-make-check-match-return-value-of-self.get_config_key.patch
+        0005-Enable-Xen-HVM-virtual-machines-creation.patch
+  * [2dac2fd] reformat debian/control
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 29 Jul 2009 20:24:26 +0200
+
 virt-manager (0.7.0-4) unstable; urgency=low
 
   [ Laurent Léonard ]
