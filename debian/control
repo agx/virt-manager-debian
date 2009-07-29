@@ -8,13 +8,18 @@ XS-Python-Version: current
 Vcs-Git: git://git.debian.org/git/pkg-libvirt/virt-manager.git
 Vcs-Browser: http://git.debian.org/?p=pkg-libvirt/virt-manager.git
 Homepage: http://virt-manager.et.redhat.com/
-Build-Depends: debhelper (>= 5), python-dev, python-gtk2-dev, scrollkeeper, python-central (>= 0.5), cdbs, autotools-dev, quilt, intltool, automake, autoconf, libtool
+Build-Depends: debhelper (>= 5), python-dev, python-gtk2-dev, scrollkeeper,
+ python-central (>= 0.5), cdbs, autotools-dev, quilt, intltool,
+ automake, autoconf, libtool
 
 Package: virt-manager
 Section: admin
 Priority: optional
 Architecture: any
-Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, python-gtk2, python-glade2, python-gnome2, python-dbus, python-urlgrabber, python-vte, librsvg2-common, python-libvirt (>= 0.4.6), virtinst (>= 0.400.1), python-gtk-vnc (>= 0.3.8)
+Depends: ${shlibs:Depends}, ${misc:Depends}, ${python:Depends}, python-gtk2,
+ python-glade2, python-gnome2, python-dbus, python-urlgrabber, python-vte,
+ librsvg2-common, python-libvirt (>= 0.4.6), virtinst (>= 0.500.0),
+ python-gtk-vnc (>= 0.3.8)
 Recommends: hal, libvirt-bin (>= 0.4.6)
 Suggests: virt-viewer
 XB-Python-Version: ${python:Versions}
