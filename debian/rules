@@ -14,9 +14,3 @@ DEB_CONFIGURE_EXTRA_FLAGS := --prefix=/usr
 
 #post-patches::
 #	./autogen.sh
-
-redo-patches::
-	rm -f debian/patches/*
-	git format-patch -N -o debian/patches master...patch-queue | \
-                sed -e 's%debian/patches/%%' > debian/patches/series
-
