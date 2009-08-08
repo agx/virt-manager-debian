@@ -9,7 +9,7 @@ Vcs-Git: git://git.debian.org/git/pkg-libvirt/virt-manager.git
 Vcs-Browser: http://git.debian.org/?p=pkg-libvirt/virt-manager.git
 Homepage: http://virt-manager.et.redhat.com/
 Build-Depends: debhelper (>= 5), python-dev, python-gtk2-dev, scrollkeeper,
- python-central (>= 0.5), cdbs, autotools-dev, quilt, intltool,
+ python-support (>= 0.5.3), cdbs, autotools-dev, quilt, intltool,
  automake, autoconf, libtool
 
 Package: virt-manager
@@ -22,7 +22,6 @@ Depends: ${misc:Depends}, ${python:Depends}, python-gtk2,
  python-gtk-vnc (>= 0.3.8)
 Recommends: hal, libvirt-bin (>= 0.4.6)
 Suggests: virt-viewer
-XB-Python-Version: ${python:Versions}
 Description: desktop application for managing virtual machines
  It presents a summary view of running domains and their live performance &
  resource utilization statistics. A detailed view presents graphs showing
