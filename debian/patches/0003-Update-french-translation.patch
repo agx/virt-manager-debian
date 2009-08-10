@@ -3,11 +3,11 @@ Date: Wed, 5 Aug 2009 23:40:35 +0200
 Subject: [PATCH] Update french translation.
 
 ---
- po/fr.po | 1700 +++++++++++++++++++++++++++-----------------------------------
- 1 files changed, 751 insertions(+), 949 deletions(-)
+ po/fr.po | 1653 +++++++++++++++++++++++++++-----------------------------------
+ 1 files changed, 729 insertions(+), 924 deletions(-)
 
 diff --git a/po/fr.po b/po/fr.po
-index bd34e4d..90628c1 100644
+index bd34e4d..0968a66 100644
 --- a/po/fr.po
 +++ b/po/fr.po
 @@ -7,18 +7,20 @@
@@ -23,7 +23,7 @@ index bd34e4d..90628c1 100644
 -"PO-Revision-Date: 2008-01-31 20:53+0100\n"
 -"Last-Translator: Gauthier Ancelin <gauthier.ancelin@laposte.net>\n"
 -"Language-Team: french <fedora-trans-fr@redhat.com>\n"
-+"PO-Revision-Date: 2009-08-10 14:42+0200\n"
++"PO-Revision-Date: 2009-08-11 01:28+0200\n"
 +"Last-Translator: Laurent Léonard <laurent@open-minds.org>\n"
 +"Language-Team: French <fedora-trans-fr@redhat.com>\n"
  "MIME-Version: 1.0\n"
@@ -35,18 +35,14 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virt-manager.desktop.in.in.h:1
  msgid "Manage virtual machines"
-@@ -27,88 +29,86 @@ msgstr "Gérer les machines virtuelles"
- #: ../src/virt-manager.desktop.in.in.h:2 ../src/virtManager/systray.py:101
- #: ../src/vmm-manager.glade.h:11
- msgid "Virtual Machine Manager"
--msgstr "Gestionnaire de machine virtuelle"
-+msgstr "Gestionnaire de Machine Virtuelle"
+@@ -30,85 +32,84 @@ msgid "Virtual Machine Manager"
+ msgstr "Gestionnaire de machine virtuelle"
  
  #: ../src/virt-manager.py.in:55
 -#, fuzzy
  msgid "Error starting Virtual Machine Manager"
 -msgstr "Gestionnaire de machine virtuelle"
-+msgstr "Erreur lors du démarrage du Gestionnaire de Machine Virtuelle"
++msgstr "Erreur lors du démarrage du gestionnaire de machine virtuelle"
  
  #. ...the risk is we catch too much though
  #. Damned if we do, damned if we dont :-)(
@@ -81,7 +77,7 @@ index bd34e4d..90628c1 100644
  #: ../src/virt-manager.schemas.in.h:5
  msgid "Default path for saving VM snaphots"
 -msgstr ""
-+msgstr "Chemin par défaut pour la sauvegarde des instantannés des MV"
++msgstr "Chemin par défaut pour la sauvegarde des instantanés des MV"
  
  #: ../src/virt-manager.schemas.in.h:6
  msgid "Default path for saving screenshots from VMs"
@@ -91,7 +87,7 @@ index bd34e4d..90628c1 100644
  #: ../src/virt-manager.schemas.in.h:7
  msgid "Default path for stored VM snapshots"
 -msgstr ""
-+msgstr "Chemin par défaut pour les instantannés de MV stockés"
++msgstr "Chemin par défaut pour les instantanés de MV stockés"
  
  #: ../src/virt-manager.schemas.in.h:8
  msgid "Default restore path"
@@ -136,7 +132,8 @@ index bd34e4d..90628c1 100644
  #: ../src/virt-manager.schemas.in.h:16
  msgid "Show system tray icon while app is running"
  msgstr ""
-+"Afficher l'icône dans la boîte à miniatures lorsque l'application fonctionne"
++"Afficher l'icône dans la boîte à miniatures lorsque l'application est en cours "
++"d'exécution"
  
  #: ../src/virt-manager.schemas.in.h:17
  msgid "Stats type in manager view"
@@ -145,7 +142,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virt-manager.schemas.in.h:18
  msgid "The length of the list of URLs"
-@@ -116,15 +116,14 @@ msgstr "La longueur de la liste d'URL"
+@@ -116,15 +117,14 @@ msgstr "La longueur de la liste d'URL"
  
  #: ../src/virt-manager.schemas.in.h:19
  msgid "The number of samples to keep in the statistics history"
@@ -163,7 +160,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virt-manager.schemas.in.h:21
  msgid "The statistics history length"
-@@ -141,10 +140,12 @@ msgstr "L'intervalle de rafraîchissement des statistiques en secondes"
+@@ -141,10 +141,12 @@ msgstr "L'intervalle de rafraîchissement des statistiques en secondes"
  #: ../src/virt-manager.schemas.in.h:24
  msgid "Type of stats to graph (cpu, disk, net) in manager view"
  msgstr ""
@@ -177,7 +174,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virt-manager.schemas.in.h:26
  msgid "When to pop up a console for a guest"
-@@ -152,72 +153,75 @@ msgstr "Quand présenter une console pour un invité"
+@@ -152,72 +154,75 @@ msgstr "Quand présenter une console pour un invité"
  
  #: ../src/virt-manager.schemas.in.h:27
  msgid "When to scale the VM graphical console"
@@ -270,7 +267,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/addhardware.py:79 ../src/virtManager/choosecd.py:40
  #: ../src/virtManager/clone.py:108 ../src/virtManager/create.py:85
-@@ -227,7 +231,7 @@ msgstr ""
+@@ -227,7 +232,7 @@ msgstr ""
  #: ../src/virtManager/host.py:54 ../src/virtManager/manager.py:155
  #: ../src/virtManager/storagebrowse.py:54
  msgid "Unexpected Error"
@@ -279,7 +276,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/addhardware.py:80 ../src/virtManager/choosecd.py:41
  #: ../src/virtManager/clone.py:109 ../src/virtManager/create.py:86
-@@ -237,27 +241,25 @@ msgstr ""
+@@ -237,27 +242,25 @@ msgstr ""
  #: ../src/virtManager/host.py:55 ../src/virtManager/manager.py:156
  #: ../src/virtManager/storagebrowse.py:55
  msgid "An unexpected error occurred"
@@ -312,7 +309,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/addhardware.py:634
  msgid "Disk image:"
-@@ -272,20 +274,17 @@ msgid "Device type:"
+@@ -272,20 +275,17 @@ msgid "Device type:"
  msgstr "Type de périphérique :"
  
  #: ../src/virtManager/addhardware.py:637
@@ -336,7 +333,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/addhardware.py:650
  msgid "Target:"
-@@ -298,9 +297,8 @@ msgstr "Adresse MAC :"
+@@ -298,9 +298,8 @@ msgstr "Adresse MAC :"
  #: ../src/virtManager/addhardware.py:652 ../src/virtManager/addhardware.py:700
  #: ../src/virtManager/addhardware.py:742 ../src/vmm-add-hardware.glade.h:49
  #: ../src/vmm-details.glade.h:66
@@ -347,7 +344,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/addhardware.py:654 ../src/vmm-manager.glade.h:7
  msgid "Network"
-@@ -327,9 +325,8 @@ msgid "Mode:"
+@@ -327,9 +326,8 @@ msgid "Mode:"
  msgstr "Mode :"
  
  #: ../src/virtManager/addhardware.py:667
@@ -358,7 +355,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/addhardware.py:673
  #: ../src/virtManager/addhardware.py:1316 ../src/virtManager/details.py:1123
-@@ -358,7 +355,7 @@ msgstr "Non"
+@@ -358,7 +356,7 @@ msgstr "Non"
  
  #: ../src/virtManager/addhardware.py:687 ../src/vmm-add-hardware.glade.h:65
  msgid "Same as host"
@@ -367,7 +364,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/addhardware.py:691 ../src/vmm-add-hardware.glade.h:27
  #: ../src/vmm-details.glade.h:22
-@@ -378,21 +375,19 @@ msgstr "Mot de passe :"
+@@ -378,21 +376,19 @@ msgstr "Mot de passe :"
  #: ../src/virtManager/addhardware.py:694 ../src/vmm-add-hardware.glade.h:43
  #: ../src/vmm-details.glade.h:53
  msgid "Keymap:"
@@ -393,14 +390,14 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/addhardware.py:736 ../src/vmm-add-hardware.glade.h:36
  #: ../src/vmm-host.glade.h:19
-@@ -400,34 +395,28 @@ msgid "Device:"
+@@ -400,34 +396,28 @@ msgid "Device:"
  msgstr "Périphérique :"
  
  #: ../src/virtManager/addhardware.py:738
 -#, fuzzy
  msgid "Physical Host Device"
 -msgstr "<b>Pointeur</b>"
-+msgstr "Périphérique de l'Hôte Physique"
++msgstr "Périphérique de l'hôte physique"
  
  #: ../src/virtManager/addhardware.py:744 ../src/virtManager/details.py:1932
 -#, fuzzy
@@ -413,12 +410,11 @@ index bd34e4d..90628c1 100644
 +#: ../src/virtManager/addhardware.py:778, python-format
  msgid "Unable to add device: %s"
 -msgstr "Impossible d'initialiser GTK : "
-+msgstr "Impossible d'ajouter le périphérique: %s"
++msgstr "Impossible d'ajouter le périphérique : %s"
  
  #: ../src/virtManager/addhardware.py:820
  msgid "Creating Storage File"
--msgstr "Création d'un fichier de stockage"
-+msgstr "Création d'un Fichier de Stockage"
+ msgstr "Création d'un fichier de stockage"
  
  #: ../src/virtManager/addhardware.py:821
 -#, fuzzy
@@ -435,7 +431,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/addhardware.py:847
  msgid ""
-@@ -436,56 +425,59 @@ msgid ""
+@@ -436,12 +426,17 @@ msgid ""
  "\n"
  "Warning: this will overwrite any other changes that require a VM reboot."
  msgstr ""
@@ -454,18 +450,12 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/addhardware.py:883
  msgid "Locate Storage Partition"
--msgstr "Localiser la partition de stockage"
-+msgstr "Localiser la Partition de Stockage"
- 
- #: ../src/virtManager/addhardware.py:891
- msgid "Locate or Create New Storage File"
--msgstr "Localiser ou créer un nouveau fichier de stockage"
-+msgstr "Localiser ou Créer un Nouveau Fichier de Stockage"
+@@ -453,30 +448,28 @@ msgstr "Localiser ou créer un nouveau fichier de stockage"
  
  #: ../src/virtManager/addhardware.py:1054
  msgid "Hardware Type Required"
 -msgstr "Type de matériel nécessaire"
-+msgstr "Type de Matériel Requis"
++msgstr "Type de matériel requis"
  
  #: ../src/virtManager/addhardware.py:1055
 -#, fuzzy
@@ -476,7 +466,7 @@ index bd34e4d..90628c1 100644
  #: ../src/virtManager/addhardware.py:1060
  msgid "Storage Path Required"
 -msgstr "Chemin d'accès au stockage exigé"
-+msgstr "Chemin d'accès au Stockage Requis"
++msgstr "Chemin d'accès au stockage requis"
  
  #: ../src/virtManager/addhardware.py:1061
  msgid "You must specify a partition or a file for disk storage."
@@ -487,7 +477,7 @@ index bd34e4d..90628c1 100644
  #: ../src/virtManager/addhardware.py:1064
  msgid "Target Device Required"
 -msgstr "Périphérique cible nécessaire"
-+msgstr "Périphérique Cible Requis"
++msgstr "Périphérique cible requis"
  
  #: ../src/virtManager/addhardware.py:1065
 -#, fuzzy
@@ -497,18 +487,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/addhardware.py:1092
  msgid "Invalid Storage Parameters"
--msgstr "Paramètres de stockage invalides"
-+msgstr "Paramètres de Stockage Invalides"
- 
- #. Fatal errors are reported when setting 'size'
- #: ../src/virtManager/addhardware.py:1096 ../src/virtManager/create.py:1275
- msgid "Not Enough Free Space"
--msgstr "Pas assez d'espace libre"
-+msgstr "Pas Assez d'Espace Libre"
- 
- #: ../src/virtManager/addhardware.py:1101 ../src/virtManager/create.py:1281
- #, python-format
-@@ -493,27 +485,24 @@ msgid "Disk \"%s\" is already in use by another guest!"
+@@ -493,27 +486,24 @@ msgid "Disk \"%s\" is already in use by another guest!"
  msgstr "Le disque « %s » est déjà utilisé par un autre invité !"
  
  #: ../src/virtManager/addhardware.py:1102 ../src/virtManager/create.py:1283
@@ -519,7 +498,7 @@ index bd34e4d..90628c1 100644
  #: ../src/virtManager/addhardware.py:1109
  msgid "Virtual Network Required"
 -msgstr "Réseau virtuel nécessaire"
-+msgstr "Réseau Virtuel Requis"
++msgstr "Réseau virtuel requis"
  
  #: ../src/virtManager/addhardware.py:1110
 -#, fuzzy
@@ -530,7 +509,7 @@ index bd34e4d..90628c1 100644
  #: ../src/virtManager/addhardware.py:1113
  msgid "Physical Device Required"
 -msgstr "Périphérique physique nécessaire"
-+msgstr "Périphérique Physique Requis"
++msgstr "Périphérique physique requis"
  
  #: ../src/virtManager/addhardware.py:1114
 -#, fuzzy
@@ -540,18 +519,12 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/addhardware.py:1120
  #: ../src/virtManager/addhardware.py:1126
-@@ -531,50 +520,44 @@ msgstr "Type de réseau non pris en charge"
- 
- #: ../src/virtManager/addhardware.py:1143
- msgid "Invalid Network Parameter"
--msgstr "Paramètre de réseau invalide"
-+msgstr "Paramètre de Réseau Invalide"
- 
+@@ -536,45 +526,39 @@ msgstr "Paramètre de réseau invalide"
  #: ../src/virtManager/addhardware.py:1148
  #: ../src/virtManager/addhardware.py:1151
  msgid "Mac address collision"
 -msgstr ""
-+msgstr "Collision d'adresse MAC"
++msgstr "Collision d'adresses MAC"
  
  #: ../src/virtManager/addhardware.py:1152
 -#, fuzzy
@@ -574,7 +547,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Physical Device Requried"
 -msgstr "Périphérique physique nécessaire"
-+msgstr "Périphérique Physique Requis"
++msgstr "Périphérique physique requis"
  
  #: ../src/virtManager/addhardware.py:1182
  msgid "A device must be selected."
@@ -602,7 +575,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/addhardware.py:1263 ../src/virtManager/create.py:653
  msgid "Bridge"
-@@ -582,33 +565,31 @@ msgstr "Pont"
+@@ -582,13 +566,12 @@ msgstr "Pont"
  
  #: ../src/virtManager/addhardware.py:1265 ../src/virtManager/create.py:656
  msgid "Not bridged"
@@ -618,16 +591,8 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/addhardware.py:1308 ../src/virtManager/details.py:1094
  msgid "EvTouch USB Graphics Tablet"
--msgstr "Tablette graphique USB evTouch"
-+msgstr "Tablette Graphique USB evTouch"
- 
- #. XXX libvirt needs to support 'model' for input devices to distinguish
- #. wacom from evtouch tablets
- #. model.append([_("Wacom Graphics Tablet"), "tablet", "usb", True])
- #: ../src/virtManager/addhardware.py:1312 ../src/virtManager/details.py:1096
- msgid "Generic USB Mouse"
--msgstr "Souris USB générique"
-+msgstr "Souris USB Générique"
+@@ -602,13 +585,12 @@ msgid "Generic USB Mouse"
+ msgstr "Souris USB générique"
  
  #: ../src/virtManager/addhardware.py:1352
 -#, fuzzy
@@ -642,14 +607,14 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/asyncjob.py:42 ../src/vmm-progress.glade.h:1
  msgid "Operation in progress"
-@@ -624,92 +605,86 @@ msgid "Completed"
+@@ -624,92 +606,86 @@ msgid "Completed"
  msgstr "Terminé"
  
  #: ../src/virtManager/choosecd.py:99 ../src/virtManager/choosecd.py:109
 -#, fuzzy
  msgid "Invalid Media Path"
 -msgstr "Paramètre de réseau invalide"
-+msgstr "Chemin de Média Invalide"
++msgstr "Chemin de média invalide"
  
  #: ../src/virtManager/choosecd.py:100
  msgid "A media path must be specified."
@@ -658,8 +623,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/choosecd.py:128 ../src/virtManager/create.py:989
  msgid "Locate ISO Image"
--msgstr "Localiser l'image ISO"
-+msgstr "Localiser l'Image ISO"
+ msgstr "Localiser l'image ISO"
  
  #: ../src/virtManager/clone.py:213 ../src/virtManager/clone.py:433
 -#, fuzzy
@@ -695,7 +659,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Virtual Network"
 -msgstr "Réseaux virtuels"
-+msgstr "Réseau Virtuel"
++msgstr "Réseau virtuel"
  
  #: ../src/virtManager/clone.py:334
  msgid "Nothing to clone."
@@ -753,18 +717,18 @@ index bd34e4d..90628c1 100644
  #: ../src/virtManager/clone.py:686
  msgid "Skipping disks may cause data to be overwritten."
 -msgstr ""
-+msgstr "Le passage de disques peut occasionner des écrasements de données."
++msgstr "L'omission de disques peut occasionner des écrasements de données."
  
  #: ../src/virtManager/clone.py:687
  #, python-format
-@@ -719,65 +694,64 @@ msgid ""
+@@ -719,65 +695,64 @@ msgid ""
  "%s\n"
  "Running the new guest could overwrite data in these disk images."
  msgstr ""
 +"Le périphérique disque suivant ne sera pas cloné :\n"
 +"\n"
 +"%s\n"
-+"Le lancement du nouvel invité peut écraser les données dans cet image disque."
++"Le lancement du nouvel invité peut écraser les données dans cette image disque."
  
  #: ../src/virtManager/clone.py:707 ../src/virtManager/createpool.py:261
  #: ../src/virtManager/createvol.py:143
@@ -778,19 +742,19 @@ index bd34e4d..90628c1 100644
 +#: ../src/virtManager/clone.py:714, python-format
  msgid "Creating virtual machine clone '%s'"
 -msgstr "Création d'une machine virtuelle"
-+msgstr "Création du clone de la machine virtuelle « %s »"
++msgstr "Création du clone « %s » de la machine virtuelle"
  
  #: ../src/virtManager/clone.py:718 ../src/virtManager/delete.py:142
  msgid " and selected storage (this may take a while)"
 -msgstr ""
-+msgstr "et le stockage sélectionné (cela peut prendre un moment)"
++msgstr " et le stockage sélectionné (cela peut prendre un moment)"
  
 -#: ../src/virtManager/clone.py:752
 -#, fuzzy, python-format
 +#: ../src/virtManager/clone.py:752, python-format
  msgid "Error creating virtual machine clone '%s': %s"
 -msgstr "Erreur lors de la suppression du réseau : %s"
-+msgstr "Erreur lors de la création du clone de la machine virtuelle « %s » : %s"
++msgstr "Erreur lors de la création du clone « %s » de la machine virtuelle : %s"
  
  #: ../src/virtManager/clone.py:784
 -#, fuzzy
@@ -828,7 +792,7 @@ index bd34e4d..90628c1 100644
  #: ../src/virtManager/clone.py:821
  msgid "Read Only"
 -msgstr ""
-+msgstr "Lecture Seule"
++msgstr "Lecture seule"
  
  #: ../src/virtManager/clone.py:823
  msgid "No write access"
@@ -842,7 +806,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/connect.py:74 ../src/virtManager/manager.py:828
  #: ../src/virtManager/storagebrowse.py:102 ../src/vmm-create-net.glade.h:31
-@@ -794,9 +768,8 @@ msgid "Connecting"
+@@ -794,9 +769,8 @@ msgid "Connecting"
  msgstr "Connexion en cours"
  
  #: ../src/virtManager/connection.py:1109
@@ -853,7 +817,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/connection.py:1111 ../src/virtManager/host.py:324
  #: ../src/virtManager/host.py:548 ../src/vmm-host.glade.h:5
-@@ -816,9 +789,8 @@ msgid "Unknown"
+@@ -816,9 +790,8 @@ msgid "Unknown"
  msgstr "Inconnu"
  
  #: ../src/virtManager/create.py:229
@@ -864,7 +828,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/create.py:258
  msgid ""
-@@ -828,67 +800,70 @@ msgid ""
+@@ -828,65 +801,68 @@ msgid ""
  "Skipping allocation can also cause space issues on the host machine, if the "
  "maximum image size exceeds available storage space."
  msgstr ""
@@ -872,7 +836,7 @@ index bd34e4d..90628c1 100644
 +"d'installation du SE sera plus rapide.\n"
 +"\n"
 +"Passer l'allocation peut également occasionner des problèmes de place sur la "
-+"machine hôte si la taille maximum de l'image dépasse l'espace de stockage "
++"machine hôte si la taille maximale de l'image dépasse l'espace de stockage "
 +"disponible."
  
  #: ../src/virtManager/create.py:278
@@ -920,13 +884,13 @@ index bd34e4d..90628c1 100644
  #, python-format
  msgid "Up to %(maxmem)s available on the host"
 -msgstr ""
-+msgstr "Jusqu'à %(maxmem)s disponible(s) sur l'hôte"
++msgstr "Jusqu'à %(maxmem)s disponibles sur l'hôte"
  
  #: ../src/virtManager/create.py:420
  #, python-format
  msgid "Hypervisor only supports %d virtual CPUs."
 -msgstr ""
-+msgstr "L'hyperviseur ne prend en charge que %d CPU virtuel(s)."
++msgstr "L'hyperviseur ne prend en charge que %d CPU virtuelle(s)."
  
  #: ../src/virtManager/create.py:430
  #, python-format
@@ -948,12 +912,9 @@ index bd34e4d..90628c1 100644
  #: ../src/virtManager/create.py:606
 -#, fuzzy
  msgid "Usermode Networking"
--msgstr "Réseau en mode utilisateur"
-+msgstr "Réseau en Mode utilisateur"
+ msgstr "Réseau en mode utilisateur"
  
- #. FIXME: Should we use 'default' even if it's inactive?
- #: ../src/virtManager/create.py:617
-@@ -896,171 +871,157 @@ msgid "Virtual network"
+@@ -896,57 +872,51 @@ msgid "Virtual network"
  msgstr "Réseau virtuel"
  
  #: ../src/virtManager/create.py:627
@@ -989,7 +950,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "URL Install Tree"
 -msgstr "Champ « URL d'installation »"
-+msgstr "Arbre d'Installation URL."
++msgstr "Arbre d'installation URL"
  
  #: ../src/virtManager/create.py:722
 -#, fuzzy
@@ -1012,7 +973,7 @@ index bd34e4d..90628c1 100644
  #, python-format
  msgid "Step %(current_page)d of %(max_page)d"
 -msgstr ""
-+msgstr "Étape %(current_page)d de %(max_page)d"
++msgstr "Étape %(current_page)d sur %(max_page)d"
  
  #: ../src/virtManager/create.py:1128
  #, python-format
@@ -1022,8 +983,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/create.py:1142
  msgid "Invalid System Name"
--msgstr "Nom du système invalide"
-+msgstr "Nom du Système Invalide"
+@@ -954,94 +924,84 @@ msgstr "Nom du système invalide"
  
  #: ../src/virtManager/create.py:1166
  msgid "An install media selection is required."
@@ -1080,14 +1040,14 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Virtual Network is not active."
 -msgstr "Réseaux virtuels"
-+msgstr "Le Réseau Virtuel n'est pas actif."
++msgstr "Le réseau virtuel n'est pas actif."
  
  #: ../src/virtManager/create.py:1297
  #, python-format
  msgid ""
  "Virtual Network '%s' is not active. Would you like to start the network now?"
  msgstr ""
-+"Le Réseau Virtuel « %s » n'est pas actif. Souhaitez-vous démarrer le réseau "
++"Le réseau virtuel « %s » n'est pas actif. Souhaitez-vous démarrer le réseau "
 +"maintenant ?"
  
 -#: ../src/virtManager/create.py:1309
@@ -1141,16 +1101,12 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/create.py:1438
  msgid "Creating Virtual Machine"
--msgstr "Création d'une machine virtuelle"
-+msgstr "Création d'une Machine Virtuelle"
- 
- #: ../src/virtManager/create.py:1439
- msgid ""
+@@ -1052,15 +1012,17 @@ msgid ""
  "The virtual machine is now being created. Allocation of disk storage and "
  "retrieval of the installation images may take a few minutes to complete."
  msgstr ""
 +"La machine virtuelle est maintenant en cours de création. L'allocation du "
-+"stockage disque et la récupération des imsages d'installation peuvent prendre "
++"stockage disque et la récupération des images d'installation peuvent prendre "
 +"quelques minutes."
  
  #: ../src/virtManager/create.py:1491
@@ -1166,7 +1122,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/createnet.py:97 ../src/virtManager/createnet.py:260
  #: ../src/virtManager/host.py:356 ../src/vmm-create-net.glade.h:30
-@@ -1100,31 +1061,30 @@ msgstr "Autre"
+@@ -1100,10 +1062,9 @@ msgstr "Autre"
  msgid "Isolated virtual network"
  msgstr "Réseau virtuel isolé"
  
@@ -1179,9 +1135,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/createnet.py:312 ../src/virtManager/createnet.py:315
  msgid "Invalid Network Name"
--msgstr "Nom de réseau invalide"
-+msgstr "Nom de Réseau Invalide"
- 
+@@ -1112,14 +1073,14 @@ msgstr "Nom de réseau invalide"
  #: ../src/virtManager/createnet.py:313
  msgid "Network name must be non-blank and less than 50 characters"
  msgstr ""
@@ -1199,21 +1153,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/createnet.py:322 ../src/virtManager/createnet.py:326
  #: ../src/virtManager/createnet.py:330
- msgid "Invalid Network Address"
--msgstr "Adresse réseau invalide"
-+msgstr "Adresse Réseau Invalide"
- 
- #: ../src/virtManager/createnet.py:323
- msgid "The network address could not be understood"
-@@ -1140,38 +1100,38 @@ msgstr "Le préfixe du réseau doit être au moins /4 (16 adresses)"
- 
- #: ../src/virtManager/createnet.py:334
- msgid "Check Network Address"
--msgstr "Vérifier l'adresse du réseau"
-+msgstr "Vérifier l'Adresse du Réseau"
- 
- #: ../src/virtManager/createnet.py:335
- msgid ""
+@@ -1147,8 +1108,8 @@ msgid ""
  "The network should normally use a private IPv4 address. Use this non-private "
  "address anyway?"
  msgstr ""
@@ -1224,9 +1164,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/createnet.py:344 ../src/virtManager/createnet.py:347
  #: ../src/virtManager/createnet.py:351 ../src/virtManager/createnet.py:354
- msgid "Invalid DHCP Address"
--msgstr "Adresse DHCP invalide"
-+msgstr "Adresse DHCP Invalide"
+@@ -1157,21 +1118,21 @@ msgstr "Adresse DHCP invalide"
  
  #: ../src/virtManager/createnet.py:345
  msgid "The DHCP start address could not be understood"
@@ -1252,7 +1190,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/createnet.py:360
  msgid "Invalid forwarding mode"
-@@ -1179,132 +1139,124 @@ msgstr "Mode de réacheminement invalide"
+@@ -1179,132 +1140,124 @@ msgstr "Mode de réacheminement invalide"
  
  #: ../src/virtManager/createnet.py:361
  msgid "Please select where the traffic should be forwarded"
@@ -1268,7 +1206,7 @@ index bd34e4d..90628c1 100644
  #: ../src/virtManager/createpool.py:244
  msgid "Choose target directory"
 -msgstr ""
-+msgstr "Choisissez le dossier cible "
++msgstr "Choisissez le dossier cible"
  
  #: ../src/virtManager/createpool.py:275
 -#, fuzzy
@@ -1292,14 +1230,14 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Pool Parameter Error"
 -msgstr "Erreur de paramètre réseau"
-+msgstr "Erreur de Paramètre de Réserve"
++msgstr "Erreur de paramètre de réserve"
  
  #: ../src/virtManager/createpool.py:359
  msgid ""
  "Building a pool of this type will format the source device. Are you sure you "
  "want to 'build' this pool?"
  msgstr ""
-+"Construire une réserve de ce type formattera le périphérique source. Êtes-vous "
++"Construire une réserve de ce type formatera le périphérique source. Êtes-vous "
 +"certains de vouloir construire cette réserve ?"
  
  #: ../src/virtManager/createpool.py:372
@@ -1335,7 +1273,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Volume Parameter Error"
 -msgstr "Erreur de paramètre réseau"
-+msgstr "Erreur de Paramètre de Volume"
++msgstr "Erreur de paramètre de volume"
  
  #: ../src/virtManager/delete.py:98
 -#, fuzzy
@@ -1379,7 +1317,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Storage Path"
 -msgstr "Chemin d'accès à la source :"
-+msgstr "Chemin de Stockage"
++msgstr "Chemin de stockage"
  
  #: ../src/virtManager/delete.py:287
 -#, fuzzy
@@ -1420,7 +1358,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/delete.py:383
  #, python-format
-@@ -1312,10 +1264,13 @@ msgid ""
+@@ -1312,10 +1265,13 @@ msgid ""
  "Storage is in use by the following virtual machines:\n"
  "- %s "
  msgstr ""
@@ -1435,14 +1373,13 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/details.py:173
  msgid ""
-@@ -1323,6 +1278,10 @@ msgid ""
+@@ -1323,6 +1279,9 @@ msgid ""
  "with the specified label. The administrator is responsible for making sure "
  "the images are labeled corectly on disk."
  msgstr ""
-+"Le type de sécurité SELinux statique demande à la libvirt de toujours démarrer "
-+"le processus invité avec l'étiquette spécifiée. L'administrateur est "
-+"responsable de s'assurer que les images sont correctement étiquetées sur le "
-+"disque."
++"Le type de sécurité SELinux statique demande à libvirt de toujours démarrer le "
++"processus invité avec l'étiquette spécifiée. L'administrateur est responsable "
++"de s'assurer que les images sont correctement étiquetées sur le disque."
  
  #: ../src/virtManager/details.py:175
  msgid ""
@@ -1450,7 +1387,7 @@ index bd34e4d..90628c1 100644
  "unique label for the guest process and guest image, ensuring total isolation "
  "of the guest. (Default)"
  msgstr ""
-+"Le type de sécurité SELinux dynamique demande à la libvirt d'automatiquement "
++"Le type de sécurité SELinux dynamique demande à libvirt d'automatiquement "
 +"récupérer une étiquette unique pour le processus invité et l'image invitée, "
 +"assurant une totale isolation pour l'invité. (Défaut)"
  
@@ -1521,7 +1458,7 @@ index bd34e4d..90628c1 100644
 +#: ../src/virtManager/details.py:563, python-format
  msgid "Graphical Console %s"
 -msgstr "_Console graphique"
-+msgstr "Console Graphique %s"
++msgstr "Console graphique %s"
  
  #: ../src/virtManager/details.py:852
  msgid "paused"
@@ -1531,7 +1468,7 @@ index bd34e4d..90628c1 100644
  #: ../src/virtManager/details.py:865
  msgid "Console not available while paused"
 -msgstr "La console n'est pas disponible en veille"
-+msgstr "Console non disponible quand suspendue"
++msgstr "Console non disponible lorsqu'elle est suspendue"
  
  #: ../src/virtManager/details.py:964 ../src/virtManager/details.py:965
  #: ../src/virtManager/details.py:966 ../src/virtManager/details.py:967
@@ -1543,24 +1480,11 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Hypervisor Default"
 -msgstr "Sélection de l'hyperviseur"
-+msgstr "Par défaut pour l'Hyperviseur"
++msgstr "Par défaut pour l'hyperviseur"
  
  #: ../src/virtManager/details.py:1098
  msgid "Xen Mouse"
-@@ -1415,20 +1372,19 @@ msgstr "Souris PS/2"
- 
- #: ../src/virtManager/details.py:1107
- msgid "Absolute Movement"
--msgstr "Mouvement absolu"
-+msgstr "Mouvement Absolu"
- 
- #: ../src/virtManager/details.py:1109
- msgid "Relative Movement"
--msgstr "Mouvement relatif"
-+msgstr "Mouvement Relatif"
- 
- #: ../src/virtManager/details.py:1135 ../src/vmm-add-hardware.glade.h:29
- msgid "Automatically allocated"
+@@ -1426,9 +1383,8 @@ msgid "Automatically allocated"
  msgstr "Alloué automatiquement"
  
  #: ../src/virtManager/details.py:1160
@@ -1614,15 +1538,6 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/details.py:1407
  msgid "Unsupported console authentication type"
-@@ -1481,7 +1435,7 @@ msgstr "Type d'authentification de console non prise en charge"
- 
- #: ../src/virtManager/details.py:1478
- msgid "Save Virtual Machine Screenshot"
--msgstr "Enregistrer la capture d'écran de la machine virtuelle"
-+msgstr "Enregistrer la Capture d'écran de la Machine Virtuelle"
- 
- #: ../src/virtManager/details.py:1503
- #, python-format
 @@ -1496,39 +1450,36 @@ msgstr ""
  msgid "Screenshot saved"
  msgstr "Capture d'écran enregistrée"
@@ -1632,7 +1547,7 @@ index bd34e4d..90628c1 100644
 +#: ../src/virtManager/details.py:1610, python-format
  msgid "Error Setting Security data: %s"
 -msgstr "Erreur lors de l'extinction du domaine : %s"
-+msgstr "Erreur lors de la Définition des données de Sécurité : %s"
++msgstr "Erreur lors de la définition des données de sécurité : %s"
  
 -#: ../src/virtManager/details.py:1646
 -#, fuzzy, python-format
@@ -1658,7 +1573,7 @@ index bd34e4d..90628c1 100644
 +#: ../src/virtManager/details.py:1733, python-format
  msgid "Error changing memory values: %s"
 -msgstr "Erreur lors de la sauvegarde du domaine : %s"
-+msgstr "Erreur lors de la modification des valeurs de mémoire : %s"
++msgstr "Erreur lors de la modification des valeurs de la mémoire : %s"
  
  #: ../src/virtManager/details.py:1751
  #, python-format
@@ -1675,7 +1590,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/details.py:1887
  msgid "Tablet"
-@@ -1542,35 +1493,32 @@ msgstr "Souris"
+@@ -1542,20 +1493,18 @@ msgstr "Souris"
  msgid "Input"
  msgstr "Entrée"
  
@@ -1696,19 +1611,12 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "No Boot Device"
 -msgstr "Périphérique réseau"
-+msgstr "Aucun Périphérique de Démarrage"
++msgstr "Aucun périphérique de démarrage"
  
  #: ../src/virtManager/details.py:2024
  #, python-format
- msgid "Error Removing CDROM: %s"
--msgstr "Erreur lors de la suppression du CD-ROM : %s"
-+msgstr "Erreur lors de la Suppression du CD-ROM : %s"
- 
- #: ../src/virtManager/details.py:2041
- #, python-format
- msgid "Error Connecting CDROM: %s"
--msgstr "Erreur lors de la connexion du CD-ROM : %s"
-+msgstr "Erreur lors de la Connexion du CD-ROM : %s"
+@@ -1568,9 +1517,8 @@ msgid "Error Connecting CDROM: %s"
+ msgstr "Erreur lors de la connexion du CD-ROM : %s"
  
  #: ../src/virtManager/details.py:2058
 -#, fuzzy
@@ -1742,7 +1650,7 @@ index bd34e4d..90628c1 100644
  #: ../src/virtManager/domain.py:707
  msgid "Paused"
 -msgstr "Arrêté"
-+msgstr "Suspendu"
++msgstr "Suspendue"
  
  #: ../src/virtManager/domain.py:709
 -#, fuzzy
@@ -1773,7 +1681,7 @@ index bd34e4d..90628c1 100644
  #, python-format
  msgid "Didn't find the specified device to remove. Device was: %s %s"
  msgstr ""
-+"Le périphérique spécifié pour être retiré n'a pas pu être trouvé. le "
++"Le périphérique spécifié pour être retiré n'a pas pu être trouvé. Le "
 +"périphérique était : %s %s"
  
 -#: ../src/virtManager/engine.py:334
@@ -1797,12 +1705,12 @@ index bd34e4d..90628c1 100644
  #: ../src/virtManager/engine.py:463
  msgid "Save Virtual Machine"
 -msgstr "Enregistrer la machine virtuelle"
-+msgstr "Sauvegarder la Machine Virtuelle"
++msgstr "Sauvegarder la machine virtuelle"
  
  #: ../src/virtManager/engine.py:472
  msgid "Saving Virtual Machine"
 -msgstr "Enregistre la machine virtuelle"
-+msgstr "Sauvegarde la Machine Virtuelle"
++msgstr "Sauvegarde de la Machine Virtuelle"
  
  #: ../src/virtManager/engine.py:477
  #, python-format
@@ -1908,32 +1816,33 @@ index bd34e4d..90628c1 100644
  
  #. Expander section with details.
  #: ../src/virtManager/error.py:46 ../src/vmm-details.glade.h:35
-@@ -1734,54 +1680,46 @@ msgid "Details"
+@@ -1734,52 +1680,45 @@ msgid "Details"
  msgstr "Détails"
  
  #: ../src/virtManager/error.py:106
 -#, fuzzy
  msgid "Input Error"
 -msgstr "Erreur d'UUID"
-+msgstr "Erreur d'Entrée"
++msgstr "Erreur d'entrée"
  
  #: ../src/virtManager/host.py:72
  msgid "Copy Volume Path"
 -msgstr ""
-+msgstr "Chemin du Volume de Copie"
++msgstr "Chemin du volume de copie"
  
  #: ../src/virtManager/host.py:207
  #, python-format
  msgid "%(currentmem)s of %(maxmem)s"
 -msgstr ""
-+msgstr "%(currentmem)s de %(maxmem)s"
++msgstr "%(currentmem)s sur %(maxmem)s"
  
 -#: ../src/virtManager/host.py:231
 -#, fuzzy, python-format
 +#: ../src/virtManager/host.py:231, python-format
  msgid "Are you sure you want to permanently delete the network %s?"
 -msgstr "Voulez-vous vraiment utiliser le disque ?"
-+msgstr "Êtes-vous certain de vouloir supprimer irréversiblement le réseau %s ?"
++msgstr ""
++"Êtes-vous certain de vouloir supprimer de manière irréversible le réseau %s ?"
  
 -#: ../src/virtManager/host.py:238
 -#, fuzzy, python-format
@@ -1973,12 +1882,9 @@ index bd34e4d..90628c1 100644
  #: ../src/virtManager/host.py:524 ../src/virtManager/host.py:549
 -#, fuzzy
  msgid "On Boot"
--msgstr "Au démarrage"
-+msgstr "Au Démarrage"
+ msgstr "Au démarrage"
  
- #: ../src/virtManager/host.py:289 ../src/virtManager/host.py:341
- #: ../src/virtManager/host.py:373 ../src/virtManager/host.py:525
-@@ -1790,64 +1728,54 @@ msgstr "Au démarrage"
+@@ -1790,64 +1729,56 @@ msgstr "Au démarrage"
  msgid "Never"
  msgstr "Jamais"
  
@@ -1994,7 +1900,8 @@ index bd34e4d..90628c1 100644
 +#: ../src/virtManager/host.py:429, python-format
  msgid "Are you sure you want to permanently delete the pool %s?"
 -msgstr "Voulez-vous vraiment utiliser le disque ?"
-+msgstr "Êtes-vous certain de vouloir supprimer irréversiblement la réserve %s ?"
++msgstr ""
++"Êtes-vous certain de vouloir supprimer de manière irréversible la réserve %s ?"
  
 -#: ../src/virtManager/host.py:436
 -#, fuzzy, python-format
@@ -2008,7 +1915,8 @@ index bd34e4d..90628c1 100644
 +#: ../src/virtManager/host.py:444, python-format
  msgid "Are you sure you want to permanently delete the volume %s?"
 -msgstr "Voulez-vous vraiment utiliser le disque ?"
-+msgstr "Êtes-vous certain de vouloir supprimer irréversiblement le volume %s ?"
++msgstr ""
++"Êtes-vous certain de vouloir supprimer de manière irréversible le volume %s ?"
  
 -#: ../src/virtManager/host.py:453
 -#, fuzzy, python-format
@@ -2062,7 +1970,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/manager.py:225 ../src/virtManager/systray.py:129
  #: ../src/vmm-details.glade.h:124 ../src/vmm-manager.glade.h:19
-@@ -1857,15 +1785,15 @@ msgstr "_Démarrer"
+@@ -1857,15 +1788,15 @@ msgstr "_Démarrer"
  #: ../src/virtManager/manager.py:231 ../src/virtManager/systray.py:116
  #: ../src/vmm-details.glade.h:123 ../src/vmm-manager.glade.h:18
  msgid "_Pause"
@@ -2081,13 +1989,13 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/manager.py:321
  msgid "_Details"
-@@ -1880,21 +1808,26 @@ msgid ""
+@@ -1880,21 +1811,26 @@ msgid ""
  "A hypervisor connection can be manually added via \n"
  "File->Add Connection"
  msgstr ""
 +"Ne peut peupler une connexion par défaut. Assurez-vous que les paquets de "
-+"virtualisation appropriés sont installes (kvm, qemu, etc.) et que la libvirt a "
-+"été redémarrée afin de prendre en compte les modifications.\n"
++"virtualisation appropriés sont installés (kvm, qemu, etc.) et que libvirtd a "
++"été redémarré afin de prendre en compte les modifications.\n"
 +"\n"
 +"Une connexion à un hyperviseur peut être ajoutée manuellement via\n"
 +"Fichier -> Ajouter une Connexion"
@@ -2101,7 +2009,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Startup Error"
 -msgstr "Erreur d'URL de démarrage"
-+msgstr "Erreur de Démarrage"
++msgstr "Erreur de démarrage"
  
  #: ../src/virtManager/manager.py:428
  msgid "Restoring virtual machines over remote connections is not yet supported"
@@ -2113,21 +2021,21 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/manager.py:433
  msgid "Restore Virtual Machine"
-@@ -1911,17 +1844,14 @@ msgid "Restoring Virtual Machine"
+@@ -1911,17 +1847,14 @@ msgid "Restoring Virtual Machine"
  msgstr "Restaure de la machine virtuelle"
  
  #: ../src/virtManager/manager.py:452
 -#, fuzzy
  msgid "Error restoring domain"
 -msgstr "Erreur de domaine de départ : %s"
-+msgstr "Erreur lors de la Restauration du Domaine"
++msgstr "Erreur lors de la restauration du domaine"
  
 -#: ../src/virtManager/manager.py:460
 -#, fuzzy, python-format
 +#: ../src/virtManager/manager.py:460, python-format
  msgid "Error restoring domain '%s': %s"
 -msgstr "Erreur de domaine de départ : %s"
-+msgstr "Erreur lors de la Restauration du Domaine « %s » : %s"
++msgstr "Erreur lors de la restauration du domaine « %s » : %s"
  
 -#: ../src/virtManager/manager.py:785
 -#, fuzzy, python-format
@@ -2135,7 +2043,7 @@ index bd34e4d..90628c1 100644
  msgid ""
  "This will remove the connection:\n"
  "\n"
-@@ -1929,8 +1859,10 @@ msgid ""
+@@ -1929,8 +1862,10 @@ msgid ""
  "\n"
  "Are you sure?"
  msgstr ""
@@ -2148,7 +2056,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/virtManager/manager.py:831
  msgid "CPU usage"
-@@ -1938,20 +1870,17 @@ msgstr "Utilisation CPU"
+@@ -1938,20 +1873,17 @@ msgstr "Utilisation CPU"
  
  #: ../src/virtManager/manager.py:908
  msgid "Disabled in preferences dialog."
@@ -2172,7 +2080,7 @@ index bd34e4d..90628c1 100644
  msgid "CPU Usage"
  msgstr "Utilisation CPU"
  
-@@ -1960,7 +1889,7 @@ msgid ""
+@@ -1960,7 +1892,7 @@ msgid ""
  "Unable to open a connection to the Xen hypervisor/daemon.\n"
  "\n"
  msgstr ""
@@ -2181,7 +2089,7 @@ index bd34e4d..90628c1 100644
  "\n"
  
  #: ../src/virtManager/manager.py:1083 ../src/virtManager/manager.py:1091
-@@ -1982,44 +1911,40 @@ msgstr "Aucun médium présent"
+@@ -1982,44 +1914,40 @@ msgstr "Aucun médium présent"
  #. Arguments to pass to util.browse_local for local storage
  #: ../src/virtManager/storagebrowse.py:67
  msgid "Choose local storage"
@@ -2202,7 +2110,7 @@ index bd34e4d..90628c1 100644
  #: ../src/virtManager/storagebrowse.py:123
  msgid "Used By"
 -msgstr ""
-+msgstr "Utilisé Par"
++msgstr "Utilisé par"
  
  #: ../src/virtManager/storagebrowse.py:163
  msgid "Cannot use local storage on remote connection."
@@ -2235,7 +2143,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-about.glade.h:2
  msgid "Powered by libvirt"
-@@ -2032,27 +1957,25 @@ msgstr ""
+@@ -2032,27 +1960,25 @@ msgstr ""
  "Damien Durand <splinux@fedoraproject.org>\n"
  "Thomas Canniot <thomas.canniot@laposte.net>\n"
  "Alain PORTAL <aportal@univ-montp2.fr>\n"
@@ -2248,40 +2156,40 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "<b>Character Device</b>"
 -msgstr "<b>Pointeur</b>"
-+msgstr "<b>Périphérique Caractères</b>"
++msgstr "<b>Périphérique caractères</b>"
  
  #: ../src/vmm-add-hardware.glade.h:2
 -#, fuzzy
  msgid "<b>Device Parameters</b>"
 -msgstr "<b>Pointeur</b>"
-+msgstr "<b>Paramètres de Périphérique</b>"
++msgstr "<b>Paramètres de périphérique</b>"
  
  #: ../src/vmm-add-hardware.glade.h:3
 -#, fuzzy
  msgid "<b>Physical Host Device</b>"
 -msgstr "<b>Pointeur</b>"
-+msgstr "<b>Périphérique de l'Hôte Physique</b>"
++msgstr "<b>Périphérique de l'hôte physique</b>"
  
  #: ../src/vmm-add-hardware.glade.h:4 ../src/vmm-details.glade.h:11
 -#, fuzzy
  msgid "<b>Sound Device</b>"
 -msgstr "<b>Source :</b>"
-+msgstr "<b>Périphérique Son</b>"
++msgstr "<b>Périphérique son</b>"
  
  #: ../src/vmm-add-hardware.glade.h:5
  msgid "<b>Source:</b>"
-@@ -2063,9 +1986,8 @@ msgid "<b>Target:</b>"
+@@ -2063,9 +1989,8 @@ msgid "<b>Target:</b>"
  msgstr "<b>Cible :</b>"
  
  #: ../src/vmm-add-hardware.glade.h:7
 -#, fuzzy
  msgid "<b>Video Device</b>"
 -msgstr "<b>Pointeur</b>"
-+msgstr "<b>Périphérique Vidéo</b>"
++msgstr "<b>Périphérique vidéo</b>"
  
  #: ../src/vmm-add-hardware.glade.h:8
  msgid "<b>Virtual display</b>"
-@@ -2080,15 +2002,14 @@ msgid "<small><b>Example:</b> /dev/hdc2</small>"
+@@ -2080,15 +2005,14 @@ msgid "<small><b>Example:</b> /dev/hdc2</small>"
  msgstr "<small><b>Exemple :</b> /dev/hdc2</small>"
  
  #: ../src/vmm-add-hardware.glade.h:11
@@ -2294,20 +2202,20 @@ index bd34e4d..90628c1 100644
 -"<small><b>Conseil :</b> l'allocation automatique de port garantit que chaque "
 -"machine virtuelle utilise un port différent. Si deux machines utilisent le "
 -"même port, l'une d'entre elles ne pourra pas démarrer.</small>"
-+"<small><b>Conseil :</b> L'allocation automatique du port garantit que chaque "
++"<small><b>Conseil :</b> l'allocation automatique du port garantit que chaque "
 +"machine virtuelle utilise un port différent. Si deux machines tentent "
 +"d'utiliser le même port, l'une d'elles ne pourra pas démarrer.</small>"
  
  #: ../src/vmm-add-hardware.glade.h:12
  msgid ""
-@@ -2096,47 +2017,43 @@ msgid ""
+@@ -2096,146 +2020,125 @@ msgid ""
  "connected via wireless, or dynamically configured with NetworkManager.</"
  "small>"
  msgstr ""
 -"<small><b>Conseil :</b> Choisissez cette option si votre hôte est "
 -"déconnecté, connecté par réseau sans fil ou bien configuré dynamiquement "
 -"avec NetworkManager.</small>"
-+"<small><b>Conseil :</b> Choisissez cette option si votre hôte est déconnecté, "
++"<small><b>Conseil :</b> choisissez cette option si votre hôte est déconnecté, "
 +"connecté par réseau sans fil ou bien configuré dynamiquement avec "
 +"NetworkManager.</small>"
  
@@ -2318,9 +2226,10 @@ index bd34e4d..90628c1 100644
  "to wired ethernet, to gain the ability to migrate the virtual machine.</"
  "small>"
  msgstr ""
- "<small><b>Conseil :</b> Choisissez cette option si votre hôte est connecté "
+-"<small><b>Conseil :</b> Choisissez cette option si votre hôte est connecté "
 -"statiquement à un ethernet cablé afin d'avoir la possibilité de migrer le "
 -"système virtuel.</small>"
++"<small><b>Conseil :</b> choisissez cette option si votre hôte est connecté "
 +"statiquement à un ethernet câblé afin d'avoir la possibilité de migrer la "
 +"machine virtuelle.</small>"
  
@@ -2351,7 +2260,7 @@ index bd34e4d..90628c1 100644
 -"tant que pointeur par défaut dans le SE invité garantira que les mouvements "
 -"du curseur virtuel s'effectuent de manière synchronisée avec le curseur du "
 -"bureau local.</small>"
-+"<small><b>Conseil :</b> Ajouter une tablette graphique (et la configurer en "
++"<small><b>Conseil :</b> ajouter une tablette graphique (et la configurer en "
 +"tant que pointeur par défaut dans la machine virtuelle) garantira que les "
 +"mouvements du curseur virtuel s'effectuent de manière synchronisée avec le "
 +"curseur du bureau local.</small>"
@@ -2361,13 +2270,14 @@ index bd34e4d..90628c1 100644
  msgid ""
  "<small><b>Warning:</b>If you do not allocate the entire disk now, space will "
  "be allocated as needed while the virtual machine is running. If sufficient "
-@@ -2144,98 +2061,81 @@ msgid ""
+ "free space is not available on the host, this may result in data corruption "
  "on the virtual machine.</small>"
  msgstr ""
- "<small><b>Avertissement :</b> Si vous n'allouez pas la totalité du disque "
+-"<small><b>Avertissement :</b> Si vous n'allouez pas la totalité du disque "
 -"pour la création de la machine virtuelle, l'espace sera alloué suivant les "
 -"besoins de l'invité. S'il n'y a pas suffisamment d'espace disque sur l'hôte, "
 -"cela peut occasionner une corruption des données sur l'invité.</small>"
++"<small><b>Avertissement :</b> si vous n'allouez pas la totalité du disque "
 +"maintenant, l'espace sera alloué en fonction des besoins lors du "
 +"fonctionnement de la machine virtuelle. S'il n'y a pas suffisamment d'espace "
 +"disque disponible sur l'hôte, cela peut occasionner une corruption des données "
@@ -2381,7 +2291,7 @@ index bd34e4d..90628c1 100644
  msgstr ""
  "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ajout d'un "
 -"nouveau matériel virtuel </span>"
-+"Matériel Virtuel </span>"
++"matériel virtuel</span>"
  
  #: ../src/vmm-add-hardware.glade.h:18
 -#, fuzzy
@@ -2392,7 +2302,7 @@ index bd34e4d..90628c1 100644
 -"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ajout d'un "
 -"nouveau matériel virtuel </span>"
 +"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Terminer l'ajout "
-+"d'un Matériel Virtuel </span>"
++"d'un matériel virtuel</span>"
  
  #: ../src/vmm-add-hardware.glade.h:19
 -#, fuzzy
@@ -2412,7 +2322,7 @@ index bd34e4d..90628c1 100644
 -"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Affectation de "
 -"l'espace de stockage</span>"
 +"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Périphérique "
-+"Hôte</span>"
++"hôte</span>"
  
  #: ../src/vmm-add-hardware.glade.h:21
 -#, fuzzy
@@ -2461,7 +2371,7 @@ index bd34e4d..90628c1 100644
 -"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Affectation de "
 -"l'espace de stockage</span>"
 +"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Périphérique "
-+"Vidéo</span>"
++"vidéo</span>"
  
  #: ../src/vmm-add-hardware.glade.h:26
  msgid "Add new virtual hardware"
@@ -2476,39 +2386,48 @@ index bd34e4d..90628c1 100644
  #: ../src/vmm-add-hardware.glade.h:30
  msgid "Bind Host:"
 -msgstr ""
-+msgstr "Hôte Lié :"
++msgstr "Hôte lié :"
  
  #: ../src/vmm-add-hardware.glade.h:31 ../src/vmm-clone.glade.h:13
  #: ../src/vmm-create.glade.h:12
-@@ -2243,23 +2143,20 @@ msgid "Browse..."
+@@ -2243,31 +2146,28 @@ msgid "Browse..."
  msgstr "Parcourir..."
  
  #: ../src/vmm-add-hardware.glade.h:32 ../src/vmm-details.glade.h:37
 -#, fuzzy
  msgid "Device Model:"
 -msgstr "Type de périphérique :"
-+msgstr "Modèle de Périphérique :"
++msgstr "Modèle de périphérique :"
  
  #: ../src/vmm-add-hardware.glade.h:33
  msgid "Device Type Field"
 -msgstr "Champ « type de périphérique »"
-+msgstr "Champ « Type de Périphérique »"
++msgstr "Champ « Type de périphérique »"
  
  #: ../src/vmm-add-hardware.glade.h:34 ../src/vmm-details.glade.h:38
 -#, fuzzy
  msgid "Device Type:"
--msgstr "Type de périphérique :"
-+msgstr "Type de Périphérique :"
+ msgstr "Type de périphérique :"
  
  #: ../src/vmm-add-hardware.glade.h:37
 -#, fuzzy
  msgid "F_ile (disk image):"
 -msgstr "Image disque :"
-+msgstr "_Fichier (image disque) :"
++msgstr "F_ichier (image disque) :"
  
  #: ../src/vmm-add-hardware.glade.h:38
  msgid "File Location Field"
-@@ -2278,18 +2175,16 @@ msgid "Hardware type:"
+-msgstr "Champ « emplacement de fichier »"
++msgstr "Champ « Emplacement de fichier »"
+ 
+ #: ../src/vmm-add-hardware.glade.h:39
+ msgid "File Size Field"
+-msgstr "Champ « taille de fichier »"
++msgstr "Champ « Taille de fichier »"
+ 
+ #: ../src/vmm-add-hardware.glade.h:40
+ msgid "Hardware Type Select"
+@@ -2278,22 +2178,20 @@ msgid "Hardware type:"
  msgstr "Type de matériel :"
  
  #: ../src/vmm-add-hardware.glade.h:42
@@ -2525,11 +2444,16 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Loc_ation:"
 -msgstr "Emplacement :"
-+msgstr "_Emplacement :"
++msgstr "Empl_acement :"
  
  #: ../src/vmm-add-hardware.glade.h:46 ../src/vmm-details.glade.h:56
  msgid "MAC Address Field"
-@@ -2305,25 +2200,21 @@ msgid "Network Device Select"
+-msgstr "Champ « adresse MAC »"
++msgstr "Champ « Adresse MAC »"
+ 
+ #: ../src/vmm-add-hardware.glade.h:47 ../src/vmm-create-vol.glade.h:22
+ #: ../src/vmm-create.glade.h:29 ../src/vmm-details.glade.h:58
+@@ -2305,25 +2203,21 @@ msgid "Network Device Select"
  msgstr "Sélection du périphérique réseau"
  
  #: ../src/vmm-add-hardware.glade.h:51
@@ -2540,7 +2464,8 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-add-hardware.glade.h:52
  msgid "Partition Location Field"
- msgstr "Champ « emplacement de la partition »"
+-msgstr "Champ « emplacement de la partition »"
++msgstr "Champ « Emplacement de la partition »"
  
  #: ../src/vmm-add-hardware.glade.h:54
 -#, fuzzy
@@ -2558,7 +2483,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-add-hardware.glade.h:56
  msgid ""
-@@ -2342,40 +2233,38 @@ msgstr ""
+@@ -2342,40 +2236,38 @@ msgstr ""
  "périphérique réseau virtuel au réseau hôte."
  
  #: ../src/vmm-add-hardware.glade.h:58
@@ -2578,7 +2503,7 @@ index bd34e4d..90628c1 100644
  "to connect to the virtual machine."
  msgstr ""
 -"Veuillez indiquer quel type de périphérique pointeur connecter à l'invité."
-+"Veuillez indiquer quel type de périphérique physique\n"
++"Veuillez indiquer quel périphérique physique\n"
 +"connecter à la machine virtuelle."
  
  #: ../src/vmm-add-hardware.glade.h:61
@@ -2589,7 +2514,7 @@ index bd34e4d..90628c1 100644
  msgstr ""
 -"Veuillez indiquer quel type de périphérique pointeur connecter à l'invité."
 +"Veuillez indiquer quel type de périphérique son connecter à la machine "
-+"virtuelle"
++"virtuelle."
  
  #: ../src/vmm-add-hardware.glade.h:62
 -#, fuzzy
@@ -2609,7 +2534,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-add-hardware.glade.h:67
  msgid ""
-@@ -2386,17 +2275,16 @@ msgstr ""
+@@ -2386,17 +2278,16 @@ msgstr ""
  "virtuel. Veuillez sélectionner le type de matériel que vous voulez ajouter :"
  
  #: ../src/vmm-add-hardware.glade.h:69
@@ -2621,7 +2546,7 @@ index bd34e4d..90628c1 100644
  #: ../src/vmm-add-hardware.glade.h:70
  msgid "Virtual Network Select"
 -msgstr "Sélection de réseau virtuel"
-+msgstr "Sélection du Réseau Virtuel"
++msgstr "Sélection du réseau virtuel"
  
  #: ../src/vmm-add-hardware.glade.h:71
  msgid "_Block device (partition):"
@@ -2630,7 +2555,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-add-hardware.glade.h:72
  msgid "_Device:"
-@@ -2408,9 +2296,8 @@ msgid "_Finish"
+@@ -2408,9 +2299,8 @@ msgid "_Finish"
  msgstr "_Terminer"
  
  #: ../src/vmm-add-hardware.glade.h:74
@@ -2641,7 +2566,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-add-hardware.glade.h:75
  msgid "_MAC address:"
-@@ -2434,16 +2321,15 @@ msgstr "Réseau _virtuel"
+@@ -2434,16 +2324,15 @@ msgstr "Réseau _virtuel"
  
  #: ../src/vmm-add-hardware.glade.h:80 ../src/vmm-create-pool.glade.h:17
  msgid "label"
@@ -2651,35 +2576,36 @@ index bd34e4d..90628c1 100644
  #: ../src/vmm-choose-cd.glade.h:1
  msgid "<b>CD Source Device Or File</b>"
 -msgstr ""
-+msgstr "<b>Périphérique de CD-ROM source Ou Fichier</b>"
++msgstr "<b>Périphérique de CD-ROM source ou fichier</b>"
  
  #: ../src/vmm-choose-cd.glade.h:2
 -#, fuzzy
  msgid "Choose A CD Source Device"
 -msgstr "Périphérique source :"
-+msgstr "Choisir un Périphérique CD Source"
++msgstr "Choisir un périphérique CD source"
  
  #: ../src/vmm-choose-cd.glade.h:3
  msgid "ISO _Location:"
-@@ -2454,62 +2340,56 @@ msgid "_Browse..."
+@@ -2454,62 +2343,56 @@ msgid "_Browse..."
  msgstr "_Parcourir..."
  
  #: ../src/vmm-choose-cd.glade.h:5
 -#, fuzzy
  msgid "_CD-ROM or DVD"
- msgstr "_CD-ROM ou DVD :"
+-msgstr "_CD-ROM ou DVD :"
++msgstr "_CD-ROM ou DVD"
  
  #: ../src/vmm-choose-cd.glade.h:6
 -#, fuzzy
  msgid "_Device Media:"
 -msgstr "Type de périphérique :"
-+msgstr "_Périphérique de Média :"
++msgstr "_Périphérique de média :"
  
  #: ../src/vmm-choose-cd.glade.h:7
 -#, fuzzy
  msgid "_ISO Image Location"
 -msgstr "_Emplacement de l'image ISO :"
-+msgstr "_Emplacement de l'Image ISO :"
++msgstr "Emplacement de l'image _ISO"
  
  #: ../src/vmm-clone.glade.h:1
  msgid "<span color='#484848'>MAC:</span>"
@@ -2699,7 +2625,7 @@ index bd34e4d..90628c1 100644
  #: ../src/vmm-clone.glade.h:4
  msgid "<span color='#484848'>New Path:</span>"
 -msgstr ""
-+msgstr "<span color='#484848'>Nouveau Chemin:</span>"
++msgstr "<span color='#484848'>Nouveau chemin:</span>"
  
  #: ../src/vmm-clone.glade.h:5
  msgid "<span color='#484848'>Path:</span>"
@@ -2736,7 +2662,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-clone.glade.h:11
  msgid ""
-@@ -2518,67 +2398,63 @@ msgid ""
+@@ -2518,54 +2401,50 @@ msgid ""
  "uses the existing disk image for both the original and the new machine.</"
  "span>"
  msgstr ""
@@ -2749,7 +2675,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "C_lone Virtual Machine"
 -msgstr "Restaurer la machine virtuelle"
-+msgstr "C_loner la Machine Virtuelle"
++msgstr "C_loner la machine virtuelle"
  
  #: ../src/vmm-clone.glade.h:15
 -#, fuzzy
@@ -2767,7 +2693,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Clone Virtual Machine"
 -msgstr "Restaurer la machine virtuelle"
-+msgstr "Cloner la Machine Virtuelle"
++msgstr "Cloner la machine virtuelle"
  
  #: ../src/vmm-clone.glade.h:18
  msgid "Create a clone based on:"
@@ -2805,34 +2731,29 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-clone.glade.h:24 ../src/vmm-delete.glade.h:3
  #: ../src/vmm-storage-browse.glade.h:5
- msgid "gtk-cancel"
--msgstr ""
-+msgstr "Annuler"
- 
- #: ../src/vmm-clone.glade.h:25
- msgid "gtk-help"
--msgstr ""
-+msgstr "Aide"
- 
- #: ../src/vmm-clone.glade.h:26
- msgid "gtk-ok"
--msgstr ""
-+msgstr "Valider"
- 
- #: ../src/vmm-create-net.glade.h:1
- msgid "<b>DHCP</b>"
-@@ -2598,8 +2474,8 @@ msgid ""
+@@ -2597,9 +2476,9 @@ msgid ""
+ "<b>Hint:</b> The network should be choosen from one of the IPv4 private "
  "address ranges. eg 10.0.0.0/8,  172.16.0.0/12, or 192.168.0.0/16"
  msgstr ""
- "<b>Conseil :</b> Le réseau devrait être choisi parmi l'un des intervalles "
+-"<b>Conseil :</b> Le réseau devrait être choisi parmi l'un des intervalles "
 -"d'adresses privées IPv4. Par exemple 10.0.0.0/8, 172.16.0.0/12 ou "
 -"192.168.0.0/16"
++"<b>Conseil :</b> le réseau devrait être choisi parmi l'un des intervalles "
 +"d'adresses privées IPv4. Par exemple 10.0.0.0/8, 172.16.0.0/12 ou 192.168.0."
 +"0/16"
  
  #: ../src/vmm-create-net.glade.h:5
  msgid "<b>IPv4 network</b>"
-@@ -2624,8 +2500,8 @@ msgid ""
+@@ -2615,7 +2494,7 @@ msgid ""
+ "network configuration in virtual machines, these parameters can be left with "
+ "their default values."
+ msgstr ""
+-"<b>Conseil :</b> À moins que vous ne souhaitiez réserver certaines adresses "
++"<b>Conseil :</b> à moins que vous ne souhaitiez réserver certaines adresses "
+ "pour permettre la configuration d'un réseau statique pour des machines "
+ "virtuelles, vous devriez laisser ces paramètres à leurs valeurs par défaut."
+ 
+@@ -2624,8 +2503,8 @@ msgid ""
  "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Choosing an "
  "IPv4 address space</span>"
  msgstr ""
@@ -2843,7 +2764,15 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-create-net.glade.h:9
  msgid ""
-@@ -2648,7 +2524,7 @@ msgid ""
+@@ -2641,14 +2520,14 @@ msgid ""
+ "virtual network </span>"
+ msgstr ""
+ "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Création d'un "
+-"nouveau réseau virtuel </span>"
++"nouveau réseau virtuel</span>"
+ 
+ #: ../src/vmm-create-net.glade.h:11
+ msgid ""
  "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Naming your "
  "virtual network </span>"
  msgstr ""
@@ -2852,7 +2781,16 @@ index bd34e4d..90628c1 100644
  "réseau virtuel</span>"
  
  #: ../src/vmm-create-net.glade.h:12
-@@ -2760,13 +2636,12 @@ msgid "Please choose a name for your virtual network:"
+@@ -2729,7 +2608,7 @@ msgstr "Intro"
+ 
+ #: ../src/vmm-create-net.glade.h:32
+ msgid "Net Name Field"
+-msgstr "Champ « nom de réseau »"
++msgstr "Champ « Nom de réseau »"
+ 
+ #: ../src/vmm-create-net.glade.h:33
+ msgid "Netmask:"
+@@ -2760,13 +2639,12 @@ msgid "Please choose a name for your virtual network:"
  msgstr "Veuillez choisir un nom pour votre réseau virtuel :"
  
  #: ../src/vmm-create-net.glade.h:40
@@ -2867,7 +2805,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-create-net.glade.h:41
  msgid ""
-@@ -2819,41 +2694,35 @@ msgstr "Si vous souhaitez <b>réacheminer</b> le trafic vers le réseau physique
+@@ -2819,41 +2697,35 @@ msgstr "Si vous souhaitez <b>réacheminer</b> le trafic vers le réseau physique
  
  #: ../src/vmm-create-net.glade.h:52
  msgid "You will need to choose an IPv4 address space for the virtual network:"
@@ -2878,13 +2816,13 @@ index bd34e4d..90628c1 100644
  #: ../src/vmm-create-pool.glade.h:1
  msgid "<span size='x-large'>Add Storage Pool</span>"
 -msgstr ""
-+msgstr "<span size='x-large'>Ajouter une Réserve de Stockage</span>"
++msgstr "<span size='x-large'>Ajouter une réserve de stockage</span>"
  
  #: ../src/vmm-create-pool.glade.h:2
 -#, fuzzy
  msgid "Add a New Storage Pool"
 -msgstr "Réserves de stockage"
-+msgstr "Ajouter une Nouvelle Réserve de Stockage"
++msgstr "Ajouter une nouvelle réserve de stockage"
  
  #: ../src/vmm-create-pool.glade.h:3
 -#, fuzzy
@@ -2895,7 +2833,7 @@ index bd34e4d..90628c1 100644
  #: ../src/vmm-create-pool.glade.h:4
  msgid "Build Pool:"
 -msgstr ""
-+msgstr "Réserve de Construction :"
++msgstr "Réserve de construction :"
  
  #: ../src/vmm-create-pool.glade.h:5 ../src/vmm-create.glade.h:21
 -#, fuzzy
@@ -2913,20 +2851,19 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Host Name:"
 -msgstr "Nom d'hôte :"
-+msgstr "Nom de l'Hôte :"
++msgstr "Nom de l'hôte :"
  
  #: ../src/vmm-create-pool.glade.h:10 ../src/vmm-create-vol.glade.h:24
  #: ../src/vmm-create.glade.h:33 ../src/vmm-details.glade.h:67
-@@ -2862,31 +2731,31 @@ msgid "Name:"
+@@ -2862,7 +2734,6 @@ msgid "Name:"
  msgstr "Nom :"
  
  #: ../src/vmm-create-pool.glade.h:11 ../src/vmm-details.glade.h:92
 -#, fuzzy
  msgid "Source Path:"
--msgstr "Chemin d'accès à la source :"
-+msgstr "Chemin d'accès à la Source :"
+ msgstr "Chemin d'accès à la source :"
  
- #: ../src/vmm-create-pool.glade.h:12
+@@ -2870,23 +2741,24 @@ msgstr "Chemin d'accès à la source :"
  msgid ""
  "Specify a storage location to be later split into virtual machine storage."
  msgstr ""
@@ -2936,55 +2873,55 @@ index bd34e4d..90628c1 100644
  #: ../src/vmm-create-pool.glade.h:13
  msgid "Step 1 of 2"
 -msgstr ""
-+msgstr "Étape 1 de 2"
++msgstr "Étape 1 sur 2"
  
  #: ../src/vmm-create-pool.glade.h:14
  msgid "Step 2 of 2"
 -msgstr ""
-+msgstr "Étape 2 de 2"
++msgstr "Étape 2 sur 2"
  
  #: ../src/vmm-create-pool.glade.h:15
 -#, fuzzy
  msgid "Target Path:"
 -msgstr "Type de la cible :"
-+msgstr "Chemin de la Cible :"
++msgstr "Chemin de la cible :"
  
  #: ../src/vmm-create-vol.glade.h:1
  msgid "<span size='large'>Storage Volume Quota</span>"
 -msgstr ""
-+msgstr "<span size='large'>Quota de Volume de Stockage</span>"
++msgstr "<span size='large'>Quota de volume de stockage</span>"
  
  #: ../src/vmm-create-vol.glade.h:2
  msgid ""
-@@ -2905,74 +2774,83 @@ msgid ""
+@@ -2905,74 +2777,83 @@ msgid ""
  "  allocated to volume\n"
  "  at this time.</i></span>"
  msgstr ""
-+"<span size='small'><i><u>Nom</u>: Nom du\n"
++"<span size='small'><i><u>Nom :</u> nom du\n"
 +"  volume à créer. L'extension\n"
 +"  du fichier peut être\n"
 +"  ajoutée\n"
 +"\n"
-+"<u>Format</u>: Format du\n"
++"<u>Format :</u> format du\n"
 +"  fichier/de la partition du volume\n"
 +"\n"
-+"<u>Capacité</u>: Taille\n"
-+"  maximum du volume.\n"
++"<u>Capacité :</u> taille\n"
++"  maximale du volume.\n"
 +"\n"
-+"<u>Allocation</u>: Taille effective\n"
++"<u>Allocation :</u> taille effective\n"
 +"  allouée au volume\n"
 +"  à ce moment.</i></span>"
  
  #: ../src/vmm-create-vol.glade.h:16
  msgid "<span size='x-large'>New Storage Volume</span>"
 -msgstr ""
-+msgstr "<span size='x-large'>Nouveau Volume de Stockage</span>"
++msgstr "<span size='x-large'>Nouveau volume de stockage</span>"
  
  #: ../src/vmm-create-vol.glade.h:17
 -#, fuzzy
  msgid "Add a Storage Volume"
 -msgstr "Nom du stockage"
-+msgstr "Ajouter un Volume de Stockage"
++msgstr "Ajouter un volume de stockage"
  
  #: ../src/vmm-create-vol.glade.h:18
 -#, fuzzy
@@ -3006,7 +2943,7 @@ index bd34e4d..90628c1 100644
  #: ../src/vmm-create-vol.glade.h:23
  msgid "Max Capacity:"
 -msgstr ""
-+msgstr "Capacité Maximale :"
++msgstr "Capacité maximale :"
  
  #: ../src/vmm-create-vol.glade.h:25
 -#, fuzzy
@@ -3061,7 +2998,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-create.glade.h:10 ../src/vmm-details.glade.h:24
  #: ../src/vmm-host.glade.h:9
-@@ -2982,26 +2860,24 @@ msgstr "Architecture :"
+@@ -2982,26 +2863,24 @@ msgstr "Architecture :"
  #: ../src/vmm-create.glade.h:11
  msgid "Automatically detect operating system based on install media"
  msgstr ""
@@ -3077,7 +3014,7 @@ index bd34e4d..90628c1 100644
  #: ../src/vmm-create.glade.h:14
  msgid "Choose Memory and CPU settings"
 -msgstr ""
-+msgstr "Choisir les paramètres Mémoire et CPU"
++msgstr "Choisissez les paramètres mémoire et CPU"
  
  #: ../src/vmm-create.glade.h:15
  msgid "Choose an operating systen type and version"
@@ -3094,7 +3031,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-create.glade.h:17 ../src/vmm-host.glade.h:13
  #: ../src/vmm-open-connection.glade.h:6
-@@ -3010,167 +2886,147 @@ msgstr "Connexion :"
+@@ -3010,134 +2889,115 @@ msgstr "Connexion :"
  
  #: ../src/vmm-create.glade.h:18
  msgid "Create a disk image on the computer's hard drive"
@@ -3134,13 +3071,13 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Kernel Options:"
 -msgstr "Paramètres _noyau :"
-+msgstr "Paramètres du Noyau :"
++msgstr "Paramètres du noyau :"
  
  #: ../src/vmm-create.glade.h:26
 -#, fuzzy
  msgid "Kickstart URL:"
 -msgstr "U_RL de démarrage :"
-+msgstr "URL de démarrage :"
++msgstr "URL du fichier kickstart :"
  
  #: ../src/vmm-create.glade.h:27
  msgid "Local install media (ISO image or CDROM)"
@@ -3169,12 +3106,12 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Network Boot (PXE)"
 -msgstr "_Démarrage réseau PXE"
-+msgstr "Démarrage Réseau (PXE)"
++msgstr "Démarrage réseau (PXE)"
  
  #: ../src/vmm-create.glade.h:35
  msgid "Network Install (HTTP, FTP, or NFS)"
 -msgstr ""
-+msgstr "Installation Réseau (HTTP, FTP ou NFS)"
++msgstr "Installation réseau (HTTP, FTP ou NFS)"
  
  #: ../src/vmm-create.glade.h:36
 -#, fuzzy
@@ -3248,7 +3185,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Delete Confirmation"
 -msgstr "Supprimer la machine"
-+msgstr "Confirmation de suppression"
++msgstr "Confirmation de la suppression"
  
  #: ../src/vmm-delete.glade.h:2
  msgid "Delete associated storage files"
@@ -3257,11 +3194,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-delete.glade.h:4
  msgid "gtk-delete"
--msgstr ""
-+msgstr "Supprimer"
- 
- #: ../src/vmm-details.glade.h:1
- msgid ""
+@@ -3148,29 +3008,28 @@ msgid ""
  "0 KBytes/s\n"
  "0KBytes/s"
  msgstr ""
@@ -3272,7 +3205,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "<b>Autostart</b>"
 -msgstr "Démarrage automatique :"
-+msgstr "<b>Démarrage automatique :</b>"
++msgstr "<b>Démarrage automatique</b>"
  
  #: ../src/vmm-details.glade.h:4 ../src/vmm-host.glade.h:1
  msgid "<b>Basic details</b>"
@@ -3282,7 +3215,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "<b>Boot Device</b>"
 -msgstr "<b>Pointeur</b>"
-+msgstr "<b>Périphérique de Démarrage</b>"
++msgstr "<b>Périphérique de démarrage</b>"
  
  #: ../src/vmm-details.glade.h:6
  msgid "<b>CPUs</b>"
@@ -3293,11 +3226,11 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "<b>Machine Details</b>"
 -msgstr "<b>Détails de base</b>"
-+msgstr "<b>Détails de la Machine</b>"
++msgstr "<b>Détails de la machine</b>"
  
  #: ../src/vmm-details.glade.h:8
  msgid "<b>Memory</b>"
-@@ -3181,9 +3037,8 @@ msgid "<b>Performance</b>"
+@@ -3181,9 +3040,8 @@ msgid "<b>Performance</b>"
  msgstr "<b>Performance</b>"
  
  #: ../src/vmm-details.glade.h:10
@@ -3308,29 +3241,29 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-details.glade.h:12
  msgid "<b>The console is currently unavailable</b>"
-@@ -3194,8 +3049,8 @@ msgid ""
+@@ -3194,8 +3052,8 @@ msgid ""
  "<b>Tip:</b> 'Source device' refers to the name of the device as seen from "
  "the host OS."
  msgstr ""
 -"<b>Conseil :</b> « source » fait référence à l'information vue par le système "
 -"d'exploitation hôte."
-+"<b>Conseil :</b> le « Périphérique source » fait référence à l'information vue "
-+"par le système d'exploitation hôte."
++"<b>Conseil :</b> le « périphérique source » fait référence au nom du "
++"périphérique vu par le système d'exploitation hôte."
  
  #: ../src/vmm-details.glade.h:14
  msgid ""
-@@ -3203,8 +3058,8 @@ msgid ""
+@@ -3203,8 +3061,8 @@ msgid ""
  "'target' refers to information seen from the guest OS"
  msgstr ""
  "<b>Conseil :</b> « source » fait référence à l'information vue par le système "
 -"d'exploitation hôte alors que « cible » fait référence à l'information vue "
 -"par le système d'exploitation invité"
-+"d'exploitation hôte alors que « cible » fait référence à l'information vue par "
-+"le système d'exploitation invité"
++"d'exploitation hôte alors que « cible » fait référence au nom du périphérique "
++"vu par le système d'exploitation invité"
  
  #: ../src/vmm-details.glade.h:15
  msgid ""
-@@ -3212,44 +3067,42 @@ msgid ""
+@@ -3212,19 +3070,18 @@ msgid ""
  "OS will ensure that the virtual cursor moves in sync with the local desktop "
  "cursor."
  msgstr ""
@@ -3338,7 +3271,7 @@ index bd34e4d..90628c1 100644
 -"pointeur par défaut dans le SE invité garantit que les mouvements du curseur "
 -"virtuel s'effectuent de manière synchronisée avec le curseur du bureau local."
 -"</small>"
-+"<small><b>Conseil :</b> Une tablette graphique configurée en tant que pointeur "
++"<small><b>Conseil :</b> une tablette graphique configurée en tant que pointeur "
 +"par défaut dans le SE invité garantit que les mouvements du curseur virtuel "
 +"s'effectuent de manière synchronisée avec le curseur du bureau local.</small>"
  
@@ -3350,29 +3283,22 @@ index bd34e4d..90628c1 100644
 -"<b>Note : </b> Pour de meilleures performances, le nombre d'unités centrales "
 -"virtuelles devrait être inférieur (ou égal) au nombre d'unités centrales "
 -"physiques hébergées sur le système."
-+"<b>Note :</b> Pour de meilleures performances, le nombre de CPU virtuelles "
++"<b>Note :</b> pour de meilleures performances, le nombre de CPU virtuelles "
 +"devrait être inférieur (ou égal) au nombre de CPU physiques hébergées sur le "
 +"système."
  
  #: ../src/vmm-details.glade.h:17
  msgid "<b>Virtual Disk</b>"
--msgstr "<b>Disque virtuel</b>"
-+msgstr "<b>Disque Virtuel</b>"
- 
- #: ../src/vmm-details.glade.h:18
- msgid "<b>Virtual Display</b>"
--msgstr "<b>Affichage virtuel</b>"
-+msgstr "<b>Affichage Virtuel</b>"
+@@ -3236,20 +3093,19 @@ msgstr "<b>Affichage virtuel</b>"
  
  #: ../src/vmm-details.glade.h:19
  msgid "<b>Virtual Network Interface</b>"
 -msgstr "<b>Interface réseau virtuel</b>"
-+msgstr "<b>Interface Réseau Virtuelle</b>"
++msgstr "<b>Interface réseau virtuelle</b>"
  
  #: ../src/vmm-details.glade.h:20
  msgid "<b>Virtual Pointer</b>"
--msgstr "<b>Pointeur virtuel</b>"
-+msgstr "<b>Pointeur Virtuel</b>"
+ msgstr "<b>Pointeur virtuel</b>"
  
  #: ../src/vmm-details.glade.h:21
 -#, fuzzy
@@ -3387,7 +3313,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-details.glade.h:25
  msgid "Auth"
-@@ -3260,16 +3113,16 @@ msgid "Block"
+@@ -3260,16 +3116,16 @@ msgid "Block"
  msgstr "Bloc"
  
  #: ../src/vmm-details.glade.h:27
@@ -3408,7 +3334,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-details.glade.h:30
  msgid "Change allocation:"
-@@ -3277,76 +3130,71 @@ msgstr "Modifier l'allocation :"
+@@ -3277,76 +3133,71 @@ msgstr "Modifier l'allocation :"
  
  #: ../src/vmm-details.glade.h:31
  msgid "Char"
@@ -3435,7 +3361,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Device Mode:"
 -msgstr "Type de périphérique :"
-+msgstr "Mode du Périphérique :"
++msgstr "Mode du périphérique :"
  
  #: ../src/vmm-details.glade.h:39
  msgid "Device virtual machine will boot from:"
@@ -3469,7 +3395,7 @@ index bd34e4d..90628c1 100644
  #: ../src/vmm-details.glade.h:45
  msgid "Force Off"
 -msgstr ""
-+msgstr "Forcer l'Arrêt"
++msgstr "Forcer l'arrêt"
  
  #: ../src/vmm-details.glade.h:46
 -#, fuzzy
@@ -3501,7 +3427,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-details.glade.h:51 ../src/vmm-host.glade.h:23
  #: ../src/vmm-open-connection.glade.h:10
-@@ -3355,7 +3203,7 @@ msgstr "Hyperviseur :"
+@@ -3355,7 +3206,7 @@ msgstr "Hyperviseur :"
  
  #: ../src/vmm-details.glade.h:54
  msgid "Label:"
@@ -3510,15 +3436,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-details.glade.h:55
  msgid "Login"
-@@ -3363,52 +3211,51 @@ msgstr "Identifiant de connexion"
- 
- #: ../src/vmm-details.glade.h:59
- msgid "Max Memory Select"
--msgstr "Sélection de la mémoire maximale"
-+msgstr "Sélection de la Mémoire Maximale"
- 
- #: ../src/vmm-details.glade.h:60
- msgid "Maximum allocation:"
+@@ -3370,45 +3221,44 @@ msgid "Maximum allocation:"
  msgstr "Allocation maximale :"
  
  #: ../src/vmm-details.glade.h:61
@@ -3538,8 +3456,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-details.glade.h:64
  msgid "Memory Select"
--msgstr "Sélection de la mémoire"
-+msgstr "Sélection de la Mémoire"
+ msgstr "Sélection de la mémoire"
  
  #: ../src/vmm-details.glade.h:68
 -#, fuzzy
@@ -3559,7 +3476,7 @@ index bd34e4d..90628c1 100644
  #: ../src/vmm-details.glade.h:72
  msgid "Only when Fullscreen"
 -msgstr ""
-+msgstr "Seulement en Plein écran"
++msgstr "Seulement en plein écran"
  
  #: ../src/vmm-details.glade.h:73
 -#, fuzzy
@@ -3574,7 +3491,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-details.glade.h:76
  msgid "Permissions:"
-@@ -3416,51 +3263,45 @@ msgstr "Permissions :"
+@@ -3416,51 +3266,45 @@ msgstr "Permissions :"
  
  #: ../src/vmm-details.glade.h:77
  msgid "Physical CPU pinning:"
@@ -3616,7 +3533,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Scale Display"
 -msgstr "Affichage"
-+msgstr "Redimensionner l'Affichage"
++msgstr "Redimensionner l'affichage"
  
  #: ../src/vmm-details.glade.h:86
  msgid "Screenshot"
@@ -3626,24 +3543,22 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Send Key"
 -msgstr "_Touche envoi"
-+msgstr "Envoyer des Touches"
++msgstr "Envoyer des touches"
  
  #: ../src/vmm-details.glade.h:88
 -#, fuzzy
  msgid "Shut Down"
  msgstr "Éteindre"
  
-@@ -3469,18 +3310,16 @@ msgid "Shut down"
+@@ -3469,7 +3313,6 @@ msgid "Shut down"
  msgstr "Éteindre"
  
  #: ../src/vmm-details.glade.h:91
 -#, fuzzy
  msgid "Source Device:"
--msgstr "Périphérique source :"
-+msgstr "Périphérique Source :"
+ msgstr "Périphérique source :"
  
- #: ../src/vmm-details.glade.h:93
- msgid "Source device:"
+@@ -3478,9 +3321,8 @@ msgid "Source device:"
  msgstr "Périphérique source :"
  
  #: ../src/vmm-details.glade.h:94
@@ -3654,7 +3569,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-details.glade.h:95
  msgid "Source path:"
-@@ -3491,33 +3330,28 @@ msgid "Source type:"
+@@ -3491,33 +3333,28 @@ msgid "Source type:"
  msgstr "Type de la source :"
  
  #: ../src/vmm-details.glade.h:97
@@ -3684,7 +3599,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Target Port:"
 -msgstr "Type de la cible :"
-+msgstr "Port Cible :"
++msgstr "Port cible :"
  
  #: ../src/vmm-details.glade.h:102
 -#, fuzzy
@@ -3694,7 +3609,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-details.glade.h:103
  msgid "Target device:"
-@@ -3544,9 +3378,8 @@ msgid "Unavailable"
+@@ -3544,9 +3381,8 @@ msgid "Unavailable"
  msgstr "Non disponible"
  
  #: ../src/vmm-details.glade.h:110
@@ -3705,7 +3620,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-details.glade.h:111
  msgid "VNC"
-@@ -3554,36 +3387,31 @@ msgstr "VNC"
+@@ -3554,36 +3390,31 @@ msgstr "VNC"
  
  #: ../src/vmm-details.glade.h:112
  msgid "Vid"
@@ -3716,25 +3631,25 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "View Manager"
 -msgstr "Gestionnaire de machine virtuelle"
-+msgstr "Voir le Gestionnaire"
++msgstr "Voir le gestionnaire"
  
  #: ../src/vmm-details.glade.h:114
 -#, fuzzy
  msgid "Virtual CPU Affinity Select"
 -msgstr "Sélection VCPU"
-+msgstr "Sélection de l'Affinité des CPU Virtuels"
++msgstr "Sélection de l'affinité des CPU virtuelles"
  
  #: ../src/vmm-details.glade.h:115
 -#, fuzzy
  msgid "Virtual CPU Select"
 -msgstr "Sélection VCPU"
-+msgstr "Sélection des CPU Virtuels"
++msgstr "Sélection des CPU virtuelles"
  
  #: ../src/vmm-details.glade.h:116
 -#, fuzzy
  msgid "Virtual Machine"
 -msgstr "_Machine virtuelle"
-+msgstr "Machine Virtuelle"
++msgstr "Machine virtuelle"
  
  #: ../src/vmm-details.glade.h:117
  msgid "Virtual _Machine"
@@ -3748,7 +3663,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-details.glade.h:119 ../src/vmm-host.glade.h:41
  #: ../src/vmm-manager.glade.h:12
-@@ -3602,7 +3430,7 @@ msgstr "_Aide"
+@@ -3602,7 +3433,7 @@ msgstr "_Aide"
  
  #: ../src/vmm-details.glade.h:125
  msgid "_Save"
@@ -3757,7 +3672,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-details.glade.h:126
  msgid "_Take Screenshot"
-@@ -3610,34 +3438,31 @@ msgstr "_Prendre une capture d'écran"
+@@ -3610,34 +3441,31 @@ msgstr "_Prendre une capture d'écran"
  
  #: ../src/vmm-details.glade.h:127 ../src/vmm-manager.glade.h:21
  msgid "_View"
@@ -3778,12 +3693,12 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Add Network"
 -msgstr "Réseau"
-+msgstr "Ajouter un Réseau"
++msgstr "Ajouter un réseau"
  
  #: ../src/vmm-host.glade.h:7
  msgid "Add Pool"
 -msgstr ""
-+msgstr "Ajouter une Réserve"
++msgstr "Ajouter une réserve"
  
  #: ../src/vmm-host.glade.h:8
  msgid "Apply"
@@ -3798,29 +3713,29 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-host.glade.h:11
  msgid "Autostart:"
-@@ -3656,18 +3481,16 @@ msgid "DHCP start:"
+@@ -3656,18 +3484,16 @@ msgid "DHCP start:"
  msgstr "Début DHCP :"
  
  #: ../src/vmm-host.glade.h:16
 -#, fuzzy
  msgid "Delete Network"
 -msgstr "Réseau"
-+msgstr "Supprimer le Réseau"
++msgstr "Supprimer le réseau"
  
  #: ../src/vmm-host.glade.h:17
  msgid "Delete Pool"
 -msgstr ""
-+msgstr "Supprimer la Réserve"
++msgstr "Supprimer la réserve"
  
  #: ../src/vmm-host.glade.h:18
 -#, fuzzy
  msgid "Delete Volume"
 -msgstr "Supprimer la machine"
-+msgstr "Supprimer le Volume"
++msgstr "Supprimer le volume"
  
  #: ../src/vmm-host.glade.h:20
  msgid "Forwarding:"
-@@ -3679,7 +3502,7 @@ msgstr "Détails de l'hôte"
+@@ -3679,7 +3505,7 @@ msgstr "Détails de l'hôte"
  
  #: ../src/vmm-host.glade.h:22 ../src/vmm-open-connection.glade.h:8
  msgid "Hostname:"
@@ -3829,7 +3744,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-host.glade.h:24
  msgid "Location:"
-@@ -3687,7 +3510,7 @@ msgstr "Emplacement :"
+@@ -3687,7 +3513,7 @@ msgstr "Emplacement :"
  
  #: ../src/vmm-host.glade.h:25
  msgid "Logical CPUs:"
@@ -3838,12 +3753,12 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-host.glade.h:26
  msgid "Memory usage:"
-@@ -3699,68 +3522,60 @@ msgstr "Mémoire :"
+@@ -3699,68 +3525,60 @@ msgstr "Mémoire :"
  
  #: ../src/vmm-host.glade.h:31
  msgid "New Volume"
 -msgstr ""
-+msgstr "Nouveau Volume"
++msgstr "Nouveau volume"
  
  #: ../src/vmm-host.glade.h:32
  msgid "Overview"
@@ -3859,13 +3774,13 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Start Network"
 -msgstr "Réseau"
-+msgstr "Démarrer le Réseau"
++msgstr "Démarrer le réseau"
  
  #: ../src/vmm-host.glade.h:35
 -#, fuzzy
  msgid "Start Pool"
 -msgstr "Réserves de stockage"
-+msgstr "Démarrer la Réserve"
++msgstr "Démarrer la réserve"
  
  #: ../src/vmm-host.glade.h:36
  msgid "State:"
@@ -3875,24 +3790,23 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Stop Network"
 -msgstr "Réseau"
-+msgstr "Arrêter le Réseau"
++msgstr "Arrêter le réseau"
  
  #: ../src/vmm-host.glade.h:38
 -#, fuzzy
  msgid "Stop Pool"
 -msgstr "Réserves de stockage"
-+msgstr "Supprimer la Réserve"
++msgstr "Supprimer la réserve"
  
  #: ../src/vmm-host.glade.h:40
  msgid "Virtual Networks"
--msgstr "Réseaux virtuels"
-+msgstr "Réseaux Virtuels"
+ msgstr "Réseaux virtuels"
  
  #: ../src/vmm-manager.glade.h:1
 -#, fuzzy
  msgid "Add Connection..."
 -msgstr "Ouvrir une connexion..."
-+msgstr "Ajouter une Connexion..."
++msgstr "Ajouter une connexion..."
  
  #: ../src/vmm-manager.glade.h:2
 -#, fuzzy
@@ -3920,7 +3834,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-manager.glade.h:9
  msgid "Restore saved machine..."
-@@ -3775,29 +3590,28 @@ msgid "_Edit"
+@@ -3775,29 +3593,28 @@ msgid "_Edit"
  msgstr "_Édition"
  
  #: ../src/vmm-manager.glade.h:16
@@ -3944,7 +3858,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "Add Connection"
 -msgstr "Connexion :"
-+msgstr "Ajouter une Connexion"
++msgstr "Ajouter une connexion"
  
  #: ../src/vmm-open-connection.glade.h:2
  msgid ""
@@ -3956,32 +3870,27 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-open-connection.glade.h:4
  msgid "Co_nnect"
-@@ -3805,7 +3619,7 @@ msgstr "Co_nnecter"
- 
- #: ../src/vmm-open-connection.glade.h:5
- msgid "Connection Select"
--msgstr "Sélection de la connexion"
-+msgstr "Sélection de la Connexion"
+@@ -3809,14 +3626,13 @@ msgstr "Sélection de la connexion"
  
  #: ../src/vmm-open-connection.glade.h:7
  msgid "Hostname Field"
-@@ -3813,10 +3627,9 @@ msgstr "Champ « nom d'hôte »"
+-msgstr "Champ « nom d'hôte »"
++msgstr "Champ « Nom d'hôte »"
  
  #: ../src/vmm-open-connection.glade.h:9
  msgid "Hypervisor Select"
--msgstr "Sélection de l'hyperviseur"
-+msgstr "Sélection de l'Hyperviseur"
+ msgstr "Sélection de l'hyperviseur"
  
  #: ../src/vmm-open-connection.glade.h:11
 -#, fuzzy
  msgid ""
  "Local\n"
  "Remote Password or Kerberos\n"
-@@ -3824,86 +3637,78 @@ msgid ""
+@@ -3824,86 +3640,78 @@ msgid ""
  "Remote tunnel over SSH"
  msgstr ""
  "Local\n"
-+"Mot de passe Distant ou Kerberos\n"
++"Mot de passe distant ou Kerberos\n"
  "SSL/TLS distant avec certificat x509\n"
  "Tunnel distant à travers SSH"
  
@@ -4003,7 +3912,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "<b>Enable Stats Polling</b>"
 -msgstr "<b>Surveillance des états</b>"
-+msgstr "<b>Activer la Surveillance des Statistiques</b>"
++msgstr "<b>Activer la surveillance des statistiques</b>"
  
  #: ../src/vmm-preferences.glade.h:3
 -#, fuzzy
@@ -4021,7 +3930,7 @@ index bd34e4d..90628c1 100644
 -#, fuzzy
  msgid "<b>Stats Options</b>"
 -msgstr "<b>Surveillance des états</b>"
-+msgstr "<b>Options de Statistiques</b>"
++msgstr "<b>Options de statistiques</b>"
  
  #: ../src/vmm-preferences.glade.h:6
  msgid "Automatically open consoles:"
@@ -4040,19 +3949,20 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-preferences.glade.h:10
  msgid "Grab keyboard input:"
- msgstr "S'approprier les entrées clavier :"
+-msgstr "S'approprier les entrées clavier :"
++msgstr "S'approprier les entrées du clavier :"
  
  #: ../src/vmm-preferences.glade.h:11
 -#, fuzzy
  msgid "Graphical Console Scaling:"
 -msgstr "_Console graphique"
-+msgstr "Redimensionnement de la Console Graphique"
++msgstr "Redimensionnement de la console graphique"
  
  #: ../src/vmm-preferences.glade.h:12
 -#, fuzzy
  msgid "Install Audio Device:"
 -msgstr "Source d'installation"
-+msgstr "Installer un Périphérique Audio :"
++msgstr "Installer un périphérique audio :"
  
  #: ../src/vmm-preferences.glade.h:13
 -#, fuzzy
@@ -4078,7 +3988,7 @@ index bd34e4d..90628c1 100644
  "Pour tous les domaines"
  
  #: ../src/vmm-preferences.glade.h:19
-@@ -3912,6 +3717,9 @@ msgid ""
+@@ -3912,6 +3720,9 @@ msgid ""
  "Fullscreen only\n"
  "Always"
  msgstr ""
@@ -4088,7 +3998,7 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-preferences.glade.h:22
  msgid ""
-@@ -3928,18 +3736,16 @@ msgid "Preferences"
+@@ -3928,18 +3739,16 @@ msgid "Preferences"
  msgstr "Préférences"
  
  #: ../src/vmm-preferences.glade.h:26
@@ -4109,32 +4019,32 @@ index bd34e4d..90628c1 100644
  
  #: ../src/vmm-preferences.glade.h:30
  msgid "samples"
-@@ -3950,24 +3756,20 @@ msgid "seconds"
+@@ -3950,24 +3759,20 @@ msgid "seconds"
  msgstr "secondes"
  
  #: ../src/vmm-storage-browse.glade.h:1
 -#, fuzzy
  msgid "Choose Storage Volume"
 -msgstr "Nom du stockage"
-+msgstr "Choisir un Volume de Stockage"
++msgstr "Choisir un volume de stockage"
  
  #: ../src/vmm-storage-browse.glade.h:2
 -#, fuzzy
  msgid "Choose _Volume"
 -msgstr "Chemin d'accès à la source :"
-+msgstr "Choisir le _Volume :"
++msgstr "Choisir le _volume"
  
  #: ../src/vmm-storage-browse.glade.h:3
 -#, fuzzy
  msgid "_Browse Local"
 -msgstr "Parcourir..."
-+msgstr "_Parcourir en Local"
++msgstr "_Parcourir en local"
  
  #: ../src/vmm-storage-browse.glade.h:4
 -#, fuzzy
  msgid "_New Volume"
 -msgstr "Supprimer la machine"
-+msgstr "_Nouveau Volume"
++msgstr "_Nouveau volume"
  
  #, fuzzy
  #~ msgid "Poll memory usage stats"
