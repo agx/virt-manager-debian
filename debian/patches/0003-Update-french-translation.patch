@@ -3,11 +3,11 @@ Date: Wed, 5 Aug 2009 23:40:35 +0200
 Subject: [PATCH] Update french translation.
 
 ---
- po/fr.po | 1698 +++++++++++++++++++++++++++-----------------------------------
- 1 files changed, 750 insertions(+), 948 deletions(-)
+ po/fr.po | 1700 +++++++++++++++++++++++++++-----------------------------------
+ 1 files changed, 751 insertions(+), 949 deletions(-)
 
 diff --git a/po/fr.po b/po/fr.po
-index bd34e4d..0b1c728 100644
+index bd34e4d..90628c1 100644
 --- a/po/fr.po
 +++ b/po/fr.po
 @@ -7,18 +7,20 @@
@@ -23,9 +23,9 @@ index bd34e4d..0b1c728 100644
 -"PO-Revision-Date: 2008-01-31 20:53+0100\n"
 -"Last-Translator: Gauthier Ancelin <gauthier.ancelin@laposte.net>\n"
 -"Language-Team: french <fedora-trans-fr@redhat.com>\n"
-+"PO-Revision-Date: 2009-08-03 03:22+0200\n"
++"PO-Revision-Date: 2009-08-10 14:42+0200\n"
 +"Last-Translator: Laurent Léonard <laurent@open-minds.org>\n"
-+"Language-Team: French <pkg-libvirt-maintainers@lists.alioth.debian.org>\n"
++"Language-Team: French <fedora-trans-fr@redhat.com>\n"
  "MIME-Version: 1.0\n"
  "Content-Type: text/plain; charset=UTF-8\n"
  "Content-Transfer-Encoding: 8bit\n"
@@ -778,7 +778,7 @@ index bd34e4d..0b1c728 100644
 +#: ../src/virtManager/clone.py:714, python-format
  msgid "Creating virtual machine clone '%s'"
 -msgstr "Création d'une machine virtuelle"
-+msgstr "Création du clône de la machine virtuelle « %s »"
++msgstr "Création du clone de la machine virtuelle « %s »"
  
  #: ../src/virtManager/clone.py:718 ../src/virtManager/delete.py:142
  msgid " and selected storage (this may take a while)"
@@ -790,7 +790,7 @@ index bd34e4d..0b1c728 100644
 +#: ../src/virtManager/clone.py:752, python-format
  msgid "Error creating virtual machine clone '%s': %s"
 -msgstr "Erreur lors de la suppression du réseau : %s"
-+msgstr "Erreur lors de la création du clône de la machine virtuelle « %s » : %s"
++msgstr "Erreur lors de la création du clone de la machine virtuelle « %s » : %s"
  
  #: ../src/virtManager/clone.py:784
 -#, fuzzy
@@ -1898,7 +1898,7 @@ index bd34e4d..0b1c728 100644
 +#: ../src/virtManager/engine.py:742, python-format
  msgid "Error setting clone parameters: %s"
 -msgstr "Erreur lors de l'extinction du domaine : %s"
-+msgstr "Erreur lors de la définition des paramètres du clône : %s"
++msgstr "Erreur lors de la définition des paramètres du clone : %s"
  
  #: ../src/virtManager/error.py:28
 -#, fuzzy
@@ -2321,7 +2321,7 @@ index bd34e4d..0b1c728 100644
  "<small><b>Conseil :</b> Choisissez cette option si votre hôte est connecté "
 -"statiquement à un ethernet cablé afin d'avoir la possibilité de migrer le "
 -"système virtuel.</small>"
-+"statiquement à un ethernet cablé afin d'avoir la possibilité de migrer la "
++"statiquement à un ethernet câblé afin d'avoir la possibilité de migrer la "
 +"machine virtuelle.</small>"
  
  #: ../src/vmm-add-hardware.glade.h:14
@@ -2740,7 +2740,7 @@ index bd34e4d..0b1c728 100644
  "uses the existing disk image for both the original and the new machine.</"
  "span>"
  msgstr ""
-+"<span size='small'>Le Clonage crée une nouvelle et indépendante copie du "
++"<span size='small'>Le clonage crée une nouvelle et indépendante copie du "
 +"disque original. Le partage\n"
 +"utilise l'image disque existante pour la machine originale et la nouvelle "
 +"machine.</span>"
@@ -2772,13 +2772,13 @@ index bd34e4d..0b1c728 100644
  #: ../src/vmm-clone.glade.h:18
  msgid "Create a clone based on:"
 -msgstr ""
-+msgstr "Créer un clône basé sur :"
++msgstr "Créer un clone basé sur :"
  
  #: ../src/vmm-clone.glade.h:19
 -#, fuzzy
  msgid "Create a new disk (clone) for the virtual machine"
 -msgstr "Créer un nouveau réseau virtuel"
-+msgstr "Créer un nouveau disque (clône) pour la machine virtuelle"
++msgstr "Créer un nouveau disque (clone) pour la machine virtuelle"
  
  #: ../src/vmm-clone.glade.h:20
  msgid "Existing disk"
@@ -2884,7 +2884,7 @@ index bd34e4d..0b1c728 100644
 -#, fuzzy
  msgid "Add a New Storage Pool"
 -msgstr "Réserves de stockage"
-+msgstr "Aujouter une Nouvelle Réserve de Stockage"
++msgstr "Ajouter une Nouvelle Réserve de Stockage"
  
  #: ../src/vmm-create-pool.glade.h:3
 -#, fuzzy
@@ -3440,7 +3440,7 @@ index bd34e4d..0b1c728 100644
  #: ../src/vmm-details.glade.h:39
  msgid "Device virtual machine will boot from:"
 -msgstr ""
-+msgstr "Périphérique depuis lequel la machine virtuelle démarera :"
++msgstr "Périphérique depuis lequel la machine virtuelle démarrera :"
  
  #: ../src/vmm-details.glade.h:40 ../src/vmm-manager.glade.h:4
  msgid "Disk"
@@ -3609,7 +3609,8 @@ index bd34e4d..0b1c728 100644
  
  #: ../src/vmm-details.glade.h:84
  msgid "Save this password in your keyring"
- msgstr "Sauvergarder ce mot de passe dans votre trousseau"
+-msgstr "Sauvergarder ce mot de passe dans votre trousseau"
++msgstr "Sauvegarder ce mot de passe dans votre trousseau"
  
  #: ../src/vmm-details.glade.h:85
 -#, fuzzy
@@ -3721,7 +3722,7 @@ index bd34e4d..0b1c728 100644
 -#, fuzzy
  msgid "Virtual CPU Affinity Select"
 -msgstr "Sélection VCPU"
-+msgstr "Selection de l'Affinité des CPU Virtuels"
++msgstr "Sélection de l'Affinité des CPU Virtuels"
  
  #: ../src/vmm-details.glade.h:115
 -#, fuzzy
