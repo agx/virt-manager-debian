@@ -1,14 +1,10 @@
 #!/usr/bin/make -f
 
-DEB_PYTHON_SYSTEM=pysupport
-DEB_DH_INSTALL_SOURCEDIR = debian/tmp
-
-LDFLAGS += -Wl,--as-needed
+DEB_PYTHON_SYSTEM = pysupport
 
 include /usr/share/cdbs/1/class/autotools.mk
 include /usr/share/cdbs/1/rules/debhelper.mk
 include /usr/share/cdbs/1/class/python-distutils.mk
 include /usr/share/cdbs/1/rules/patchsys-quilt.mk
 
-DEB_CONFIGURE_EXTRA_FLAGS := --prefix=/usr
-DEB_PYTHON_SETUP_CMD := /dev/null
+DEB_PYTHON_SETUP_CMD = /dev/null
