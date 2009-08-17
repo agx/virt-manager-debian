@@ -12,3 +12,4 @@ DEB_PYTHON_SETUP_CMD = /dev/null
 clean::
 	rm -f $(CURDIR)/debian/pycompat
 	rm -f $(CURDIR)/help/virt-manager/C/virt-manager-C.omf.out
+	rm -f $(CURDIR)/tests/Makefile
