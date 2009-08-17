@@ -7,7 +7,7 @@ Subject: [PATCH] Update french translation.
  1 files changed, 729 insertions(+), 923 deletions(-)
 
 diff --git a/po/fr.po b/po/fr.po
-index bd34e4d..ef0b06a 100644
+index bd34e4d..a21f16e 100644
 --- a/po/fr.po
 +++ b/po/fr.po
 @@ -7,18 +7,20 @@
@@ -23,7 +23,7 @@ index bd34e4d..ef0b06a 100644
 -"PO-Revision-Date: 2008-01-31 20:53+0100\n"
 -"Last-Translator: Gauthier Ancelin <gauthier.ancelin@laposte.net>\n"
 -"Language-Team: french <fedora-trans-fr@redhat.com>\n"
-+"PO-Revision-Date: 2009-08-12 14:44+0200\n"
++"PO-Revision-Date: 2009-08-12 17:38+0200\n"
 +"Last-Translator: Laurent Léonard <laurent@open-minds.org>\n"
 +"Language-Team: French <fedora-trans-fr@redhat.com>\n"
  "MIME-Version: 1.0\n"
@@ -2157,7 +2157,7 @@ index bd34e4d..ef0b06a 100644
 -#, fuzzy
  msgid "<b>Character Device</b>"
 -msgstr "<b>Pointeur</b>"
-+msgstr "<b>Périphérique caractères</b>"
++msgstr "<b>Périphérique à caractères</b>"
  
  #: ../src/vmm-add-hardware.glade.h:2
 -#, fuzzy
