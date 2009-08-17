@@ -8,8 +8,7 @@ Vcs-Git: git://git.debian.org/git/pkg-libvirt/virt-manager.git
 Vcs-Browser: http://git.debian.org/?p=pkg-libvirt/virt-manager.git
 Homepage: http://virt-manager.et.redhat.com/
 Build-Depends: debhelper (>= 5), python-dev, python-gtk2-dev, scrollkeeper,
- python-support (>= 0.5.3), cdbs, autotools-dev, quilt, intltool,
- automake, autoconf, libtool
+ python-support (>= 0.5.3), cdbs, quilt, intltool
 
 Package: virt-manager
 Section: admin
