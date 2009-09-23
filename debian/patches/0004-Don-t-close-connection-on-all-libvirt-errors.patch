@@ -1,0 +1,54 @@
+From: =?utf-8?q?Laurent=20L=C3=A9onard?= <laurent@open-minds.org>
+Date: Wed, 23 Sep 2009 19:39:06 +0200
+Subject: [PATCH] Don't close connection on all libvirt errors.
+
+---
+ src/virtManager/connection.py |   10 +++++++++-
+ src/virtManager/engine.py     |   12 ++++++++----
+ 2 files changed, 17 insertions(+), 5 deletions(-)
+
+diff --git a/src/virtManager/connection.py b/src/virtManager/connection.py
+index 6873902..13ca029 100644
+--- a/src/virtManager/connection.py
++++ b/src/virtManager/connection.py
+@@ -941,7 +941,15 @@ class vmmConnection(gobject.GObject):
+             updateVMs = newVMs
+ 
+         for uuid in updateVMs:
+-            self.vms[uuid].tick(now)
++            vm = self.vms[uuid]
++            try:
++                vm.tick(now)
++            except libvirt.libvirtError, e:
++                if e.get_error_code() == libvirt.VIR_ERR_SYSTEM_ERROR:
++                    raise
++                logging.exception("Tick for VM '%s' failed" % vm.get_name())
++            except Exception, e:
++                logging.exception("Tick for VM '%s' failed" % vm.get_name())
+ 
+         if not noStatsUpdate:
+             self._recalculate_stats(now)
+diff --git a/src/virtManager/engine.py b/src/virtManager/engine.py
+index 97b2fab..05ae2be 100644
+--- a/src/virtManager/engine.py
++++ b/src/virtManager/engine.py
+@@ -199,10 +199,14 @@ class vmmEngine(gobject.GObject):
+                 self.connections[uri]["connection"].tick()
+             except KeyboardInterrupt:
+                 raise
+-            except:
+-                logging.exception("Could not refresh connection %s." % uri)
+-                logging.debug("Closing connection since refresh failed.")
+-                self.connections[uri]["connection"].close()
++            except libvirt.libvirtError, e:
++                if e.get_error_code() == libvirt.VIR_ERR_SYSTEM_ERROR:
++                    logging.exception("Could not refresh connection %s." % uri)
++                    logging.debug("Closing connection since libvirtd "
++                                  "appears to have stopped.")
++                    self.connections[uri]["connection"].close()
++                else:
++                    raise
+         return 1
+ 
+     def change_timer_interval(self,ignore1,ignore2,ignore3,ignore4):
+-- 
