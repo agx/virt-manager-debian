@@ -129,6 +129,12 @@ class vmmCloneVM(gobject.GObject):
             "on_clone_help_clicked" : self.show_help,
         })
 
+        # XXX: Help docs useless/out of date
+        self.window.get_widget("clone-help").hide()
+        finish_img = gtk.image_new_from_stock(gtk.STOCK_NEW,
+                                              gtk.ICON_SIZE_BUTTON)
+        self.window.get_widget("clone-ok").set_image(finish_img)
+
         self.set_initial_state()
 
     def show(self):
@@ -249,13 +255,7 @@ class vmmCloneVM(gobject.GObject):
                 if net:
                     label = ""
 
-                    use_nat, host_dev = net.get_ipv4_forward()
-                    if not use_nat:
-                        desc = _("Isolated network")
-                    elif host_dev:
-                        desc = _("NAT to %s") % host_dev
-                    else:
-                        desc = _("NAT")
+                    desc = net.pretty_forward_mode()
                     label += "%s" % desc
 
                 else:
@@ -299,7 +299,7 @@ class vmmCloneVM(gobject.GObject):
             definfo = ""
 
             storage_row = []
-            storage_row.insert(STORAGE_INFO_ORIG_PATH, path)
+            storage_row.insert(STORAGE_INFO_ORIG_PATH, path or "-")
             storage_row.insert(STORAGE_INFO_NEW_PATH, clone_path)
             storage_row.insert(STORAGE_INFO_TARGET, force_target)
             storage_row.insert(STORAGE_INFO_SIZE, size)
@@ -375,6 +375,7 @@ class vmmCloneVM(gobject.GObject):
         devtype = disk[STORAGE_INFO_DEVTYPE]
         size = disk[STORAGE_INFO_SIZE]
         can_clone = disk[STORAGE_INFO_CAN_CLONE]
+        do_clone = disk[STORAGE_INFO_DO_CLONE]
         can_share = disk[STORAGE_INFO_CAN_SHARE]
         is_default = disk[STORAGE_INFO_DO_DEFAULT]
         definfo = disk[STORAGE_INFO_DEFINFO]
@@ -433,7 +434,7 @@ class vmmCloneVM(gobject.GObject):
             model.insert(STORAGE_COMBO_DETAILS,
                          [_("Details..."), True, False])
 
-            if can_clone and is_default:
+            if (can_clone and is_default) or do_clone:
                 option_combo.set_active(STORAGE_COMBO_CLONE)
             else:
                 option_combo.set_active(STORAGE_COMBO_SHARE)
@@ -606,12 +607,13 @@ class vmmCloneVM(gobject.GObject):
 
         # Sync 'do clone' checkbox, and main dialog combo
         combo = row[STORAGE_INFO_COMBO]
-        if cs.get_widget("change-storage-doclone").get_active():
+        do_clone = cs.get_widget("change-storage-doclone").get_active()
+        if do_clone:
             combo.set_active(STORAGE_COMBO_CLONE)
         else:
             combo.set_active(STORAGE_COMBO_SHARE)
 
-        do_clone = row[STORAGE_INFO_DO_CLONE]
+        row[STORAGE_INFO_DO_CLONE] = do_clone
         if not do_clone:
             self.change_storage_close()
             return
@@ -781,12 +783,12 @@ def can_we_clone(conn, vol, path):
     ret = True
     msg = None
 
-    if not path or path == "-":
+    if not path:
         msg = _("No storage to clone.")
 
     elif vol:
         # Managed storage
-        if not virtinst.Storage.is_create_vol_from_supported(conn):
+        if not virtinst.Storage.is_create_vol_from_supported(conn.vmm):
             if conn.is_remote() or not os.access(path, os.R_OK):
                 msg = _("Connection does not support managed storage cloning.")
     else:
@@ -820,7 +822,7 @@ def do_we_default(conn, vol, path, ro, shared, devtype):
 
     if ro:
         info = append_str(info, _("Read Only"))
-    elif not vol and not os.access(path, os.W_OK):
+    elif not vol and path and not os.access(path, os.W_OK):
         info = append_str(info, _("No write access"))
 
     if shared:

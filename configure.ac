@@ -1,5 +1,5 @@
 
-AC_INIT(virt-manager, 0.8.0)
+AC_INIT(virt-manager, 0.8.1)
 AC_CONFIG_SRCDIR(src/virt-manager.py.in)
 dnl Make automake keep quiet about wildcards & other GNUmake-isms
 AM_INIT_AUTOMAKE([-Wno-portability])
@@ -8,6 +8,10 @@ ALL_LINGUAS="as bg bn_IN bs ca cs da de es fi fr gu hi hr hu is it ja kn ko ml m
 IT_PROG_INTLTOOL([0.35.0], [no-xml])
 AM_GNU_GETTEXT_VERSION([0.14.1])
 AM_GNU_GETTEXT([external])
+
+# Latest virtinst version required to run
+VIRTINST_VERSION="0.500.1"
+AC_SUBST([VIRTINST_VERSION])
 
 dnl ====================================
 dnl = Begin tests for scrollkeeper

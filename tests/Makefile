@@ -69,12 +69,12 @@ am__base_list = \
 am__installdirs = "$(DESTDIR)$(testsdir)"
 DATA = $(tests_DATA)
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
-ACLOCAL = ${SHELL} /home/nishome/crobinso/sandbox/upstream/virt-manager/virt-manager.test/missing --run aclocal-1.11
+ACLOCAL = ${SHELL} /home/boston/crobinso/sandbox/upstream/virt-manager/virt-manager.upstream/missing --run aclocal-1.11
 ALL_LINGUAS = as bg bn_IN bs ca cs da de es fi fr gu hi hr hu is it ja kn ko ml mr ms nb nl or pa pl pt_BR pt ro ru sr@latin sr sv ta te tr uk zh_CN zh_TW
-AMTAR = ${SHELL} /home/nishome/crobinso/sandbox/upstream/virt-manager/virt-manager.test/missing --run tar
-AUTOCONF = ${SHELL} /home/nishome/crobinso/sandbox/upstream/virt-manager/virt-manager.test/missing --run autoconf
-AUTOHEADER = ${SHELL} /home/nishome/crobinso/sandbox/upstream/virt-manager/virt-manager.test/missing --run autoheader
-AUTOMAKE = ${SHELL} /home/nishome/crobinso/sandbox/upstream/virt-manager/virt-manager.test/missing --run automake-1.11
+AMTAR = ${SHELL} /home/boston/crobinso/sandbox/upstream/virt-manager/virt-manager.upstream/missing --run tar
+AUTOCONF = ${SHELL} /home/boston/crobinso/sandbox/upstream/virt-manager/virt-manager.upstream/missing --run autoconf
+AUTOHEADER = ${SHELL} /home/boston/crobinso/sandbox/upstream/virt-manager/virt-manager.upstream/missing --run autoheader
+AUTOMAKE = ${SHELL} /home/boston/crobinso/sandbox/upstream/virt-manager/virt-manager.upstream/missing --run automake-1.11
 AWK = gawk
 CC = gcc
 CCDEPMODE = depmode=none
@@ -82,7 +82,7 @@ CFLAGS = -g -O2
 CPPFLAGS = 
 CYGPATH_W = echo
 DATADIRNAME = share
-DEFS = -DPACKAGE_NAME=\"virt-manager\" -DPACKAGE_TARNAME=\"virt-manager\" -DPACKAGE_VERSION=\"0.8.0\" -DPACKAGE_STRING=\"virt-manager\ 0.8.0\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE=\"virt-manager\" -DVERSION=\"0.8.0\" -DENABLE_NLS=1 -DHAVE_GETTEXT=1 -DHAVE_DCGETTEXT=1
+DEFS = -DPACKAGE_NAME=\"virt-manager\" -DPACKAGE_TARNAME=\"virt-manager\" -DPACKAGE_VERSION=\"0.8.1\" -DPACKAGE_STRING=\"virt-manager\ 0.8.1\" -DPACKAGE_BUGREPORT=\"\" -DPACKAGE_URL=\"\" -DPACKAGE=\"virt-manager\" -DVERSION=\"0.8.1\" -DENABLE_NLS=1 -DHAVE_GETTEXT=1 -DHAVE_DCGETTEXT=1
 DEPDIR = .deps
 ECHO_C = 
 ECHO_N = -n
@@ -97,29 +97,10 @@ INSTALL_PROGRAM = ${INSTALL}
 INSTALL_SCRIPT = ${INSTALL}
 INSTALL_STRIP_PROGRAM = $(install_sh) -c -s
 INTLLIBS = 
-INTLTOOL_CAVES_RULE = %.caves:     %.caves.in     $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -d -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
-INTLTOOL_DESKTOP_RULE = %.desktop:   %.desktop.in   $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -d -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
-INTLTOOL_DIRECTORY_RULE = %.directory: %.directory.in $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -d -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
 INTLTOOL_EXTRACT = /usr/bin/intltool-extract
-INTLTOOL_KBD_RULE = %.kbd:       %.kbd.in       $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -x -u -m -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
-INTLTOOL_KEYS_RULE = %.keys:      %.keys.in      $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -k -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
 INTLTOOL_MERGE = /usr/bin/intltool-merge
-INTLTOOL_OAF_RULE = %.oaf:       %.oaf.in       $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -o -p $(top_srcdir)/po $< $@
 INTLTOOL_PERL = /usr/bin/perl
-INTLTOOL_POLICY_RULE = %.policy:    %.policy.in    $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -x -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
-INTLTOOL_PONG_RULE = %.pong:      %.pong.in      $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -x -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
-INTLTOOL_PROP_RULE = %.prop:      %.prop.in      $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -d -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
-INTLTOOL_SCHEMAS_RULE = %.schemas:   %.schemas.in   $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -s -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
-INTLTOOL_SERVER_RULE = %.server:    %.server.in    $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -o -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
-INTLTOOL_SERVICE_RULE = %.service: %.service.in   $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -d -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
-INTLTOOL_SHEET_RULE = %.sheet:     %.sheet.in     $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -x -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
-INTLTOOL_SOUNDLIST_RULE = %.soundlist: %.soundlist.in $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -d -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
-INTLTOOL_THEME_RULE = %.theme:     %.theme.in     $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -d -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
-INTLTOOL_UI_RULE = %.ui:        %.ui.in        $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -x -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
 INTLTOOL_UPDATE = /usr/bin/intltool-update
-INTLTOOL_XAM_RULE = %.xam:       %.xml.in       $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -x -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
-INTLTOOL_XML_NOMERGE_RULE = %.xml:       %.xml.in       $(INTLTOOL_MERGE) ; LC_ALL=C $(INTLTOOL_MERGE) -x -u /tmp $< $@
-INTLTOOL_XML_RULE = %.xml:       %.xml.in       $(INTLTOOL_MERGE) $(wildcard $(top_srcdir)/po/*.po) ; LC_ALL=C $(INTLTOOL_MERGE) -x -u -c $(top_builddir)/po/.intltool-merge-cache $(top_srcdir)/po $< $@
 INTL_MACOSX_LIBS = 
 LDFLAGS = 
 LIBICONV = -liconv
@@ -129,7 +110,7 @@ LIBS =
 LTLIBICONV = -liconv
 LTLIBINTL = 
 LTLIBOBJS = 
-MAKEINFO = ${SHELL} /home/nishome/crobinso/sandbox/upstream/virt-manager/virt-manager.test/missing --run makeinfo
+MAKEINFO = ${SHELL} /home/boston/crobinso/sandbox/upstream/virt-manager/virt-manager.upstream/missing --run makeinfo
 MKDIR_P = /bin/mkdir -p
 MSGFMT = /usr/bin/msgfmt
 MSGFMT_015 = /usr/bin/msgfmt
@@ -138,9 +119,10 @@ OBJEXT = o
 PACKAGE = virt-manager
 PACKAGE_BUGREPORT = 
 PACKAGE_NAME = virt-manager
-PACKAGE_STRING = virt-manager 0.8.0
+PACKAGE_STRING = virt-manager 0.8.1
 PACKAGE_TARNAME = virt-manager
-PACKAGE_VERSION = 0.8.0
+PACKAGE_URL = 
+PACKAGE_VERSION = 0.8.1
 PATH_SEPARATOR = :
 POSUB = po
 SCROLLKEEPER_CONFIG = /usr/bin/scrollkeeper-config
@@ -148,14 +130,15 @@ SET_MAKE =
 SHELL = /bin/sh
 STRIP = 
 USE_NLS = yes
-VERSION = 0.8.0
+VERSION = 0.8.1
+VIRTINST_VERSION = 0.500.1
 XGETTEXT = /usr/bin/xgettext
 XGETTEXT_015 = /usr/bin/xgettext
 XGETTEXT_EXTRA_OPTIONS = 
-abs_builddir = /home/nishome/crobinso/sandbox/upstream/virt-manager/virt-manager.test/tests
-abs_srcdir = /home/nishome/crobinso/sandbox/upstream/virt-manager/virt-manager.test/tests
-abs_top_builddir = /home/nishome/crobinso/sandbox/upstream/virt-manager/virt-manager.test
-abs_top_srcdir = /home/nishome/crobinso/sandbox/upstream/virt-manager/virt-manager.test
+abs_builddir = /home/boston/crobinso/sandbox/upstream/virt-manager/virt-manager.upstream/tests
+abs_srcdir = /home/boston/crobinso/sandbox/upstream/virt-manager/virt-manager.upstream/tests
+abs_top_builddir = /home/boston/crobinso/sandbox/upstream/virt-manager/virt-manager.upstream
+abs_top_srcdir = /home/boston/crobinso/sandbox/upstream/virt-manager/virt-manager.upstream
 ac_ct_CC = gcc
 am__include = include
 am__leading_dot = .
@@ -182,7 +165,7 @@ host_vendor = unknown
 htmldir = ${docdir}
 includedir = ${prefix}/include
 infodir = ${datarootdir}/info
-install_sh = ${SHELL} /home/nishome/crobinso/sandbox/upstream/virt-manager/virt-manager.test/install-sh
+install_sh = ${SHELL} /home/boston/crobinso/sandbox/upstream/virt-manager/virt-manager.upstream/install-sh
 libdir = ${exec_prefix}/lib
 libexecdir = ${exec_prefix}/libexec
 localedir = ${datarootdir}/locale

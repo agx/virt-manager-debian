@@ -55,6 +55,7 @@ class vmmCreateVolume(gobject.GObject):
                                   _("An unexpected error occurred"))
         self.topwin.hide()
 
+        self.name_hint = None
         self.vol = None
         self.vol_class = Storage.StoragePool.get_volume_for_pool(parent_pool.get_type())
 
@@ -62,6 +63,9 @@ class vmmCreateVolume(gobject.GObject):
             "on_vmm_create_vol_delete_event" : self.close,
             "on_vol_cancel_clicked"  : self.close,
             "on_vol_create_clicked"  : self.finish,
+            "on_vol_name_changed"    : self.vol_name_changed,
+            "on_vol_allocation_value_changed" : self.vol_allocation_changed,
+            "on_vol_capacity_value_changed"   : self.vol_capacity_changed,
         })
 
         format_list = self.window.get_widget("vol-format")
@@ -72,6 +76,13 @@ class vmmCreateVolume(gobject.GObject):
         format_list.add_attribute(text2, 'text', 1)
         self.window.get_widget("vol-info-view").modify_bg(gtk.STATE_NORMAL,
                                                           gtk.gdk.color_parse("grey"))
+
+        # XXX: Help docs useless/out of date
+        self.window.get_widget("pool-help").hide()
+        finish_img = gtk.image_new_from_stock(gtk.STOCK_QUIT,
+                                              gtk.ICON_SIZE_BUTTON)
+        self.window.get_widget("vol-create").set_image(finish_img)
+
         self.reset_state()
 
 
@@ -85,6 +96,9 @@ class vmmCreateVolume(gobject.GObject):
         self.set_modal(False)
         return 1
 
+    def set_name_hint(self, hint):
+        self.name_hint = hint
+
     def set_modal(self, modal):
         self.topwin.set_modal(bool(modal))
 
@@ -93,8 +107,27 @@ class vmmCreateVolume(gobject.GObject):
         self.vol_class = Storage.StoragePool.get_volume_for_pool(self.parent_pool.get_type())
 
 
+    def default_vol_name(self):
+        if not self.name_hint:
+            return ""
+
+        suffix = self.default_suffix()
+        try:
+            return Storage.StorageVolume.find_free_name(self.name_hint,
+                                            pool_object=self.parent_pool.pool,
+                                            suffix=suffix)
+        except:
+            return ""
+
+    def default_suffix(self):
+        suffix = ""
+        if self.vol_class == Storage.FileVolume:
+            suffix = ".img"
+        return suffix
+
     def reset_state(self):
-        self.window.get_widget("vol-name").set_text("")
+        self.window.get_widget("vol-name").set_text(self.default_vol_name())
+        self.window.get_widget("vol-create").set_sensitive(False)
         self.populate_vol_format()
         self.populate_vol_suffix()
 
@@ -129,10 +162,32 @@ class vmmCreateVolume(gobject.GObject):
             model.append([f, f])
 
     def populate_vol_suffix(self):
-        suffix = ""
+        suffix = self.default_suffix()
         if self.vol_class == Storage.FileVolume:
             suffix = ".img"
         self.window.get_widget("vol-name-suffix").set_text(suffix)
+
+    def vol_name_changed(self, src):
+        text = src.get_text()
+        self.window.get_widget("vol-create").set_sensitive(bool(text))
+
+    def vol_allocation_changed(self, src):
+        cap_widget = self.window.get_widget("vol-capacity")
+
+        alloc = src.get_value()
+        cap   = cap_widget.get_value()
+
+        if alloc > cap:
+            cap_widget.set_value(alloc)
+
+    def vol_capacity_changed(self, src):
+        alloc_widget = self.window.get_widget("vol-allocation")
+
+        cap   = src.get_value()
+        alloc = self.window.get_widget("vol-allocation").get_value()
+
+        if cap < alloc:
+            alloc_widget.set_value(cap)
 
     def finish(self, src):
         # validate input

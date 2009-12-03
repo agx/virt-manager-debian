@@ -24,6 +24,8 @@ import gtk.glade
 
 class vmmSystray(gobject.GObject):
     __gsignals__ = {
+        "action-toggle-manager": (gobject.SIGNAL_RUN_FIRST,
+                                gobject.TYPE_NONE, []),
         "action-view-manager": (gobject.SIGNAL_RUN_FIRST,
                                 gobject.TYPE_NONE, []),
         "action-suspend-domain": (gobject.SIGNAL_RUN_FIRST,
@@ -68,6 +70,11 @@ class vmmSystray(gobject.GObject):
         self.config.on_view_system_tray_changed(self.show_systray)
         self.show_systray()
 
+    def is_visible(self):
+        return (self.config.get_view_system_tray() and
+                self.systray_icon and
+                self.systray_icon.is_embedded())
+
     # Initialization routines
 
     def init_systray_menu(self):
@@ -87,14 +94,14 @@ class vmmSystray(gobject.GObject):
         self.systray_menu.add(exit_item)
         self.systray_menu.show_all()
 
-    def init_systray(self, show):
+    def init_systray(self):
         # Build the systray icon
         if self.systray_icon:
             return
 
         iconfile = self.config.get_icon_dir() + "/virt-manager-icon.svg"
         self.systray_icon = gtk.StatusIcon()
-        self.systray_icon.set_visible(show)
+        self.systray_icon.set_visible(True)
         self.systray_icon.set_property("file", iconfile)
         self.systray_icon.connect("activate", self.systray_activate)
         self.systray_icon.connect("popup-menu", self.systray_popup)
@@ -105,7 +112,8 @@ class vmmSystray(gobject.GObject):
         do_show = self.config.get_view_system_tray()
 
         if not self.systray_icon:
-            self.init_systray(show=do_show)
+            if do_show:
+                self.init_systray()
         else:
             self.systray_icon.set_visible(do_show)
 
@@ -201,20 +209,22 @@ class vmmSystray(gobject.GObject):
         return None
 
     def _set_vm_status_icon(self, vm, menu_item):
-        image = gtk.image_new_from_pixbuf(vm.run_status_icon())
+        image = gtk.Image()
+        image.set_from_pixbuf(vm.run_status_icon())
         image.set_sensitive(vm.is_active())
         menu_item.set_image(image)
 
     # Listeners
 
     def systray_activate(self, widget):
-        self.emit("action-view-manager")
+        self.emit("action-toggle-manager")
 
     def systray_popup(self, widget, button, event_time):
         if button != 3:
             return
 
-        self.systray_menu.popup(None, None, None, 0, event_time)
+        self.systray_menu.popup(None, None, gtk.status_icon_position_menu,
+                                0, event_time, self.systray_icon)
 
     def conn_added(self, engine, conn):
         conn.connect("vm-added", self.vm_added)

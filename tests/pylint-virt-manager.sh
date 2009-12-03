@@ -19,11 +19,12 @@ GETTEXT_VAR="Undefined variable '_'"
 GOBJECT_VAR="has no '__gobject_init__' member"
 GOBJECT_INIT="__init__ method from base class 'GObject' is not called"
 EMIT_VAR="has no 'emit' member"
-ERROR_VBOX="vmmErrorDialog.__init__.*Class 'vbox' has no 'pack_start' member"
+ERROR_VBOX="Class 'vbox' has no 'pack_start' member"
 EXCEPTHOOK="no '__excepthook__' member"
 CONNECT_VAR="no 'connect' member"
 DISCONNECT_VAR="no 'disconnect' member"
 UNABLE_IMPORT="Unable to import 'gtk.gdk.*|Unable to import 'sparkline"
+MAX_RECURSION="maximum recursion depth"
 
 # os._exit is needed for forked processes.
 OS_EXIT="protected member _exit of a client class"
@@ -43,6 +44,12 @@ addmsg() {
 
 addchecker() {
     DCHECKERS="${DCHECKERS},$1"
+}
+
+addmsg_support() {
+    if `pylint --list-msgs | grep -q $1` ; then
+        addmsg "$1"
+    fi
 }
 
 # Disabled unwanted messages
@@ -66,6 +73,8 @@ addmsg "C0322"      # C0322: *Operator not preceded by a space*
 addmsg "C0323"      # C0323: *Operator not followed by a space*
 addmsg "W0511"      # W0511: FIXME and XXX: messages
 addmsg "W0613"      # W0613: Unused arguments
+addmsg_support "W6501"      # W6501: Using string formatters in logging message
+                            #        (see help message for info)
 
 # Disabled Checkers:
 addchecker "Design"         # Things like "Too many func arguments",
@@ -95,6 +104,7 @@ pylint --ignore=IPy.py $FILES \
         -ve "$BUILTIN_TYPE" \
         -ve "$ERROR_VBOX" \
         -ve "$UNABLE_IMPORT" \
+        -ve "$MAX_RECURSION" \
         -ve "$EXCEPTHOOK" | \
 $AWK '\
 # Strip out any "*** Module name" lines if we dont list any errors for them

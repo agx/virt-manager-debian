@@ -36,104 +36,48 @@ class vmmHost(gobject.GObject):
     __gsignals__ = {
         "action-show-help": (gobject.SIGNAL_RUN_FIRST,
                                gobject.TYPE_NONE, [str]),
+        "action-exit-app": (gobject.SIGNAL_RUN_FIRST,
+                            gobject.TYPE_NONE, []),
+        "action-view-manager": (gobject.SIGNAL_RUN_FIRST,
+                                gobject.TYPE_NONE, []),
         }
-    def __init__(self, config, conn):
+    def __init__(self, config, conn, engine):
         self.__gobject_init__()
-        self.window = gtk.glade.XML(config.get_glade_dir() + "/vmm-host.glade", "vmm-host", domain="virt-manager")
+        self.window = gtk.glade.XML(config.get_glade_dir() + "/vmm-host.glade",
+                                    "vmm-host", domain="virt-manager")
         self.config = config
         self.conn = conn
+        self.engine = engine
 
-        self.PIXBUF_STATE_RUNNING = gtk.gdk.pixbuf_new_from_file_at_size(self.config.get_icon_dir() + "/state_running.png", 18, 18)
-        self.PIXBUF_STATE_SHUTOFF = gtk.gdk.pixbuf_new_from_file_at_size(self.config.get_icon_dir() + "/state_shutoff.png", 18, 18)
+        self.topwin = self.window.get_widget("vmm-host")
+        self.topwin.hide()
 
-        topwin = self.window.get_widget("vmm-host")
-        topwin.hide()
-
-        self.err = vmmErrorDialog(topwin,
+        self.err = vmmErrorDialog(self.topwin,
                                   0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
                                   _("Unexpected Error"),
                                   _("An unexpected error occurred"))
 
-        self.window.get_widget("overview-uri").set_text(self.conn.get_uri())
-        self.window.get_widget("overview-hostname").set_text(self.conn.get_hostname(True))
-        self.window.get_widget("overview-hypervisor").set_text(self.conn.get_driver())
-        self.window.get_widget("overview-memory").set_text(self.conn.pretty_host_memory_size())
-        self.window.get_widget("overview-cpus").set_text(str(self.conn.host_active_processor_count()))
-        self.window.get_widget("overview-arch").set_text(self.conn.host_architecture())
-        self.window.get_widget("config-autoconnect").set_active(conn.get_autoconnect())
+        self.title = conn.get_short_hostname() + " " + self.topwin.get_title()
+        self.topwin.set_title(self.title)
 
-        netListModel = gtk.ListStore(str, str, str, int)
-        self.window.get_widget("net-list").set_model(netListModel)
-
-        volListModel = gtk.ListStore(str, str, str, str)
-        self.window.get_widget("vol-list").set_model(volListModel)
-
-        self.volmenu = gtk.Menu()
-        volCopyPath = gtk.ImageMenuItem(_("Copy Volume Path"))
-        volCopyImage = gtk.Image()
-        volCopyImage.set_from_stock(gtk.STOCK_COPY, gtk.ICON_SIZE_MENU)
-        volCopyPath.set_image(volCopyImage)
-        volCopyPath.show()
-        volCopyPath.connect("activate", self.copy_vol_path)
-        self.volmenu.add(volCopyPath)
-
-        self.window.get_widget("net-list").get_selection().connect("changed", self.net_selected)
-        self.window.get_widget("vol-list").get_selection().connect("changed", self.vol_selected)
-
-        netCol = gtk.TreeViewColumn("Networks")
-        netCol.set_spacing(6)
-        net_txt = gtk.CellRendererText()
-        net_img = gtk.CellRendererPixbuf()
-        netCol.pack_start(net_img, False)
-        netCol.pack_start(net_txt, True)
-        netCol.add_attribute(net_txt, 'text', 1)
-        netCol.add_attribute(net_img, 'icon-name', 2)
-        netCol.add_attribute(net_img, 'stock-size', 3)
-        self.window.get_widget("net-list").append_column(netCol)
-        netListModel.set_sort_column_id(1, gtk.SORT_ASCENDING)
-
-        volCol = gtk.TreeViewColumn("Volumes")
-        vol_txt1 = gtk.CellRendererText()
-        volCol.pack_start(vol_txt1, True)
-        volCol.add_attribute(vol_txt1, 'text', 1)
-        volCol.set_sort_column_id(1)
-        self.window.get_widget("net-details").set_sensitive(False)
-        self.window.get_widget("vol-list").append_column(volCol)
-
-        volSizeCol = gtk.TreeViewColumn("Size")
-        vol_txt2 = gtk.CellRendererText()
-        volSizeCol.pack_start(vol_txt2, False)
-        volSizeCol.add_attribute(vol_txt2, 'text', 2)
-        volSizeCol.set_sort_column_id(2)
-        self.window.get_widget("vol-list").append_column(volSizeCol)
-
-        volFormatCol = gtk.TreeViewColumn("Format")
-        vol_txt3 = gtk.CellRendererText()
-        volFormatCol.pack_start(vol_txt3, False)
-        volFormatCol.add_attribute(vol_txt3, 'text', 3)
-        volFormatCol.set_sort_column_id(3)
-        self.window.get_widget("vol-list").append_column(volFormatCol)
-
-        volListModel.set_sort_column_id(1, gtk.SORT_ASCENDING)
-
-        self.populate_networks(netListModel)
-        init_pool_list(self.window.get_widget("pool-list"),
-                       self.pool_selected)
-        populate_storage_pools(self.window.get_widget("pool-list"),
-                               self.conn)
-
-
-        self.cpu_usage_graph = Sparkline()
-        self.cpu_usage_graph.show()
-        self.window.get_widget("performance-table").attach(self.cpu_usage_graph, 1, 2, 0, 1)
-
-        self.memory_usage_graph = Sparkline()
-        self.memory_usage_graph.show()
-        self.window.get_widget("performance-table").attach(self.memory_usage_graph, 1, 2, 1, 2)
+        self.PIXBUF_STATE_RUNNING = gtk.gdk.pixbuf_new_from_file_at_size(self.config.get_icon_dir() + "/state_running.png", 18, 18)
+        self.PIXBUF_STATE_SHUTOFF = gtk.gdk.pixbuf_new_from_file_at_size(self.config.get_icon_dir() + "/state_shutoff.png", 18, 18)
 
         self.addnet = None
         self.addpool = None
         self.addvol = None
+        self.volmenu = None
+
+        self.cpu_usage_graph = None
+        self.memory_usage_graph = None
+        self.init_conn_state()
+
+        # Set up signals
+        self.window.get_widget("net-list").get_selection().connect("changed", self.net_selected)
+        self.window.get_widget("vol-list").get_selection().connect("changed", self.vol_selected)
+
+        self.init_net_state()
+        self.init_storage_state()
 
         self.conn.connect("net-added", self.repopulate_networks)
         self.conn.connect("net-removed", self.repopulate_networks)
@@ -148,8 +92,11 @@ class vmmHost(gobject.GObject):
         self.conn.connect("state-changed", self.conn_state_changed)
 
         self.window.signal_autoconnect({
+            "on_menu_file_view_manager_activate" : self.view_manager,
+            "on_menu_file_quit_activate" : self.exit_app,
             "on_menu_file_close_activate": self.close,
             "on_vmm_host_delete_event": self.close,
+
             "on_menu_help_contents_activate": self.show_help,
             "on_net_add_clicked": self.add_network,
             "on_net_delete_clicked": self.delete_network,
@@ -169,15 +116,113 @@ class vmmHost(gobject.GObject):
             "on_config_autoconnect_toggled": self.toggle_autoconnect,
             })
 
+        # XXX: Help docs useless/out of date
+        self.window.get_widget("help_menuitem").hide()
+        finish_img = gtk.image_new_from_stock(gtk.STOCK_DELETE,
+                                              gtk.ICON_SIZE_BUTTON)
+        self.window.get_widget("vol-delete").set_image(finish_img)
+        finish_img = gtk.image_new_from_stock(gtk.STOCK_NEW,
+                                              gtk.ICON_SIZE_BUTTON)
+        self.window.get_widget("vol-add").set_image(finish_img)
+
         self.conn.connect("resources-sampled", self.refresh_resources)
         self.reset_state()
 
 
+    def init_net_state(self):
+        # [ unique, label, icon name, icon size, is_active ]
+        netListModel = gtk.ListStore(str, str, str, int, bool)
+        self.window.get_widget("net-list").set_model(netListModel)
+
+        netCol = gtk.TreeViewColumn("Networks")
+        netCol.set_spacing(6)
+        net_txt = gtk.CellRendererText()
+        net_img = gtk.CellRendererPixbuf()
+        netCol.pack_start(net_img, False)
+        netCol.pack_start(net_txt, True)
+        netCol.add_attribute(net_txt, 'text', 1)
+        netCol.add_attribute(net_txt, 'sensitive', 4)
+        netCol.add_attribute(net_img, 'icon-name', 2)
+        netCol.add_attribute(net_img, 'stock-size', 3)
+        self.window.get_widget("net-list").append_column(netCol)
+        netListModel.set_sort_column_id(1, gtk.SORT_ASCENDING)
+
+        self.populate_networks(netListModel)
+
+    def init_storage_state(self):
+        self.volmenu = gtk.Menu()
+        volCopyPath = gtk.ImageMenuItem(_("Copy Volume Path"))
+        volCopyImage = gtk.Image()
+        volCopyImage.set_from_stock(gtk.STOCK_COPY, gtk.ICON_SIZE_MENU)
+        volCopyPath.set_image(volCopyImage)
+        volCopyPath.show()
+        volCopyPath.connect("activate", self.copy_vol_path)
+        self.volmenu.add(volCopyPath)
+
+        volListModel = gtk.ListStore(str, str, str, str)
+        self.window.get_widget("vol-list").set_model(volListModel)
+
+        volCol = gtk.TreeViewColumn("Volumes")
+        vol_txt1 = gtk.CellRendererText()
+        volCol.pack_start(vol_txt1, True)
+        volCol.add_attribute(vol_txt1, 'text', 1)
+        volCol.set_sort_column_id(1)
+        self.window.get_widget("vol-list").append_column(volCol)
+
+        volSizeCol = gtk.TreeViewColumn("Size")
+        vol_txt2 = gtk.CellRendererText()
+        volSizeCol.pack_start(vol_txt2, False)
+        volSizeCol.add_attribute(vol_txt2, 'text', 2)
+        volSizeCol.set_sort_column_id(2)
+        self.window.get_widget("vol-list").append_column(volSizeCol)
+
+        volFormatCol = gtk.TreeViewColumn("Format")
+        vol_txt3 = gtk.CellRendererText()
+        volFormatCol.pack_start(vol_txt3, False)
+        volFormatCol.add_attribute(vol_txt3, 'text', 3)
+        volFormatCol.set_sort_column_id(3)
+        self.window.get_widget("vol-list").append_column(volFormatCol)
+
+        volListModel.set_sort_column_id(1, gtk.SORT_ASCENDING)
+
+        init_pool_list(self.window.get_widget("pool-list"),
+                       self.pool_selected)
+        populate_storage_pools(self.window.get_widget("pool-list"),
+                               self.conn)
+
+
+    def init_conn_state(self):
+        uri = self.conn.get_uri()
+        host = self.conn.get_hostname()
+        drv = self.conn.get_driver()
+        memory = self.conn.pretty_host_memory_size()
+        proc = self.conn.host_active_processor_count()
+        arch = self.conn.host_architecture()
+        auto = self.conn.get_autoconnect()
+
+        self.window.get_widget("overview-uri").set_text(uri)
+        self.window.get_widget("overview-hostname").set_text(host)
+        self.window.get_widget("overview-hypervisor").set_text(drv)
+        self.window.get_widget("overview-memory").set_text(memory)
+        self.window.get_widget("overview-cpus").set_text(str(proc))
+        self.window.get_widget("overview-arch").set_text(arch)
+        self.window.get_widget("config-autoconnect").set_active(auto)
+
+        self.cpu_usage_graph = Sparkline()
+        self.cpu_usage_graph.show()
+        self.window.get_widget("performance-table").attach(self.cpu_usage_graph,                                                           1, 2, 0, 1)
+
+        self.memory_usage_graph = Sparkline()
+        self.memory_usage_graph.show()
+        self.window.get_widget("performance-table").attach(self.memory_usage_graph,
+                                                           1, 2, 1, 2)
+
+
     def show(self):
-        # Update autostart value
-        self.window.get_widget("config-autoconnect").set_active(self.conn.get_autoconnect())
         dialog = self.window.get_widget("vmm-host")
         dialog.present()
+
+        self.engine.increment_window_counter()
 
     def is_visible(self):
         if self.window.get_widget("vmm-host").flags() & gtk.VISIBLE:
@@ -186,19 +231,25 @@ class vmmHost(gobject.GObject):
 
     def close(self,ignore1=None,ignore2=None):
         self.window.get_widget("vmm-host").hide()
+        self.engine.decrement_window_counter()
         return 1
 
     def show_help(self, src):
         self.emit("action-show-help", "virt-manager-host-window")
 
-    def toggle_autoconnect(self, ignore=None):
-        if self.conn.get_autoconnect() != \
-           self.window.get_widget("config-autoconnect").get_active():
-            self.conn.toggle_autoconnect()
+    def view_manager(self, src):
+        self.emit("action-view-manager")
+
+    def exit_app(self, src):
+        self.emit("action-exit-app")
 
     def reset_state(self):
         self.refresh_resources()
         self.conn_state_changed()
+
+        # Update autostart value
+        auto = self.conn.get_autoconnect()
+        self.window.get_widget("config-autoconnect").set_active(auto)
 
     def refresh_resources(self, ignore=None):
         self.window.get_widget("performance-cpu").set_text("%d %%" % self.conn.cpu_time_percentage())
@@ -218,6 +269,9 @@ class vmmHost(gobject.GObject):
         state = (self.conn.get_state() == vmmConnection.STATE_ACTIVE)
         self.window.get_widget("net-add").set_sensitive(state)
         self.window.get_widget("pool-add").set_sensitive(state)
+
+    def toggle_autoconnect(self, src):
+        self.conn.set_autoconnect(src.get_active())
 
     # -------------------------
     # Virtual Network functions
@@ -314,49 +368,48 @@ class vmmHost(gobject.GObject):
 
         net = self.conn.get_net(selected[0].get_value(selected[1], 0))
         active = net.is_active()
+        selected[0].set_value(selected[1], 4, bool(active))
 
         self.window.get_widget("net-details").set_sensitive(True)
         self.window.get_widget("net-name").set_text(net.get_name())
 
-        if active:
-            self.window.get_widget("net-device").set_text(net.get_bridge_device())
-            self.window.get_widget("net-device").set_sensitive(True)
-            self.window.get_widget("net-state").set_text(_("Active"))
-            self.window.get_widget("net-state-icon").set_from_pixbuf(self.PIXBUF_STATE_RUNNING)
-        else:
-            self.window.get_widget("net-device").set_text("")
-            self.window.get_widget("net-device").set_sensitive(False)
-            self.window.get_widget("net-state").set_text(_("Inactive"))
-            self.window.get_widget("net-state-icon").set_from_pixbuf(self.PIXBUF_STATE_SHUTOFF)
+        dev = active and net.get_bridge_device() or ""
+        state = active and _("Active") or _("Inactive")
+        icon = (active and self.PIXBUF_STATE_RUNNING or
+                           self.PIXBUF_STATE_SHUTOFF)
+
+        self.window.get_widget("net-device").set_text(dev)
+        self.window.get_widget("net-device").set_sensitive(active)
+        self.window.get_widget("net-state").set_text(state)
+        self.window.get_widget("net-state-icon").set_from_pixbuf(icon)
 
         self.window.get_widget("net-start").set_sensitive(not active)
         self.window.get_widget("net-stop").set_sensitive(active)
         self.window.get_widget("net-delete").set_sensitive(not active)
 
         autostart = net.get_autostart()
+        autolabel = autostart and _("On Boot") or _("Never")
         self.window.get_widget("net-autostart").set_active(autostart)
-        if autostart:
-            self.window.get_widget("net-autostart").set_label(_("On Boot"))
-        else:
-            self.window.get_widget("net-autostart").set_label(_("Never"))
+        self.window.get_widget("net-autostart").set_label(autolabel)
 
         network = net.get_ipv4_network()
         self.window.get_widget("net-ip4-network").set_text(str(network))
 
         dhcp = net.get_ipv4_dhcp_range()
-        self.window.get_widget("net-ip4-dhcp-start").set_text(str(dhcp[0]))
-        self.window.get_widget("net-ip4-dhcp-end").set_text(str(dhcp[1]))
+        start = dhcp and str(dhcp[0]) or _("Disabled")
+        end = dhcp and str(dhcp[1]) or _("Disabled")
+        self.window.get_widget("net-ip4-dhcp-start").set_text(start)
+        self.window.get_widget("net-ip4-dhcp-end").set_text(end)
 
-        (forward, forwardDev) = net.get_ipv4_forward()
-        if forward:
-            self.window.get_widget("net-ip4-forwarding-icon").set_from_stock(gtk.STOCK_CONNECT, gtk.ICON_SIZE_MENU)
-            if forwardDev != None and forwardDev != "":
-                self.window.get_widget("net-ip4-forwarding").set_text(_("NAT to physical device %s") % (forwardDev))
-            else:
-                self.window.get_widget("net-ip4-forwarding").set_text(_("NAT to any physical device"))
-        else:
-            self.window.get_widget("net-ip4-forwarding-icon").set_from_stock(gtk.STOCK_DISCONNECT, gtk.ICON_SIZE_MENU)
-            self.window.get_widget("net-ip4-forwarding").set_text(_("Isolated virtual network"))
+        forward, ignore = net.get_ipv4_forward()
+        iconsize = gtk.ICON_SIZE_MENU
+        icon = forward and gtk.STOCK_CONNECT or gtk.STOCK_DISCONNECT
+
+        self.window.get_widget("net-ip4-forwarding-icon").set_from_stock(
+                                                        icon, iconsize)
+
+        forward_str = net.pretty_forward_mode()
+        self.window.get_widget("net-ip4-forwarding").set_text(forward_str)
 
         self.window.get_widget("net-apply").set_sensitive(False)
 
@@ -388,7 +441,8 @@ class vmmHost(gobject.GObject):
         for uuid in self.conn.list_net_uuids():
             net = self.conn.get_net(uuid)
             model.append([uuid, net.get_name(), "network-idle",
-                          gtk.ICON_SIZE_LARGE_TOOLBAR])
+                          gtk.ICON_SIZE_LARGE_TOOLBAR,
+                          bool(net.is_active())])
 
         _iter = model.get_iter_first()
         if _iter:

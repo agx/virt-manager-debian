@@ -27,6 +27,7 @@ import re
 import traceback
 
 from virtManager.IPy import IP
+from virtManager.network import vmmNetwork
 from virtManager.error import vmmErrorDialog
 
 PAGE_INTRO = 0
@@ -62,10 +63,17 @@ class vmmCreateNetwork(gobject.GObject):
             "on_create_finish_clicked" : self.finish,
             "on_net_forward_toggled" : self.change_forward_type,
             "on_net_network_changed": self.change_network,
+            "on_net_dhcp_enable_toggled": self.change_dhcp_enable,
             "on_net_dhcp_start_changed": self.change_dhcp_start,
             "on_net_dhcp_end_changed": self.change_dhcp_end,
             "on_create_help_clicked": self.show_help,
             })
+
+        # XXX: Help docs useless/out of date
+        self.window.get_widget("create-help").hide()
+        finish_img = gtk.image_new_from_stock(gtk.STOCK_QUIT,
+                                              gtk.ICON_SIZE_BUTTON)
+        self.window.get_widget("create-finish").set_image(finish_img)
 
         self.set_initial_state()
 
@@ -78,26 +86,35 @@ class vmmCreateNetwork(gobject.GObject):
         notebook = self.window.get_widget("create-pages")
         notebook.set_show_tabs(False)
 
-        #XXX I don't think I should have to go through and set a bunch of background colors
-        # in code, but apparently I do...
         black = gtk.gdk.color_parse("#000")
         for num in range(PAGE_SUMMARY+1):
             name = "page" + str(num) + "-title"
             self.window.get_widget(name).modify_bg(gtk.STATE_NORMAL,black)
 
-        # set up the list for the cd-path widget
         fw_list = self.window.get_widget("net-forward")
-        # Fields are raw device path, volume label, flag indicating
-        # whether volume is present or not, and HAL path
-        fw_model = gtk.ListStore(str, bool, str)
+        # [ label, dev name ]
+        fw_model = gtk.ListStore(str, str)
         fw_list.set_model(fw_model)
         text = gtk.CellRendererText()
         fw_list.pack_start(text, True)
         fw_list.add_attribute(text, 'text', 0)
-        fw_model.append([_("NAT to any physical device"), True, None])
+
+        fw_model.append([_("Any physical device"), None])
         for path in self.conn.list_net_device_paths():
             net = self.conn.get_net_device(path)
-            fw_model.append([_("NAT to physical device %s") % (net.get_name()), True, net.get_name()])
+            fw_model.append([_("Physical device %s") % (net.get_name()),
+                             net.get_name()])
+
+        mode_list = self.window.get_widget("net-forward-mode")
+        # [ label, mode ]
+        mode_model = gtk.ListStore(str, str)
+        mode_list.set_model(mode_model)
+        text = gtk.CellRendererText()
+        mode_list.pack_start(text, True)
+        mode_list.add_attribute(text, 'text', 0)
+
+        mode_model.append([_("NAT"), "nat"])
+        mode_model.append([_("Routed"), "route"])
 
     def reset_state(self):
         notebook = self.window.get_widget("create-pages")
@@ -109,9 +126,13 @@ class vmmCreateNetwork(gobject.GObject):
 
         self.window.get_widget("net-name").set_text("")
         self.window.get_widget("net-network").set_text("192.168.100.0/24")
+        self.window.get_widget("net-dhcp-enable").set_active(True)
         self.window.get_widget("net-dhcp-start").set_text("")
         self.window.get_widget("net-dhcp-end").set_text("")
         self.window.get_widget("net-forward-none").set_active(True)
+
+        self.window.get_widget("net-forward").set_active(0)
+        self.window.get_widget("net-forward-mode").set_active(0)
 
 
     def forward(self, ignore=None):
@@ -162,6 +183,11 @@ class vmmCreateNetwork(gobject.GObject):
             else:
                 self.window.get_widget("net-info-type").set_text(_("Other"))
 
+    def change_dhcp_enable(self, src):
+        val = src.get_active()
+        self.window.get_widget("net-dhcp-start").set_sensitive(val)
+        self.window.get_widget("net-dhcp-end").set_sensitive(val)
+
     def change_dhcp_start(self, src):
         end = self.get_config_dhcp_start()
         self.change_dhcp(src, end)
@@ -183,10 +209,10 @@ class vmmCreateNetwork(gobject.GObject):
             src.modify_base(gtk.STATE_NORMAL, green)
 
     def change_forward_type(self, src):
-        if self.window.get_widget("net-forward-none").get_active():
-            self.window.get_widget("net-forward").set_sensitive(False)
-        else:
-            self.window.get_widget("net-forward").set_sensitive(True)
+        skip_fwd = self.window.get_widget("net-forward-none").get_active()
+
+        self.window.get_widget("net-forward-mode").set_sensitive(not skip_fwd)
+        self.window.get_widget("net-forward").set_sensitive(not skip_fwd)
 
     def get_config_name(self):
         return self.window.get_widget("net-name").get_text()
@@ -211,13 +237,19 @@ class vmmCreateNetwork(gobject.GObject):
 
     def get_config_forwarding(self):
         if self.window.get_widget("net-forward-none").get_active():
-            return [False, None]
+            return [None, None]
         else:
             dev = self.window.get_widget("net-forward")
             model = dev.get_model()
             active = dev.get_active()
-            name = model[active][2]
-            return [True, name]
+            name = model[active][1]
+
+            mode_w = self.window.get_widget("net-forward-mode")
+            mode = mode_w.get_model()[mode_w.get_active()][1]
+            return [name, mode]
+
+    def get_config_dhcp_enable(self):
+        return self.window.get_widget("net-dhcp-enable").get_active()
 
     def page_changed(self, notebook, page, page_number):
         # would you like some spaghetti with your salad, sir?
@@ -247,20 +279,27 @@ class vmmCreateNetwork(gobject.GObject):
             self.window.get_widget("summary-ip4-gateway").set_text(str(ip[1]))
             self.window.get_widget("summary-ip4-netmask").set_text(str(ip.netmask()))
 
-            start = self.get_config_dhcp_start()
-            end = self.get_config_dhcp_end()
-            self.window.get_widget("summary-dhcp-start").set_text(str(start))
-            self.window.get_widget("summary-dhcp-end").set_text(str(end))
-
-            fw = self.get_config_forwarding()
-            if fw[0]:
-                if fw[1] is not None:
-                    self.window.get_widget("summary-forwarding").set_text(_("NAT to physical device %s") % (fw[1]))
-                else:
-                    self.window.get_widget("summary-forwarding").set_text(_("NAT to any physical device"))
+            if self.get_config_dhcp_enable():
+                start = self.get_config_dhcp_start()
+                end = self.get_config_dhcp_end()
+                self.window.get_widget("summary-dhcp-start").set_text(str(start))
+                self.window.get_widget("summary-dhcp-end").set_text(str(end))
+                self.window.get_widget("label-dhcp-start").set_text( _("Start address:") )
+                self.window.get_widget("label-dhcp-start").show()
+                self.window.get_widget("label-dhcp-end").show()
+                self.window.get_widget("summary-dhcp-start").show()
+                self.window.get_widget("summary-dhcp-end").show()
             else:
-                self.window.get_widget("summary-forwarding").set_text(_("Isolated virtual network"))
+                self.window.get_widget("label-dhcp-start").set_text( _("Status:") )
+                self.window.get_widget("summary-dhcp-start").set_text( _("Disabled") )
+                self.window.get_widget("label-dhcp-end").hide()
+                self.window.get_widget("summary-dhcp-end").hide()
 
+            forward_txt = ""
+            dev, mode = self.get_config_forwarding()
+            forward_txt = vmmNetwork.pretty_desc(mode, dev)
+
+            self.window.get_widget("summary-forwarding").set_text(forward_txt)
             self.window.get_widget("create-forward").hide()
             self.window.get_widget("create-finish").show()
 
@@ -278,20 +317,23 @@ class vmmCreateNetwork(gobject.GObject):
         ip = self.get_config_ip4()
         start = self.get_config_dhcp_start()
         end = self.get_config_dhcp_end()
-        fw = self.get_config_forwarding()
+        dev, mode = self.get_config_forwarding()
 
         xml = "<network>" + \
               "  <name>%s</name>\n" % name
-        if fw[0]:
-            if fw[1] is not None:
-                xml += "  <forward dev='%s'/>\n" % fw[1]
+        if mode:
+            if dev is not None:
+                xml += "  <forward mode='%s' dev='%s'/>\n" % (mode, dev)
             else:
-                xml += "  <forward/>\n"
+                xml += "  <forward mode='%s'/>\n" % mode
 
         xml += "  <ip address='%s' netmask='%s'>\n" % (str(ip[1]), str(ip.netmask()))
-        xml += "    <dhcp>\n"
-        xml += "      <range start='%s' end='%s'/>\n" % (str(start), str(end))
-        xml += "    </dhcp>\n"
+
+        if self.get_config_dhcp_enable():
+            xml += "    <dhcp>\n"
+            xml += "      <range start='%s' end='%s'/>\n" % (str(start), str(end))
+            xml += "    </dhcp>\n"
+
         xml += "  </ip>\n"
         xml += "</network>\n"
 
