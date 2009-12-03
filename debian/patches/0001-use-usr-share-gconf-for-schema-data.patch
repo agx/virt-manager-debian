@@ -8,7 +8,7 @@ Subject: [PATCH] use /usr/share/gconf for schema data
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/Makefile.am b/src/Makefile.am
-index 07cb97c..bed8487 100644
+index 0818500..61ded33 100644
 --- a/src/Makefile.am
 +++ b/src/Makefile.am
 @@ -22,7 +22,7 @@ dbusdir = $(datadir)/dbus-1/services
@@ -21,10 +21,10 @@ index 07cb97c..bed8487 100644
  schema_DATA = $(PACKAGE).schemas
  
 diff --git a/src/Makefile.in b/src/Makefile.in
-index 0d04831..158aac4 100644
+index cc2e215..901b3d6 100644
 --- a/src/Makefile.in
 +++ b/src/Makefile.in
-@@ -264,7 +264,7 @@ desktop_DATA = $(PACKAGE).desktop
+@@ -247,7 +247,7 @@ desktop_DATA = $(PACKAGE).desktop
  dbusdir = $(datadir)/dbus-1/services
  dbus_DATA_IN = $(PACKAGE).service.in
  dbus_DATA = $(PACKAGE).service
