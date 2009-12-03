@@ -26,6 +26,24 @@ from virtManager.IPy import IP
 class vmmNetwork(gobject.GObject):
     __gsignals__ = { }
 
+    @staticmethod
+    def pretty_desc(forward, forwardDev):
+        if forward or forwardDev:
+            if not forward or forward == "nat":
+                if forwardDev:
+                    desc = _("NAT to %s") % forwardDev
+                else:
+                    desc = _("NAT")
+            elif forward == "route":
+                if forwardDev:
+                    desc = _("Route to %s") % forwardDev
+                else:
+                    desc = _("Routed network")
+        else:
+            desc = _("Isolated network")
+
+        return desc
+
     def __init__(self, config, connection, net, uuid, active):
         self.__gobject_init__()
         self.config = config
@@ -65,7 +83,10 @@ class vmmNetwork(gobject.GObject):
         return self.uuid
 
     def get_bridge_device(self):
-        return self.net.bridgeName()
+        try:
+            return self.net.bridgeName()
+        except:
+            return ""
 
     def start(self):
         self.net.create()
@@ -97,19 +118,22 @@ class vmmNetwork(gobject.GObject):
 
     def get_ipv4_forward(self):
         xml = self.get_xml()
-        fw = util.get_xml_path(xml, "string(count(/network/forward))")
-
-        if fw != None and int(fw) != 0:
-            forwardDev = util.get_xml_path(xml, "string(/network/forward/@dev)")
-            return [True, forwardDev]
-        else:
-            return [False, None]
+        fw = util.get_xml_path(xml, "/network/forward/@mode")
+        forwardDev = util.get_xml_path(xml, "/network/forward/@dev")
+        return [fw, forwardDev]
 
     def get_ipv4_dhcp_range(self):
         xml = self.get_xml()
         dhcpstart = util.get_xml_path(xml, "/network/ip/dhcp/range[1]/@start")
         dhcpend = util.get_xml_path(xml, "/network/ip/dhcp/range[1]/@end")
+        if not dhcpstart or not dhcpend:
+            return None
+
         return [IP(dhcpstart), IP(dhcpend)]
+
+    def pretty_forward_mode(self):
+        forward, forwardDev = self.get_ipv4_forward()
+        return vmmNetwork.pretty_desc(forward, forwardDev)
 
     def is_read_only(self):
         if self.connection.is_read_only():

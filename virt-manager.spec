@@ -7,7 +7,7 @@
 %define _extra_release %{?dist:%{dist}}%{!?dist:%{?extra_release:%{extra_release}}}
 
 Name: virt-manager
-Version: 0.8.0
+Version: 0.8.1
 Release: 1%{_extra_release}
 Summary: Virtual Machine Manager
 
@@ -21,11 +21,6 @@ BuildArch: noarch
 # These two are just the oldest version tested
 Requires: pygtk2 >= 1.99.12-6
 Requires: gnome-python2-gconf >= 1.99.11-7
-%if 0%{?fedora} <= 9
-Requires: gnome-python2
-%else
-Requires: gnome-python2-gnome
-%endif
 # This version not strictly required: virt-manager should work with older,
 # however varying amounts of functionality will not be enabled.
 Requires: libvirt-python >= 0.7.0
@@ -39,11 +34,10 @@ Requires: gnome-keyring >= 0.4.9
 # will work just fine - keyring functionality will simply be
 # disabled
 Requires: gnome-python2-gnomekeyring >= 2.15.4
-Requires: gnome-python2-gnomevfs >= 2.15.4
 # Minimum we've tested with
 Requires: libxml2-python >= 2.6.23
 # Absolutely require this version or later
-Requires: python-virtinst >= 0.500.0
+Requires: python-virtinst >= 0.500.1
 # Required for loading the glade UI
 Requires: pygtk2-libglade
 # Required for our graphics which are currently SVG format

@@ -1,30 +1,31 @@
-<?xml version="1.0" encoding="UTF-8" standalone="no"?>
-<!DOCTYPE glade-interface SYSTEM "glade-2.0.dtd">
-<!--Generated with glade3 3.4.5 on Fri Jul 24 11:42:36 2009 -->
+<?xml version="1.0"?>
 <glade-interface>
+  <!-- interface-requires gtk+ 2.6 -->
+  <!-- interface-naming-policy toplevel-contextual -->
   <widget class="GtkWindow" id="vmm-preferences">
+    <property name="border_width">12</property>
     <property name="title" translatable="yes">Preferences</property>
-    <property name="type_hint">GDK_WINDOW_TYPE_HINT_DIALOG</property>
+    <property name="type_hint">dialog</property>
     <signal name="delete_event" handler="on_vmm_preferences_delete_event"/>
     <child>
       <widget class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
-        <property name="border_width">3</property>
-        <property name="spacing">3</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">12</property>
         <child>
           <widget class="GtkNotebook" id="prefs-pages">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
-            <property name="border_width">3</property>
             <child>
               <widget class="GtkVBox" id="vbox5">
                 <property name="visible">True</property>
-                <property name="border_width">6</property>
+                <property name="border_width">12</property>
+                <property name="orientation">vertical</property>
                 <child>
                   <widget class="GtkFrame" id="frame5">
                     <property name="visible">True</property>
                     <property name="label_xalign">0</property>
-                    <property name="shadow_type">GTK_SHADOW_NONE</property>
+                    <property name="shadow_type">none</property>
                     <child>
                       <widget class="GtkAlignment" id="alignment7">
                         <property name="visible">True</property>
@@ -32,18 +33,15 @@
                         <child>
                           <widget class="GtkTable" id="table5">
                             <property name="visible">True</property>
-                            <property name="n_rows">2</property>
                             <property name="column_spacing">6</property>
                             <property name="row_spacing">6</property>
                             <child>
-                              <placeholder/>
-                            </child>
-                            <child>
                               <widget class="GtkCheckButton" id="prefs-system-tray">
+                                <property name="label" translatable="yes">Enable _system tray icon</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
-                                <property name="label" translatable="yes">Enable system tray icon</property>
-                                <property name="response_id">0</property>
+                                <property name="receives_default">False</property>
+                                <property name="use_underline">True</property>
                                 <property name="draw_indicator">True</property>
                                 <signal name="toggled" handler="on_prefs_system_tray_toggled"/>
                               </widget>
@@ -67,6 +65,9 @@
                       </packing>
                     </child>
                   </widget>
+                  <packing>
+                    <property name="position">0</property>
+                  </packing>
                 </child>
               </widget>
             </child>
@@ -76,20 +77,21 @@
                 <property name="label" translatable="yes">General</property>
               </widget>
               <packing>
-                <property name="type">tab</property>
                 <property name="tab_fill">False</property>
+                <property name="type">tab</property>
               </packing>
             </child>
             <child>
               <widget class="GtkVBox" id="vbox2">
                 <property name="visible">True</property>
-                <property name="border_width">6</property>
+                <property name="border_width">12</property>
+                <property name="orientation">vertical</property>
                 <property name="spacing">8</property>
                 <child>
                   <widget class="GtkFrame" id="frame1">
                     <property name="visible">True</property>
                     <property name="label_xalign">0</property>
-                    <property name="shadow_type">GTK_SHADOW_NONE</property>
+                    <property name="shadow_type">none</property>
                     <child>
                       <widget class="GtkAlignment" id="alignment2">
                         <property name="visible">True</property>
@@ -129,6 +131,7 @@
                               <widget class="GtkSpinButton" id="prefs-stats-history-len">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="invisible_char">&#x25CF;</property>
                                 <property name="adjustment">0 0 300 5 5 0</property>
                                 <property name="climb_rate">0.01</property>
                                 <signal name="value_changed" handler="on_prefs_stats_history_length_changed"/>
@@ -145,6 +148,7 @@
                               <widget class="GtkSpinButton" id="prefs-stats-update-interval">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="invisible_char">&#x25CF;</property>
                                 <property name="adjustment">0 0 60 1 5 0</property>
                                 <signal name="value_changed" handler="on_prefs_stats_update_interval_changed"/>
                               </widget>
@@ -158,7 +162,9 @@
                               <widget class="GtkLabel" id="label7">
                                 <property name="visible">True</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Maintain history of</property>
+                                <property name="label" translatable="yes">Maintain h_istory of</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">prefs-stats-history-len</property>
                               </widget>
                               <packing>
                                 <property name="top_attach">1</property>
@@ -169,7 +175,9 @@
                               <widget class="GtkLabel" id="label6">
                                 <property name="visible">True</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Update status every</property>
+                                <property name="label" translatable="yes">_Update status every</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">prefs-stats-update-interval</property>
                               </widget>
                             </child>
                           </widget>
@@ -189,13 +197,14 @@
                   </widget>
                   <packing>
                     <property name="expand">False</property>
+                    <property name="position">0</property>
                   </packing>
                 </child>
                 <child>
                   <widget class="GtkFrame" id="frame2">
                     <property name="visible">True</property>
                     <property name="label_xalign">0</property>
-                    <property name="shadow_type">GTK_SHADOW_NONE</property>
+                    <property name="shadow_type">none</property>
                     <child>
                       <widget class="GtkAlignment" id="alignment3">
                         <property name="visible">True</property>
@@ -203,27 +212,15 @@
                         <child>
                           <widget class="GtkTable" id="table2">
                             <property name="visible">True</property>
-                            <property name="n_rows">4</property>
+                            <property name="n_rows">2</property>
                             <property name="n_columns">2</property>
                             <property name="column_spacing">3</property>
                             <property name="row_spacing">3</property>
                             <child>
-                              <placeholder/>
-                            </child>
-                            <child>
-                              <placeholder/>
-                            </child>
-                            <child>
-                              <placeholder/>
-                            </child>
-                            <child>
-                              <placeholder/>
-                            </child>
-                            <child>
                               <widget class="GtkCheckButton" id="prefs-stats-enable-net">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
-                                <property name="response_id">0</property>
+                                <property name="receives_default">False</property>
                                 <property name="draw_indicator">True</property>
                                 <signal name="toggled" handler="on_prefs_stats_enable_net_toggled"/>
                               </widget>
@@ -239,7 +236,7 @@
                               <widget class="GtkCheckButton" id="prefs-stats-enable-disk">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
-                                <property name="response_id">0</property>
+                                <property name="receives_default">False</property>
                                 <property name="draw_indicator">True</property>
                                 <signal name="toggled" handler="on_prefs_stats_enable_disk_toggled"/>
                               </widget>
@@ -253,7 +250,9 @@
                               <widget class="GtkLabel" id="label14">
                                 <property name="visible">True</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Network I/O</property>
+                                <property name="label" translatable="yes">_Network I/O</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">prefs-stats-enable-net</property>
                               </widget>
                               <packing>
                                 <property name="top_attach">1</property>
@@ -265,7 +264,9 @@
                               <widget class="GtkLabel" id="label13">
                                 <property name="visible">True</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Disk I/O</property>
+                                <property name="label" translatable="yes">_Disk I/O</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">prefs-stats-enable-disk</property>
                               </widget>
                               <packing>
                                 <property name="x_options">GTK_FILL</property>
@@ -302,21 +303,22 @@
                 <property name="label" translatable="yes">Stats</property>
               </widget>
               <packing>
-                <property name="type">tab</property>
                 <property name="position">1</property>
                 <property name="tab_fill">False</property>
+                <property name="type">tab</property>
               </packing>
             </child>
             <child>
               <widget class="GtkVBox" id="vbox3">
                 <property name="visible">True</property>
-                <property name="border_width">6</property>
+                <property name="border_width">12</property>
+                <property name="orientation">vertical</property>
                 <property name="spacing">8</property>
                 <child>
                   <widget class="GtkFrame" id="frame3">
                     <property name="visible">True</property>
                     <property name="label_xalign">0</property>
-                    <property name="shadow_type">GTK_SHADOW_NONE</property>
+                    <property name="shadow_type">none</property>
                     <child>
                       <widget class="GtkAlignment" id="alignment4">
                         <property name="visible">True</property>
@@ -344,7 +346,9 @@ Always</property>
                               <widget class="GtkLabel" id="label17">
                                 <property name="visible">True</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Graphical Console Scaling:</property>
+                                <property name="label" translatable="yes">Graphical console _scaling:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">prefs-console-scaling</property>
                               </widget>
                               <packing>
                                 <property name="top_attach">4</property>
@@ -369,7 +373,9 @@ On mouse over</property>
                               <widget class="GtkLabel" id="label15">
                                 <property name="visible">True</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Grab keyboard input:</property>
+                                <property name="label" translatable="yes">Grab _keyboard input:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">prefs-console-keygrab</property>
                               </widget>
                               <packing>
                                 <property name="top_attach">2</property>
@@ -380,7 +386,9 @@ On mouse over</property>
                               <widget class="GtkLabel" id="label5">
                                 <property name="visible">True</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Automatically open consoles:</property>
+                                <property name="label" translatable="yes">Automatically _open consoles:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">prefs-console-popup</property>
                               </widget>
                             </child>
                             <child>
@@ -414,13 +422,14 @@ For all domains</property>
                   </widget>
                   <packing>
                     <property name="expand">False</property>
+                    <property name="position">0</property>
                   </packing>
                 </child>
                 <child>
                   <widget class="GtkFrame" id="frame4">
                     <property name="visible">True</property>
                     <property name="label_xalign">0</property>
-                    <property name="shadow_type">GTK_SHADOW_NONE</property>
+                    <property name="shadow_type">none</property>
                     <child>
                       <widget class="GtkAlignment" id="alignment5">
                         <property name="visible">True</property>
@@ -437,22 +446,28 @@ For all domains</property>
                                 <child>
                                   <widget class="GtkVBox" id="vbox4">
                                     <property name="visible">True</property>
+                                    <property name="orientation">vertical</property>
                                     <child>
                                       <widget class="GtkCheckButton" id="prefs-sound-local">
+                                        <property name="label" translatable="yes">_Local virtual machine</property>
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
-                                        <property name="label" translatable="yes">Local virtual machine</property>
-                                        <property name="response_id">0</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="use_underline">True</property>
                                         <property name="draw_indicator">True</property>
                                         <signal name="toggled" handler="on_prefs_sound_local_toggled"/>
                                       </widget>
+                                      <packing>
+                                        <property name="position">0</property>
+                                      </packing>
                                     </child>
                                     <child>
                                       <widget class="GtkCheckButton" id="prefs-sound-remote">
+                                        <property name="label" translatable="yes">_Remote virtual machine</property>
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
-                                        <property name="label" translatable="yes">Remote virtual machine</property>
-                                        <property name="response_id">0</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="use_underline">True</property>
                                         <property name="draw_indicator">True</property>
                                         <signal name="toggled" handler="prefs_sound_remote_toggled_cb"/>
                                       </widget>
@@ -506,67 +521,248 @@ For all domains</property>
                 <property name="label" translatable="yes">VM Details</property>
               </widget>
               <packing>
-                <property name="type">tab</property>
                 <property name="position">2</property>
                 <property name="tab_fill">False</property>
+                <property name="type">tab</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkVBox" id="vbox6">
+                <property name="visible">True</property>
+                <property name="border_width">12</property>
+                <property name="orientation">vertical</property>
+                <child>
+                  <widget class="GtkFrame" id="frame6">
+                    <property name="visible">True</property>
+                    <property name="label_xalign">0</property>
+                    <property name="shadow_type">none</property>
+                    <child>
+                      <widget class="GtkAlignment" id="alignment1">
+                        <property name="visible">True</property>
+                        <property name="top_padding">6</property>
+                        <property name="left_padding">12</property>
+                        <child>
+                          <widget class="GtkTable" id="table6">
+                            <property name="visible">True</property>
+                            <property name="n_rows">5</property>
+                            <property name="n_columns">2</property>
+                            <property name="column_spacing">12</property>
+                            <property name="row_spacing">6</property>
+                            <child>
+                              <widget class="GtkLabel" id="label19">
+                                <property name="visible">True</property>
+                                <property name="xalign">0</property>
+                                <property name="label" translatable="yes">_Force Poweroff:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">prefs-confirm-forcepoweroff</property>
+                              </widget>
+                              <packing>
+                                <property name="x_options">GTK_FILL</property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkCheckButton" id="prefs-confirm-forcepoweroff">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">False</property>
+                                <property name="draw_indicator">True</property>
+                                <signal name="toggled" handler="on_prefs_confirm_forcepoweroff_toggled"/>
+                              </widget>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="right_attach">2</property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkLabel" id="label20">
+                                <property name="visible">True</property>
+                                <property name="xalign">0</property>
+                                <property name="label" translatable="yes">Poweroff/_Reboot:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">prefs-confirm-poweroff</property>
+                              </widget>
+                              <packing>
+                                <property name="top_attach">1</property>
+                                <property name="bottom_attach">2</property>
+                                <property name="x_options">GTK_FILL</property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkLabel" id="label21">
+                                <property name="visible">True</property>
+                                <property name="xalign">0</property>
+                                <property name="label" translatable="yes">_Pause:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">prefs-confirm-pause</property>
+                              </widget>
+                              <packing>
+                                <property name="top_attach">2</property>
+                                <property name="bottom_attach">3</property>
+                                <property name="x_options">GTK_FILL</property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkCheckButton" id="prefs-confirm-poweroff">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">False</property>
+                                <property name="draw_indicator">True</property>
+                                <signal name="toggled" handler="on_prefs_confirm_poweroff_toggled"/>
+                              </widget>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="right_attach">2</property>
+                                <property name="top_attach">1</property>
+                                <property name="bottom_attach">2</property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkCheckButton" id="prefs-confirm-pause">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">False</property>
+                                <property name="draw_indicator">True</property>
+                                <signal name="toggled" handler="on_prefs_confirm_pause_toggled"/>
+                              </widget>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="right_attach">2</property>
+                                <property name="top_attach">2</property>
+                                <property name="bottom_attach">3</property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkLabel" id="label22">
+                                <property name="visible">True</property>
+                                <property name="xalign">0</property>
+                                <property name="label" translatable="yes">Device re_moval:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">prefs-confirm-removedev</property>
+                              </widget>
+                              <packing>
+                                <property name="top_attach">4</property>
+                                <property name="bottom_attach">5</property>
+                                <property name="x_options">GTK_FILL</property>
+                                <property name="y_options"></property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkAlignment" id="alignment8">
+                                <property name="visible">True</property>
+                                <child>
+                                  <placeholder/>
+                                </child>
+                              </widget>
+                              <packing>
+                                <property name="top_attach">3</property>
+                                <property name="bottom_attach">4</property>
+                                <property name="x_options">GTK_FILL</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <widget class="GtkCheckButton" id="prefs-confirm-removedev">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="receives_default">False</property>
+                                <property name="draw_indicator">True</property>
+                                <signal name="toggled" handler="on_prefs_confirm_removedev_toggled"/>
+                              </widget>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="right_attach">2</property>
+                                <property name="top_attach">4</property>
+                                <property name="bottom_attach">5</property>
+                                <property name="x_options">GTK_FILL</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <placeholder/>
+                            </child>
+                          </widget>
+                        </child>
+                      </widget>
+                    </child>
+                    <child>
+                      <widget class="GtkLabel" id="label161">
+                        <property name="visible">True</property>
+                        <property name="label" translatable="yes">&lt;b&gt;Confirmations&lt;/b&gt;</property>
+                        <property name="use_markup">True</property>
+                      </widget>
+                      <packing>
+                        <property name="type">label_item</property>
+                      </packing>
+                    </child>
+                  </widget>
+                  <packing>
+                    <property name="expand">False</property>
+                    <property name="position">0</property>
+                  </packing>
+                </child>
+              </widget>
+              <packing>
+                <property name="position">3</property>
+              </packing>
+            </child>
+            <child>
+              <widget class="GtkLabel" id="label18">
+                <property name="visible">True</property>
+                <property name="label" translatable="yes">Feedback</property>
+              </widget>
+              <packing>
+                <property name="position">3</property>
+                <property name="tab_fill">False</property>
+                <property name="type">tab</property>
               </packing>
             </child>
           </widget>
+          <packing>
+            <property name="position">0</property>
+          </packing>
         </child>
         <child>
-          <widget class="GtkHBox" id="hbox2">
+          <widget class="GtkHButtonBox" id="hbuttonbox1">
             <property name="visible">True</property>
+            <property name="layout_style">end</property>
             <child>
               <widget class="GtkButton" id="prefs-help">
+                <property name="label">gtk-help</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="receives_default">True</property>
-                <property name="label">gtk-help</property>
                 <property name="use_stock">True</property>
-                <property name="response_id">0</property>
                 <signal name="clicked" handler="on_prefs_help_clicked"/>
               </widget>
               <packing>
                 <property name="expand">False</property>
+                <property name="fill">False</property>
+                <property name="position">0</property>
+                <property name="secondary">True</property>
               </packing>
             </child>
             <child>
-              <widget class="GtkAlignment" id="alignment1">
+              <widget class="GtkButton" id="prefs-close">
+                <property name="label">gtk-close</property>
                 <property name="visible">True</property>
-                <child>
-                  <placeholder/>
-                </child>
-              </widget>
-              <packing>
-                <property name="position">1</property>
-              </packing>
-            </child>
-            <child>
-              <widget class="GtkHBox" id="hbox3">
-                <property name="visible">True</property>
-                <property name="spacing">6</property>
-                <property name="homogeneous">True</property>
-                <child>
-                  <widget class="GtkButton" id="prefs-close">
-                    <property name="visible">True</property>
-                    <property name="can_focus">True</property>
-                    <property name="receives_default">True</property>
-                    <property name="label">gtk-close</property>
-                    <property name="use_stock">True</property>
-                    <property name="response_id">0</property>
-                    <signal name="clicked" handler="on_prefs_close_clicked"/>
-                  </widget>
-                </child>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_stock">True</property>
+                <signal name="clicked" handler="on_prefs_close_clicked"/>
               </widget>
               <packing>
                 <property name="expand">False</property>
-                <property name="position">2</property>
+                <property name="fill">False</property>
+                <property name="position">1</property>
               </packing>
             </child>
           </widget>
           <packing>
             <property name="expand">False</property>
-            <property name="fill">False</property>
             <property name="position">1</property>
           </packing>
         </child>

@@ -19,11 +19,11 @@
 #
 import gtk.glade
 import gobject
-import logging
 
 import virtinst
 
-import virtManager.opticalhelper
+import virtManager.uihelpers as uihelpers
+import virtManager.util as util
 from virtManager.storagebrowse import vmmStorageBrowser
 from virtManager.error import vmmErrorDialog
 
@@ -35,12 +35,13 @@ class vmmChooseCD(gobject.GObject):
     def __init__(self, config, dev_id_info, connection):
         self.__gobject_init__()
         self.window = gtk.glade.XML(config.get_glade_dir() + "/vmm-choose-cd.glade", "vmm-choose-cd", domain="virt-manager")
-        self.err = vmmErrorDialog(self.window.get_widget("vmm-choose-cd"),
+        self.topwin = self.window.get_widget("vmm-choose-cd")
+        self.topwin.hide()
+
+        self.err = vmmErrorDialog(self.topwin,
                                   0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
                                   _("Unexpected Error"),
                                   _("An unexpected error occurred"))
-        self.topwin = self.window.get_widget("vmm-choose-cd")
-        self.topwin.hide()
 
         self.config = config
         self.dev_id_info = dev_id_info
@@ -74,14 +75,13 @@ class vmmChooseCD(gobject.GObject):
         win.show()
 
     def reset_state(self):
-        if self.conn.is_remote():
-            self.window.get_widget("physical-media").set_sensitive(False)
-            self.window.get_widget("iso-image").set_active(True)
-            self.window.get_widget("cd-path").set_active(-1)
-            self.window.get_widget("iso-file-chooser").set_sensitive(False)
+        cd_path = self.window.get_widget("cd-path")
+        use_cdrom = (cd_path.get_active() > -1)
+
+        if use_cdrom:
+            self.window.get_widget("physical-media").set_active(True)
         else:
-            self.window.get_widget("physical-media").set_sensitive(True)
-            self.window.get_widget("iso-file-chooser").set_sensitive(True)
+            self.window.get_widget("iso-image").set_active(True)
 
     def ok(self,ignore1=None, ignore2=None):
         path = None
@@ -93,7 +93,7 @@ class vmmChooseCD(gobject.GObject):
             idx = cd.get_active()
             model = cd.get_model()
             if idx != -1:
-                path = model[idx][virtManager.opticalhelper.OPTICAL_PATH]
+                path = model[idx][uihelpers.OPTICAL_DEV_PATH]
 
         if path == "" or path == None:
             return self.err.val_err(_("Invalid Media Path"),
@@ -108,7 +108,10 @@ class vmmChooseCD(gobject.GObject):
         except Exception, e:
             return self.err.val_err(_("Invalid Media Path"), str(e))
 
-        self.emit("cdrom-chosen", disk.type, disk.path, self.dev_id_info)
+        uihelpers.check_path_search_for_qemu(self.topwin, self.config,
+                                             self.conn, path)
+
+        self.emit("cdrom-chosen", self.dev_id_info, disk.path, disk.type)
         self.cancel()
 
     def media_toggled(self, ignore1=None, ignore2=None):
@@ -125,30 +128,34 @@ class vmmChooseCD(gobject.GObject):
         pass
 
     def browse_fv_iso_location(self, ignore1=None, ignore2=None):
-        self._browse_file(_("Locate ISO Image"))
+        self._browse_file()
 
     def initialize_opt_media(self):
-        try:
-            widget = self.window.get_widget("cd-path")
-            virtManager.opticalhelper.init_optical_combo(widget)
-            self.window.get_widget("physical-media").set_sensitive(True)
-        except Exception, e:
-            logging.error("Unable to create optical-helper widget: '%s'", e)
-            self.window.get_widget("physical-media").set_sensitive(False)
+        widget = self.window.get_widget("cd-path")
+        warn = self.window.get_widget("cd-path-warn")
+        error = self.conn.optical_error
+
+        uihelpers.init_optical_combo(widget)
+        uihelpers.populate_optical_combo(self.conn, widget)
+
+        if error:
+            warn.show()
+            util.tooltip_wrapper(warn, error)
+        else:
+            warn.hide()
+
+        self.window.get_widget("physical-media").set_sensitive(not bool(error))
 
     def set_storage_path(self, src, path):
         self.window.get_widget("iso-path").set_text(path)
 
-    def _browse_file(self, dialog_name):
+    def _browse_file(self):
         if self.storage_browser == None:
-            self.storage_browser = vmmStorageBrowser(self.config, self.conn,
-                                                     True)
+            self.storage_browser = vmmStorageBrowser(self.config, self.conn)
             self.storage_browser.connect("storage-browse-finish",
                                          self.set_storage_path)
-        self.storage_browser.local_args = { "dialog_name": dialog_name,
-                                            "browse_reason":
-                                                 self.config.CONFIG_DIR_MEDIA }
+
+        self.storage_browser.set_browse_reason(self.config.CONFIG_DIR_MEDIA)
         self.storage_browser.show(self.conn)
-        return None
 
 gobject.type_register(vmmChooseCD)

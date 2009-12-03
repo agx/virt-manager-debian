@@ -21,6 +21,7 @@
 import gobject
 import gtk.glade
 
+import copy
 import traceback
 import logging
 
@@ -66,6 +67,8 @@ class vmmCreatePool(gobject.GObject):
             "on_pool_source_button_clicked" : self.browse_source_path,
             "on_pool_target_button_clicked" : self.browse_target_path,
 
+            "on_pool_hostname_activate" : self.hostname_changed,
+
             "on_pool_name_focus_in_event": (self.update_doc, "name",
                                             "pool-info1"),
             # I cannot for the life of me get a combobox to abide
@@ -77,16 +80,35 @@ class vmmCreatePool(gobject.GObject):
             "on_pool_format_focus": (self.update_doc, "format", "pool-info2"),
             "on_pool_format_changed": (self.update_doc_changed, "format",
                                        "pool-info2"),
+
             "on_pool_target_path_focus_in_event": (self.update_doc,
                                                    "target_path",
                                                    "pool-info2"),
+            "on_pool_target_path_focus": (self.update_doc, "target_path",
+                                          "pool-info2"),
+            "on_pool_target_path_changed": (self.update_doc_changed,
+                                            "target_path",
+                                            "pool-info2"),
+
             "on_pool_source_path_focus_in_event": (self.update_doc,
                                                    "source_path",
                                                    "pool-info2"),
+            "on_pool_source_path_focus": (self.update_doc, "source_path",
+                                          "pool-info2"),
+            "on_pool_source_path_changed": (self.update_doc_changed,
+                                            "source_path",
+                                            "pool-info2"),
+
             "on_pool_hostname_focus_in_event": (self.update_doc, "host",
                                                 "pool-info2"),
             "on_pool_build_focus_in_event": (self.update_build_doc)
         })
+
+        # XXX: Help docs useless/out of date
+        self.window.get_widget("pool-help").hide()
+        finish_img = gtk.image_new_from_stock(gtk.STOCK_QUIT,
+                                              gtk.ICON_SIZE_BUTTON)
+        self.window.get_widget("pool-finish").set_image(finish_img)
 
         self.set_initial_state()
 
@@ -116,6 +138,26 @@ class vmmCreatePool(gobject.GObject):
         format_list.pack_start(text2, False)
         format_list.add_attribute(text2, 'text', 1)
 
+        # Target path combo box entry
+        target_list = self.window.get_widget("pool-target-path")
+        # target_path, Label, pool class instance
+        target_model = gtk.ListStore(str, str, object)
+        target_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
+        target_list.set_model(target_model)
+        target_list.set_text_column(0)
+        target_list.child.connect("focus-in-event", self.update_doc,
+                                  "target_path", "pool-info2")
+
+        # Source path combo box entry
+        source_list = self.window.get_widget("pool-source-path")
+        # source_path, Label, pool class instance
+        source_model = gtk.ListStore(str, str, object)
+        source_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
+        source_list.set_model(source_model)
+        source_list.set_text_column(0)
+        source_list.child.connect("focus-in-event", self.update_doc,
+                                  "source_path", "pool-info2")
+
         self.populate_pool_type()
 
         self.window.get_widget("pool-info-box1").modify_bg(gtk.STATE_NORMAL, gtk.gdk.color_parse("grey"))
@@ -129,13 +171,17 @@ class vmmCreatePool(gobject.GObject):
 
         self.window.get_widget("pool-name").set_text("")
         self.window.get_widget("pool-type").set_active(0)
-        self.window.get_widget("pool-target-path").set_text("")
-        self.window.get_widget("pool-source-path").set_text("")
+        self.window.get_widget("pool-target-path").child.set_text("")
+        self.window.get_widget("pool-source-path").child.set_text("")
         self.window.get_widget("pool-hostname").set_text("")
         self.window.get_widget("pool-format").set_active(-1)
         self.window.get_widget("pool-build").set_sensitive(True)
         self.window.get_widget("pool-build").set_active(False)
 
+
+    def hostname_changed(self, ignore):
+        # If a hostname was entered, try to lookup valid pool sources.
+        self.populate_pool_sources()
 
     def populate_pool_type(self):
         model = self.window.get_widget("pool-type").get_model()
@@ -152,36 +198,102 @@ class vmmCreatePool(gobject.GObject):
         for f in formats:
             model.append([f, f])
 
+    def populate_pool_sources(self):
+        source_list = self.window.get_widget("pool-source-path")
+        source_model = source_list.get_model()
+        source_model.clear()
+
+        target_list = self.window.get_widget("pool-target-path")
+        target_model = target_list.get_model()
+        target_model.clear()
+
+        use_list = source_list
+        use_model = source_model
+        entry_list = []
+        if self._pool.type == Storage.StoragePool.TYPE_SCSI:
+            entry_list = self.list_scsi_adapters()
+            use_list = source_list
+            use_model = source_model
+
+        elif self._pool.type == Storage.StoragePool.TYPE_LOGICAL:
+            pool_list = self.list_pool_sources()
+            entry_list = map(lambda p: [p.target_path, p.target_path, p],
+                             pool_list)
+            use_list = target_list
+            use_model = target_model
+
+        elif self._pool.type == Storage.StoragePool.TYPE_NETFS:
+            host = self.get_config_host()
+            if host:
+                pool_list = self.list_pool_sources(host=host)
+                entry_list = map(lambda p: [p.source_path, p.source_path, p],
+                                 pool_list)
+                use_list = source_list
+                use_model = source_model
+
+        for e in entry_list:
+            use_model.append(e)
+
+        if entry_list:
+            use_list.set_active(0)
+
+    def list_scsi_adapters(self):
+        scsi_hosts = self.conn.get_devices("scsi_host")
+        host_list = map(lambda dev: dev.host, scsi_hosts)
+
+        clean_list = []
+        for h in host_list:
+            tmppool = copy.copy(self._pool)
+            name = "host%s" % h
+
+            tmppool.source_path = name
+            entry = [name, name, tmppool]
+
+            if name not in map(lambda l: l[0], clean_list):
+                clean_list.append(entry)
+
+        return clean_list
+
+    def list_pool_sources(self, host=None):
+        name = self.get_config_name()
+        pool_type = self._pool.type
+
+        plist = []
+        try:
+            plist = Storage.StoragePool.pool_list_from_sources(self.conn.vmm,
+                                                               name, pool_type,
+                                                               host=host)
+        except Exception:
+            logging.exception("Pool enumeration failed")
+
+        return plist
+
     def show_options_by_pool(self):
-        if hasattr(self._pool, "source_path"):
-            if self._pool.type in [Storage.StoragePool.TYPE_NETFS,
-                                   Storage.StoragePool.TYPE_ISCSI]:
-                # Source path broswing is meaningless for net pools
-                self.window.get_widget("pool-source-button").set_sensitive(False)
-            else:
-                self.window.get_widget("pool-source-button").set_sensitive(True)
-            self.window.get_widget("pool-source-path").set_sensitive(True)
-        else:
-            self.window.get_widget("pool-source-path").set_sensitive(False)
-            self.window.get_widget("pool-source-button").set_sensitive(False)
+        src     = hasattr(self._pool, "source_path")
+        src_b   = src and not self.conn.is_remote()
+        tgt     = hasattr(self._pool, "target_path")
+        tgt_b   = tgt and not self.conn.is_remote()
+        host    = hasattr(self._pool, "host")
+        fmt     = hasattr(self._pool, "formats")
 
-        if hasattr(self._pool, "host"):
-            self.window.get_widget("pool-hostname").set_sensitive(True)
-        else:
-            self.window.get_widget("pool-hostname").set_sensitive(False)
+        # Source path broswing is meaningless for net pools
+        if self._pool.type in [Storage.StoragePool.TYPE_NETFS,
+                               Storage.StoragePool.TYPE_ISCSI,
+                               Storage.StoragePool.TYPE_SCSI]:
+            src_b = False
 
-        if hasattr(self._pool, "formats"):
-            self.window.get_widget("pool-format").set_sensitive(True)
+        self.window.get_widget("pool-target-button").set_sensitive(tgt_b)
+        self.window.get_widget("pool-source-button").set_sensitive(src_b)
+        self.window.get_widget("pool-source-path").set_sensitive(src)
+        self.window.get_widget("pool-hostname").set_sensitive(host)
+        self.window.get_widget("pool-format").set_sensitive(fmt)
+        self.window.get_widget("pool-format").set_active(-1)
+
+        if fmt:
             self.populate_pool_format()
             self.window.get_widget("pool-format").set_active(0)
-        else:
-            self.window.get_widget("pool-format").set_sensitive(False)
-            self.window.get_widget("pool-format").set_active(-1)
 
-        if self.conn.is_remote():
-            # Disable browse buttons for remote connections
-            self.window.get_widget("pool-source-button").set_sensitive(False)
-            self.window.get_widget("pool-target-button").set_sensitive(False)
+        self.populate_pool_sources()
 
 
     def get_config_type(self):
@@ -194,13 +306,30 @@ class vmmCreatePool(gobject.GObject):
         return self.window.get_widget("pool-name").get_text()
 
     def get_config_target_path(self):
-        return self.window.get_widget("pool-target-path").get_text()
+        src = self.window.get_widget("pool-target-path")
+        if not src.get_property("sensitive"):
+            return None
+
+        # If we provide the user with a drop down
+        model = src.get_model()
+        selection = src.get_active()
+        if selection != -1:
+            return model[selection][1]
+
+        return src.child.get_text()
 
     def get_config_source_path(self):
         src = self.window.get_widget("pool-source-path")
-        if src.get_property("sensitive"):
-            return src.get_text()
-        return None
+        if not src.get_property("sensitive"):
+            return None
+
+        # If we provide the user with a drop down
+        model = src.get_model()
+        selection = src.get_active()
+        if selection != -1:
+            return model[selection][1]
+
+        return src.child.get_text()
 
     def get_config_host(self):
         host = self.window.get_widget("pool-hostname")
@@ -245,7 +374,7 @@ class vmmCreatePool(gobject.GObject):
                                    startfolder="/var/lib/libvirt",
                                    foldermode=True)
         if target:
-            self.window.get_widget("pool-target-path").set_text(target)
+            self.window.get_widget("pool-target-path").child.set_text(target)
 
 
     def forward(self, ignore=None):
@@ -312,13 +441,31 @@ class vmmCreatePool(gobject.GObject):
             self.window.get_widget("pool-forward").show()
         elif page_number == PAGE_FORMAT:
             self.show_options_by_pool()
-            self.window.get_widget("pool-target-path").set_text(self._pool.target_path)
+            self.window.get_widget("pool-target-path").child.set_text(self._pool.target_path)
             self.window.get_widget("pool-back").set_sensitive(True)
             buildret = self.get_build_default()
             self.window.get_widget("pool-build").set_sensitive(buildret[1])
             self.window.get_widget("pool-build").set_active(buildret[0])
             self.window.get_widget("pool-finish").show()
             self.window.get_widget("pool-forward").hide()
+
+    def get_pool_to_validate(self):
+        """
+        Return a pool instance to use for parameter assignment validation.
+        For most pools this will be the one we built after step 1, but for
+        pools we find via FindPoolSources, this will be different
+        """
+        source_list = self.window.get_widget("pool-source-path")
+        target_list = self.window.get_widget("pool-target-path")
+
+        pool = copy.copy(self._pool)
+
+        if source_list.get_active() != -1:
+            pool = source_list.get_model()[source_list.get_active()][2]
+        elif target_list.get_active() != -1:
+            pool = target_list.get_model()[target_list.get_active()][2]
+
+        return pool
 
     def validate(self, page):
         if page == PAGE_NAME:
@@ -340,16 +487,17 @@ class vmmCreatePool(gobject.GObject):
             source = self.get_config_source_path()
             fmt    = self.get_config_format()
 
+            tmppool = self.get_pool_to_validate()
             try:
-                self._pool.target_path = target
+                tmppool.target_path = target
                 if host:
-                    self._pool.host = host
+                    tmppool.host = host
                 if source:
-                    self._pool.source_path = source
+                    tmppool.source_path = source
                 if fmt:
-                    self._pool.format = fmt
+                    tmppool.format = fmt
 
-                self._pool.get_xml_config()
+                tmppool.get_xml_config()
             except ValueError, e:
                 return self.err.val_err(_("Pool Parameter Error"), str(e))
 
@@ -359,6 +507,7 @@ class vmmCreatePool(gobject.GObject):
                 return self.err.yes_no(_("Building a pool of this type will "
                                          "format the source device. Are you "
                                          "sure you want to 'build' this pool?"))
+            self._pool = tmppool
             return True
 
     def update_doc(self, ignore1, ignore2, param, infobox):

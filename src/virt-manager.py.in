@@ -39,6 +39,8 @@ appname = "::PACKAGE::"
 appversion = "::VERSION::"
 gettext_app = "virt-manager"
 gettext_dir = "::GETTEXTDIR::"
+virtinst_str = "::VIRTINST_VERSION::"
+virtinst_version = tuple([ int(num) for num in virtinst_str.split('.')])
 
 gconf_dir = "/apps/" + appname
 asset_dir = "::ASSETDIR::"
@@ -162,7 +164,7 @@ def setup_logging(debug_stdout):
     sys.excepthook = exception_log
 
 def parse_commandline():
-    optParser = OptionParser()
+    optParser = OptionParser(version=appversion)
     optParser.add_option("--profile", dest="profile", help="Generate runtime performance profile stats", metavar="FILE")
     optParser.set_defaults(uuid=None)
     optParser.add_option("-c", "--connect", dest="uri",
@@ -281,12 +283,37 @@ def main():
     import warnings
     warnings.filterwarnings('error', module='gtk')
     try:
+        import gobject
+
+        # Set program name for gnome shell (before importing gtk, which
+        # seems to call set_prgname on its own)
+        if hasattr(gobject, "set_prgname"):
+            gobject.set_prgname(appname)
+
         import gtk
     except Warning, e:
         # ...the risk is we catch too much though
         # Damned if we do, damned if we dont :-)(
         raise RuntimeError(_("Unable to initialize GTK: %s") % str(e))
     warnings.resetwarnings()
+
+    # Make sure we have a sufficiently new virtinst version, since we are
+    # very closely tied to the lib
+    msg = ("virt-manager requires the python-virtinst library version " +
+            virtinst_str + " or greater. This can be downloaded at:"
+            "\n\nhttp://virt-manager.org/download.html")
+    try:
+        import virtinst
+        ignore = virtinst.__version__
+        ignore = virtinst.__version_info__
+    except Exception, e:
+        logging.exception("Error import virtinst")
+        raise RuntimeError(str(e) + "\n\n" + msg)
+
+    if virtinst.__version_info__ < virtinst_version:
+        raise RuntimeError("virtinst version %s is too old." %
+                            (virtinst.__version__) +
+                           "\n\n" + msg)
 
     # Add our icon dir to icon theme
     icon_theme = gtk.icon_theme_get_default()
