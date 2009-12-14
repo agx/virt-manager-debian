@@ -26,6 +26,7 @@ import logging
 import re
 import traceback
 
+import virtManager.util as util
 from virtManager.IPy import IP
 from virtManager.network import vmmNetwork
 from virtManager.error import vmmErrorDialog
@@ -61,6 +62,8 @@ class vmmCreateNetwork(gobject.GObject):
             "on_create_back_clicked" : self.back,
             "on_create_forward_clicked" : self.forward,
             "on_create_finish_clicked" : self.finish,
+
+            "on_net_name_activate": self.forward,
             "on_net_forward_toggled" : self.change_forward_type,
             "on_net_network_changed": self.change_network,
             "on_net_dhcp_enable_toggled": self.change_dhcp_enable,
@@ -68,6 +71,7 @@ class vmmCreateNetwork(gobject.GObject):
             "on_net_dhcp_end_changed": self.change_dhcp_end,
             "on_create_help_clicked": self.show_help,
             })
+        util.bind_escape_key_close(self)
 
         # XXX: Help docs useless/out of date
         self.window.get_widget("create-help").hide()
@@ -122,6 +126,7 @@ class vmmCreateNetwork(gobject.GObject):
         # Hide the "finish" button until the appropriate time
         self.window.get_widget("create-finish").hide()
         self.window.get_widget("create-forward").show()
+        self.window.get_widget("create-forward").grab_focus()
         self.window.get_widget("create-back").set_sensitive(False)
 
         self.window.get_widget("net-name").set_text("")
@@ -140,6 +145,7 @@ class vmmCreateNetwork(gobject.GObject):
         if(self.validate(notebook.get_current_page()) != True):
             return
 
+        self.window.get_widget("create-forward").grab_focus()
         notebook.next_page()
 
     def back(self, ignore=None):
@@ -302,6 +308,7 @@ class vmmCreateNetwork(gobject.GObject):
             self.window.get_widget("summary-forwarding").set_text(forward_txt)
             self.window.get_widget("create-forward").hide()
             self.window.get_widget("create-finish").show()
+            self.window.get_widget("create-finish").grab_focus()
 
     def close(self, ignore1=None,ignore2=None):
         self.topwin.hide()
@@ -345,6 +352,8 @@ class vmmCreateNetwork(gobject.GObject):
             self.err.show_err(_("Error creating virtual network: %s" % str(e)),
                               "".join(traceback.format_exc()))
             return
+
+        self.conn.tick(noStatsUpdate=True)
         self.close()
 
     def validate(self, page_num):

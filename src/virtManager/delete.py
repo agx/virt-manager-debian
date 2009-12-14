@@ -68,6 +68,7 @@ class vmmDeleteDialog(gobject.GObject):
             "on_delete_ok_clicked" : self.finish,
             "on_delete_remove_storage_toggled" : self.toggle_remove_storage,
         })
+        util.bind_escape_key_close(self)
 
         image = gtk.image_new_from_icon_name("vm_delete_wizard",
                                              gtk.ICON_SIZE_DIALOG)
@@ -97,6 +98,8 @@ class vmmDeleteDialog(gobject.GObject):
         title_str = ("<span size='x-large'>%s '%s'</span>" %
                      (_("Delete"), self.vm.get_name()))
         self.window.get_widget("delete-main-label").set_markup(title_str)
+
+        self.window.get_widget("delete-cancel").grab_focus()
 
         # Disable storage removal by default
         self.window.get_widget("delete-remove-storage").set_active(False)

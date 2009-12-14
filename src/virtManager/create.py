@@ -32,6 +32,7 @@ import virtinst
 
 import virtManager.uihelpers as uihelpers
 from virtManager import util
+from virtManager.mediadev import MEDIA_CDROM
 from virtManager.error import vmmErrorDialog
 from virtManager.asyncjob import vmmAsyncJob
 from virtManager.createmeter import vmmCreateMeter
@@ -109,6 +110,7 @@ class vmmCreate(gobject.GObject):
             "on_create_help_clicked": self.show_help,
             "on_create_pages_switch_page": self.page_changed,
 
+            "on_create_vm_name_activate": self.forward,
             "on_create_conn_changed": self.conn_changed,
 
             "on_install_url_box_changed": self.url_box_changed,
@@ -132,6 +134,7 @@ class vmmCreate(gobject.GObject):
             "on_config_hv_changed": self.hv_changed,
             "on_config_arch_changed": self.arch_changed,
         })
+        util.bind_escape_key_close(self)
 
         self.set_initial_state()
 
@@ -244,7 +247,7 @@ class vmmCreate(gobject.GObject):
 
         # Physical CD-ROM model
         cd_list = self.window.get_widget("install-local-cdrom-combo")
-        uihelpers.init_optical_combo(cd_list)
+        uihelpers.init_mediadev_combo(cd_list)
 
         # Networking
         # [ interface type, device name, label, sensitive ]
@@ -285,6 +288,7 @@ class vmmCreate(gobject.GObject):
 
         # Name page state
         self.window.get_widget("create-vm-name").set_text("")
+        self.window.get_widget("create-vm-name").grab_focus()
         self.window.get_widget("method-local").set_active(True)
         self.window.get_widget("create-conn").set_active(-1)
         activeconn = self.populate_conn_list(urihint)
@@ -410,13 +414,14 @@ class vmmCreate(gobject.GObject):
         cdrom_list = self.window.get_widget("install-local-cdrom-combo")
         cdrom_warn = self.window.get_widget("install-local-cdrom-warn")
 
-        sigs = uihelpers.populate_optical_combo(self.conn, cdrom_list)
+        sigs = uihelpers.populate_mediadev_combo(self.conn, cdrom_list,
+                                                 MEDIA_CDROM)
         self.conn_signals.extend(sigs)
 
-        if self.conn.optical_error:
+        if self.conn.mediadev_error:
             cdrom_warn.show()
             cdrom_option.set_sensitive(False)
-            util.tooltip_wrapper(cdrom_warn, self.conn.optical_error)
+            util.tooltip_wrapper(cdrom_warn, self.conn.mediadev_error)
         else:
             cdrom_warn.hide()
 
@@ -1009,7 +1014,7 @@ class vmmCreate(gobject.GObject):
 
         notebook.set_current_page(curpage - 1)
 
-    def forward(self, src):
+    def forward(self, ignore):
         notebook = self.window.get_widget("create-pages")
         curpage = notebook.get_current_page()
 
@@ -1023,7 +1028,7 @@ class vmmCreate(gobject.GObject):
             # PV or FV
             self.guest_from_install_type()
 
-
+        self.window.get_widget("create-forward").grab_focus()
         notebook.set_current_page(curpage + 1)
 
     def page_changed(self, ignore1, ignore2, pagenum):
@@ -1046,6 +1051,7 @@ class vmmCreate(gobject.GObject):
         if pagenum == PAGE_FINISH:
             self.window.get_widget("create-forward").hide()
             self.window.get_widget("create-finish").show()
+            self.window.get_widget("create-finish").grab_focus()
             self.populate_summary()
 
             # Repopulate the HV list, so we can make install method relevant

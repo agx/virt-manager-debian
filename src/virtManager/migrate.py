@@ -79,6 +79,7 @@ class vmmMigrateDialog(gobject.GObject):
             "on_migrate_set_interface_toggled" : self.toggle_set_interface,
             "on_migrate_set_port_toggled" : self.toggle_set_port,
         })
+        util.bind_escape_key_close(self)
 
         blue = gtk.gdk.color_parse("#0072A8")
         self.window.get_widget("migrate-header").modify_bg(gtk.STATE_NORMAL,
@@ -120,6 +121,8 @@ class vmmMigrateDialog(gobject.GObject):
         title_str = ("<span size='large' color='white'>%s '%s'</span>" %
                      (_("Migrate"), self.vm.get_name()))
         self.window.get_widget("migrate-main-label").set_markup(title_str)
+
+        self.window.get_widget("migrate-cancel").grab_focus()
 
         name = self.vm.get_name()
         srchost = self.conn.get_hostname()
