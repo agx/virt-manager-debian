@@ -1,3 +1,13 @@
+virt-manager (0.8.2-1) unstable; urgency=low
+
+  [ Laurent Léonard ]
+  * [986f851] Imported Upstream version 0.8.2
+  * [f120b48] Redo patch 0001-use-usr-share-gconf-for-schema-data.patch.
+  * [0071e36] Allow DM upload and add myself as uploader.
+  * [35121e4] Update french translation.
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 19 Dec 2009 19:56:35 +0100
+
 virt-manager (0.8.1-1) unstable; urgency=low
 
   [ Laurent Léonard ]
