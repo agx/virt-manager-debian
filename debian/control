@@ -12,8 +12,6 @@ Build-Depends: debhelper (>= 7), python-dev, python-gtk2-dev, scrollkeeper,
 DM-Upload-Allowed: yes
 
 Package: virt-manager
-Section: admin
-Priority: optional
 Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}, python-gtk2,
  python-glade2, python-gnome2, python-dbus, python-urlgrabber, python-vte,
