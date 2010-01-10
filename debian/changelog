@@ -1,3 +1,17 @@
+virt-manager (0.8.2-2) unstable; urgency=low
+
+  [ Laurent Léonard ]
+  * [77f4251] Remove Priority and Section binary fields.
+  * [8665d7c] Clean debian/watch.
+
+  [ Guido Günther ]
+  * [83b6b38] Make sure we quit afer EOF on stdin when using qemu+ssh.  This
+    patch is identical to the recently dropped 0002-close-nc-
+    connection-on-EOF - the issue isn't fixed upstream yet. (Closes: #564034)
+    - thanks to Vaclav Ovsik
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 10 Jan 2010 20:06:25 +0100
+
 virt-manager (0.8.2-1) unstable; urgency=low
 
   [ Laurent Léonard ]
