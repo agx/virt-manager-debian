@@ -1,3 +1,4 @@
 0001-use-usr-share-gconf-for-schema-data.patch
 0002-Update-french-translation.patch
 0003-Make-sure-we-quit-afer-EOF-on-stdin.patch
+0004-virtManager.create-Fix-creation-when-no-network-sour.patch
