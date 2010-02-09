@@ -7,7 +7,7 @@
 %define _extra_release %{?dist:%{dist}}%{!?dist:%{?extra_release:%{extra_release}}}
 
 Name: virt-manager
-Version: 0.8.2
+Version: 0.8.3
 Release: 1%{_extra_release}
 Summary: Virtual Machine Manager
 
@@ -37,7 +37,7 @@ Requires: gnome-python2-gnomekeyring >= 2.15.4
 # Minimum we've tested with
 Requires: libxml2-python >= 2.6.23
 # Absolutely require this version or later
-Requires: python-virtinst >= 0.500.1
+Requires: python-virtinst >= 0.500.2
 # Required for loading the glade UI
 Requires: pygtk2-libglade
 # Required for our graphics which are currently SVG format
@@ -146,6 +146,10 @@ fi
 %{_datadir}/dbus-1/services/%{name}.service
 
 %changelog
+* Mon Feb  8 2010 Cole Robinson <crobinso@redhat.com> - 0.8.3-1
+- Manage network interfaces: start, stop, view, provision bridges, bonds, etc.
+- Option to 'customize VM before install'.
+
 * Mon Dec 14 2009 Cole Robinson <crobinso@redhat.com> - 0.8.2-1
 - Fix right click in the manager window to operate on the clicked row
 - Running on a new machine / user account no longer produces a traceback.

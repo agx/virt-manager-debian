@@ -37,6 +37,8 @@ from virtManager.error import vmmErrorDialog
 from virtManager.asyncjob import vmmAsyncJob
 from virtManager.createmeter import vmmCreateMeter
 from virtManager.storagebrowse import vmmStorageBrowser
+from virtManager.details import vmmDetails
+from virtManager.domain import vmmDomainVirtinst
 
 OS_GENERIC = "generic"
 
@@ -100,6 +102,10 @@ class vmmCreate(gobject.GObject):
         self.host_storage_timer = None
         self.host_storage = None
 
+        # 'Configure before install' window
+        self.config_window = None
+        self.config_window_signal = None
+
         self.window.signal_autoconnect({
             "on_vmm_newcreate_delete_event" : self.close,
 
@@ -138,6 +144,11 @@ class vmmCreate(gobject.GObject):
 
         self.set_initial_state()
 
+    def is_visible(self):
+        if self.topwin.flags() & gtk.VISIBLE:
+            return True
+        return False
+
     def show(self, uri=None):
         self.reset_state(uri)
         self.topwin.show()
@@ -146,6 +157,9 @@ class vmmCreate(gobject.GObject):
     def close(self, ignore1=None, ignore2=None):
         self.topwin.hide()
         self.remove_timers()
+
+        if self.config_window:
+            self.config_window.close()
 
         return 1
 
@@ -333,6 +347,7 @@ class vmmCreate(gobject.GObject):
 
         # Final page
         self.window.get_widget("config-advanced-expander").set_expanded(False)
+        self.window.get_widget("summary-customize").set_active(False)
 
     def set_conn_state(self):
         # Update all state that has some dependency on the current connection
@@ -855,6 +870,9 @@ class vmmCreate(gobject.GObject):
             return self.config.get_remote_sound()
         return self.config.get_local_sound()
 
+    def get_config_customize(self):
+        return self.window.get_widget("summary-customize").get_active()
+
     def is_detect_active(self):
         return self.window.get_widget("install-detect-os").get_active()
 
@@ -1061,6 +1079,38 @@ class vmmCreate(gobject.GObject):
             self.window.get_widget("create-forward").show()
             self.window.get_widget("create-finish").hide()
 
+    def build_guest(self, installer, name):
+        guest = installer.guest_from_installer()
+        guest.name = self.get_config_name()
+
+        # Generate UUID
+        try:
+            guest.uuid = virtinst.util.uuidToString(virtinst.util.randomUUID())
+        except Exception, e:
+            self.err.show_err(_("Error setting UUID: %s") % str(e),
+                              "".join(traceback.format_exc()))
+            return None
+
+        # Set up graphics device
+        try:
+            guest._graphics_dev = virtinst.VirtualGraphics(type=virtinst.VirtualGraphics.TYPE_VNC)
+        except Exception, e:
+            self.err.show_err(_("Error setting up graphics device:") + str(e),
+                              "".join(traceback.format_exc()))
+            return None
+
+        # Set up sound device (if present)
+        guest.sound_devs = []
+        try:
+            if self.get_config_sound():
+                guest.sound_devs.append(virtinst.VirtualAudio(model="es1370"))
+        except Exception, e:
+            self.err.show_err(_("Error setting up sound device:") + str(e),
+                              "".join(traceback.format_exc()))
+            return None
+
+        return guest
+
     def validate(self, pagenum):
         try:
             if pagenum == PAGE_NAME:
@@ -1102,8 +1152,6 @@ class vmmCreate(gobject.GObject):
 
     def validate_name_page(self):
         name = self.get_config_name()
-
-        self.guest = None
 
         try:
             g = virtinst.Guest(connection=self.conn.vmm)
@@ -1154,9 +1202,10 @@ class vmmCreate(gobject.GObject):
         # Build the installer and Guest instance
         try:
             installer = self.build_installer(instclass)
-
-            self.guest = installer.guest_from_installer()
-            self.guest.name = self.get_config_name()
+            name = self.get_config_name()
+            self.guest = self.build_guest(installer, name)
+            if not self.guest:
+                return False
         except Exception, e:
             return self.verr(_("Error setting installer parameters."), str(e))
 
@@ -1297,7 +1346,9 @@ class vmmCreate(gobject.GObject):
         if ret == False:
             return False
 
-        self.guest.nics.append(ret)
+        if ret != None:
+            self.guest.nics.append(ret)
+
         return True
 
 
@@ -1327,39 +1378,13 @@ class vmmCreate(gobject.GObject):
         self.change_caps()
 
     def finish(self, src):
-
         # Validate the final page
-        if self.validate(self.window.get_widget("create-pages").get_current_page()) != True:
+        page = self.window.get_widget("create-pages").get_current_page()
+        if self.validate(page) != True:
             return False
 
         guest = self.guest
         disk = len(guest.disks) and guest.disks[0]
-
-        # Generate UUID
-        try:
-            guest.uuid = virtinst.util.uuidToString(virtinst.util.randomUUID())
-        except Exception, e:
-            self.err.show_err(_("Error setting UUID: %s") % str(e),
-                              "".join(traceback.format_exc()))
-            return False
-
-        # Set up graphics device
-        try:
-            guest._graphics_dev = virtinst.VirtualGraphics(type=virtinst.VirtualGraphics.TYPE_VNC)
-        except Exception, e:
-            self.err.show_err(_("Error setting up graphics device:") + str(e),
-                              "".join(traceback.format_exc()))
-            return False
-
-        # Set up sound device (if present)
-        guest.sound_devs = []
-        try:
-            if self.get_config_sound():
-                guest.sound_devs.append(virtinst.VirtualAudio(model="es1370"))
-        except Exception, e:
-            self.err.show_err(_("Error setting up sound device:") + str(e),
-                              "".join(traceback.format_exc()))
-            return False
 
         logging.debug("Creating a VM %s" % guest.name +
                       "\n  Type: %s,%s" % (guest.type,
@@ -1380,6 +1405,48 @@ class vmmCreate(gobject.GObject):
         self.topwin.set_sensitive(False)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
 
+        if not self.get_config_customize():
+            self.start_install(guest)
+            return
+
+        # Customize will start the install when the dialog is closed
+        try:
+            self.customize(guest)
+        except Exception, e:
+            self.topwin.set_sensitive(True)
+            self.topwin.window.set_cursor(
+                                    gtk.gdk.Cursor(gtk.gdk.TOP_LEFT_ARROW))
+
+            self.err.show_err(_("Error launching customize dialog: ") + str(e),
+                              "".join(traceback.format_exc()))
+
+
+    def customize(self, guest):
+        guest.set_defaults()
+
+        virtinst_guest = vmmDomainVirtinst(self.config, self.conn, guest,
+                                           self.guest.uuid)
+
+        if self.config_window:
+            self.config_window.disconnect(self.config_window_signal)
+            self.config_window.close()
+            del(self.config_window)
+
+        def start_install_wrapper(ignore, guest):
+            if self.is_visible():
+                self.start_install(guest)
+
+        self.config_window = vmmDetails(self.config,
+                                        virtinst_guest,
+                                        self.engine,
+                                        self.topwin)
+        self.config_window_signal = self.config_window.connect(
+                                                        "details-closed",
+                                                        start_install_wrapper,
+                                                        guest)
+        self.config_window.show()
+
+    def start_install(self, guest):
         progWin = vmmAsyncJob(self.config, self.do_install, [guest],
                               title=_("Creating Virtual Machine"),
                               text=_("The virtual machine is now being "

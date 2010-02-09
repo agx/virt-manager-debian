@@ -493,15 +493,14 @@ class vmmConsolePages(gobject.GObject):
         finally:
             gtk.gdk.threads_leave()
 
-    def open_tunnel(self, server, vncaddr, vncport, username):
+    def open_tunnel(self, server, vncaddr, vncport, username, sshport):
         if self.vncTunnel is not None:
             return -1
 
         # Build SSH cmd
         argv = ["ssh", "ssh"]
-        if server.count(":"):
-            (server, sshport) = server.split(":")
-            argv += ["-p", sshport]
+        if sshport:
+            argv += ["-p", str(sshport)]
 
         if username:
             argv += ['-l', username]
@@ -547,7 +546,18 @@ class vmmConsolePages(gobject.GObject):
             self.schedule_retry()
             return
 
-        protocol, host, port, trans, username = self.vm.get_graphics_console()
+        try:
+            (protocol, host,
+             port, trans, username) = self.vm.get_graphics_console()
+        except Exception, e:
+            # We can fail here if VM is destroyed: xen is a bit racy
+            # and can't handle domain lookups that soon after
+            logging.debug("Getting graphics console failed: %s" % str(e))
+            return
+
+        connport = None
+        if host.count(":"):
+            host, connport = host.split(":", 1)
 
         if protocol is None:
             logging.debug("No graphics configured in guest")
@@ -579,7 +589,8 @@ class vmmConsolePages(gobject.GObject):
                     logging.debug("Tunnel already open, skipping open_tunnel.")
                     return
 
-                fd = self.open_tunnel(host, "127.0.0.1", port, username)
+                fd = self.open_tunnel(host, "127.0.0.1", port, username,
+                                      connport)
                 if fd >= 0:
                     self.vncViewer.open_fd(fd)
             else:

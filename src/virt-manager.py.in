@@ -34,6 +34,13 @@ import traceback
 import signal
 from optparse import OptionParser, OptionValueError
 
+try:
+    # Make sure we have a default '_' implementation, in case something
+    # fails before gettext is set up
+    __builtins__._ = lambda msg: msg
+except:
+    pass
+
 # These are substituted into code based on --prefix given to configure
 appname = "::PACKAGE::"
 appversion = "::VERSION::"
@@ -126,11 +133,15 @@ def setup_logging(debug_stdout):
 
     # set up logging
     vm_dir = os.path.expanduser("~/%s" % DIR_NAME)
-    if not os.access(vm_dir,os.W_OK):
+    if not os.access(vm_dir, os.W_OK):
+        if os.path.exists(vm_dir):
+            raise RuntimeError("No write access to %s" % vm_dir)
+
         try:
-            os.mkdir(vm_dir)
+            os.mkdir(vm_dir, 0751)
         except IOError, e:
-            raise RuntimeError, "Could not create %d directory: " % vm_dir, e
+            raise RuntimeError("Could not create directory %s: %s" %
+                               (vm_dir, e))
 
     # XXX should we get logging level from gconf, or command line args ?
     filename = "%s/%s" % (vm_dir, FILE_NAME)
@@ -259,11 +270,11 @@ def show_remote(managerObj, show, uri, uuid):
         managerObj.show_manager()
 
 # Generic OptionParser callback for all --show-* options
-# This routine stores UUID to options.uuid for all --show-* options 
+# This routine stores UUID to options.uuid for all --show-* options
 # where is metavar="UUID" and also sets options.show
 def opt_show_cb(option, opt_str, value, parser):
     if option.metavar=="UUID":
-        setattr(parser.values, "uuid", value)        
+        setattr(parser.values, "uuid", value)
     s = str(option)
     show = s[s.rindex('-')+1:]
     setattr(parser.values, "show", show)
@@ -272,9 +283,6 @@ def opt_show_cb(option, opt_str, value, parser):
 def main():
     setup_i18n()
     setup_pypath()
-
-    (options, ignore) = parse_commandline()
-    setup_logging(options.debug)
 
     # Urgh, pygtk merely logs a warning when failing to open
     # the X11 display connection, and lets everything carry
@@ -296,6 +304,9 @@ def main():
         # Damned if we do, damned if we dont :-)(
         raise RuntimeError(_("Unable to initialize GTK: %s") % str(e))
     warnings.resetwarnings()
+
+    (options, ignore) = parse_commandline()
+    setup_logging(options.debug)
 
     # Make sure we have a sufficiently new virtinst version, since we are
     # very closely tied to the lib

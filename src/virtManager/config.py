@@ -298,6 +298,9 @@ class vmmConfig:
         return self.conf.get_bool(self.conf_dir + "/confirm/pause")
     def get_confirm_removedev(self):
         return self.conf.get_bool(self.conf_dir + "/confirm/removedev")
+    def get_confirm_interface(self):
+        return self.conf.get_bool(self.conf_dir + "/confirm/interface_power")
+
 
     def set_confirm_forcepoweroff(self, val):
         self.conf.set_bool(self.conf_dir + "/confirm/forcepoweroff", val)
@@ -307,6 +310,8 @@ class vmmConfig:
         self.conf.set_bool(self.conf_dir + "/confirm/pause", val)
     def set_confirm_removedev(self, val):
         self.conf.set_bool(self.conf_dir + "/confirm/removedev", val)
+    def set_confirm_interface(self, val):
+        self.conf.set_bool(self.conf_dir + "/confirm/interface_power", val)
 
     def on_confirm_forcepoweroff_changed(self, cb):
         self.conf.notify_add(self.conf_dir + "/confirm/forcepoweroff", cb)
@@ -316,6 +321,8 @@ class vmmConfig:
         self.conf.notify_add(self.conf_dir + "/confirm/pause", cb)
     def on_confirm_removedev_changed(self, cb):
         self.conf.notify_add(self.conf_dir + "/confirm/removedev", cb)
+    def on_confirm_interface_changed(self, cb):
+        self.conf.notify_add(self.conf_dir + "/confirm/interface_power", cb)
 
 
     # System tray visibility
@@ -587,8 +594,8 @@ class vmmConfig:
             return
 
         logging.debug("set_default_directory(%s): saving %s" % (_type, folder))
-        self.conf.set_value(self.conf_dir + "/paths/default-%s-path" % _type,
-                                                                      folder)
+        self.conf.set_string(self.conf_dir + "/paths/default-%s-path" % _type,
+                             folder)
 
     def get_default_image_dir(self, connection):
         if connection.is_xen():
