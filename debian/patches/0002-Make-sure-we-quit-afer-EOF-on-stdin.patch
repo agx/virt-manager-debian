@@ -8,10 +8,10 @@ Closes: #564034
  1 files changed, 1 insertions(+), 1 deletions(-)
 
 diff --git a/src/virtManager/console.py b/src/virtManager/console.py
-index 7135ee9..4dcb917 100644
+index a4adf34..eb63164 100644
 --- a/src/virtManager/console.py
 +++ b/src/virtManager/console.py
-@@ -506,7 +506,7 @@ class vmmConsolePages(gobject.GObject):
+@@ -505,7 +505,7 @@ class vmmConsolePages(gobject.GObject):
          if username:
              argv += ['-l', username]
  
