@@ -867,25 +867,14 @@ class vmmAddHardware(gobject.GObject):
 
 
     def finish(self, ignore=None):
-        hw = self.get_config_hardware_type()
-
         self.topwin.set_sensitive(False)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
 
-        func_dict = { PAGE_NETWORK: self.add_network,
-                      PAGE_DISK: self.add_storage,
-                      PAGE_INPUT: self.add_input,
-                      PAGE_GRAPHICS: self.add_graphics,
-                      PAGE_SOUND: self.add_sound,
-                      PAGE_HOSTDEV: self.add_hostdev,
-                      PAGE_CHAR: self.add_device,
-                      PAGE_VIDEO: self.add_device}
-
         try:
-            func = func_dict[hw]
-            errinfo = func()
+            failure, errinfo = self.add_device()
             error, details = errinfo or (None, None)
         except Exception, e:
+            failure = True
             error = _("Unable to add device: %s") % str(e)
             details = "".join(traceback.format_exc())
 
@@ -895,7 +884,7 @@ class vmmAddHardware(gobject.GObject):
         self.topwin.set_sensitive(True)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.TOP_LEFT_ARROW))
 
-        if not error:
+        if not failure:
             self.close()
 
     # Storage listeners
@@ -1031,56 +1020,36 @@ class vmmAddHardware(gobject.GObject):
     # Add device methods #
     ######################
 
-    def add_network(self):
-        self._dev.setup(self.vm.get_connection().vmm)
-        self.add_device(self._dev.get_xml_config())
+    def setup_device(self):
+        if (self._dev.virtual_device_type ==
+            virtinst.VirtualDevice.VIRTUAL_DEV_DISK):
+            progWin = vmmAsyncJob(self.config, self.do_file_allocate,
+                                  [self._dev],
+                                  title=_("Creating Storage File"),
+                                  text=_("Allocation of disk storage may take "
+                                         "a few minutes to complete."))
+            progWin.run()
 
-    def add_input(self):
-        inp = self.get_config_input()
-        xml = "<input type='%s' bus='%s'/>\n" % (inp[1], inp[2])
-        self.add_device(xml)
+            error, details = progWin.get_error()
+            if error:
+                return (error, details)
 
-    def add_graphics(self):
-        self.add_device(self._dev.get_xml_config())
-
-    def add_sound(self):
-        self.add_device(self._dev.get_xml_config())
-
-    def add_hostdev(self):
-        self._dev.setup()
-        self.add_device(self._dev.get_xml_config())
-
-    def add_storage(self):
-        used = []
-        disks = (self.vm.get_disk_devices() +
-                 self.vm.get_disk_devices(inactive=True))
-        for d in disks:
-            used.append(d[2])
-
-        self._dev.generate_target(used)
-
-        progWin = vmmAsyncJob(self.config, self.do_file_allocate, [self._dev],
-                              title=_("Creating Storage File"),
-                              text=_("Allocation of disk storage may take "
-                                     "a few minutes to complete."))
-        progWin.run()
-
-        error, details = progWin.get_error()
-        if error == None:
-            self.add_device(self._dev.get_xml_config())
         else:
-            return (error, details)
+            self._dev.setup_dev(self.conn.vmm)
 
-    def add_device(self, xml=None):
-        if not xml:
-            xml = self._dev.get_xml_config()
+    def add_device(self):
+        ret = self.setup_device()
+        if ret:
+            # Encountered an error
+            return (True, ret)
 
-        logging.debug("Adding device:\n" + xml)
+        self._dev.get_xml_config()
+        logging.debug("Adding device:\n" + self._dev.get_xml_config())
 
         # Hotplug device
         attach_err = False
         try:
-            self.vm.attach_device(xml)
+            self.vm.attach_device(self._dev)
         except Exception, e:
             logging.debug("Device could not be hotplugged: %s" % str(e))
             attach_err = True
@@ -1092,15 +1061,17 @@ class vmmAddHardware(gobject.GObject):
                                      "the running machine. Would you like to "
                                      "make the device available after the "
                                      "next VM shutdown?")):
-                return
+                return (False, None)
 
         # Alter persistent config
         try:
-            self.vm.add_device(xml)
+            self.vm.add_device(self._dev)
         except Exception, e:
             self.err.show_err(_("Error adding device: %s" % str(e)),
                               "".join(traceback.format_exc()))
-            return
+            return (True, None)
+
+        return (False, None)
 
     def do_file_allocate(self, disk, asyncjob):
         meter = vmmCreateMeter(asyncjob)
@@ -1112,7 +1083,7 @@ class vmmAddHardware(gobject.GObject):
                 newconn = util.dup_lib_conn(self.config, disk.conn)
                 disk.conn = newconn
             logging.debug("Starting background file allocate process")
-            disk.setup(meter)
+            disk.setup_dev(self.conn.vmm, meter=meter)
             logging.debug("Allocation completed")
         except Exception, e:
             details = (_("Unable to complete install: '%s'") %
@@ -1133,7 +1104,7 @@ class vmmAddHardware(gobject.GObject):
         elif page_num == PAGE_NETWORK:
             return self.validate_page_network()
         elif page_num == PAGE_INPUT:
-            return True
+            return self.validate_page_input()
         elif page_num == PAGE_GRAPHICS:
             return self.validate_page_graphics()
         elif page_num == PAGE_SOUND:
@@ -1204,9 +1175,17 @@ class vmmAddHardware(gobject.GObject):
             if not res:
                 return False
 
+        # Generate target
+        used = []
+        disks = (self.vm.get_disk_devices() +
+                 self.vm.get_disk_devices(inactive=True))
+        for d in disks:
+            used.append(d[2])
+
+        self._dev.generate_target(used)
+
         uihelpers.check_path_search_for_qemu(self.topwin, self.config,
                                              self.conn, self._dev.path)
-
 
 
     def validate_page_network(self):
@@ -1228,6 +1207,14 @@ class vmmAddHardware(gobject.GObject):
             return False
 
         self._dev = ret
+
+    def validate_page_input(self):
+        ignore, inp_type, inp_bus = self.get_config_input()
+        dev = virtinst.VirtualInputDevice(self.conn.vmm)
+        dev.type = inp_type
+        dev.bus = inp_bus
+
+        self._dev = dev
 
     def validate_page_graphics(self):
         graphics = self.get_config_graphics()

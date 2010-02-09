@@ -261,3 +261,28 @@ def bind_escape_key_close(vmmobj):
             vmmobj.close()
 
     vmmobj.topwin.connect("key-press-event", close_on_escape)
+
+def safe_set_prop(self, prop, value):
+    """
+    Make sure a gtk property is supported, and set to value
+
+    Return True if property was sucessfully set, False otherwise
+    """
+
+    try:
+        self.get_property(prop)
+        self.set_property(prop, value)
+        return True
+    except TypeError:
+        return False
+
+def iface_in_use_by(conn, name):
+    use_str = ""
+    for i in conn.list_interface_names():
+        iface = conn.get_interface(i)
+        if name in iface.get_slave_names():
+            if use_str:
+                use_str += ", "
+            use_str += iface.get_name()
+
+    return use_str
