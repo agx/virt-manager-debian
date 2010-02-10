@@ -1,3 +1,18 @@
+virt-manager (0.8.3-1) unstable; urgency=low
+
+  [ Guido Günther ]
+  * [becccfa] Drop hal dependency
+
+  [ Laurent Léonard ]
+  * [c1e3848] Imported Upstream version 0.8.3
+  * [f234d09] Drop patches.
+  * [380454f] Bump virtinst dependency version to 0.500.2.
+  * [0876fbe] Bump Standards-Version to 3.8.4.
+  * [7fa85de] Change python-dev and python-gtk2-dev dependencies to
+    python-all.
+
+ -- Laurent Léonard <laurent@open-minds.org>  Wed, 10 Feb 2010 12:24:38 +0100
+
 virt-manager (0.8.2-2) unstable; urgency=low
 
   [ Laurent Léonard ]
