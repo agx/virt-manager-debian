@@ -7,7 +7,7 @@ Standards-Version: 3.8.4
 Vcs-Git: git://git.debian.org/git/pkg-libvirt/virt-manager.git
 Vcs-Browser: http://git.debian.org/?p=pkg-libvirt/virt-manager.git
 Homepage: http://virt-manager.et.redhat.com/
-Build-Depends: debhelper (>= 7), python-dev, python-gtk2-dev, scrollkeeper,
+Build-Depends: debhelper (>= 7), python-all, scrollkeeper,
  python-support (>= 0.5.3), cdbs, quilt, intltool
 DM-Upload-Allowed: yes
 
