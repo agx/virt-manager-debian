@@ -1,3 +1,9 @@
+virt-manager (0.8.3-2~bpo50+1) lenny-backports; urgency=low
+
+  * Rebuild for lenny-backports.
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 12 Feb 2010 18:20:04 +0100
+
 virt-manager (0.8.3-2) unstable; urgency=low
 
   * [598b4ea] Update french translation.
