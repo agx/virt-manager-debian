@@ -64,6 +64,9 @@ class vmmConnect(gobject.GObject):
         # Plain hostname resolve failed, means we should just use IP addr
         self.can_resolve_hostname = None
 
+        stock_img = gtk.image_new_from_stock(gtk.STOCK_CONNECT,
+                                             gtk.ICON_SIZE_BUTTON)
+        self.window.get_widget("connect").set_image(stock_img)
         self.window.get_widget("connection").set_active(0)
         self.window.get_widget("connect").grab_default()
         self.window.get_widget("autoconnect").set_active(True)
@@ -81,14 +84,15 @@ class vmmConnect(gobject.GObject):
 
         self.window.get_widget("conn-list").get_selection().connect("changed", self.conn_selected)
 
-        self.bus = dbus.SystemBus()
+        self.bus = None
+        self.server = None
+        self.can_browse = False
         try:
+            self.bus = dbus.SystemBus()
             self.server = dbus.Interface(self.bus.get_object("org.freedesktop.Avahi", "/"), "org.freedesktop.Avahi.Server")
             self.can_browse = True
         except Exception, e:
             logging.debug("Couldn't contact avahi: %s" % str(e))
-            self.server = None
-            self.can_browse = False
 
         self.reset_state()
 

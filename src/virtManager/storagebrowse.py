@@ -29,6 +29,7 @@ import virtinst
 import virtManager.host
 import virtManager.util as util
 from virtManager.createvol import vmmCreateVolume
+from virtManager.config import vmmConfig
 from virtManager.error import vmmErrorDialog
 
 class vmmStorageBrowser(gobject.GObject):
@@ -46,7 +47,9 @@ class vmmStorageBrowser(gobject.GObject):
                                     domain="virt-manager")
         self.config = config
         self.conn = conn
+
         self.conn_signal_ids = []
+        self.finish_cb_id = None
 
         self.topwin = self.window.get_widget("vmm-storage-browse")
         self.err = vmmErrorDialog(self.topwin,
@@ -58,8 +61,13 @@ class vmmStorageBrowser(gobject.GObject):
         # Add Volume wizard
         self.addvol = None
 
+        # Name of VM we are choosing storage for, can be used to recommend
+        # volume name if creating
+        self.vm_name = None
+
         # Arguments to pass to util.browse_local for local storage
-        self.local_args = {"dialog_name": _("Choose local storage")}
+        self.browse_reason = None
+        self.local_args = {}
 
         self.window.signal_autoconnect({
             "on_vmm_storage_browse_delete_event" : self.close,
@@ -69,6 +77,14 @@ class vmmStorageBrowser(gobject.GObject):
             "on_choose_volume_clicked" : self.finish,
             "on_vol_list_row_activated" : self.finish,
         })
+        util.bind_escape_key_close(self)
+
+        finish_img = gtk.image_new_from_stock(gtk.STOCK_NEW,
+                                              gtk.ICON_SIZE_BUTTON)
+        self.window.get_widget("new-volume").set_image(finish_img)
+        finish_img = gtk.image_new_from_stock(gtk.STOCK_OPEN,
+                                              gtk.ICON_SIZE_BUTTON)
+        self.window.get_widget("choose-volume").set_image(finish_img)
 
         self.set_initial_state()
 
@@ -82,6 +98,20 @@ class vmmStorageBrowser(gobject.GObject):
         if self.addvol:
             self.addvol.close()
         return 1
+
+    def set_finish_cb(self, callback):
+        if self.finish_cb_id:
+            self.disconnect(self.finish_cb_id)
+        self.finish_cb_id = self.connect("storage-browse-finish", callback)
+
+    def set_browse_reason(self, reason):
+        self.browse_reason = reason
+
+    def set_local_arg(self, arg, val):
+        self.local_args[arg] = val
+
+    def set_vm_name(self, name):
+        self.vm_name = name
 
     def set_initial_state(self):
         pool_list = self.window.get_widget("pool-list")
@@ -158,6 +188,18 @@ class vmmStorageBrowser(gobject.GObject):
         util.tooltip_wrapper(self.window.get_widget("browse-local"),
                              tooltip)
 
+        # Set data based on browse type
+        self.local_args["browse_reason"] = self.browse_reason
+        if not vmmConfig.browse_reason_data.has_key(self.browse_reason):
+            return
+
+        data = vmmConfig.browse_reason_data[self.browse_reason]
+        self.topwin.set_title(data["storage_title"])
+        self.local_args["dialog_name"] = data["local_title"]
+
+        allow_create = data["enable_create"]
+        self.window.get_widget("new-volume").set_sensitive(allow_create)
+
     # Convenience helpers
     def current_pool(self):
         sel = self.window.get_widget("pool-list").get_selection()
@@ -226,13 +268,15 @@ class vmmStorageBrowser(gobject.GObject):
             else:
                 self.addvol.set_parent_pool(pool)
             self.addvol.set_modal(True)
+            self.addvol.set_name_hint(self.vm_name)
             self.addvol.show()
         except Exception, e:
             self.show_err(_("Error launching volume wizard: %s") % str(e),
                           "".join(traceback.format_exc()))
 
     def browse_local(self, src):
-        filename = util.browse_local(parent=self.topwin, **self.local_args)
+        filename = util.browse_local(parent=self.topwin, config=self.config,
+                                     conn=self.conn, **self.local_args)
         if filename:
             self._do_finish(path=filename)
 

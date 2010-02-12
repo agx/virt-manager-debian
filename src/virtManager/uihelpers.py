@@ -1,0 +1,500 @@
+#
+# Copyright (C) 2009 Red Hat, Inc.
+# Copyright (C) 2009 Cole Robinson <crobinso@redhat.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA 02110-1301 USA.
+#
+
+import logging
+import traceback
+
+import gtk
+
+from virtinst import VirtualNetworkInterface
+from virtinst import VirtualDisk
+
+from virtManager.error import vmmErrorDialog
+
+OPTICAL_DEV_PATH = 0
+OPTICAL_LABEL = 1
+OPTICAL_IS_MEDIA_PRESENT = 2
+OPTICAL_DEV_KEY = 3
+OPTICAL_MEDIA_KEY = 4
+
+# What user we guess the qemu:///system starts the emulator as. Some distros
+# may use a nonroot user, so simply changing this will cause several UI
+# pieces to attempt to verify that permissions are correct. Eventually this
+# should be exposed via capabilities so we can determine this programmatically.
+QEMU_SYSTEM_EMULATOR_USER = "root"
+
+##############################################################
+# Initialize an error object to use for validation functions #
+##############################################################
+
+err_dial = vmmErrorDialog(None,
+                          0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
+                          _("Unexpected Error"),
+                          _("An unexpected error occurred"))
+
+def set_error_parent(parent):
+    global err_dial
+    err_dial.set_parent(parent)
+    err_dial = err_dial
+
+
+#######################################################################
+# Widgets for listing network device options (in create, addhardware) #
+#######################################################################
+
+def pretty_network_desc(nettype, source=None, netobj=None):
+    if nettype == VirtualNetworkInterface.TYPE_USER:
+        return _("Usermode networking")
+
+    extra = None
+    if nettype == VirtualNetworkInterface.TYPE_BRIDGE:
+        ret = _("Bridge")
+    elif nettype == VirtualNetworkInterface.TYPE_VIRTUAL:
+        ret = _("Virtual network")
+        if netobj:
+            extra = ": %s" % netobj.pretty_forward_mode()
+    else:
+        ret = nettype.capitalize()
+
+    if source:
+        ret += " '%s'" % source
+    if extra:
+        ret += " %s" % extra
+
+    return ret
+
+def init_network_list(net_list):
+    # [ network type, source name, label, sensitive? ]
+    net_model = gtk.ListStore(str, str, str, bool)
+    net_list.set_model(net_model)
+
+    if isinstance(net_list, gtk.ComboBox):
+        net_col = net_list
+    else:
+        net_col = gtk.TreeViewColumn()
+        net_list.append_column(net_col)
+
+    text = gtk.CellRendererText()
+    net_col.pack_start(text, True)
+    net_col.add_attribute(text, 'text', 2)
+    net_col.add_attribute(text, 'sensitive', 3)
+
+def populate_network_list(net_list, conn):
+    model = net_list.get_model()
+    model.clear()
+
+    vnet_bridges = []
+    vnet_dict = {}
+    bridge_dict = {}
+    iface_dict = {}
+
+    def set_active(idx):
+        if isinstance(net_list, gtk.ComboBox):
+            net_list.set_active(idx)
+
+    def add_dict(indict, model):
+        keylist = indict.keys()
+        keylist.sort()
+        rowlist = map(lambda key: indict[key], keylist)
+        for row in rowlist:
+            model.append(row)
+
+    # For qemu:///session
+    if conn.is_qemu_session():
+        nettype = VirtualNetworkInterface.TYPE_USER
+        model.append([nettype, None, pretty_network_desc(nettype), True])
+        set_active(0)
+        return
+
+    hasNet = False
+    netIdxLabel = None
+    # Virtual Networks
+    for uuid in conn.list_net_uuids():
+        net = conn.get_net(uuid)
+        nettype = VirtualNetworkInterface.TYPE_VIRTUAL
+
+        label = pretty_network_desc(nettype, net.get_name(), net)
+        if not net.is_active():
+            label +=  " (%s)" % _("Inactive")
+
+        hasNet = True
+        # FIXME: Should we use 'default' even if it's inactive?
+        # FIXME: This preference should be configurable
+        if net.get_name() == "default":
+            netIdxLabel = label
+
+        vnet_dict[label] = [nettype, net.get_name(), label, True]
+
+        # Build a list of vnet bridges, so we know not to list them
+        # in the physical interface list
+        vnet_bridge = net.get_bridge_device()
+        if vnet_bridge:
+            vnet_bridges.append(vnet_bridge)
+
+    if not hasNet:
+        label = _("No virtual networks available")
+        vnet_dict[label] = [None, None, label, False]
+
+    # Physical devices
+    hasShared = False
+    brIdxLabel = None
+    for name in conn.list_net_device_paths():
+        br = conn.get_net_device(name)
+        bridge_name = br.get_bridge()
+        nettype = VirtualNetworkInterface.TYPE_BRIDGE
+
+        if (bridge_name in vnet_bridges) or (br.get_name() in vnet_bridges):
+            # Don't list this, as it is basically duplicating virtual net info
+            continue
+
+        if br.is_shared():
+            sensitive = True
+            if br.get_bridge():
+                hasShared = True
+                brlabel = "(%s)" % pretty_network_desc(nettype, bridge_name)
+            else:
+                bridge_name = name
+                brlabel = _("(Empty bridge)")
+        else:
+            sensitive = False
+            brlabel = "(%s)" %  _("Not bridged")
+
+        label = _("Host device %s %s") % (br.get_name(), brlabel)
+        if hasShared and not brIdxLabel:
+            brIdxLabel = label
+
+        row = [nettype, bridge_name, label, sensitive]
+
+        if sensitive:
+            bridge_dict[label] = row
+        else:
+            iface_dict[label] = row
+
+    add_dict(bridge_dict, model)
+    add_dict(vnet_dict, model)
+    add_dict(iface_dict, model)
+
+    # If there is a bridge device, default to that
+    # If not, use 'default' network
+    # If not present, use first list entry
+    # If list empty, use no network devices
+    label = brIdxLabel or netIdxLabel
+    for idx in range(len(model)):
+        row = model[idx]
+        if label:
+            if row[2] == label:
+                default = idx
+                break
+        else:
+            if row[3] == True:
+                default = idx
+                break
+    else:
+        model.insert(0, [None, None, _("No networking."), True])
+        default = 0
+
+    set_active(default)
+
+def validate_network(parent, conn, nettype, devname, macaddr, model=None):
+    set_error_parent(parent)
+
+    net = None
+
+    if nettype is None:
+        return None
+
+    # Make sure VirtualNetwork is running
+    if (nettype == VirtualNetworkInterface.TYPE_VIRTUAL and
+        devname not in conn.vmm.listNetworks()):
+
+        res = err_dial.yes_no(_("Virtual Network is not active."),
+                              _("Virtual Network '%s' is not active. "
+                                "Would you like to start the network "
+                                "now?") % devname)
+        if not res:
+            return False
+
+        # Try to start the network
+        try:
+            virnet = conn.vmm.networkLookupByName(devname)
+            virnet.create()
+            logging.info("Started network '%s'." % devname)
+        except Exception, e:
+            return err_dial.show_err(_("Could not start virtual network "
+                                       "'%s': %s") % (devname, str(e)),
+                                       "".join(traceback.format_exc()))
+
+    # Create network device
+    try:
+        bridge = None
+        netname = None
+        if nettype == VirtualNetworkInterface.TYPE_VIRTUAL:
+            netname = devname
+        elif nettype == VirtualNetworkInterface.TYPE_BRIDGE:
+            bridge = devname
+        elif nettype == VirtualNetworkInterface.TYPE_USER:
+            pass
+
+        net = VirtualNetworkInterface(type = nettype,
+                                      bridge = bridge,
+                                      network = netname,
+                                      macaddr = macaddr,
+                                      model = model)
+    except Exception, e:
+        return err_dial.val_err(_("Error with network parameters."), str(e))
+
+    # Make sure there is no mac address collision
+    isfatal, errmsg = net.is_conflict_net(conn.vmm)
+    if isfatal:
+        return err_dial.val_err(_("Mac address collision."), errmsg)
+    elif errmsg is not None:
+        retv = err_dial.yes_no(_("Mac address collision."),
+                               _("%s Are you sure you want to use this "
+                                 "address?") % errmsg)
+        if not retv:
+            return False
+
+    return net
+
+def generate_macaddr(conn):
+    newmac = ""
+    try:
+        net = VirtualNetworkInterface(conn=conn.vmm)
+        net.setup(conn.vmm)
+        newmac = net.macaddr
+    except:
+        pass
+
+    return newmac
+
+
+############################################
+# Populate media widget (choosecd, create) #
+############################################
+
+def init_mediadev_combo(widget, empty_sensitive=False):
+    # [Device path, pretty label, has_media?, device key, media key,
+    #  vmmMediaDevice]
+    model = gtk.ListStore(str, str, bool, str, str)
+    widget.set_model(model)
+    model.clear()
+
+    text = gtk.CellRendererText()
+    widget.pack_start(text, True)
+    widget.add_attribute(text, 'text', 1)
+    if not empty_sensitive:
+        widget.add_attribute(text, 'sensitive', 2)
+
+def populate_mediadev_combo(conn, widget, devtype):
+    sigs = []
+
+    widget.get_model().clear()
+
+    sigs.append(conn.connect("mediadev-added", mediadev_added, widget, devtype))
+    sigs.append(conn.connect("mediadev-removed", mediadev_removed, widget))
+
+    widget.set_active(-1)
+    mediadev_set_default_selection(widget)
+
+    return sigs
+
+def set_row_from_object(row, obj):
+    row[OPTICAL_DEV_PATH] = obj.get_path()
+    row[OPTICAL_LABEL] = obj.pretty_label()
+    row[OPTICAL_IS_MEDIA_PRESENT] = obj.has_media()
+    row[OPTICAL_DEV_KEY] = obj.get_key()
+    row[OPTICAL_MEDIA_KEY] = obj.get_media_key()
+
+def mediadev_removed(ignore_helper, key, widget):
+    model = widget.get_model()
+    active = widget.get_active()
+    idx = 0
+
+    for row in model:
+        if row[OPTICAL_DEV_KEY] == key:
+            # Whole device removed
+            del(model[idx])
+
+            if idx > active and active != -1:
+                widget.set_active(active-1)
+            elif idx == active:
+                widget.set_active(-1)
+
+        idx += 1
+
+    mediadev_set_default_selection(widget)
+
+def mediadev_added(ignore_helper, newobj, widget, devtype):
+    model = widget.get_model()
+
+    if newobj.get_media_type() != devtype:
+        return
+
+    newobj.connect("media-added", mediadev_media_changed, widget)
+    newobj.connect("media-removed", mediadev_media_changed, widget)
+
+    # Brand new device
+    row = [None, None, None, None, None]
+    set_row_from_object(row, newobj)
+    model.append(row)
+
+    mediadev_set_default_selection(widget)
+
+def mediadev_media_changed(newobj, widget):
+    model = widget.get_model()
+    active = widget.get_active()
+    idx = 0
+
+    # Search for the row with matching device node and
+    # fill in info about inserted media. If model has no current
+    # selection, select the new media.
+    for row in model:
+        if row[OPTICAL_DEV_PATH] == newobj.get_path():
+            set_row_from_object(row, newobj)
+            has_media = row[OPTICAL_IS_MEDIA_PRESENT]
+
+            if has_media and active == -1:
+                widget.set_active(idx)
+            elif not has_media and active == idx:
+                widget.set_active(-1)
+
+        idx = idx + 1
+
+    mediadev_set_default_selection(widget)
+
+def mediadev_set_default_selection(widget):
+    # Set the first active cdrom device as selected, otherwise none
+    model = widget.get_model()
+    idx = 0
+    active = widget.get_active()
+
+    if active != -1:
+        # already a selection, don't change it
+        return
+
+    for row in model:
+        if row[OPTICAL_IS_MEDIA_PRESENT] == True:
+            widget.set_active(idx)
+            return
+        idx += 1
+
+    widget.set_active(-1)
+
+
+####################################################################
+# Build toolbar shutdown button menu (manager and details toolbar) #
+####################################################################
+
+def build_shutdown_button_menu(config, widget, shutdown_cb, reboot_cb,
+                               destroy_cb):
+    icon_name = config.get_shutdown_icon_name()
+    widget.set_icon_name(icon_name)
+    menu = gtk.Menu()
+    widget.set_menu(menu)
+
+    rebootimg = gtk.image_new_from_icon_name(icon_name, gtk.ICON_SIZE_MENU)
+    shutdownimg = gtk.image_new_from_icon_name(icon_name, gtk.ICON_SIZE_MENU)
+    destroyimg = gtk.image_new_from_icon_name(icon_name, gtk.ICON_SIZE_MENU)
+
+    reboot = gtk.ImageMenuItem(_("_Reboot"))
+    reboot.set_image(rebootimg)
+    reboot.show()
+    reboot.connect("activate", reboot_cb)
+    menu.add(reboot)
+
+    shutdown = gtk.ImageMenuItem(_("_Shut Down"))
+    shutdown.set_image(shutdownimg)
+    shutdown.show()
+    shutdown.connect("activate", shutdown_cb)
+    menu.add(shutdown)
+
+    destroy = gtk.ImageMenuItem(_("_Force Off"))
+    destroy.set_image(destroyimg)
+    destroy.show()
+    destroy.connect("activate", destroy_cb)
+    menu.add(destroy)
+
+#####################################
+# Path permissions checker for qemu #
+#####################################
+def check_path_search_for_qemu(parent, config, conn, path):
+    set_error_parent(parent)
+
+    if conn.is_remote() or not conn.is_qemu_system():
+        return
+
+    user = QEMU_SYSTEM_EMULATOR_USER
+
+    skip_paths = config.get_perms_fix_ignore()
+    broken_paths = VirtualDisk.check_path_search_for_user(conn.vmm, path, user)
+    for p in broken_paths:
+        if p in skip_paths:
+            broken_paths.remove(p)
+
+    if not broken_paths:
+        return
+
+    logging.debug("No search access for dirs: %s" % broken_paths)
+    resp, chkres = err_dial.warn_chkbox(
+                    _("The emulator may not have search permissions "
+                      "for the path '%s'.") % path,
+                    _("Do you want to correct this now?"),
+                    _("Don't ask about these directories again."))
+
+    if chkres:
+        config.add_perms_fix_ignore(broken_paths)
+    if not resp:
+        return
+
+    logging.debug("Attempting to correct permission issues.")
+    errors = VirtualDisk.fix_path_search_for_user(conn.vmm, path, user)
+    if not errors:
+        return
+
+    errmsg = _("Errors were encountered changing permissions for the "
+               "following directories:")
+    details = ""
+    for path, error in errors.items():
+        if path not in broken_paths:
+            continue
+        details += "%s : %s\n" % (path, error)
+
+    logging.debug("Permission errors:\n%s" % details)
+
+    ignore, chkres = err_dial.err_chkbox(errmsg, details,
+                         _("Don't ask about these directories again."))
+
+    if chkres:
+        config.add_perms_fix_ignore(errors.keys())
+
+######################################
+# Interface startmode widget builder #
+######################################
+
+def build_startmode_combo(start_list):
+    start_model = gtk.ListStore(str)
+    start_list.set_model(start_model)
+    text = gtk.CellRendererText()
+    start_list.pack_start(text, True)
+    start_list.add_attribute(text, 'text', 0)
+    start_model.append(["none"])
+    start_model.append(["onboot"])
+    start_model.append(["hotplug"])
+

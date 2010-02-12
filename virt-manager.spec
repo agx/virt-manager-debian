@@ -7,7 +7,7 @@
 %define _extra_release %{?dist:%{dist}}%{!?dist:%{?extra_release:%{extra_release}}}
 
 Name: virt-manager
-Version: 0.7.0
+Version: 0.8.3
 Release: 1%{_extra_release}
 Summary: Virtual Machine Manager
 
@@ -16,17 +16,14 @@ License: GPLv2+
 URL: http://virt-manager.org/
 Source0: http://virt-manager.org/download/sources/%{name}/%{name}-%{version}.tar.gz
 BuildRoot: %{_tmppath}/%{name}-%{version}-%{release}-root-%(%{__id_u} -n)
+BuildArch: noarch
 
 # These two are just the oldest version tested
 Requires: pygtk2 >= 1.99.12-6
 Requires: gnome-python2-gconf >= 1.99.11-7
-%if 0%{?fedora} <= 9
-Requires: gnome-python2
-%else
-Requires: gnome-python2-gnome
-%endif
-# Absolutely require this version or newer
-Requires: libvirt-python >= 0.4.5
+# This version not strictly required: virt-manager should work with older,
+# however varying amounts of functionality will not be enabled.
+Requires: libvirt-python >= 0.7.0
 # Definitely does not work with earlier due to python API changes
 Requires: dbus-python >= 0.61
 Requires: dbus-x11
@@ -37,11 +34,10 @@ Requires: gnome-keyring >= 0.4.9
 # will work just fine - keyring functionality will simply be
 # disabled
 Requires: gnome-python2-gnomekeyring >= 2.15.4
-Requires: gnome-python2-gnomevfs >= 2.15.4
 # Minimum we've tested with
 Requires: libxml2-python >= 2.6.23
-# Required to install Xen & QEMU guests
-Requires: python-virtinst >= 0.400.1
+# Absolutely require this version or later
+Requires: python-virtinst >= 0.500.2
 # Required for loading the glade UI
 Requires: pygtk2-libglade
 # Required for our graphics which are currently SVG format
@@ -55,18 +51,11 @@ Requires: gtk-vnc-python >= 0.3.8
 # For local authentication against PolicyKit
 %if 0%{?fedora} >= 11
 Requires: PolicyKit-authentication-agent
-%elif 0%{?fedora} >= 9
+%endif
+%if 0%{?fedora} >= 9 && 0%{?fedora} < 11
 Requires: PolicyKit-gnome
 %endif
 
-BuildRequires: pygtk2-devel
-BuildRequires: gtk2-devel
-BuildRequires: pygobject2-devel
-BuildRequires: glib2-devel
-BuildRequires: python-devel
-BuildRequires: pango-devel
-BuildRequires: atk-devel
-BuildRequires: cairo-devel
 BuildRequires: gettext
 BuildRequires: scrollkeeper
 BuildRequires: intltool
@@ -95,8 +84,6 @@ make %{?_smp_mflags}
 %install
 rm -rf $RPM_BUILD_ROOT
 make install  DESTDIR=$RPM_BUILD_ROOT
-rm -f $RPM_BUILD_ROOT%{_libdir}/%{name}/sparkline.a
-rm -f $RPM_BUILD_ROOT%{_libdir}/%{name}/sparkline.la
 %find_lang %{name}
 
 %clean
@@ -136,19 +123,13 @@ fi
 %{_sysconfdir}/gconf/schemas/%{name}.schemas
 %{_bindir}/%{name}
 %{_libexecdir}/%{name}-launch
-%dir %{_libdir}/%{name}/
-%{_libdir}/%{name}/*
 
 %{_mandir}/man1/%{name}.1*
 
 %dir %{_datadir}/%{name}
 %{_datadir}/%{name}/*.glade
-%{_datadir}/%{name}/pixmaps/*.png
-%{_datadir}/%{name}/pixmaps/*.svg
 
-%{_datadir}/%{name}/*.py
-%{_datadir}/%{name}/*.pyc
-%{_datadir}/%{name}/*.pyo
+%{_datadir}/%{name}/*.py*
 
 %dir %{_datadir}/%{name}/pixmaps/
 %{_datadir}/%{name}/pixmaps/*.png
@@ -156,9 +137,7 @@ fi
 
 %dir %{_datadir}/%{name}/virtManager/
 
-%{_datadir}/%{name}/virtManager/*.py
-%{_datadir}/%{name}/virtManager/*.pyc
-%{_datadir}/%{name}/virtManager/*.pyo
+%{_datadir}/%{name}/virtManager/*.py*
 
 %{_datadir}/omf/%{name}/
 %{_datadir}/gnome/help/%{name}
@@ -167,6 +146,38 @@ fi
 %{_datadir}/dbus-1/services/%{name}.service
 
 %changelog
+* Mon Feb  8 2010 Cole Robinson <crobinso@redhat.com> - 0.8.3-1
+- Manage network interfaces: start, stop, view, provision bridges, bonds, etc.
+- Option to 'customize VM before install'.
+
+* Mon Dec 14 2009 Cole Robinson <crobinso@redhat.com> - 0.8.2-1
+- Fix right click in the manager window to operate on the clicked row
+- Running on a new machine / user account no longer produces a traceback.
+- Allow ejecting and connecting floppy media
+
+* Thu Dec  3 2009 Cole Robinson <crobinso@redhat.com> - 0.8.1-1
+- VM Migration wizard, exposing various migration options
+- Enumerate CDROM and bridge devices on remote connections
+- Support storage pool source enumeration for LVM, NFS, and SCSI
+
+* Tue Jul 28 2009 Cole Robinson <crobinso@redhat.com> - 0.8.0-1
+- New 'Clone VM' Wizard
+- Improved UI, including an overhaul of the main 'manager' view
+- System tray icon for easy VM access (start, stop, view console/details)
+- Wizard for adding serial, parallel, and video devices to existing VMs.
+
+* Mon Mar  9 2009 Cole Robinson <crobinso@redhat.com> - 0.7.0-1
+- Redesigned 'New Virtual Machine' wizard (Jeremy Perry, Cole Robinson)
+- Option to remove storage when deleting a virtual machine.
+- File browser for libvirt storage pools and volumes
+- Physical device assignment (PCI, USB) for existing virtual machines.
+
+* Mon Jan 26 2009 Cole Robinson <crobinso@redhat.com> - 0.6.1-1
+- VM disk and network stats reporting (Guido Gunther)
+- VM Migration support (Shigeki Sakamoto)
+- Support for adding sound devices to an existing VM
+- Enumerate host devices attached to an existing VM
+
 * Wed Sep 10 2008 Cole Robinson <crobinso@redhat.com> - 0.6.0-1
 - Add libvirt storage management support
 - Basic support for remote guest installation

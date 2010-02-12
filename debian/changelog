@@ -1,8 +1,133 @@
+virt-manager (0.8.3-2) unstable; urgency=low
+
+  * [598b4ea] Update french translation.
+
+ -- Laurent Léonard <laurent@open-minds.org>  Fri, 12 Feb 2010 10:22:47 +0100
+
+virt-manager (0.8.3-1) unstable; urgency=low
+
+  [ Guido Günther ]
+  * [becccfa] Drop hal dependency
+
+  [ Laurent Léonard ]
+  * [c1e3848] Imported Upstream version 0.8.3
+  * [f234d09] Drop patches.
+  * [380454f] Bump virtinst dependency version to 0.500.2.
+  * [0876fbe] Bump Standards-Version to 3.8.4.
+  * [7fa85de] Change python-dev and python-gtk2-dev dependencies to
+    python-all.
+
+ -- Laurent Léonard <laurent@open-minds.org>  Wed, 10 Feb 2010 12:24:38 +0100
+
+virt-manager (0.8.2-2) unstable; urgency=low
+
+  [ Laurent Léonard ]
+  * [77f4251] Remove Priority and Section binary fields.
+  * [8665d7c] Clean debian/watch.
+
+  [ Guido Günther ]
+  * [83b6b38] Make sure we quit afer EOF on stdin when using qemu+ssh.  This
+    patch is identical to the recently dropped 0002-close-nc-
+    connection-on-EOF - the issue isn't fixed upstream yet. (Closes: #564034)
+    - thanks to Vaclav Ovsik
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 10 Jan 2010 20:06:25 +0100
+
+virt-manager (0.8.2-1) unstable; urgency=low
+
+  [ Laurent Léonard ]
+  * [986f851] Imported Upstream version 0.8.2
+  * [f120b48] Redo patch 0001-use-usr-share-gconf-for-schema-data.patch.
+  * [0071e36] Allow DM upload and add myself as uploader.
+  * [35121e4] Update french translation.
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 19 Dec 2009 19:56:35 +0100
+
+virt-manager (0.8.1-1) unstable; urgency=low
+
+  [ Laurent Léonard ]
+  * [7806746] Imported Upstream version 0.8.1
+  * [e551c64] Drop patches. 0002-close-nc-connection-on-EOF.patch - fixed
+    upstream. 0003-Update-french-translation.patch - applied upstream.
+    0004-Don-t-close-connection-on-all-libvirt-errors.patch - fixed upstream.
+  * [d205786] Bump virtinst dependency version to 0.500.1.
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 07 Dec 2009 15:32:49 +0100
+
+virt-manager (0.8.0-2) unstable; urgency=low
+
+  [ Laurent Léonard ]
+  * [61651ae] Drop ${shlibs:Depends} from dependencies since there is no more
+    C code.
+  * [3319434] Drop redo-patches target from debian/rules. Since gbp-pq
+    is used now.
+  * [b04541e] Clean debian/rules. Drop commented post-patches target
+    since there is no more autogen.sh.
+  * [145ba60] Update french translation.
+  * [799f18e] Update 0001-use-usr-share-gconf-for-schema-data.patch.
+  * [052f7bb] Remove XS-Python-Version field from debian/control. Since
+    it is deprecated with pysupport.
+  * [bfb1611][1a66b27][a8ce142][4116d07][31ff60a] Fix some misspellings in
+    french translation.
+  * [6e23aff] Clean build dependencies.
+  * [b71c8c9] Bump Debhelper version to 7.
+  * [c614f09] Bump Standards-Version to 3.8.3.
+  * [99a52c2] Clean debian/rules.
+  * [52f3b63] Add clean target in debian/rules. To clean automatically
+    generated files: - debian/pycompat (see #424898)
+  * [d5e2ef7] Remove tests/Makefile in the debian/rules clean target. To get a
+    clean Debian diff at rebuild time, the file is automatically generated.
+  * [7da6d9b] Don't close connection on all libvirt errors. Pulled from
+    upstream 1c886d1863f7.
+
+  [ Guido Günther ]
+  * upload to unstable
+  * [464fb65] make package arch all since there is no more C code.
+  * [25f7663] switch to python-support and use python-distutils
+  * [c4da06a] bump python-libvirt dependency so we get all of VMs new
+    features.
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 07 Oct 2009 14:04:03 +0200
+
+virt-manager (0.8.0-1) experimental; urgency=low
+
+  [ Laurent Léonard ]
+  * [4fbe61d] Bump Standards-Version to 3.8.2.
+
+  [ Guido Günther ]
+  * [4eafeb9] Imported Upstream version 0.8.0
+  * [e8a42e6] drop patches applied upstream
+        0003-don-t-crop-vnc-display.patch
+        0004-make-check-match-return-value-of-self.get_config_key.patch
+        0005-Enable-Xen-HVM-virtual-machines-creation.patch
+  * [2dac2fd] reformat debian/control
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 29 Jul 2009 20:24:26 +0200
+
+virt-manager (0.7.0-4) unstable; urgency=low
+
+  [ Laurent Léonard ]
+  * [78b1652] Enable Xen HVM virtual machines creation. (Closes: #536301)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 17 Jul 2009 10:03:35 +0200
+
+virt-manager (0.7.0-3) unstable; urgency=low
+
+  * [61b67c1] don't crop vnc display (Closes: #525764) - thanks to
+    Laurent Léonard for testing
+  * [4522aa1] make check match return value of self.get_config_keymap()
+    In the "Add hardware" wizard summary, the keymap field is set to
+    "None" instead of "Same as host" when "Same as host" option is used.
+    (Closes: #528447) - thanks to Laurent Léonard
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 20 May 2009 19:07:00 +0200
+
 virt-manager (0.7.0-2~bpo50+1) lenny-backports; urgency=low
 
   * Rebuild for lenny-backports.
 
  -- Guido Günther <agx@sigxcpu.org>  Mon, 11 May 2009 15:24:43 +0200
+
 
 virt-manager (0.7.0-2) unstable; urgency=low
 

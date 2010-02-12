@@ -21,6 +21,8 @@
 import gtk.glade
 import gobject
 
+import virtManager.util as util
+
 PREFS_PAGE_STATS    = 0
 PREFS_PAGE_VM_PREFS = 1
 
@@ -37,6 +39,7 @@ class vmmPreferences(gobject.GObject):
         self.topwin = self.window.get_widget("vmm-preferences")
         self.topwin.hide()
 
+        self.config.on_view_system_tray_changed(self.refresh_view_system_tray)
         self.config.on_console_popup_changed(self.refresh_console_popup)
         self.config.on_console_keygrab_changed(self.refresh_console_keygrab)
         self.config.on_console_scaling_changed(self.refresh_console_scaling)
@@ -46,9 +49,14 @@ class vmmPreferences(gobject.GObject):
         self.config.on_sound_remote_changed(self.refresh_sound_remote)
         self.config.on_stats_enable_disk_poll_changed(self.refresh_disk_poll)
         self.config.on_stats_enable_net_poll_changed(self.refresh_net_poll)
-        self.config.on_stats_enable_mem_poll_changed(self.refresh_mem_poll)
-        self.config.on_stats_enable_cpu_poll_changed(self.refresh_cpu_poll)
 
+        self.config.on_confirm_forcepoweroff_changed(self.refresh_confirm_forcepoweroff)
+        self.config.on_confirm_poweroff_changed(self.refresh_confirm_poweroff)
+        self.config.on_confirm_pause_changed(self.refresh_confirm_pause)
+        self.config.on_confirm_removedev_changed(self.refresh_confirm_removedev)
+        self.config.on_confirm_interface_changed(self.refresh_confirm_interface)
+
+        self.refresh_view_system_tray()
         self.refresh_update_interval()
         self.refresh_history_length()
         self.refresh_console_popup()
@@ -58,10 +66,14 @@ class vmmPreferences(gobject.GObject):
         self.refresh_sound_remote()
         self.refresh_disk_poll()
         self.refresh_net_poll()
-        self.refresh_mem_poll()
-        self.refresh_cpu_poll()
+        self.refresh_confirm_forcepoweroff()
+        self.refresh_confirm_poweroff()
+        self.refresh_confirm_pause()
+        self.refresh_confirm_removedev()
+        self.refresh_confirm_interface()
 
         self.window.signal_autoconnect({
+            "on_prefs_system_tray_toggled" : self.change_view_system_tray,
             "on_prefs_stats_update_interval_changed": self.change_update_interval,
             "on_prefs_stats_history_length_changed": self.change_history_length,
             "on_prefs_console_popup_changed": self.change_console_popup,
@@ -74,9 +86,16 @@ class vmmPreferences(gobject.GObject):
             "on_prefs_sound_remote_toggled": self.change_remote_sound,
             "on_prefs_stats_enable_disk_toggled": self.change_disk_poll,
             "on_prefs_stats_enable_net_toggled": self.change_net_poll,
-            "on_prefs_stats_enable_mem_toggled": self.change_mem_poll,
-            "on_prefs_stats_enable_cpu_toggled": self.change_cpu_poll,
+            "on_prefs_confirm_forcepoweroff_toggled": self.change_confirm_forcepoweroff,
+            "on_prefs_confirm_poweroff_toggled": self.change_confirm_poweroff,
+            "on_prefs_confirm_pause_toggled": self.change_confirm_pause,
+            "on_prefs_confirm_removedev_toggled": self.change_confirm_removedev,
+            "on_prefs_confirm_interface_toggled": self.change_confirm_interface,
             })
+        util.bind_escape_key_close(self)
+
+        # XXX: Help docs useless/out of date
+        self.window.get_widget("prefs-help").hide()
 
     def close(self, ignore1=None, ignore2=None):
         self.topwin.hide()
@@ -89,6 +108,11 @@ class vmmPreferences(gobject.GObject):
     #########################
     # Config Change Options #
     #########################
+
+    def refresh_view_system_tray(self, ignore1=None, ignore2=None,
+                                 ignore3=None, ignore4=None):
+        val = self.config.get_view_system_tray()
+        self.window.get_widget("prefs-system-tray").set_active(bool(val))
 
     def refresh_update_interval(self, ignore1=None,ignore2=None,ignore3=None,ignore4=None):
         self.window.get_widget("prefs-stats-update-interval").set_value(self.config.get_stats_update_interval())
@@ -103,7 +127,10 @@ class vmmPreferences(gobject.GObject):
         self.window.get_widget("prefs-console-keygrab").set_active(self.config.get_console_keygrab())
     def refresh_console_scaling(self,ignore1=None,ignore2=None,ignore3=None,
                                 ignore4=None):
-        self.window.get_widget("prefs-console-scaling").set_active(self.config.get_console_scaling())
+        val = self.config.get_console_scaling()
+        if val == None:
+            val = 0
+        self.window.get_widget("prefs-console-scaling").set_active(val)
 
     def refresh_sound_local(self, ignore1=None, ignore2=None, ignore=None,
                             ignore4=None):
@@ -118,12 +145,25 @@ class vmmPreferences(gobject.GObject):
     def refresh_net_poll(self, ignore1=None, ignore2=None, ignore3=None,
                          ignore4=None):
         self.window.get_widget("prefs-stats-enable-net").set_active(self.config.get_stats_enable_net_poll())
-    def refresh_mem_poll(self, ignore1=None, ignore2=None, ignore3=None,
-                         ignore4=None):
-        self.window.get_widget("prefs-stats-enable-mem").set_active(self.config.get_stats_enable_mem_poll())
-    def refresh_cpu_poll(self, ignore1=None, ignore2=None, ignore3=None,
-                         ignore4=None):
-        self.window.get_widget("prefs-stats-enable-cpu").set_active(self.config.get_stats_enable_cpu_poll())
+
+    def refresh_confirm_forcepoweroff(self, ignore1=None, ignore2=None,
+                                      ignore3=None, ignore4=None):
+        self.window.get_widget("prefs-confirm-forcepoweroff").set_active(self.config.get_confirm_forcepoweroff())
+    def refresh_confirm_poweroff(self, ignore1=None, ignore2=None,
+                                      ignore3=None, ignore4=None):
+        self.window.get_widget("prefs-confirm-poweroff").set_active(self.config.get_confirm_poweroff())
+    def refresh_confirm_pause(self, ignore1=None, ignore2=None,
+                              ignore3=None, ignore4=None):
+        self.window.get_widget("prefs-confirm-pause").set_active(self.config.get_confirm_pause())
+    def refresh_confirm_removedev(self, ignore1=None, ignore2=None,
+                                  ignore3=None, ignore4=None):
+        self.window.get_widget("prefs-confirm-removedev").set_active(self.config.get_confirm_removedev())
+    def refresh_confirm_interface(self, ignore1=None, ignore2=None,
+                                  ignore3=None, ignore4=None):
+        self.window.get_widget("prefs-confirm-interface").set_active(self.config.get_confirm_interface())
+
+    def change_view_system_tray(self, src):
+        self.config.set_view_system_tray(src.get_active())
 
     def change_update_interval(self, src):
         self.config.set_stats_update_interval(src.get_value_as_int())
@@ -146,10 +186,17 @@ class vmmPreferences(gobject.GObject):
         self.config.set_stats_enable_disk_poll(src.get_active())
     def change_net_poll(self, src):
         self.config.set_stats_enable_net_poll(src.get_active())
-    def change_mem_poll(self, src):
-        self.config.set_stats_enable_mem_poll(src.get_active())
-    def change_cpu_poll(self, src):
-        self.config.set_stats_enable_cpu_poll(src.get_active())
+
+    def change_confirm_forcepoweroff(self, src):
+        self.config.set_confirm_forcepoweroff(src.get_active())
+    def change_confirm_poweroff(self, src):
+        self.config.set_confirm_poweroff(src.get_active())
+    def change_confirm_pause(self, src):
+        self.config.set_confirm_pause(src.get_active())
+    def change_confirm_removedev(self, src):
+        self.config.set_confirm_removedev(src.get_active())
+    def change_confirm_interface(self, src):
+        self.config.set_confirm_interface(src.get_active())
 
     def show_help(self, src):
         # From the Preferences window, show the help document from

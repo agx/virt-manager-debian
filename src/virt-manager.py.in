@@ -34,11 +34,20 @@ import traceback
 import signal
 from optparse import OptionParser, OptionValueError
 
+try:
+    # Make sure we have a default '_' implementation, in case something
+    # fails before gettext is set up
+    __builtins__._ = lambda msg: msg
+except:
+    pass
+
 # These are substituted into code based on --prefix given to configure
 appname = "::PACKAGE::"
 appversion = "::VERSION::"
 gettext_app = "virt-manager"
 gettext_dir = "::GETTEXTDIR::"
+virtinst_str = "::VIRTINST_VERSION::"
+virtinst_version = tuple([ int(num) for num in virtinst_str.split('.')])
 
 gconf_dir = "/apps/" + appname
 asset_dir = "::ASSETDIR::"
@@ -60,23 +69,27 @@ def setup_i18n():
     gettext.install(gettext_app, gettext_dir)
     gettext.bindtextdomain(gettext_app, gettext_dir)
 
+def setup_glade_i18n():
+    import gtk.glade
+    gtk.glade.bindtextdomain(gettext_app, gettext_dir)
+    gtk.glade.textdomain(gettext_app)
+
 def setup_pypath():
     global glade_dir, icon_dir, data_dir
     # Hacks for find assets in local dir for dev purposes
     if os.path.exists(os.getcwd() + "/src/vmm-about.glade"):
         glade_dir = os.getcwd() + "/src"
-    if os.path.exists(os.getcwd() + "/pixmaps/icon_run.png"):
+    if os.path.exists(os.getcwd() + "/pixmaps/state_running.png"):
         icon_dir = os.getcwd() + "/pixmaps"
     if os.path.exists(os.getcwd() + "../gnome/help/virt-manager/C/virt-manager.xml"):
         data_dir = os.getcwd() + "../"
 
-    # First two are hacks to point python to local dir for source files
-    # in dev, the third is the main path if you have  normal install
+    # First 2 hacks are to point python to local dir for source files in dev,
+    # the third is the main path if you have  normal install
     if os.path.exists(os.getcwd() + "/src/virt-manager.py"):
-        sys.path.insert(0, os.getcwd() + "/src/graphWidgets/.libs")
+        pass
     elif os.path.exists(os.getcwd() + "/build/src/virt-manager.py"):
         sys.path.insert(0, os.getcwd() + "/src")
-        sys.path.insert(0, os.getcwd() + "/build/src/graphWidgets/.libs")
     else:
         sys.path.insert(0, pylib_dir)
         sys.path.insert(0, pyarchlib_dir)
@@ -120,11 +133,15 @@ def setup_logging(debug_stdout):
 
     # set up logging
     vm_dir = os.path.expanduser("~/%s" % DIR_NAME)
-    if not os.access(vm_dir,os.W_OK):
+    if not os.access(vm_dir, os.W_OK):
+        if os.path.exists(vm_dir):
+            raise RuntimeError("No write access to %s" % vm_dir)
+
         try:
-            os.mkdir(vm_dir)
+            os.mkdir(vm_dir, 0751)
         except IOError, e:
-            raise RuntimeError, "Could not create %d directory: " % vm_dir, e
+            raise RuntimeError("Could not create directory %s: %s" %
+                               (vm_dir, e))
 
     # XXX should we get logging level from gconf, or command line args ?
     filename = "%s/%s" % (vm_dir, FILE_NAME)
@@ -158,13 +175,13 @@ def setup_logging(debug_stdout):
     sys.excepthook = exception_log
 
 def parse_commandline():
-    optParser = OptionParser()
+    optParser = OptionParser(version=appversion)
     optParser.add_option("--profile", dest="profile", help="Generate runtime performance profile stats", metavar="FILE")
     optParser.set_defaults(uuid=None)
     optParser.add_option("-c", "--connect", dest="uri",
         help="Connect to hypervisor at URI", metavar="URI")
     optParser.add_option("--debug", action="store_true", dest="debug",
-        help="Print debug output to stdout (requires --no-fork)",
+        help="Print debug output to stdout (implies --no-fork)",
         default=False)
     optParser.add_option("--no-dbus", action="store_true", dest="nodbus",
         help="Disable DBus service for controlling UI")
@@ -253,11 +270,11 @@ def show_remote(managerObj, show, uri, uuid):
         managerObj.show_manager()
 
 # Generic OptionParser callback for all --show-* options
-# This routine stores UUID to options.uuid for all --show-* options 
+# This routine stores UUID to options.uuid for all --show-* options
 # where is metavar="UUID" and also sets options.show
 def opt_show_cb(option, opt_str, value, parser):
     if option.metavar=="UUID":
-        setattr(parser.values, "uuid", value)        
+        setattr(parser.values, "uuid", value)
     s = str(option)
     show = s[s.rindex('-')+1:]
     setattr(parser.values, "show", show)
@@ -267,9 +284,6 @@ def main():
     setup_i18n()
     setup_pypath()
 
-    (options, ignore) = parse_commandline()
-    setup_logging(options.debug)
-
     # Urgh, pygtk merely logs a warning when failing to open
     # the X11 display connection, and lets everything carry
     # on as if all were fine. Ultimately bad stuff happens,
@@ -277,6 +291,13 @@ def main():
     import warnings
     warnings.filterwarnings('error', module='gtk')
     try:
+        import gobject
+
+        # Set program name for gnome shell (before importing gtk, which
+        # seems to call set_prgname on its own)
+        if hasattr(gobject, "set_prgname"):
+            gobject.set_prgname(appname)
+
         import gtk
     except Warning, e:
         # ...the risk is we catch too much though
@@ -284,7 +305,33 @@ def main():
         raise RuntimeError(_("Unable to initialize GTK: %s") % str(e))
     warnings.resetwarnings()
 
+    (options, ignore) = parse_commandline()
+    setup_logging(options.debug)
+
+    # Make sure we have a sufficiently new virtinst version, since we are
+    # very closely tied to the lib
+    msg = ("virt-manager requires the python-virtinst library version " +
+            virtinst_str + " or greater. This can be downloaded at:"
+            "\n\nhttp://virt-manager.org/download.html")
+    try:
+        import virtinst
+        ignore = virtinst.__version__
+        ignore = virtinst.__version_info__
+    except Exception, e:
+        logging.exception("Error import virtinst")
+        raise RuntimeError(str(e) + "\n\n" + msg)
+
+    if virtinst.__version_info__ < virtinst_version:
+        raise RuntimeError("virtinst version %s is too old." %
+                            (virtinst.__version__) +
+                           "\n\n" + msg)
+
+    # Add our icon dir to icon theme
+    icon_theme = gtk.icon_theme_get_default()
+    icon_theme.prepend_search_path(icon_dir)
+
     gtk.gdk.threads_init()
+    setup_glade_i18n()
 
     import dbus
     import dbus.glib
@@ -299,7 +346,7 @@ def main():
                        icon_dir, data_dir)
 
     # Now we've got basic environment up & running we can fork
-    if not options.nofork:
+    if not options.nofork and not options.debug:
         drop_tty()
         drop_stdio()
 
@@ -366,6 +413,10 @@ def main():
 if __name__ == "__main__":
     try:
         main()
+    except KeyboardInterrupt:
+        logging.debug("Received KeyboardInterrupt. Exiting application.")
+    except SystemExit:
+        raise
     except Exception, run_e:
         logging.exception(run_e)
         _show_startup_error(str(run_e), "".join(traceback.format_exc()))

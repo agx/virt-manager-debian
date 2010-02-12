@@ -4,10 +4,11 @@ Subject: [PATCH] use /usr/share/gconf for schema data
 
 ---
  src/Makefile.am |    2 +-
- 1 files changed, 1 insertions(+), 1 deletions(-)
+ src/Makefile.in |    2 +-
+ 2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/Makefile.am b/src/Makefile.am
-index 250e10d..e424887 100644
+index 0818500..61ded33 100644
 --- a/src/Makefile.am
 +++ b/src/Makefile.am
 @@ -22,7 +22,7 @@ dbusdir = $(datadir)/dbus-1/services
@@ -19,4 +20,17 @@ index 250e10d..e424887 100644
  schema_DATA_IN = $(PACKAGE).schemas.in
  schema_DATA = $(PACKAGE).schemas
  
+diff --git a/src/Makefile.in b/src/Makefile.in
+index d4c3e4d..121abcc 100644
+--- a/src/Makefile.in
++++ b/src/Makefile.in
+@@ -246,7 +246,7 @@ desktop_DATA = $(PACKAGE).desktop
+ dbusdir = $(datadir)/dbus-1/services
+ dbus_DATA_IN = $(PACKAGE).service.in
+ dbus_DATA = $(PACKAGE).service
+-schemadir = $(sysconfdir)/gconf/schemas
++schemadir = $(datadir)/gconf/schemas
+ schema_DATA_IN = $(PACKAGE).schemas.in
+ schema_DATA = $(PACKAGE).schemas
+ CLEANFILES = $(bin_SCRIPTS) $(desktop_DATA) $(dbus_DATA) $(python_DATA)  $(libexec_SCRIPTS) $(schema_DATA) $(PACKAGE).desktop.in
 -- 
