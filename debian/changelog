@@ -1,3 +1,9 @@
+virt-manager (0.8.3-2) unstable; urgency=low
+
+  * [598b4ea] Update french translation.
+
+ -- Laurent Léonard <laurent@open-minds.org>  Fri, 12 Feb 2010 10:22:47 +0100
+
 virt-manager (0.8.3-1) unstable; urgency=low
 
   [ Guido Günther ]
