@@ -1,3 +1,4 @@
 0001-use-usr-share-gconf-for-schema-data.patch
 0002-Make-sure-we-quit-afer-EOF-on-stdin.patch
 0003-Update-french-translation.patch
+0004-Fix-tapering-issue-for-fully-filled-graph.patch
