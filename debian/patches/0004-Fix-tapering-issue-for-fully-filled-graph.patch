@@ -1,9 +1,10 @@
 From: Jan ONDREJ <ondrejj@salstar.sk>
 Date: Wed, 10 Feb 2010 12:43:12 -0500
-Subject: [PATCH] Fix tapering issue for fully filled graph.
+Subject: [PATCH] Fix tapering issue for fully filled graph
 
-Closes: #572065
 Origin: upstream, http://hg.fedoraproject.org/hg/virt-manager/rev/ce8158e89bc1
+Bug: https://bugzilla.redhat.com/show_bug.cgi?id=560913
+Bug-Debian: http://bugs.debian.org/572065
 ---
  src/virtManager/graphwidgets.py |    4 ++++
  1 files changed, 4 insertions(+), 0 deletions(-)
