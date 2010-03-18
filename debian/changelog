@@ -1,3 +1,10 @@
+virt-manager (0.8.3-3) unstable; urgency=low
+
+  * [1373ca0] Fix tapering issue for fully filled graph. (Closes:
+    #572065) - thanks to Jan Ondrej
+
+ -- Laurent Léonard <laurent@open-minds.org>  Thu, 18 Mar 2010 09:29:17 +0100
+
 virt-manager (0.8.3-2) unstable; urgency=low
 
   * [598b4ea] Update french translation.
