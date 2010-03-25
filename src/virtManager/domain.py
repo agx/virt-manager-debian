@@ -21,7 +21,6 @@
 import gobject
 import libvirt
 import logging
-import time
 import difflib
 
 import virtinst
@@ -29,6 +28,8 @@ from virtManager import util
 import virtinst.util as vutil
 import virtinst.support as support
 from virtinst import VirtualDevice
+
+from virtManager.libvirtobject import vmmLibvirtObject
 
 def safeint(val, fmt="%.3d"):
     try:
@@ -54,7 +55,7 @@ def disk_type_to_target_prop(disk_type):
         return "dir"
     return "file"
 
-class vmmDomainBase(gobject.GObject):
+class vmmDomainBase(vmmLibvirtObject):
     """
     Base class for vmmDomain objects. Provides common set up and methods
     for domain backends (libvirt virDomain, virtinst Guest)
@@ -62,19 +63,15 @@ class vmmDomainBase(gobject.GObject):
     __gsignals__ = {
         "status-changed": (gobject.SIGNAL_RUN_FIRST,
                            gobject.TYPE_NONE,
-                           [int]),
+                           [int, int]),
         "resources-sampled": (gobject.SIGNAL_RUN_FIRST,
                               gobject.TYPE_NONE,
                               []),
-        "config-changed": (gobject.SIGNAL_RUN_FIRST,
-                           gobject.TYPE_NONE,
-                           []),
         }
 
     def __init__(self, config, connection, backend, uuid):
-        self.__gobject_init__()
-        self.config = config
-        self.connection = connection
+        vmmLibvirtObject.__init__(self, config, connection)
+
         self._backend = backend
         self.uuid = uuid
 
@@ -84,7 +81,10 @@ class vmmDomainBase(gobject.GObject):
         self._disk_io = None
 
         self._stats_net_supported = True
+        self._stats_net_skip = []
+
         self._stats_disk_supported = True
+        self._stats_disk_skip = []
 
     # Info accessors
     def get_name(self):
@@ -92,13 +92,6 @@ class vmmDomainBase(gobject.GObject):
     def get_id(self):
         raise NotImplementedError()
     def status(self):
-        raise NotImplementedError()
-
-    def get_xml(self):
-        raise NotImplementedError()
-    def refresh_xml(self):
-        raise NotImplementedError()
-    def _get_inactive_xml(self):
         raise NotImplementedError()
 
     def get_memory(self):
@@ -131,7 +124,7 @@ class vmmDomainBase(gobject.GObject):
     def set_autostart(self, val):
         raise NotImplementedError()
 
-    def attach_device(self, devobj):
+    def attach_device(self, devobj, devxml=None):
         raise NotImplementedError()
     def detach_device(self, devtype, dev_id_info):
         raise NotImplementedError()
@@ -161,7 +154,7 @@ class vmmDomainBase(gobject.GObject):
     def define_seclabel(self, model, t, label):
         raise NotImplementedError()
 
-    def set_boot_device(self, boot_type):
+    def set_boot_device(self, boot_list):
         raise NotImplementedError()
 
     def define_acpi(self, newvalue):
@@ -170,13 +163,26 @@ class vmmDomainBase(gobject.GObject):
         raise NotImplementedError()
     def define_clock(self, newvalue):
         raise NotImplementedError()
+    def define_description(self, newvalue):
+        raise NotImplementedError()
 
     def define_disk_readonly(self, dev_id_info, do_readonly):
         raise NotImplementedError()
     def define_disk_shareable(self, dev_id_info, do_shareable):
         raise NotImplementedError()
 
+    def define_network_model(self, dev_id_info, newmodel):
+        raise NotImplementedError()
+
+    def define_sound_model(self, dev_id_info, newmodel):
+        raise NotImplementedError()
+
     def define_video_model(self, dev_id_info, newmodel):
+        raise NotImplementedError()
+
+    def define_watchdog_model(self, dev_id_info, newmodel):
+        raise NotImplementedError()
+    def define_watchdog_action(self, dev_id_info, newmodel):
         raise NotImplementedError()
 
     ########################
@@ -192,9 +198,6 @@ class vmmDomainBase(gobject.GObject):
         self._backend = None
     def get_handle(self):
         return self._backend
-
-    def get_connection(self):
-        return self.connection
 
     def is_read_only(self):
         if self.connection.is_read_only():
@@ -252,6 +255,9 @@ class vmmDomainBase(gobject.GObject):
     def get_clock(self):
         return vutil.get_xml_path(self.get_xml(), "/domain/clock/@offset")
 
+    def get_description(self):
+        return vutil.get_xml_path(self.get_xml(), "/domain/description")
+
     def vcpu_pinning(self):
         cpuset = vutil.get_xml_path(self.get_xml(), "/domain/vcpu/@cpuset")
         # We need to set it to empty string not to show None in the entry
@@ -269,10 +275,13 @@ class vmmDomainBase(gobject.GObject):
         xml = self.get_xml()
 
         def get_boot_xml(doc, ctx):
-            ret = ctx.xpathEval("/domain/os/boot[1]")
+            ret = ctx.xpathEval("/domain/os/boot")
+            devs = []
             for node in ret:
                 dev = node.prop("dev")
-            return dev
+                if dev:
+                    devs.append(dev)
+            return devs
 
         return util.xml_parse_wrapper(xml, get_boot_xml)
 
@@ -335,24 +344,41 @@ class vmmDomainBase(gobject.GObject):
         return self._parse_device_xml(_parse_serial_consoles)
 
     def get_graphics_console(self):
-        typ = vutil.get_xml_path(self.get_xml(),
-                                "/domain/devices/graphics/@type")
-        port = None
-        if typ == "vnc":
-            port = vutil.get_xml_path(self.get_xml(),
-                                     "/domain/devices/graphics[@type='vnc']/@port")
-            if port is not None:
-                port = int(port)
+        gtype = vutil.get_xml_path(self.get_xml(),
+                                  "/domain/devices/graphics/@type")
+        vncport = vutil.get_xml_path(self.get_xml(),
+                               "/domain/devices/graphics[@type='vnc']/@port")
 
+        if gtype != "vnc":
+            vncport = None
+        else:
+            vncport = int(vncport)
+
+        connhost = self.connection.get_uri_hostname()
         transport, username = self.connection.get_transport()
-        if transport is None:
+
+        if connhost == None:
             # Force use of 127.0.0.1, because some (broken) systems don't
             # reliably resolve 'localhost' into 127.0.0.1, either returning
             # the public IP, or an IPv6 addr. Neither work since QEMU only
             # listens on 127.0.0.1 for VNC.
-            return [typ, "127.0.0.1", port, None, None]
-        else:
-            return [typ, self.connection.get_hostname(), port, transport, username]
+            connhost = "127.0.0.1"
+
+        # Parse URI port
+        connport = None
+        if connhost.count(":"):
+            connhost, connport = connhost.split(":", 1)
+
+        # Build VNC uri for debugging
+        vncuri = None
+        if gtype:
+            vncuri = str(gtype) + "://"
+            if username:
+                vncuri = vncuri + str(username) + '@'
+            vncuri += str(connhost) + ":" + str(vncport)
+
+        return [gtype, connhost, vncport, transport, username, connport,
+                vncuri]
 
 
     # ----------------
@@ -474,7 +500,9 @@ class vmmDomainBase(gobject.GObject):
     def get_graphics_devices(self):
         def _parse_graphics_devs(ctx):
             graphics = []
+            count = 0
             ret = ctx.xpathEval("/domain/devices/graphics")
+
             for node in ret:
                 typ = node.prop("type")
                 listen = None
@@ -485,9 +513,12 @@ class vmmDomainBase(gobject.GObject):
                     port = node.prop("port")
                     keymap = node.prop("keymap")
 
+                unique = count
+                count += 1
+
                 # [device type, unique, graphics type, listen addr, port,
                 #  keymap ]
-                graphics.append(["graphics", typ, typ, listen, port, keymap])
+                graphics.append(["graphics", unique, typ, listen, port, keymap])
             return graphics
 
         return self._parse_device_xml(_parse_graphics_devs)
@@ -495,12 +526,17 @@ class vmmDomainBase(gobject.GObject):
     def get_sound_devices(self):
         def _parse_sound_devs(ctx):
             sound = []
+            count = 0
             ret = ctx.xpathEval("/domain/devices/sound")
+
             for node in ret:
                 model = node.prop("model")
 
+                unique = count
+                count += 1
+
                 # [device type, unique, sound model]
-                sound.append(["sound", model, model])
+                sound.append(["sound", unique, model])
             return sound
 
         return self._parse_device_xml(_parse_sound_devs)
@@ -571,6 +607,7 @@ class vmmDomainBase(gobject.GObject):
         def _parse_video_devs(ctx):
             vids = []
             devs = ctx.xpathEval("/domain/devices/video")
+            count = 0
 
             for dev in devs:
                 model = None
@@ -586,7 +623,9 @@ class vmmDomainBase(gobject.GObject):
                         if ram:
                             ram = safeint(ram, "%d")
 
-                unique = [model, ram, heads]
+                unique = count
+                count += 1
+
                 row = ["video", unique, model, ram, heads]
                 vids.append(row)
 
@@ -597,6 +636,7 @@ class vmmDomainBase(gobject.GObject):
         def _parse_hostdev_devs(ctx):
             hostdevs = []
             devs = ctx.xpathEval("/domain/devices/hostdev")
+            count = 0
 
             for dev in devs:
                 vendor  = None
@@ -672,14 +712,35 @@ class vmmDomainBase(gobject.GObject):
                     # device since we have no way to determine uniqueness
                     continue
 
+                index = count
+                count += 1
+
                 # [device type, unique, hwlist label, hostdev mode,
                 #  hostdev type, source desc label]
-                hostdevs.append(["hostdev", unique, hwlabel, mode, typ,
-                                 srclabel])
+                hostdevs.append(["hostdev", index, hwlabel, mode, typ,
+                                 srclabel, unique])
 
             return hostdevs
         return self._parse_device_xml(_parse_hostdev_devs)
 
+    def get_watchdog_devices(self):
+        def _parse_devs(ctx):
+            vids = []
+            devs = ctx.xpathEval("/domain/devices/watchdog")
+            count = 0
+
+            for dev in devs:
+                model = dev.prop("model")
+                action = dev.prop("action")
+
+                unique = count
+                count += 1
+
+                row = ["watchdog", unique, model, action]
+                vids.append(row)
+
+            return vids
+        return self._parse_device_xml(_parse_devs)
 
     def _parse_device_xml(self, parse_function, refresh_if_necc=True,
                           inactive=False):
@@ -724,10 +785,10 @@ class vmmDomainBase(gobject.GObject):
                      (typ, bus))
 
         elif dev_type=="graphics":
-            xpath = "/domain/devices/graphics[@type='%s'][1]" % dev_id_info
+            xpath = "/domain/devices/graphics[%s]" % (int(dev_id_info) + 1)
 
         elif dev_type == "sound":
-            xpath = "/domain/devices/sound[@model='%s'][1]" % dev_id_info
+            xpath = "/domain/devices/sound[%s]" % (int(dev_id_info) + 1)
 
         elif (dev_type == "parallel" or
               dev_type == "console" or
@@ -736,58 +797,13 @@ class vmmDomainBase(gobject.GObject):
                      (dev_type, dev_id_info))
 
         elif dev_type == "hostdev":
-            # This whole process is a little funky, since we need a decent
-            # amount of info to determine which specific hostdev to remove
-
-            xmlbase = "/domain/devices/hostdev[@type='%s' and " % \
-                      dev_id_info["type"]
-            xpath = ""
-
-            addr = dev_id_info.get("address")
-            vend = dev_id_info.get("vendor")
-            prod = dev_id_info.get("product")
-            if addr:
-                bus = addr.get("bus")
-                dev = addr.get("device")
-                slot = addr.get("slot")
-                funct = addr.get("function")
-                dom = addr.get("domain")
-
-                if bus and dev:
-                    # USB by bus and dev
-                    xpath = (xmlbase + "source/address/@bus='%s' and "
-                                       "source/address/@device='%s']" %
-                                       (bus, dev))
-                elif bus and slot and funct and dom:
-                    # PCI by bus,slot,funct,dom
-                    xpath = (xmlbase + "source/address/@bus='%s' and "
-                                       "source/address/@slot='%s' and "
-                                       "source/address/@function='%s' and "
-                                       "source/address/@domain='%s']" %
-                                       (bus, slot, funct, dom))
-
-            elif vend.get("id") and prod.get("id"):
-                # USB by vendor and product
-                xpath = (xmlbase + "source/vendor/@id='%s' and "
-                                   "source/product/@id='%s']" %
-                                   (vend.get("id"), prod.get("id")))
-
-            if xpath:
-                # Log this, since we could hit issues with unexpected
-                # xml parameters in the future
-                xpath += "[1]"
-                logging.debug("Hostdev xpath string: %s" % xpath)
+            xpath = "/domain/devices/hostdev[%s]" % (int(dev_id_info) + 1)
 
         elif dev_type == "video":
-            model, ram, heads = dev_id_info
-            xpath = "/domain/devices/video"
+            xpath = "/domain/devices/video[%s]" % (int(dev_id_info) + 1)
 
-            xpath += "[model/@type='%s'" % model
-            if ram:
-                xpath += " and model/@vram='%s'" % ram
-            if heads:
-                xpath += " and model/@heads='%s'" % heads
-            xpath += "][1]"
+        elif dev_type == "watchdog":
+            xpath = "/domain/devices/watchdog[%s]" % (int(dev_id_info) + 1)
 
         else:
             raise RuntimeError(_("Unknown device type '%s'") % dev_type)
@@ -880,6 +896,9 @@ class vmmDomainBase(gobject.GObject):
             if not dev:
                 continue
 
+            if dev in self._stats_net_skip:
+                continue
+
             try:
                 io = self.interfaceStats(dev)
                 if io:
@@ -893,6 +912,9 @@ class vmmDomainBase(gobject.GObject):
                     logging.error("Error reading net stats for "
                                   "'%s' dev '%s': %s" %
                                   (self.get_name(), dev, err))
+                    logging.debug("Adding %s to skip list." % dev)
+                    self._stats_net_skip.append(dev)
+
         return rx, tx
 
     def _sample_disk_io_dummy(self):
@@ -909,6 +931,9 @@ class vmmDomainBase(gobject.GObject):
             if not dev:
                 continue
 
+            if dev in self._stats_disk_skip:
+                continue
+
             try:
                 io = self.blockStats(dev)
                 if io:
@@ -922,6 +947,9 @@ class vmmDomainBase(gobject.GObject):
                     logging.error("Error reading disk stats for "
                                   "'%s' dev '%s': %s" %
                                   (self.get_name(), dev, err))
+                    logging.debug("Adding %s to skip list." % dev)
+                    self._stats_disk_skip.append(dev)
+
         return rd, wr
 
     def _get_cur_rate(self, what):
@@ -988,8 +1016,9 @@ class vmmDomainBase(gobject.GObject):
         vector = []
         stats = self.record
         ceil = float(max(self.maxRecord[name1], self.maxRecord[name2]))
+        maxlen = self.config.get_stats_history_length()
         for n in [ name1, name2 ]:
-            for i in range(self.config.get_stats_history_length()+1):
+            for i in range(maxlen + 1):
                 if i < len(stats):
                     vector.append(float(stats[i][n])/ceil)
                 else:
@@ -1024,6 +1053,12 @@ class vmmDomainBase(gobject.GObject):
         return self.in_out_vector_limit(self.network_traffic_vector(), limit)
     def disk_io_vector_limit(self, limit):
         return self.in_out_vector_limit(self.disk_io_vector(), limit)
+
+    def is_shutoff(self):
+        return self.status() == libvirt.VIR_DOMAIN_SHUTOFF
+
+    def is_crashed(self):
+        return self.status() == libvirt.VIR_DOMAIN_CRASHED
 
     def is_stoppable(self):
         return self.status() in [libvirt.VIR_DOMAIN_RUNNING,
@@ -1123,7 +1158,7 @@ class vmmDomain(vmmDomainBase):
     def __init__(self, config, connection, backend, uuid):
         vmmDomainBase.__init__(self, config, connection, backend, uuid)
 
-        self.lastStatus = None
+        self.lastStatus = libvirt.VIR_DOMAIN_SHUTOFF
         self.record = []
         self.maxRecord = { "diskRdRate" : 10.0,
                            "diskWrRate" : 10.0,
@@ -1131,13 +1166,12 @@ class vmmDomain(vmmDomainBase):
                            "netRxRate"  : 10.0,
                          }
 
-        self._xml = None
-        self._is_xml_valid = False
-
         self._update_status()
 
-        self.config.on_stats_enable_net_poll_changed(self.toggle_sample_network_traffic)
-        self.config.on_stats_enable_disk_poll_changed(self.toggle_sample_disk_io)
+        self.config.on_stats_enable_net_poll_changed(
+                                            self.toggle_sample_network_traffic)
+        self.config.on_stats_enable_disk_poll_changed(
+                                            self.toggle_sample_disk_io)
 
         self.getvcpus_supported = support.check_domain_support(self._backend,
                                             support.SUPPORT_DOMAIN_GETVCPUS)
@@ -1145,16 +1179,20 @@ class vmmDomain(vmmDomainBase):
         self.toggle_sample_network_traffic()
         self.toggle_sample_disk_io()
 
+        self.reboot_listener = None
+
         # Determine available XML flags (older libvirt versions will error
         # out if passed SECURE_XML, INACTIVE_XML, etc)
-        self._set_dom_flags()
+        (self._inactive_xml_flags,
+         self._active_xml_flags) = self.connection.get_dom_flags(
+                                                            self._backend)
+
+        # Hook up our own status listeners
+        self.connect("status-changed", self._update_start_vcpus)
 
     ##########################
     # Internal virDomain API #
     ##########################
-
-    def _set_dom_flags(self):
-        self.connection.set_dom_flags(self._backend)
 
     def _define(self, newxml):
         self.get_connection().define_domain(newxml)
@@ -1196,7 +1234,47 @@ class vmmDomain(vmmDomainBase):
     def disk_write_rate(self):
         return self._get_record_helper("diskWrRate")
 
+    def _unregister_reboot_listener(self):
+        if self.reboot_listener == None:
+            return
+
+        try:
+            self.disconnect(self.reboot_listener)
+            self.reboot_listener = None
+        except:
+            pass
+
+    def manual_reboot(self):
+        # Attempt a manual reboot via 'shutdown' followed by startup
+        def reboot_listener(vm, ignore1, ignore2, self):
+            if vm.is_crashed():
+                # Abandon reboot plans
+                self.reboot_listener = None
+                return True
+
+            if not vm.is_shutoff():
+                # Not shutoff, continue waiting
+                return
+
+            try:
+                logging.debug("Fake reboot detected shutdown. Restarting VM")
+                vm.startup()
+            except:
+                logging.exception("Fake reboot startup failed")
+
+            self.reboot_listener = None
+            return True
+
+        self._unregister_reboot_listener()
+
+        # Request a shutdown
+        self.shutdown()
+
+        self.reboot_listener = util.connect_opt_out(self, "status-changed",
+                                                    reboot_listener, self)
+
     def shutdown(self):
+        self._unregister_reboot_listener()
         self._backend.shutdown()
         self._update_status()
 
@@ -1230,7 +1308,9 @@ class vmmDomain(vmmDomainBase):
         self._update_status()
 
     def destroy(self):
+        self._unregister_reboot_listener()
         self._backend.destroy()
+        self._update_status()
 
     def interfaceStats(self, device):
         return self._backend.interfaceStats(device)
@@ -1278,13 +1358,17 @@ class vmmDomain(vmmDomainBase):
     def get_id(self):
         return self._backend.ID()
 
-    def attach_device(self, devobj):
+    def attach_device(self, devobj, devxml=None):
         """
         Hotplug device to running guest
         """
-        if self.is_active():
-            xml = devobj.get_xml_config()
-            self._backend.attachDevice(xml)
+        if not self.is_active():
+            return
+
+        if not devxml:
+            devxml = devobj.get_xml_config()
+
+        self._backend.attachDevice(devxml)
 
     def detach_device(self, devtype, dev_id_info):
         """
@@ -1307,110 +1391,9 @@ class vmmDomain(vmmDomainBase):
         if maxmem != self.maximum_memory():
             self._backend.setMaxMemory(maxmem)
 
-
     ####################
     # End internal API #
     ####################
-
-    #########################
-    # XML fetching routines #
-    #########################
-
-    def get_xml(self):
-        """
-        Get domain xml. If cached xml is invalid, update.
-        """
-        return self._xml_fetch_helper(refresh_if_necc=True)
-
-    def refresh_xml(self):
-        # Force an xml update. Signal 'config-changed' if domain xml has
-        # changed since last refresh
-
-        flags = libvirt.VIR_DOMAIN_XML_SECURE
-        if not self.connection.has_dom_flags(flags):
-            flags = 0
-
-        origxml = self._xml
-        self._xml = self._XMLDesc(flags)
-        self._is_xml_valid = True
-
-        if origxml != self._xml:
-            # 'tick' to make sure we have the latest time
-            self.tick(time.time())
-            gobject.idle_add(util.idle_emit, self, "config-changed")
-
-    def _redefine(self, xml_func, *args):
-        """
-        Helper function for altering a redefining VM xml
-
-        @param xml_func: Function to alter the running XML. Takes the
-                         original XML as its first argument.
-        @param args: Extra arguments to pass to xml_func
-        """
-        origxml = self._get_xml_to_define()
-        # Sanitize origxml to be similar to what we will get back
-        origxml = util.xml_parse_wrapper(origxml, lambda d, c: d.serialize())
-
-        newxml = xml_func(origxml, *args)
-
-        if origxml == newxml:
-            logging.debug("Redefinition request XML was no different,"
-                          " redefining anyways")
-        else:
-            diff = "".join(difflib.unified_diff(origxml.splitlines(1),
-                                                newxml.splitlines(1),
-                                                fromfile="Original XML",
-                                                tofile="New XML"))
-            logging.debug("Redefining '%s' with XML diff:\n%s",
-                          self.get_name(), diff)
-
-        self._define(newxml)
-
-        # Invalidate cached XML
-        self._invalidate_xml()
-
-    def _get_xml_no_refresh(self):
-        """
-        Fetch XML, but don't force a refresh. Useful to prevent updating
-        xml in the tick loop when it's not that important (disk/net stats)
-        """
-        return self._xml_fetch_helper(refresh_if_necc=False)
-
-    def _get_xml_to_define(self):
-        if self.is_active():
-            return self._get_inactive_xml()
-        else:
-            self._invalidate_xml()
-            return self.get_xml()
-
-    def _xml_fetch_helper(self, refresh_if_necc):
-        # Helper to fetch xml with various options
-        if self._xml is None:
-            self.refresh_xml()
-        elif refresh_if_necc and not self._is_xml_valid:
-            self.refresh_xml()
-
-        return self._xml
-
-    def _invalidate_xml(self):
-        # Mark cached xml as invalid
-        self._is_xml_valid = False
-
-    def _get_inactive_xml(self):
-        flags = (libvirt.VIR_DOMAIN_XML_INACTIVE |
-                 libvirt.VIR_DOMAIN_XML_SECURE)
-        if not self.connection.has_dom_flags(flags):
-            flags = libvirt.VIR_DOMAIN_XML_INACTIVE
-
-            if not self.connection.has_dom_flags(flags):
-                flags = 0
-
-        return self._XMLDesc(flags)
-
-
-    #############################
-    # End XML fetching routines #
-    #############################
 
     ###########################
     # XML/Config Altering API #
@@ -1555,7 +1538,7 @@ class vmmDomain(vmmDomainBase):
         ignore, diskxml = util.xml_parse_wrapper(self.get_xml(), func,
                                                  dev_id_info, newpath, _type)
 
-        self.attach_device(diskxml)
+        self.attach_device(None, diskxml)
 
     # VCPU changing
     def define_vcpus(self, vcpus):
@@ -1632,15 +1615,25 @@ class vmmDomain(vmmDomainBase):
         self._redefine(change_mem_xml, memory, maxmem)
 
     # Boot device
-    def set_boot_device(self, boot_type):
-        logging.debug("Setting boot device to type: %s" % boot_type)
+    def set_boot_device(self, boot_list):
+        logging.debug("Setting boot devices to: %s" % boot_list)
 
         def set_boot_xml(doc, ctx):
-            node = ctx.xpathEval("/domain/os/boot[1]")
-            node = (node and node[0] or None)
+            nodes = ctx.xpathEval("/domain/os/boot")
+            os_node = ctx.xpathEval("/domain/os")[0]
+            mappings = map(lambda x, y: (x, y), nodes, boot_list)
 
-            if node and node.prop("dev"):
-                node.setProp("dev", boot_type)
+            for node, boot_dev in mappings:
+                if node:
+                    if boot_dev:
+                        node.setProp("dev", boot_dev)
+                    else:
+                        node.unlinkNode()
+                        node.freeNode()
+                else:
+                    if boot_dev:
+                        node = os_node.newChild(None, "boot", None)
+                    node.setProp("dev", boot_dev)
 
             return doc.serialize()
 
@@ -1658,6 +1651,7 @@ class vmmDomain(vmmDomainBase):
             if not model:
                 if secnode:
                     secnode.unlinkNode()
+                    secnode.freeNode()
 
             elif not secnode:
                 # Need to create new node
@@ -1734,6 +1728,30 @@ class vmmDomain(vmmDomainBase):
 
         return self._redefine(util.xml_parse_wrapper, change_clock, newclock)
 
+    def define_description(self, newvalue):
+        newvalue = vutil.xml_escape(newvalue)
+        if newvalue == self.get_description():
+            return
+
+        def change_desc(doc, ctx, newdesc):
+            desc_node = ctx.xpathEval("/domain/description")
+            desc_node = (desc_node and desc_node[0] or None)
+            dom_node = ctx.xpathEval("/domain")[0]
+
+            if newdesc:
+                if not desc_node:
+                    desc_node = dom_node.newChild(None, "description", None)
+
+                desc_node.setContent(newdesc)
+
+            elif desc_node:
+                desc_node.unlinkNode()
+                desc_node.freeNode()
+
+            return doc.serialize()
+
+        return self._redefine(util.xml_parse_wrapper, change_desc, newvalue)
+
     def _change_disk_param(self, doc, ctx, dev_id_info, node_name, newvalue):
         disk_node = self._get_device_xml_nodes(ctx, "disk", dev_id_info)[0]
 
@@ -1768,6 +1786,46 @@ class vmmDomain(vmmDomainBase):
         return self._redefine(util.xml_parse_wrapper, self._change_disk_param,
                              dev_id_info, "shareable", do_shareable)
 
+    # Network properties
+    def define_network_model(self, dev_id_info, newmodel):
+        devtype = "interface"
+        if not self._check_device_is_present(devtype, dev_id_info):
+            return
+
+        def change_model(doc, ctx):
+            dev_node = self._get_device_xml_nodes(ctx, devtype, dev_id_info)[0]
+            model_node = dev_node.xpathEval("./model")
+            model_node = model_node and model_node[0] or None
+
+            if not model_node:
+                if newmodel:
+                    model_node = dev_node.newChild(None, "model", None)
+
+            if newmodel:
+                model_node.setProp("type", newmodel)
+            else:
+                model_node.unlinkNode()
+                model_node.freeNode()
+
+            return doc.serialize()
+
+        return self._redefine(util.xml_parse_wrapper, change_model)
+
+    # Sound properties
+    def define_sound_model(self, dev_id_info, newmodel):
+        devtype = "sound"
+        if not self._check_device_is_present(devtype, dev_id_info):
+            return
+
+        def change_model(doc, ctx):
+            dev_node = self._get_device_xml_nodes(ctx, devtype, dev_id_info)[0]
+            dev_node.setProp("model", newmodel)
+
+            return doc.serialize()
+
+        return self._redefine(util.xml_parse_wrapper, change_model)
+
+    # Video properties
     def define_video_model(self, dev_id_info, newmodel):
         if not self._check_device_is_present("video", dev_id_info):
             return
@@ -1782,11 +1840,50 @@ class vmmDomain(vmmDomainBase):
             return doc.serialize()
 
         return self._redefine(util.xml_parse_wrapper, change_model,
-                             dev_id_info, newmodel)
+                              dev_id_info, newmodel)
+
+    def define_watchdog_model(self, dev_id_info, newval):
+        devtype = "watchdog"
+        if not self._check_device_is_present(devtype, dev_id_info):
+            return
+
+        def change(doc, ctx):
+            dev_node = self._get_device_xml_nodes(ctx, devtype, dev_id_info)[0]
+            if newval:
+                dev_node.setProp("model", newval)
+
+            return doc.serialize()
+
+        return self._redefine(util.xml_parse_wrapper, change)
+
+    def define_watchdog_action(self, dev_id_info, newval):
+        devtype = "watchdog"
+        if not self._check_device_is_present(devtype, dev_id_info):
+            return
+
+        def change(doc, ctx):
+            dev_node = self._get_device_xml_nodes(ctx, devtype, dev_id_info)[0]
+            if newval:
+                dev_node.setProp("action", newval)
+
+            return doc.serialize()
+
+        return self._redefine(util.xml_parse_wrapper, change)
 
     ########################
     # End XML Altering API #
     ########################
+
+    def _update_start_vcpus(self, ignore, status, oldstatus):
+        if oldstatus not in [ libvirt.VIR_DOMAIN_SHUTDOWN,
+                              libvirt.VIR_DOMAIN_SHUTOFF,
+                              libvirt.VIR_DOMAIN_CRASHED ]:
+            return
+
+        # Want to track the startup vcpu amount, which is the
+        # cap of how many VCPUs can be added
+        self._startup_vcpus = None
+        self.vcpu_max_count()
 
     def _update_status(self, status=None):
         if status == None:
@@ -1795,16 +1892,10 @@ class vmmDomain(vmmDomainBase):
         status = self._normalize_status(status)
 
         if status != self.lastStatus:
-            if self.lastStatus in [ libvirt.VIR_DOMAIN_SHUTDOWN,
-                                    libvirt.VIR_DOMAIN_SHUTOFF,
-                                    libvirt.VIR_DOMAIN_CRASHED ]:
-
-                # Want to track the startup vcpu amount, which is the
-                # cap of how many VCPUs can be added
-                self._startup_vcpus = None
-                self.vcpu_max_count()
+            oldstatus = self.lastStatus
             self.lastStatus = status
-            gobject.idle_add(util.idle_emit, self, "status-changed", status)
+            util.safe_idle_add(util.idle_emit, self, "status-changed",
+                               oldstatus, status)
 
 
     def tick(self, now):
@@ -1873,7 +1964,7 @@ class vmmDomain(vmmDomainBase):
 
         self.record.insert(0, newStats)
         self._update_status(info[0])
-        gobject.idle_add(util.idle_emit, self, "resources-sampled")
+        util.safe_idle_add(util.idle_emit, self, "resources-sampled")
 
 
 class vmmDomainVirtinst(vmmDomainBase):
@@ -1894,11 +1985,12 @@ class vmmDomainVirtinst(vmmDomainBase):
 
     def get_xml(self):
         return self._backend.get_config_xml()
+    def _get_inactive_xml(self):
+        return self.get_xml()
+
     def refresh_xml(self):
         # No caching, so no refresh needed
         return
-    def _get_inactive_xml(self):
-        return self.get_xml()
 
     def get_autostart(self):
         return self._backend.autostart
@@ -1932,7 +2024,7 @@ class vmmDomainVirtinst(vmmDomainBase):
         self._backend.autostart = bool(val)
         self.emit("config-changed")
 
-    def attach_device(self, devobj):
+    def attach_device(self, devobj, devxml=None):
         return
     def detach_device(self, devtype, dev_id_info):
         return
@@ -1993,8 +2085,8 @@ class vmmDomainVirtinst(vmmDomainBase):
 
         self._redefine(change_seclabel)
 
-    def set_boot_device(self, boot_type):
-        if not boot_type or boot_type == self.get_boot_device():
+    def set_boot_device(self, boot_list):
+        if not boot_list or boot_list == self.get_boot_device():
             return
 
         raise RuntimeError("Boot device is determined by the install media.")
@@ -2013,6 +2105,11 @@ class vmmDomainVirtinst(vmmDomainBase):
             self._backend.clock.offset = newvalue
         self._redefine(change_clock)
 
+    def define_description(self, newvalue):
+        def change_desc():
+            self._backend.description = newvalue
+        self._redefine(change_desc)
+
     def define_disk_readonly(self, dev_id_info, do_readonly):
         dev = self._get_device_xml_object(VirtualDevice.VIRTUAL_DEV_DISK,
                                           dev_id_info)
@@ -2028,6 +2125,20 @@ class vmmDomainVirtinst(vmmDomainBase):
             dev.shareable = do_shareable
         self._redefine(change_shareable)
 
+    def define_network_model(self, dev_id_info, newmodel):
+        dev = self._get_device_xml_object(VirtualDevice.VIRTUAL_DEV_NET,
+                                          dev_id_info)
+        def change_model():
+            dev.model = newmodel
+        self._redefine(change_model)
+
+    def define_sound_model(self, dev_id_info, newmodel):
+        dev = self._get_device_xml_object(VirtualDevice.VIRTUAL_DEV_AUDIO,
+                                          dev_id_info)
+        def change_model():
+            dev.model = newmodel
+        self._redefine(change_model)
+
     def define_video_model(self, dev_id_info, newmodel):
         dev = self._get_device_xml_object(VirtualDevice.VIRTUAL_DEV_VIDEO,
                                           dev_id_info)
@@ -2035,6 +2146,22 @@ class vmmDomainVirtinst(vmmDomainBase):
         def change_video_model():
             dev.model_type = newmodel
         self._redefine(change_video_model)
+
+    def define_watchdog_model(self, dev_id_info, newval):
+        devtype = VirtualDevice.VIRTUAL_DEV_WATCHDOG
+        dev = self._get_device_xml_object(devtype, dev_id_info)
+        def change():
+            dev.model = newval
+
+        self._redefine(change)
+
+    def define_watchdog_action(self, dev_id_info, newval):
+        devtype = VirtualDevice.VIRTUAL_DEV_WATCHDOG
+        dev = self._get_device_xml_object(devtype, dev_id_info)
+        def change():
+            dev.action = newval
+
+        self._redefine(change)
 
     # Helper functions
     def _redefine(self, alter_func):
@@ -2091,10 +2218,10 @@ class vmmDomainVirtinst(vmmDomainBase):
                                      x.bus  == dev_id_info[1]))
 
         elif dev_type == VirtualDevice.VIRTUAL_DEV_GRAPHICS:
-            found_func = (lambda x: x.type == dev_id_info)
+            count = int(dev_id_info)
 
         elif dev_type == VirtualDevice.VIRTUAL_DEV_AUDIO:
-            found_func = (lambda x: x.model == dev_id_info)
+            count = int(dev_id_info)
 
         elif (dev_type == VirtualDevice.VIRTUAL_DEV_PARALLEL or
               dev_type == VirtualDevice.VIRTUAL_DEV_SERIAL or
@@ -2102,48 +2229,13 @@ class vmmDomainVirtinst(vmmDomainBase):
             count = int(dev_id_info)
 
         elif dev_type == VirtualDevice.VIRTUAL_DEV_HOSTDEV:
-            # This whole process is a little funky, since we need a decent
-            # amount of info to determine which specific hostdev to remove
-
-            def found_func(rmdev):
-                host_type = dev_id_info["type"]
-                addr = dev_id_info.get("address")
-                vend = dev_id_info.get("vendor")
-                prod = dev_id_info.get("product")
-
-                if rmdev.type != host_type:
-                    return False
-
-                if addr:
-                    bus = addr.get("bus")
-                    dev = addr.get("device")
-                    slot = addr.get("slot")
-                    funct = addr.get("function")
-                    dom = addr.get("domain")
-
-                    if bus and dev:
-                        return (rmdev.bus == bus and rmdev.device == dev)
-
-                    elif bus and slot and funct and dom:
-                        return (rmdev.bus == bus and
-                                rmdev.slot == slot and
-                                rmdev.function == funct and
-                                rmdev.domain == dom)
-
-                elif vend.get("id") and prod.get("id"):
-                    return (rmdev.vendor == vend.get("id") and
-                            rmdev.product == prod.get("id"))
-
-                return False
-
+            count = int(dev_id_info)
 
         elif dev_type == VirtualDevice.VIRTUAL_DEV_VIDEO:
-            model, ram, heads = dev_id_info
+            count = int(dev_id_info)
 
-            def found_func(rmdev):
-                return (rmdev.model_type == model and
-                        rmdev.vram == ram and
-                        rmdev.heads == heads)
+        elif dev_type == VirtualDevice.VIRTUAL_DEV_WATCHDOG:
+            count = int(dev_id_info)
 
         else:
             raise RuntimeError(_("Unknown device type '%s'") % dev_type)

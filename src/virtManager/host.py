@@ -22,6 +22,7 @@ import gobject
 import gtk
 import gtk.glade
 import traceback
+import logging
 
 from virtinst import Storage
 from virtinst import Interface
@@ -156,6 +157,8 @@ class vmmHost(gobject.GObject):
 
 
     def init_net_state(self):
+        self.window.get_widget("network-pages").set_show_tabs(False)
+
         # [ unique, label, icon name, icon size, is_active ]
         netListModel = gtk.ListStore(str, str, str, int, bool)
         self.window.get_widget("net-list").set_model(netListModel)
@@ -176,6 +179,8 @@ class vmmHost(gobject.GObject):
         self.populate_networks(netListModel)
 
     def init_storage_state(self):
+        self.window.get_widget("storage-pages").set_show_tabs(False)
+
         self.volmenu = gtk.Menu()
         volCopyPath = gtk.ImageMenuItem(_("Copy Volume Path"))
         volCopyImage = gtk.Image()
@@ -262,10 +267,6 @@ class vmmHost(gobject.GObject):
 
         self.populate_interfaces(interfaceListModel)
 
-        if not self.conn.interface_capable:
-            self.set_interface_error_page(
-                _("Libvirt connection does not have interface support."))
-
     def init_conn_state(self):
         uri = self.conn.get_uri()
         host = self.conn.get_hostname()
@@ -294,8 +295,10 @@ class vmmHost(gobject.GObject):
 
 
     def show(self):
-        dialog = self.window.get_widget("vmm-host")
-        dialog.present()
+        if self.is_visible():
+            self.topwin.present()
+            return
+        self.topwin.present()
 
         self.engine.increment_window_counter()
 
@@ -305,8 +308,9 @@ class vmmHost(gobject.GObject):
         return 0
 
     def close(self,ignore1=None,ignore2=None):
-        self.window.get_widget("vmm-host").hide()
-        self.engine.decrement_window_counter()
+        if self.is_visible():
+            self.window.get_widget("vmm-host").hide()
+            self.engine.decrement_window_counter()
         return 1
 
     def show_help(self, src):
@@ -344,6 +348,27 @@ class vmmHost(gobject.GObject):
         state = (self.conn.get_state() == vmmConnection.STATE_ACTIVE)
         self.window.get_widget("net-add").set_sensitive(state)
         self.window.get_widget("pool-add").set_sensitive(state)
+
+        # Set error pages
+        if not state:
+            self.set_net_error_page(_("Connection not active."))
+            self.set_storage_error_page(_("Connection not active."))
+            self.set_interface_error_page(_("Connection not active."))
+            return
+
+        if not self.conn.network_capable:
+            self.set_net_error_page(
+                _("Libvirt connection does not support virtual network "
+                  "management."))
+
+        if not self.conn.storage_capable:
+            self.set_storage_error_page(
+                _("Libvirt connection does not support storage management."))
+
+        if not self.conn.interface_capable:
+            self.set_interface_error_page(
+                _("Libvirt connection does not support interface management."))
+
 
     def toggle_autoconnect(self, src):
         self.conn.set_autoconnect(src.get_active())
@@ -434,16 +459,31 @@ class vmmHost(gobject.GObject):
             if curruuid == uuid:
                 self.net_selected(sel)
 
+    def set_net_error_page(self, msg):
+        self.reset_net_state()
+        self.window.get_widget("network-pages").set_current_page(1)
+        self.window.get_widget("network-error-label").set_text(msg)
+
     def net_selected(self, src):
         selected = src.get_selected()
         if selected[1] == None or \
            selected[0].get_value(selected[1], 0) == None:
-            self.reset_net_state()
+            self.set_net_error_page(_("No virtual network selected."))
             return
 
+        self.window.get_widget("network-pages").set_current_page(0)
         net = self.conn.get_net(selected[0].get_value(selected[1], 0))
+
+        try:
+            self.populate_net_state(net)
+        except Exception, e:
+            logging.exception(e)
+            self.set_net_error_page(_("Error selecting network: %s") % e)
+
+        self.window.get_widget("net-apply").set_sensitive(False)
+
+    def populate_net_state(self, net):
         active = net.is_active()
-        selected[0].set_value(selected[1], 4, bool(active))
 
         self.window.get_widget("net-details").set_sensitive(True)
         self.window.get_widget("net-name").set_text(net.get_name())
@@ -486,7 +526,6 @@ class vmmHost(gobject.GObject):
         forward_str = net.pretty_forward_mode()
         self.window.get_widget("net-ip4-forwarding").set_text(forward_str)
 
-        self.window.get_widget("net-apply").set_sensitive(False)
 
     def reset_net_state(self):
         self.window.get_widget("net-details").set_sensitive(False)
@@ -654,14 +693,30 @@ class vmmHost(gobject.GObject):
                                                            _("Never"))
         self.window.get_widget("pool-apply").set_sensitive(True)
 
+    def set_storage_error_page(self, msg):
+        self.reset_pool_state()
+        self.window.get_widget("storage-pages").set_current_page(1)
+        self.window.get_widget("storage-error-label").set_text(msg)
+
     def pool_selected(self, src):
         selected = src.get_selected()
         if selected[1] is None or \
            selected[0].get_value(selected[1], 0) is None:
-            self.reset_pool_state()
+            self.set_storage_error_page(_("No storage pool selected."))
             return
 
+        self.window.get_widget("storage-pages").set_current_page(0)
         uuid = selected[0].get_value(selected[1], 0)
+
+        try:
+            self.populate_pool_state(uuid)
+        except Exception, e:
+            logging.exception(e)
+            self.set_storage_error_page(_("Error selecting pool: %s") % e)
+
+        self.window.get_widget("pool-apply").set_sensitive(False)
+
+    def populate_pool_state(self, uuid):
         pool = self.conn.get_pool(uuid)
         auto = pool.get_autostart()
         active = pool.is_active()
@@ -684,7 +739,6 @@ class vmmHost(gobject.GObject):
         self.window.get_widget("pool-delete").set_sensitive(not active)
         self.window.get_widget("pool-stop").set_sensitive(active)
         self.window.get_widget("pool-start").set_sensitive(not active)
-        self.window.get_widget("pool-apply").set_sensitive(False)
         self.window.get_widget("vol-add").set_sensitive(active)
         self.window.get_widget("vol-delete").set_sensitive(False)
 
@@ -895,12 +949,25 @@ class vmmHost(gobject.GObject):
         self.window.get_widget("interface-pages").set_current_page(
                                                         INTERFACE_PAGE_INFO)
         name = selected[0].get_value(selected[1], 0)
+
+        try:
+            self.populate_interface_state(name)
+        except Exception, e:
+            logging.exception(e)
+            self.set_interface_error_page(_("Error selecting interface: %s") %
+                                          e)
+
+        self.window.get_widget("interface-apply").set_sensitive(False)
+
+    def populate_interface_state(self, name):
         interface = self.conn.get_interface(name)
         children = interface.get_slaves()
         itype = interface.get_type()
         mac = interface.get_mac()
         active = interface.is_active()
         startmode = interface.get_startmode()
+        ipv4 = interface.get_ipv4()
+        ipv6 = interface.get_ipv6()
 
         self.window.get_widget("interface-details").set_sensitive(True)
         self.window.get_widget("interface-name").set_markup(
@@ -913,17 +980,58 @@ class vmmHost(gobject.GObject):
         self.window.get_widget("interface-state").set_text(
                                     (active and _("Active")) or _("Inactive"))
 
-        self.window.get_widget("interface-startmode").hide()
-        self.window.get_widget("interface-startmode-label").show()
-        self.window.get_widget("interface-startmode-label").set_text(startmode)
+        # Set start mode
+        start_list = self.window.get_widget("interface-startmode")
+        start_model = start_list.get_model()
+        start_label = self.window.get_widget("interface-startmode-label")
+        start_list.hide()
+        start_label.show()
+        start_label.set_text(startmode)
+
+        idx = 0
+        for row in start_model:
+            if row[0] == startmode:
+                start_list.set_active(idx)
+                start_list.show()
+                start_label.hide()
+                break
+            idx += 1
 
         used_by = util.iface_in_use_by(self.conn, name)
         self.window.get_widget("interface-inuseby").set_text(used_by or "-")
 
+        # IP info
+        self.window.get_widget("interface-ipv4-expander").set_property(
+                                                    "visible", bool(ipv4))
+        self.window.get_widget("interface-ipv6-expander").set_property(
+                                                    "visible", bool(ipv6))
+
+        if ipv4:
+            mode = ipv4[0] and "DHCP" or "Static"
+            addr = ipv4[1] or "-"
+            self.window.get_widget("interface-ipv4-mode").set_text(mode)
+            self.window.get_widget("interface-ipv4-address").set_text(addr)
+
+        if ipv6:
+            mode = ""
+            if ipv6[1]:
+                mode = "Autoconf "
+
+            if ipv6[0]:
+                mode += "DHCP"
+            else:
+                mode = "Static"
+
+            addrstr = "-"
+            if ipv6[2]:
+                addrstr = reduce(lambda x,y: x + "\n" + y, ipv6[2])
+
+            self.window.get_widget("interface-ipv6-mode").set_text(mode)
+            self.window.get_widget("interface-ipv6-address").set_text(addrstr)
+
         self.window.get_widget("interface-delete").set_sensitive(not active)
         self.window.get_widget("interface-stop").set_sensitive(active)
         self.window.get_widget("interface-start").set_sensitive(not active)
-        self.window.get_widget("interface-apply").set_sensitive(False)
 
         show_child = (children or
                       itype in [Interface.Interface.INTERFACE_TYPE_BRIDGE,

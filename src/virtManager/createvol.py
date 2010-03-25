@@ -89,7 +89,6 @@ class vmmCreateVolume(gobject.GObject):
 
     def show(self):
         self.reset_state()
-        self.topwin.show()
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
@@ -113,12 +112,16 @@ class vmmCreateVolume(gobject.GObject):
             return ""
 
         suffix = self.default_suffix()
+        ret = ""
         try:
-            return Storage.StorageVolume.find_free_name(self.name_hint,
+            ret = Storage.StorageVolume.find_free_name(self.name_hint,
                                             pool_object=self.parent_pool.pool,
                                             suffix=suffix)
+            ret = ret.rstrip(suffix)
         except:
-            return ""
+            pass
+
+        return ret
 
     def default_suffix(self):
         suffix = ""
@@ -127,9 +130,13 @@ class vmmCreateVolume(gobject.GObject):
         return suffix
 
     def reset_state(self):
-        self.window.get_widget("vol-name").set_text(self.default_vol_name())
-        self.window.get_widget("vol-name").grab_focus()
+        default_name = self.default_vol_name()
+        self.window.get_widget("vol-name").set_text("")
         self.window.get_widget("vol-create").set_sensitive(False)
+        if default_name:
+            self.window.get_widget("vol-name").set_text(default_name)
+
+        self.window.get_widget("vol-name").grab_focus()
         self.populate_vol_format()
         self.populate_vol_suffix()
 
@@ -257,11 +264,22 @@ class vmmCreateVolume(gobject.GObject):
             if fmt:
                 self.vol.format = fmt
         except ValueError, e:
-            return self.err.val_err(_("Volume Parameter Error"), str(e))
+            return self.val_err(_("Volume Parameter Error"), str(e))
         return True
 
     def show_err(self, info, details):
         async = not self.topwin.get_modal()
         self.err.show_err(info, details, async=async)
+
+    def val_err(self, info, details):
+        modal = self.topwin.get_modal()
+        ret = False
+        try:
+            self.topwin.set_modal(False)
+            ret = self.err.val_err(info, details, async=not modal)
+        finally:
+            self.topwin.set_modal(modal)
+
+        return ret
 
 gobject.type_register(vmmCreateVolume)

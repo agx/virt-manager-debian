@@ -20,12 +20,15 @@
 
 import logging
 import traceback
+import os, statvfs
 
 import gtk
 
+import virtinst
 from virtinst import VirtualNetworkInterface
 from virtinst import VirtualDisk
 
+from virtManager import util
 from virtManager.error import vmmErrorDialog
 
 OPTICAL_DEV_PATH = 0
@@ -33,6 +36,7 @@ OPTICAL_LABEL = 1
 OPTICAL_IS_MEDIA_PRESENT = 2
 OPTICAL_DEV_KEY = 3
 OPTICAL_MEDIA_KEY = 4
+OPTICAL_IS_VALID = 5
 
 # What user we guess the qemu:///system starts the emulator as. Some distros
 # may use a nonroot user, so simply changing this will cause several UI
@@ -53,6 +57,142 @@ def set_error_parent(parent):
     global err_dial
     err_dial.set_parent(parent)
     err_dial = err_dial
+
+############################################################
+# Helpers for shared storage UI between create/addhardware #
+############################################################
+
+def set_sparse_tooltip(widget):
+    sparse_str = _("Fully allocating storage will take longer now, "
+                   "but the OS install phase will be quicker. \n\n"
+                   "Skipping allocation can also cause space issues on "
+                   "the host machine, if the maximum image size exceeds "
+                   "available storage space.")
+    util.tooltip_wrapper(widget, sparse_str)
+
+def host_disk_space(conn, config):
+    pool = util.get_default_pool(conn)
+    path = util.get_default_dir(conn, config)
+
+    avail = 0
+    if pool:
+        # FIXME: make sure not inactive?
+        # FIXME: use a conn specific function after we send pool-added
+        pool = virtinst.util.lookup_pool_by_path(conn.vmm, path)
+        if pool:
+            pool.refresh(0)
+            avail = int(virtinst.util.get_xml_path(pool.XMLDesc(0),
+                                                   "/pool/available"))
+
+    elif not conn.is_remote():
+        vfs = os.statvfs(os.path.dirname(path))
+        avail = vfs[statvfs.F_FRSIZE] * vfs[statvfs.F_BAVAIL]
+
+    return float(avail / 1024.0 / 1024.0 / 1024.0)
+
+def host_space_tick(conn, config, widget):
+    max_storage = host_disk_space(conn, config)
+
+    def pretty_storage(size):
+        return "%.1f Gb" % float(size)
+
+    hd_label = ("%s available in the default location" %
+                pretty_storage(max_storage))
+    hd_label = ("<span color='#484848'>%s</span>" % hd_label)
+    widget.set_markup(hd_label)
+
+    return 1
+
+#####################################################
+# Hardware model list building (for details, addhw) #
+#####################################################
+def build_video_combo(vm, video_dev, no_default=False):
+    video_dev_model = gtk.ListStore(str)
+    video_dev.set_model(video_dev_model)
+    text = gtk.CellRendererText()
+    video_dev.pack_start(text, True)
+    video_dev.add_attribute(text, 'text', 0)
+    video_dev_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
+
+    tmpdev = virtinst.VirtualVideoDevice(vm.get_connection().vmm)
+    for m in tmpdev.model_types:
+        if m == tmpdev.MODEL_DEFAULT and no_default:
+            continue
+        video_dev_model.append([m])
+    if len(video_dev_model) > 0:
+        video_dev.set_active(0)
+
+def build_sound_combo(vm, combo, no_default=False):
+    dev_model = gtk.ListStore(str)
+    combo.set_model(dev_model)
+    text = gtk.CellRendererText()
+    combo.pack_start(text, True)
+    combo.add_attribute(text, 'text', 0)
+    dev_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
+
+    for m in virtinst.VirtualAudio.MODELS:
+        if m == virtinst.VirtualAudio.MODEL_DEFAULT and no_default:
+            continue
+        dev_model.append([m])
+    if len(dev_model) > 0:
+        combo.set_active(0)
+
+def build_watchdogmodel_combo(vm, combo, no_default=False):
+    dev_model = gtk.ListStore(str)
+    combo.set_model(dev_model)
+    text = gtk.CellRendererText()
+    combo.pack_start(text, True)
+    combo.add_attribute(text, 'text', 0)
+    dev_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
+
+    for m in virtinst.VirtualWatchdog.MODELS:
+        if m == virtinst.VirtualAudio.MODEL_DEFAULT and no_default:
+            continue
+        dev_model.append([m])
+    if len(dev_model) > 0:
+        combo.set_active(0)
+
+def build_watchdogaction_combo(vm, combo, no_default=False):
+    dev_model = gtk.ListStore(str, str)
+    combo.set_model(dev_model)
+    text = gtk.CellRendererText()
+    combo.pack_start(text, True)
+    combo.add_attribute(text, 'text', 1)
+    dev_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
+
+    for m in virtinst.VirtualWatchdog.ACTIONS:
+        if m == virtinst.VirtualWatchdog.ACTION_DEFAULT and no_default:
+            continue
+        dev_model.append([m, virtinst.VirtualWatchdog.get_action_desc(m)])
+    if len(dev_model) > 0:
+        combo.set_active(0)
+
+def build_netmodel_combo(vm, combo):
+    dev_model = gtk.ListStore(str, str)
+    combo.set_model(dev_model)
+    text = gtk.CellRendererText()
+    combo.pack_start(text, True)
+    combo.add_attribute(text, 'text', 1)
+    dev_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
+
+    populate_netmodel_combo(vm, combo)
+    combo.set_active(0)
+
+def populate_netmodel_combo(vm, combo):
+    model = combo.get_model()
+    model.clear()
+
+    # [xml value, label]
+    model.append([None, _("Hypervisor default")])
+    if vm.is_hvm():
+        mod_list = [ "rtl8139", "ne2k_pci", "pcnet" ]
+        if vm.get_hv_type() == "kvm":
+            mod_list.append("e1000")
+            mod_list.append("virtio")
+        mod_list.sort()
+
+        for m in mod_list:
+            model.append([m, m])
 
 
 #######################################################################
@@ -80,21 +220,40 @@ def pretty_network_desc(nettype, source=None, netobj=None):
 
     return ret
 
-def init_network_list(net_list):
-    # [ network type, source name, label, sensitive? ]
-    net_model = gtk.ListStore(str, str, str, bool)
+def init_network_list(net_list, bridge_box):
+    # [ network type, source name, label, sensitive?, net is active,
+    #   manual bridge]
+    net_model = gtk.ListStore(str, str, str, bool, bool, bool)
     net_list.set_model(net_model)
 
-    if isinstance(net_list, gtk.ComboBox):
-        net_col = net_list
-    else:
-        net_col = gtk.TreeViewColumn()
-        net_list.append_column(net_col)
+    net_list.connect("changed", net_list_changed, bridge_box)
 
     text = gtk.CellRendererText()
-    net_col.pack_start(text, True)
-    net_col.add_attribute(text, 'text', 2)
-    net_col.add_attribute(text, 'sensitive', 3)
+    net_list.pack_start(text, True)
+    net_list.add_attribute(text, 'text', 2)
+    net_list.add_attribute(text, 'sensitive', 3)
+
+def net_list_changed(net_list, bridge_box):
+    active = net_list.get_active()
+    if active < 0:
+        return
+
+    row = net_list.get_model()[active]
+    show_bridge = row[5]
+
+    bridge_box.set_property("visible", show_bridge)
+
+def get_network_selection(net_list, bridge_entry):
+    row = net_list.get_model()[net_list.get_active()]
+    net_type = row[0]
+    net_src = row[1]
+    net_check_bridge = row[5]
+
+    if net_check_bridge:
+        net_type = VirtualNetworkInterface.TYPE_BRIDGE
+        net_src = bridge_entry.get_text()
+
+    return net_type, net_src
 
 def populate_network_list(net_list, conn):
     model = net_list.get_model()
@@ -105,9 +264,15 @@ def populate_network_list(net_list, conn):
     bridge_dict = {}
     iface_dict = {}
 
+    def add_row(*args):
+        model.append(build_row(*args))
+
+    def build_row(nettype, name, label, is_sensitive, is_running,
+                  manual_bridge=False):
+        return [nettype, name, label, is_sensitive, is_running, manual_bridge]
+
     def set_active(idx):
-        if isinstance(net_list, gtk.ComboBox):
-            net_list.set_active(idx)
+        net_list.set_active(idx)
 
     def add_dict(indict, model):
         keylist = indict.keys()
@@ -119,7 +284,7 @@ def populate_network_list(net_list, conn):
     # For qemu:///session
     if conn.is_qemu_session():
         nettype = VirtualNetworkInterface.TYPE_USER
-        model.append([nettype, None, pretty_network_desc(nettype), True])
+        add_row(nettype, None, pretty_network_desc(nettype), True)
         set_active(0)
         return
 
@@ -140,7 +305,8 @@ def populate_network_list(net_list, conn):
         if net.get_name() == "default":
             netIdxLabel = label
 
-        vnet_dict[label] = [nettype, net.get_name(), label, True]
+        vnet_dict[label] = build_row(nettype, net.get_name(), label, True,
+                                     net.is_active())
 
         # Build a list of vnet bridges, so we know not to list them
         # in the physical interface list
@@ -150,7 +316,7 @@ def populate_network_list(net_list, conn):
 
     if not hasNet:
         label = _("No virtual networks available")
-        vnet_dict[label] = [None, None, label, False]
+        vnet_dict[label] = build_row(None, None, label, False, False)
 
     # Physical devices
     hasShared = False
@@ -180,7 +346,7 @@ def populate_network_list(net_list, conn):
         if hasShared and not brIdxLabel:
             brIdxLabel = label
 
-        row = [nettype, bridge_name, label, sensitive]
+        row = build_row(nettype, bridge_name, label, sensitive, True)
 
         if sensitive:
             bridge_dict[label] = row
@@ -195,22 +361,35 @@ def populate_network_list(net_list, conn):
     # If not, use 'default' network
     # If not present, use first list entry
     # If list empty, use no network devices
+    return_warn = False
     label = brIdxLabel or netIdxLabel
+
     for idx in range(len(model)):
         row = model[idx]
+        is_inactive = not row[4]
         if label:
             if row[2] == label:
                 default = idx
+                return_warn = is_inactive
                 break
         else:
             if row[3] == True:
                 default = idx
+                return_warn = is_inactive
                 break
     else:
-        model.insert(0, [None, None, _("No networking."), True])
+        return_warn = True
+        row = build_row(None, None, _("No networking."), True, False)
+        model.insert(0, row)
         default = 0
 
+    # After all is said and done, add a manual bridge option
+    manual_row = build_row(None, None, _("Specify shared device name"),
+                           True, False, manual_bridge=True)
+    model.append(manual_row)
+
     set_active(default)
+    return return_warn
 
 def validate_network(parent, conn, nettype, devname, macaddr, model=None):
     set_error_parent(parent)
@@ -289,23 +468,24 @@ def generate_macaddr(conn):
 # Populate media widget (choosecd, create) #
 ############################################
 
-def init_mediadev_combo(widget, empty_sensitive=False):
+def init_mediadev_combo(widget):
     # [Device path, pretty label, has_media?, device key, media key,
-    #  vmmMediaDevice]
-    model = gtk.ListStore(str, str, bool, str, str)
+    #  vmmMediaDevice, is valid device]
+    model = gtk.ListStore(str, str, bool, str, str, bool)
     widget.set_model(model)
     model.clear()
 
     text = gtk.CellRendererText()
     widget.pack_start(text, True)
-    widget.add_attribute(text, 'text', 1)
-    if not empty_sensitive:
-        widget.add_attribute(text, 'sensitive', 2)
+    widget.add_attribute(text, 'text', OPTICAL_LABEL)
+    widget.add_attribute(text, 'sensitive', OPTICAL_IS_VALID)
 
 def populate_mediadev_combo(conn, widget, devtype):
     sigs = []
 
-    widget.get_model().clear()
+    model = widget.get_model()
+    model.clear()
+    set_mediadev_default(model)
 
     sigs.append(conn.connect("mediadev-added", mediadev_added, widget, devtype))
     sigs.append(conn.connect("mediadev-removed", mediadev_removed, widget))
@@ -315,12 +495,17 @@ def populate_mediadev_combo(conn, widget, devtype):
 
     return sigs
 
+def set_mediadev_default(model):
+    if len(model) == 0:
+        model.append([None, _("No device present"), False, None, None, False])
+
 def set_row_from_object(row, obj):
     row[OPTICAL_DEV_PATH] = obj.get_path()
     row[OPTICAL_LABEL] = obj.pretty_label()
     row[OPTICAL_IS_MEDIA_PRESENT] = obj.has_media()
     row[OPTICAL_DEV_KEY] = obj.get_key()
     row[OPTICAL_MEDIA_KEY] = obj.get_media_key()
+    row[OPTICAL_IS_VALID] = True
 
 def mediadev_removed(ignore_helper, key, widget):
     model = widget.get_model()
@@ -339,6 +524,7 @@ def mediadev_removed(ignore_helper, key, widget):
 
         idx += 1
 
+    set_mediadev_default(model)
     mediadev_set_default_selection(widget)
 
 def mediadev_added(ignore_helper, newobj, widget, devtype):
@@ -347,11 +533,15 @@ def mediadev_added(ignore_helper, newobj, widget, devtype):
     if newobj.get_media_type() != devtype:
         return
 
+    if len(model) == 1 and model[0][OPTICAL_IS_VALID] == False:
+        # Only entry is the 'No device' entry
+        model.clear()
+
     newobj.connect("media-added", mediadev_media_changed, widget)
     newobj.connect("media-removed", mediadev_media_changed, widget)
 
     # Brand new device
-    row = [None, None, None, None, None]
+    row = [None, None, None, None, None, None]
     set_row_from_object(row, newobj)
     model.append(row)
 
@@ -456,7 +646,8 @@ def check_path_search_for_qemu(parent, config, conn, path):
                     _("The emulator may not have search permissions "
                       "for the path '%s'.") % path,
                     _("Do you want to correct this now?"),
-                    _("Don't ask about these directories again."))
+                    _("Don't ask about these directories again."),
+                    buttons=gtk.BUTTONS_YES_NO)
 
     if chkres:
         config.add_perms_fix_ignore(broken_paths)
