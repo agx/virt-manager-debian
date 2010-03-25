@@ -1,3 +1,12 @@
+virt-manager (0.8.4-1) unstable; urgency=low
+
+  * [884f511] Imported Upstream version 0.8.4
+  * [835766b] Drop patches.
+  * [cc8c30f] Switch to new source format 3.0 (quilt).
+  * [d4d54cd] Clean debian/rules clean target.
+
+ -- Laurent Léonard <laurent@open-minds.org>  Thu, 25 Mar 2010 09:14:38 +0100
+
 virt-manager (0.8.3-3) unstable; urgency=low
 
   * [1373ca0] Fix tapering issue for fully filled graph. (Closes:
