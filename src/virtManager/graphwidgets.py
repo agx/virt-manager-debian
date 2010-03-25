@@ -331,13 +331,6 @@ class Sparkline(gtk.DrawingArea):
                               cell_area.width - 1,
                               cell_area.height - 1)
 
-        # Foreground-color graphics context
-        # This draws the black border
-        fg_gc = widget.style.fg_gc[widget.state]
-        window.draw_rectangle(fg_gc, False, 0, 0,
-                              cell_area.width - 1,
-                              cell_area.height - 1)
-
         # This draws the marker ticks
         max_ticks = 4
         dark_gc = widget.style.dark_gc[widget.state]
@@ -346,6 +339,13 @@ class Sparkline(gtk.DrawingArea):
                              (cell_area.height / max_ticks) * index,
                              cell_area.width - 2,
                              (cell_area.height / max_ticks) * index)
+
+        # Foreground-color graphics context
+        # This draws the black border
+        fg_gc = widget.style.fg_gc[widget.state]
+        window.draw_rectangle(fg_gc, False, 0, 0,
+                              cell_area.width - 1,
+                              cell_area.height - 1)
 
         # Draw the actual sparkline
         def get_y(dataset, index):
@@ -384,6 +384,10 @@ class Sparkline(gtk.DrawingArea):
 
             draw_line(cairo_ct, cell_area, points)
             if self.filled:
+                # XXX: Fixes a fully filled graph from having an oddly
+                #      tapered in end (bug 560913). Need to figure out
+                #      what's really going on.
+                points = [(0, cell_area.height)] + points
                 draw_fill(cairo_ct, cell_area, points, taper=True)
 
         # Stop clipping

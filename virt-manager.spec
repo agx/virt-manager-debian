@@ -7,7 +7,7 @@
 %define _extra_release %{?dist:%{dist}}%{!?dist:%{?extra_release:%{extra_release}}}
 
 Name: virt-manager
-Version: 0.8.3
+Version: 0.8.4
 Release: 1%{_extra_release}
 Summary: Virtual Machine Manager
 
@@ -37,7 +37,7 @@ Requires: gnome-python2-gnomekeyring >= 2.15.4
 # Minimum we've tested with
 Requires: libxml2-python >= 2.6.23
 # Absolutely require this version or later
-Requires: python-virtinst >= 0.500.2
+Requires: python-virtinst >= 0.500.3
 # Required for loading the glade UI
 Requires: pygtk2-libglade
 # Required for our graphics which are currently SVG format
@@ -135,6 +135,11 @@ fi
 %{_datadir}/%{name}/pixmaps/*.png
 %{_datadir}/%{name}/pixmaps/*.svg
 
+%dir %{_datadir}/%{name}/pixmaps/hicolor/
+%dir %{_datadir}/%{name}/pixmaps/hicolor/*/
+%dir %{_datadir}/%{name}/pixmaps/hicolor/*/*/
+%dir %{_datadir}/%{name}/pixmaps/hicolor/*/*/*.png
+
 %dir %{_datadir}/%{name}/virtManager/
 
 %{_datadir}/%{name}/virtManager/*.py*
@@ -146,6 +151,13 @@ fi
 %{_datadir}/dbus-1/services/%{name}.service
 
 %changelog
+* Wed Mar 24 2010 Cole Robinson <crobinso@redhat.com> - 0.8.4-1
+- 'Import' install option, to create a VM around an existing OS image
+- Support multiple boot devices and boot order
+- Watchdog device support
+- Enable setting a human readable VM description.
+- Option to manually specifying a bridge name, if bridge isn't detected
+
 * Mon Feb  8 2010 Cole Robinson <crobinso@redhat.com> - 0.8.3-1
 - Manage network interfaces: start, stop, view, provision bridges, bonds, etc.
 - Option to 'customize VM before install'.

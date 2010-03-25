@@ -1,5 +1,5 @@
 
-AC_INIT(virt-manager, 0.8.3)
+AC_INIT(virt-manager, 0.8.4)
 AC_CONFIG_SRCDIR(src/virt-manager.py.in)
 dnl Make automake keep quiet about wildcards & other GNUmake-isms
 AM_INIT_AUTOMAKE([-Wno-portability])
@@ -10,7 +10,7 @@ AM_GNU_GETTEXT_VERSION([0.14.1])
 AM_GNU_GETTEXT([external])
 
 # Latest virtinst version required to run
-VIRTINST_VERSION="0.500.2"
+VIRTINST_VERSION="0.500.3"
 AC_SUBST([VIRTINST_VERSION])
 
 dnl ====================================
@@ -26,6 +26,15 @@ dnl ====================================
 
 AC_OUTPUT(Makefile
           pixmaps/Makefile
+          pixmaps/hicolor/Makefile
+          pixmaps/hicolor/16x16/Makefile
+          pixmaps/hicolor/16x16/actions/Makefile
+          pixmaps/hicolor/22x22/Makefile
+          pixmaps/hicolor/22x22/actions/Makefile
+          pixmaps/hicolor/24x24/Makefile
+          pixmaps/hicolor/24x24/actions/Makefile
+          pixmaps/hicolor/32x32/Makefile
+          pixmaps/hicolor/32x32/actions/Makefile
           po/Makefile.in
           src/Makefile
           src/virtManager/Makefile
