@@ -1,3 +1,10 @@
+virt-manager (0.8.4-2) unstable; urgency=low
+
+  [ Laurent Léonard ]
+  * [3a0130f] Bump virtinst dependency version to 0.500.3. Closes: #575522
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 26 Mar 2010 16:34:08 +0100
+
 virt-manager (0.8.4-1) unstable; urgency=low
 
   * [884f511] Imported Upstream version 0.8.4
