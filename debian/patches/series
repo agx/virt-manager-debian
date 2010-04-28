@@ -1,1 +1,2 @@
 0001-use-usr-share-gconf-for-schema-data.patch
+0002-console-Don-t-throw-traceback-if-we-can-t-read-error.patch
