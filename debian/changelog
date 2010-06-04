@@ -1,3 +1,23 @@
+virt-manager (0.8.4-4) unstable; urgency=low
+
+  [ Guido Günther ]
+  * [81ab451] Add README.Debian (Closes: #501824)
+
+  [ Loïc Minier ]
+  * [8d83b97] Tweaks to rules:
+     * Don't include python-distutils class, I don't think it's reasonnable to
+       include multiple CDBS classes and this package has no setup.py anyway;
+       instead, add a binary- install/virt-manager:: target and call
+       dh_pysupport manually.
+     * Include gnome class instead of autotools class; this will call dh_gconf
+       and properly register/unregister the schemas, hopefully fixes
+       LP: #583279.
+     * Include gnome class after the other includes, it used to make a
+       significant difference, but probably doesn't make one anymore nowadays.
+     (Closes: #582668)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 04 Jun 2010 11:55:22 +0200
+
 virt-manager (0.8.4-3) unstable; urgency=low
 
   [ Guido Günther ]
