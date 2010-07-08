@@ -1,3 +1,10 @@
+virt-manager (0.8.4-5) unstable; urgency=low
+
+  * create: Skip post-install restart if user destroys VM
+  * Bump Standards-Version to 3.9.0.
+
+ -- Laurent Léonard <laurent@open-minds.org>  Thu, 08 Jul 2010 12:36:21 +0200
+
 virt-manager (0.8.4-4) unstable; urgency=low
 
   [ Guido Günther ]
