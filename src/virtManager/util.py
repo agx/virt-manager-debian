@@ -18,12 +18,14 @@
 # MA 02110-1301 USA.
 #
 
-import logging
 import gtk
-import libxml2
-import os.path
+import gobject
 
 import libvirt
+import libxml2
+
+import logging
+import os.path
 
 import virtManager
 import virtinst
@@ -32,12 +34,15 @@ DEFAULT_POOL_NAME = "default"
 DEFAULT_POOL_PATH = "/var/lib/libvirt/images"
 
 def build_default_pool(conn):
-    """Helper to build the 'default' storage pool"""
+    """
+    Helper to build the 'default' storage pool
+    """
     # FIXME: This should use config.get_default_image_path ?
 
     if not virtinst.util.is_storage_capable(conn):
         # VirtualDisk will raise an error for us
         return
+
     pool = None
     try:
         pool = conn.storagePoolLookupByName(DEFAULT_POOL_NAME)
@@ -58,6 +63,63 @@ def build_default_pool(conn):
     except Exception, e:
         raise RuntimeError(_("Couldn't create default storage pool '%s': %s") %
                              (DEFAULT_POOL_PATH, str(e)))
+
+def get_ideal_path_info(conn, config, name):
+    path = get_default_dir(conn, config)
+    suffix = ".img"
+    return (path, name, suffix)
+
+def get_ideal_path(conn, config, name):
+    target, name, suffix = get_ideal_path_info(conn, config, name)
+    return os.path.join(target, name) + suffix
+
+def get_default_pool(conn):
+    pool = None
+    for uuid in conn.list_pool_uuids():
+        p = conn.get_pool(uuid)
+        if p.get_name() == DEFAULT_POOL_NAME:
+            pool = p
+
+    return pool
+
+def get_default_dir(conn, config):
+    pool = get_default_pool(conn)
+
+    if pool:
+        return pool.get_target_path()
+    else:
+        return config.get_default_image_dir(conn)
+
+def get_default_path(conn, config, name):
+    pool = get_default_pool(conn)
+
+    default_dir = get_default_dir(conn, config)
+
+    if not pool:
+        # Use old generating method
+        origf = os.path.join(default_dir, name + ".img")
+        f = origf
+
+        n = 1
+        while os.path.exists(f) and n < 100:
+            f = os.path.join(default_dir, name +
+                             "-" + str(n) + ".img")
+            n += 1
+
+        if os.path.exists(f):
+            f = origf
+
+        path = f
+    else:
+        target, ignore, suffix = get_ideal_path_info(conn, config, name)
+
+        path = virtinst.Storage.StorageVolume.find_free_name(name,
+                        pool_object=pool.pool, suffix=suffix)
+
+        path = os.path.join(target, path)
+
+    return path
+
 
 def tooltip_wrapper(obj, txt, func="set_tooltip_text"):
     # Catch & ignore errors - set_tooltip_* is in gtk >= 2.12
@@ -238,12 +300,58 @@ def pretty_hv(gtype, domtype):
 
     return label
 
+def connect_once(obj, signal, func, *args):
+    id_list = []
+
+    def wrap_func(*wrapargs):
+        if id_list:
+            obj.disconnect(id_list[0])
+
+        return func(*wrapargs)
+
+    conn_id = obj.connect(signal, wrap_func, *args)
+    id_list.append(conn_id)
+
+    return conn_id
+
+def connect_opt_out(obj, signal, func, *args):
+    id_list = []
+
+    def wrap_func(*wrapargs):
+        ret = func(*wrapargs)
+        if ret and id_list:
+            obj.disconnect(id_list[0])
+
+    conn_id = obj.connect(signal, wrap_func, *args)
+    id_list.append(conn_id)
+
+    return conn_id
+
 def idle_emit(self, signal, *args):
     """
     Safe wrapper for using 'self.emit' with gobject.idle_add
     """
     self.emit(signal, *args)
     return False
+
+def _safe_wrapper(func, *args):
+    gtk.gdk.threads_enter()
+    try:
+        return func(*args)
+    finally:
+        gtk.gdk.threads_leave()
+
+def safe_idle_add(func, *args):
+    """
+    Make sure idle functions are run thread safe
+    """
+    return gobject.idle_add(_safe_wrapper, func, *args)
+
+def safe_timeout_add(timeout, func, *args):
+    """
+    Make sure timeout functions are run thread safe
+    """
+    return gobject.timeout_add(timeout, _safe_wrapper, func, *args)
 
 def uuidstr(rawuuid):
     hx = ['0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f']
@@ -286,3 +394,4 @@ def iface_in_use_by(conn, name):
             use_str += iface.get_name()
 
     return use_str
+

@@ -21,6 +21,7 @@
 import gobject
 import gtk
 import gtk.glade
+
 import logging
 import traceback
 
@@ -124,11 +125,12 @@ class vmmManager(gobject.GObject):
                                   0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
                                   _("Unexpected Error"),
                                   _("An unexpected error occurred"))
+        self.topwin = self.window.get_widget("vmm-manager")
+
         self.config = config
         self.engine = engine
 
         self.delete_dialog = None
-        self.startup_error = None
         self.ignore_pause = False
 
         # Mapping of VM UUID -> tree model rows to
@@ -136,8 +138,7 @@ class vmmManager(gobject.GObject):
         self.rows = {}
 
         w, h = self.config.get_manager_window_size()
-        self.window.get_widget("vmm-manager").set_default_size(w or 550,
-                                                               h or 550)
+        self.topwin.set_default_size(w or 550, h or 550)
 
         self.init_vmlist()
         self.init_stats()
@@ -205,34 +206,24 @@ class vmmManager(gobject.GObject):
 
         # Select first list entry
         vmlist = self.window.get_widget("vm-list")
-        if len(vmlist.get_model()) == 0:
-            self.startup_error = _("Could not populate a default connection. "
-                                   "Make sure the appropriate virtualization "
-                                   "packages are installed (kvm, qemu, etc.) "
-                                   "and that libvirtd has been restarted to "
-                                   "notice the changes.\n\n"
-                                   "A hypervisor connection can be manually "
-                                   "added via \nFile->Add Connection")
-        else:
-            vmlist.get_selection().select_iter(vmlist.get_model().get_iter_first())
+        if len(vmlist.get_model()) != 0:
+            vmlist.get_selection().select_iter(
+                                        vmlist.get_model().get_iter_first())
+
+        # Queue up the default connection detector
+        util.safe_idle_add(self.engine.add_default_connection)
 
     ##################
     # Common methods #
     ##################
 
     def show(self):
-        win = self.window.get_widget("vmm-manager")
         if self.is_visible():
-            win.present()
+            self.topwin.present()
             return
-        win.show()
-        win.present()
-        self.engine.increment_window_counter()
+        self.topwin.present()
 
-        if self.startup_error:
-            self.err.val_err(_("Error determining default hypervisor."),
-                             self.startup_error, _("Startup Error"))
-            self.startup_error = None
+        self.engine.increment_window_counter()
 
     def close(self, src=None, src2=None):
         if self.is_visible():
@@ -246,6 +237,9 @@ class vmmManager(gobject.GObject):
             return 1
         return 0
 
+    def set_startup_error(self, msg):
+        self.window.get_widget("vm-notebook").set_current_page(1)
+        self.window.get_widget("startup-error-label").set_text(msg)
 
     ################
     # Init methods #
@@ -274,16 +268,8 @@ class vmmManager(gobject.GObject):
                             self.config.is_vmlist_network_traffic_visible())
 
     def init_toolbar(self):
-        def set_toolbar_image(widget, iconfile, l, w):
-            filename = self.config.get_icon_dir() + "/%s" % iconfile
-            pixbuf = gtk.gdk.pixbuf_new_from_file_at_size(filename, l, w)
-            image = gtk.Image()
-            image.set_from_pixbuf(pixbuf)
-            image.show_all()
-            self.window.get_widget(widget).set_icon_widget(image)
-
-        set_toolbar_image("vm-new", "vm_new_wizard.png", 28, 28)
-        set_toolbar_image("vm-open", "icon_console.png", 24, 24)
+        self.window.get_widget("vm-new").set_icon_name("vm_new")
+        self.window.get_widget("vm-open").set_icon_name("icon_console")
         uihelpers.build_shutdown_button_menu(
                                    self.config,
                                    self.window.get_widget("vm-shutdown"),
@@ -363,7 +349,7 @@ class vmmManager(gobject.GObject):
         self.vmmenu_items["hsep1"].show()
         self.vmmenu.add(self.vmmenu_items["hsep1"])
 
-        self.vmmenu_items["clone"] = gtk.ImageMenuItem("_Clone")
+        self.vmmenu_items["clone"] = gtk.ImageMenuItem(_("_Clone"))
         self.vmmenu_items["clone"].show()
         self.vmmenu_items["clone"].connect("activate", self.open_clone_window)
         self.vmmenu.add(self.vmmenu_items["clone"])
@@ -373,7 +359,7 @@ class vmmManager(gobject.GObject):
         self.vmmenu_items["migrate"].connect("activate", self.migrate_vm)
         self.vmmenu.add(self.vmmenu_items["migrate"])
 
-        self.vmmenu_items["delete"] = gtk.ImageMenuItem("_Delete")
+        self.vmmenu_items["delete"] = gtk.ImageMenuItem(_("_Delete"))
         self.vmmenu_items["delete"].set_image(delete_icon)
         self.vmmenu_items["delete"].show()
         self.vmmenu_items["delete"].connect("activate", self.do_delete)
@@ -430,6 +416,7 @@ class vmmManager(gobject.GObject):
 
     def init_vmlist(self):
         vmlist = self.window.get_widget("vm-list")
+        self.window.get_widget("vm-notebook").set_show_tabs(False)
 
         # Handle, name, markup, status, status icon, key/uuid, hint, is conn,
         # is conn connected, is vm, is vm running, fg color
@@ -814,7 +801,7 @@ class vmmManager(gobject.GObject):
         logging.debug("VM %s started" % vm.get_name())
         if self.config.get_console_popup() == 2 and not vm.is_management_domain():
             # user has requested consoles on all vms
-            (gtype, ignore, ignore, ignore, ignore) = vm.get_graphics_console()
+            gtype = vm.get_graphics_console()[0]
             if gtype == "vnc":
                 self.emit("action-show-console", uri, vmuuid)
             elif not connection.is_remote():
@@ -905,6 +892,9 @@ class vmmManager(gobject.GObject):
         return _iter
 
     def _add_connection(self, engine, conn):
+        # Make sure error page isn't showing
+        self.window.get_widget("vm-notebook").set_current_page(0)
+
         if self.rows.has_key(conn.get_uri()):
             return
 
@@ -937,7 +927,7 @@ class vmmManager(gobject.GObject):
     # State/UI updating methods #
     #############################
 
-    def vm_status_changed(self, vm, status):
+    def vm_status_changed(self, vm, status, ignore):
         parent = self.rows[vm.get_connection().get_uri()].iter
 
         vmlist = self.window.get_widget("vm-list")

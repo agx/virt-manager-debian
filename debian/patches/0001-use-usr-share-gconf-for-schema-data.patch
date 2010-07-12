@@ -21,7 +21,7 @@ index 0818500..61ded33 100644
  schema_DATA = $(PACKAGE).schemas
  
 diff --git a/src/Makefile.in b/src/Makefile.in
-index d4c3e4d..121abcc 100644
+index ee0dff1..d164c62 100644
 --- a/src/Makefile.in
 +++ b/src/Makefile.in
 @@ -246,7 +246,7 @@ desktop_DATA = $(PACKAGE).desktop

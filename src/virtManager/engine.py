@@ -24,9 +24,11 @@ import gtk
 import logging
 import traceback
 import threading
+import os
 
 import libvirt
 import virtinst
+import dbus
 
 from virtManager.about import vmmAbout
 from virtManager.halhelper import vmmHalHelper
@@ -43,6 +45,158 @@ from virtManager.host import vmmHost
 from virtManager.error import vmmErrorDialog
 from virtManager.systray import vmmSystray
 import virtManager.util as util
+
+
+# List of packages to look for via packagekit at first startup.
+# If this list is empty, no attempt to contact packagekit is made
+LIBVIRT_DAEMON = ""
+HV_PACKAGE = ""
+OTHER_PACKAGES = []
+PACKAGEKIT_PACKAGES = []
+
+if LIBVIRT_DAEMON:
+    PACKAGEKIT_PACKAGES.append(LIBVIRT_DAEMON)
+if HV_PACKAGE:
+    PACKAGEKIT_PACKAGES.append(HV_PACKAGE)
+if OTHER_PACKAGES:
+    PACKAGEKIT_PACKAGES.extend(OTHER_PACKAGES)
+
+
+def default_uri():
+    tryuri = None
+    if os.path.exists("/var/lib/xend") and os.path.exists("/proc/xen"):
+        tryuri = "xen:///"
+    elif (os.path.exists("/usr/bin/qemu") or
+          os.path.exists("/usr/bin/qemu-kvm") or
+          os.path.exists("/usr/bin/kvm")):
+        tryuri = "qemu:///system"
+
+    return tryuri
+
+#############################
+# PackageKit lookup helpers #
+#############################
+
+def check_packagekit(config, errbox):
+    """
+    Returns None when we determine nothing useful.
+    Returns (success, did we just install libvirt) otherwise.
+    """
+    if not PACKAGEKIT_PACKAGES:
+        return
+
+    logging.debug("Asking PackageKit what's installed locally.")
+    try:
+        session = dbus.SystemBus()
+
+        pk_control = dbus.Interface(
+                        session.get_object("org.freedesktop.PackageKit",
+                                           "/org/freedesktop/PackageKit"),
+                        "org.freedesktop.PackageKit")
+    except Exception:
+        logging.exception("Couldn't connect to packagekit")
+        return
+
+    found = []
+    progWin = vmmAsyncJob(config, _do_async_search,
+                          [session, pk_control],
+                          _("Searching for available hypervisors..."),
+                          run_main=False)
+    progWin.run()
+    error, ignore = progWin.get_error()
+    if error:
+        return
+
+    found = progWin.get_data()
+
+    not_found = filter(lambda x: x not in found, PACKAGEKIT_PACKAGES)
+    logging.debug("Missing packages: %s" % not_found)
+
+    do_install = not_found
+    if not do_install:
+        if not not_found:
+            # Got everything we wanted, try to connect
+            logging.debug("All packages found locally.")
+            return (True, False)
+
+        else:
+            logging.debug("No packages are available for install.")
+            return
+
+    msg = (_("The following packages are not installed:\n%s\n\n"
+             "These are required to create KVM guests locally.\n"
+             "Would you like to install them now?") %
+            reduce(lambda x, y: x + "\n" + y, do_install, ""))
+
+    ret = errbox.yes_no(_("Packages required for KVM usage"), msg)
+
+    if not ret:
+        logging.debug("Package install declined.")
+        return
+
+    try:
+        packagekit_install(do_install)
+    except Exception, e:
+        errbox.show_err(_("Error talking to PackageKit: %s") % str(e),
+                        "".join(traceback.format_exc()))
+        return
+
+    return (True, LIBVIRT_DAEMON in do_install)
+
+def _do_async_search(session, pk_control, asyncjob):
+    found = []
+    try:
+        for name in PACKAGEKIT_PACKAGES:
+            ret_found = packagekit_search(session, pk_control, name)
+            found += ret_found
+
+    except Exception, e:
+        logging.exception("Error searching for installed packages")
+        asyncjob.set_error(str(e), "".join(traceback.format_exc()))
+
+    asyncjob.set_data(found)
+
+def packagekit_install(package_list):
+    session = dbus.SessionBus()
+
+    pk_control = dbus.Interface(
+                    session.get_object("org.freedesktop.PackageKit",
+                                       "/org/freedesktop/PackageKit"),
+                        "org.freedesktop.PackageKit.Modify")
+
+    logging.debug("Installing packages: %s" % package_list)
+    pk_control.InstallPackageNames(0, package_list, "hide-confirm-search")
+
+def packagekit_search(session, pk_control, package_name):
+    tid = pk_control.GetTid()
+    pk_trans = dbus.Interface(
+                    session.get_object("org.freedesktop.PackageKit", tid),
+                    "org.freedesktop.PackageKit.Transaction")
+
+    found = []
+    def package(info, package_id, summary):
+        found_name = str(package_id.split(";")[0])
+        if found_name in PACKAGEKIT_PACKAGES:
+            found.append(found_name)
+
+    def error(code, details):
+        raise RuntimeError("PackageKit search failure: %s %s" %
+                            (code, details))
+
+    def finished(ignore, runtime):
+        gtk.main_quit()
+
+    pk_trans.connect_to_signal('Finished', finished)
+    pk_trans.connect_to_signal('ErrorCode', error)
+    pk_trans.connect_to_signal('Package', package)
+    pk_trans.SearchNames("installed", [package_name])
+
+    # Call main() so this function is synchronous
+    gtk.main()
+
+    return found
+
+
 
 class vmmEngine(gobject.GObject):
     __gsignals__ = {
@@ -96,6 +250,7 @@ class vmmEngine(gobject.GObject):
         self.load_stored_uris()
         self.tick()
 
+
     def init_systray(self):
         if self.systray:
             return
@@ -123,6 +278,60 @@ class vmmEngine(gobject.GObject):
             self.hal_helper = vmmHalHelper()
         return self.hal_helper
 
+
+    # First run helpers
+
+    def add_default_connection(self):
+        # Only add default if no connections are currently known
+        if self.config.get_connections():
+            return
+
+        # Manager fail message
+        msg = _("Could not detect a default hypervisor. Make\n"
+                "sure the appropriate virtualization packages\n"
+                "are installed (kvm, qemu, libvirt, etc.), and\n"
+                "that libvirtd is running.\n\n"
+                "A hypervisor connection can be manually\n"
+                "added via File->Add Connection")
+
+        manager = self.get_manager()
+        logging.debug("Determining default libvirt URI")
+
+        ret = None
+        did_install_libvirt = False
+        try:
+            ret = check_packagekit(self.config, self.err)
+        except:
+            logging.exception("Error talking to PackageKit")
+
+        if ret:
+            # We found the default packages via packagekit: use default URI
+            ignore, did_install_libvirt = ret
+            tryuri = "qemu:///system"
+
+        else:
+            tryuri = default_uri()
+
+        if tryuri is None:
+            manager.set_startup_error(msg)
+            return
+
+        if did_install_libvirt:
+            warnmsg = _(
+                "Libvirt was just installed, so the 'libvirtd' service will\n"
+                "will need to be started. This can be done with one \n"
+                "of the following:\n\n"
+                "- From GNOME menus: System->Administration->Services\n"
+                "- From the terminal: su -c 'service libvirtd restart'\n"
+                "- Restart your computer\n\n"
+                "virt-manager will connect to libvirt on the next application\n"
+                "start up.")
+            self.err.ok(_("Libvirt service must be started"), warnmsg)
+
+        self.connect_to_uri(tryuri, autoconnect=True,
+                            do_start=not did_install_libvirt)
+
+
     def load_stored_uris(self):
         uris = self.config.get_connections()
         if uris != None:
@@ -136,22 +345,22 @@ class vmmEngine(gobject.GObject):
             if conn.get_autoconnect():
                 self.connect_to_uri(uri)
 
-    def connect_to_uri(self, uri, readOnly=None, autoconnect=False):
-        return self._connect_to_uri(None, uri, readOnly, autoconnect)
-
-    def _connect_to_uri(self, connect, uri, readOnly, autoconnect):
+    def connect_to_uri(self, uri, readOnly=None, autoconnect=False,
+                       do_start=True):
         self.windowConnect = None
 
         try:
-            try:
-                conn = self._lookup_connection(uri)
-            except Exception:
+            conn = self._check_connection(uri)
+            if not conn:
+                # Unknown connection, add it
                 conn = self.add_connection(uri, readOnly, autoconnect)
 
             self.show_manager()
-            conn.open()
+            if do_start:
+                conn.open()
             return conn
         except Exception:
+            logging.exception("Error connecting to %s" % uri)
             return None
 
     def _connect_cancelled(self, connect):
@@ -191,6 +400,8 @@ class vmmEngine(gobject.GObject):
             gobject.source_remove(self.timer)
             self.timer = None
 
+        # No need to use 'safe_timeout_add', the tick should be
+        # manually made thread safe
         self.timer = gobject.timeout_add(interval, self.tick)
 
     def tick(self):
@@ -205,7 +416,7 @@ class vmmEngine(gobject.GObject):
 
         self._tick_thread = threading.Thread(name="Tick thread",
                                             target=self._tick, args=())
-        self._tick_thread.daemon = False
+        self._tick_thread.daemon = True
         self._tick_thread.start()
         return 1
 
@@ -221,7 +432,7 @@ class vmmEngine(gobject.GObject):
                     logging.exception("Could not refresh connection %s." % uri)
                     logging.debug("Closing connection since libvirtd "
                                   "appears to have stopped.")
-                    gobject.idle_add(conn.close)
+                    util.safe_idle_add(conn.close)
                 else:
                     raise
         return 1
@@ -312,9 +523,12 @@ class vmmEngine(gobject.GObject):
         self.connections[uri]["windowHost"].show()
 
     def show_connect(self):
+        def connect_wrap(src, *args):
+            return self.connect_to_uri(*args)
+
         if self.windowConnect == None:
             self.windowConnect = vmmConnect(self.get_config(), self)
-            self.windowConnect.connect("completed", self._connect_to_uri)
+            self.windowConnect.connect("completed", connect_wrap)
             self.windowConnect.connect("cancelled", self._connect_cancelled)
         self.windowConnect.show()
 
@@ -479,12 +693,17 @@ class vmmEngine(gobject.GObject):
 
         return handle_id
 
-    def _lookup_connection(self, uri):
+    def _check_connection(self, uri):
         conn = self.connections.get(uri)
+        if conn:
+            return conn["connection"]
+        return None
+
+    def _lookup_connection(self, uri):
+        conn = self._check_connection(uri)
         if not conn:
             raise RuntimeError(_("Unknown connection URI %s") % uri)
-
-        return conn["connection"]
+        return conn
 
     def save_domain(self, src, uri, uuid):
         conn = self._lookup_connection(uri)
@@ -633,10 +852,30 @@ class vmmEngine(gobject.GObject):
             self.config.set_confirm_poweroff(not skip_prompt)
 
         logging.debug("Rebooting vm '%s'." % vm.get_name())
+        no_support = False
+        reboot_err = None
         try:
             vm.reboot()
-        except Exception, e:
-            self.err.show_err(_("Error shutting down domain: %s" % str(e)),
+        except Exception, reboot_err:
+            no_support = virtinst.support.is_error_nosupport(reboot_err)
+            if not no_support:
+                self.err.show_err(_("Error rebooting domain: %s" %
+                                  str(reboot_err)),
+                                  "".join(traceback.format_exc()))
+
+        if not no_support:
+            return
+
+        # Reboot isn't supported. Let's try to emulate it
+        logging.debug("Hypervisor doesn't support reboot, let's fake it")
+        try:
+            vm.manual_reboot()
+        except:
+            logging.exception("Could not fake a reboot")
+
+            # Raise the original error message
+            self.err.show_err(_("Error rebooting domain: %s" %
+                              str(reboot_err)),
                               "".join(traceback.format_exc()))
 
     def migrate_domain(self, uri, uuid):

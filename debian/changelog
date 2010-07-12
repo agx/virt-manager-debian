@@ -1,3 +1,57 @@
+virt-manager (0.8.4-4) unstable; urgency=low
+
+  [ Guido Günther ]
+  * [81ab451] Add README.Debian (Closes: #501824)
+
+  [ Loïc Minier ]
+  * [8d83b97] Tweaks to rules:
+     * Don't include python-distutils class, I don't think it's reasonnable to
+       include multiple CDBS classes and this package has no setup.py anyway;
+       instead, add a binary- install/virt-manager:: target and call
+       dh_pysupport manually.
+     * Include gnome class instead of autotools class; this will call dh_gconf
+       and properly register/unregister the schemas, hopefully fixes
+       LP: #583279.
+     * Include gnome class after the other includes, it used to make a
+       significant difference, but probably doesn't make one anymore nowadays.
+     (Closes: #582668)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 04 Jun 2010 11:55:22 +0200
+
+virt-manager (0.8.4-3) unstable; urgency=low
+
+  [ Guido Günther ]
+  * New patch 0002-console-Don-t-throw-traceback-if-we-can-t-read-
+    error.patch
+
+  [ Laurent Léonard ]
+  * Update french translation.
+
+ -- Laurent Léonard <laurent@open-minds.org>  Tue, 18 May 2010 15:44:51 +0200
+
+virt-manager (0.8.4-2) unstable; urgency=low
+
+  [ Laurent Léonard ]
+  * [3a0130f] Bump virtinst dependency version to 0.500.3. Closes: #575522
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 26 Mar 2010 16:34:08 +0100
+
+virt-manager (0.8.4-1) unstable; urgency=low
+
+  * [884f511] Imported Upstream version 0.8.4
+  * [835766b] Drop patches.
+  * [cc8c30f] Switch to new source format 3.0 (quilt).
+  * [d4d54cd] Clean debian/rules clean target.
+
+ -- Laurent Léonard <laurent@open-minds.org>  Thu, 25 Mar 2010 09:14:38 +0100
+
+virt-manager (0.8.3-3) unstable; urgency=low
+
+  * [1373ca0] Fix tapering issue for fully filled graph. (Closes:
+    #572065) - thanks to Jan Ondrej
+
+ -- Laurent Léonard <laurent@open-minds.org>  Thu, 18 Mar 2010 09:29:17 +0100
+
 virt-manager (0.8.3-2~bpo50+1) lenny-backports; urgency=low
 
   * Rebuild for lenny-backports.

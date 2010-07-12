@@ -118,11 +118,15 @@ class vmmConnection(gobject.GObject):
         self.state = self.STATE_DISCONNECTED
         self.vmm = None
 
+        self._caps = None
+        self._caps_xml = None
+
         self.network_capable = None
         self.storage_capable = None
         self.interface_capable = None
         self._nodedev_capable = None
-        self.dom_xml_flags = None
+
+        self._xml_flags = {}
 
         # Physical network interfaces: name -> virtinst.NodeDevice
         self.nodedevs = {}
@@ -258,8 +262,30 @@ class vmmConnection(gobject.GObject):
     def get_uri(self):
         return self.uri
 
+    def _invalidate_caps(self):
+        self._caps_xml = None
+        self._caps = None
+
+    def _check_caps(self):
+        self._caps_xml = self.vmm.getCapabilities()
+        self._caps = virtinst.CapabilitiesParser.parse(self._caps_xml)
+
+    def get_capabilities_xml(self):
+        xml = None
+        while xml == None:
+            self._check_caps()
+            xml = self._caps_xml
+
+        return xml
+
     def get_capabilities(self):
-        return virtinst.CapabilitiesParser.parse(self.vmm.getCapabilities())
+        # Make sure we aren't returning None
+        caps = None
+        while caps == None:
+            self._check_caps()
+            caps = self._caps
+
+        return caps
 
     def get_max_vcpus(self, _type=None):
         return virtinst.util.get_max_vcpus(self.vmm, _type)
@@ -355,20 +381,11 @@ class vmmConnection(gobject.GObject):
 
     def is_xen(self):
         scheme = virtinst.util.uri_split(self.uri)[0]
-        if scheme.startswith("xen"):
-            return True
-        return False
+        return scheme.startswith("xen")
 
-    def is_kvm_supported(self):
-        if self.is_qemu_session():
-            return False
-
-        caps = self.get_capabilities()
-        for guest in caps.guests:
-            for dom in guest.domains:
-                if dom.hypervisor_type == "kvm":
-                    return True
-        return False
+    def is_qemu(self):
+        scheme = virtinst.util.uri_split(self.uri)[0]
+        return scheme.startswith("qemu")
 
     def is_remote(self):
         return virtinst.util.is_uri_remote(self.uri)
@@ -393,6 +410,21 @@ class vmmConnection(gobject.GObject):
         if scheme.startswith("test"):
             return True
         return False
+
+    # Connection capabilities debug helpers
+    def is_kvm_supported(self):
+        return self.get_capabilities().is_kvm_available()
+
+    def no_install_options(self):
+        return self.get_capabilities().no_install_options()
+
+    def hw_virt_supported(self):
+        return self.get_capabilities().hw_virt_supported()
+
+    def is_bios_virt_disabled(self):
+        return self.get_capabilities().is_bios_virt_disabled()
+
+    # Connection pretty print routines
 
     def _get_pretty_desc(self, active, shorthost):
         def match_whole_string(orig, reg):
@@ -457,29 +489,67 @@ class vmmConnection(gobject.GObject):
             self._nodedev_capable = virtinst.NodeDeviceParser.is_nodedev_capable(self.vmm)
         return self._nodedev_capable
 
-    def set_dom_flags(self, vm):
-        if self.dom_xml_flags != None:
-            # Already set
-            return
+    def _get_flags_helper(self, obj, key, check_func):
+        flags_dict = self._xml_flags.get(key)
 
-        self.dom_xml_flags = []
-        for flags in [libvirt.VIR_DOMAIN_XML_SECURE,
-                      libvirt.VIR_DOMAIN_XML_INACTIVE,
-                      (libvirt.VIR_DOMAIN_XML_SECURE |
-                       libvirt.VIR_DOMAIN_XML_INACTIVE )]:
-            try:
-                vm.XMLDesc(flags)
-                self.dom_xml_flags.append(flags)
-            except libvirt.libvirtError, e:
-                logging.debug("%s does not support flags=%d : %s" %
-                              (self.get_uri(), flags, str(e)))
+        if flags_dict == None:
+            # Flags already set
+            inact, act = check_func()
+            flags_dict = {}
+            flags_dict["active"] = act
+            flags_dict["inactive"] = inact
 
-    def has_dom_flags(self, flags):
-        if self.dom_xml_flags == None:
-            return False
+            self._xml_flags[key] = flags_dict
 
-        return bool(self.dom_xml_flags.count(flags))
+        active_flags   = flags_dict["active"]
+        inactive_flags = flags_dict["inactive"]
 
+        return (inactive_flags, active_flags)
+
+    def get_dom_flags(self, vm):
+        key = "domain"
+
+        def check_func():
+            act   = 0
+            inact = 0
+
+            if virtinst.support.check_domain_support(vm,
+                                virtinst.support.SUPPORT_DOMAIN_XML_INACTIVE):
+                inact = libvirt.VIR_DOMAIN_XML_INACTIVE
+            else:
+                logging.debug("Domain XML inactive flag not supported.")
+
+            if virtinst.support.check_domain_support(vm,
+                                virtinst.support.SUPPORT_DOMAIN_XML_SECURE):
+                inact |= libvirt.VIR_DOMAIN_XML_SECURE
+                act = libvirt.VIR_DOMAIN_XML_SECURE
+            else:
+                logging.debug("Domain XML secure flag not supported.")
+
+            return inact, act
+
+        return self._get_flags_helper(vm, key, check_func)
+
+    def get_interface_flags(self, iface):
+        key = "interface"
+
+        def check_func():
+            act   = 0
+            inact = 0
+
+            if virtinst.support.check_interface_support(iface,
+                            virtinst.support.SUPPORT_INTERFACE_XML_INACTIVE):
+                inact = libvirt.VIR_INTERFACE_XML_INACTIVE
+
+                # XXX: We intentionally use 'inactive' XML even for active
+                # interfaces, since active XML doesn't show much info
+                act = inact
+            else:
+                logging.debug("Interface XML inactive flag not supported.")
+
+            return (inact, act)
+
+        return self._get_flags_helper(iface, key, check_func)
 
     ###################################
     # Connection state getter/setters #
@@ -667,6 +737,8 @@ class vmmConnection(gobject.GObject):
 
     def define_domain(self, xml):
         self.vmm.defineXML(xml)
+    def define_interface(self, xml):
+        self.vmm.interfaceDefineXML(xml, 0)
 
     def restore(self, frm):
         self.vmm.restore(frm)
@@ -799,16 +871,29 @@ class vmmConnection(gobject.GObject):
             gtk.gdk.threads_leave()
 
     def _do_creds_dialog_main(self, creds):
-        dialog = gtk.Dialog("Authentication required", None, 0, (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL, gtk.STOCK_OK, gtk.RESPONSE_OK))
+        dialog = gtk.Dialog("Authentication required", None, 0,
+                            (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                             gtk.STOCK_OK, gtk.RESPONSE_OK))
         label = []
         entry = []
 
         box = gtk.Table(2, len(creds))
+        box.set_border_width(6)
+        box.set_row_spacings(6)
+        box.set_col_spacings(12)
 
         row = 0
         for cred in creds:
-            if cred[0] == libvirt.VIR_CRED_AUTHNAME or cred[0] == libvirt.VIR_CRED_PASSPHRASE:
-                label.append(gtk.Label(cred[1]))
+            if (cred[0] == libvirt.VIR_CRED_AUTHNAME or
+                cred[0] == libvirt.VIR_CRED_PASSPHRASE):
+                prompt = cred[1]
+                if not prompt.endswith(":"):
+                    prompt += ":"
+
+                text_label = gtk.Label(prompt)
+                text_label.set_alignment(0.0, 0.5)
+
+                label.append(text_label)
             else:
                 return -1
 
@@ -817,8 +902,8 @@ class vmmConnection(gobject.GObject):
                 ent.set_visibility(False)
             entry.append(ent)
 
-            box.attach(label[row], 0, 1, row, row+1, 0, 0, 3, 3)
-            box.attach(entry[row], 1, 2, row, row+1, 0, 0, 3, 3)
+            box.attach(label[row], 0, 1, row, row+1, gtk.FILL, 0, 0, 0)
+            box.attach(entry[row], 1, 2, row, row+1, gtk.FILL, 0, 0, 0)
             row = row + 1
 
         vbox = dialog.get_child()
@@ -856,7 +941,6 @@ class vmmConnection(gobject.GObject):
             self.connectError = ("Failed to get credentials for '%s':\n%s\n%s"
                                  % (str(self.uri), str(e),
                                     "".join(traceback.format_exc())))
-            logging.debug(self.connectError)
             return -1
 
     def _acquire_tgt(self):
@@ -929,24 +1013,23 @@ class vmmConnection(gobject.GObject):
                 self.connectError = (("Unable to open connection to hypervisor"
                                       " URI '%s':\n%s\n%s"
                                       % (str(self.uri), value, tb + hint)))
-                logging.error(self.connectError)
-
 
         # We want to kill off this thread asap, so schedule a gobject
         # idle even to inform the UI of result
         logging.debug("Background open thread complete, scheduling notify")
-        gobject.idle_add(self._open_notify)
+        util.safe_idle_add(self._open_notify)
         self.connectThread = None
 
     def _open_notify(self):
         logging.debug("Notifying open result")
 
         try:
-            gobject.idle_add(util.idle_emit, self, "state-changed")
+            util.safe_idle_add(util.idle_emit, self, "state-changed")
 
             if self.state == self.STATE_ACTIVE:
+                caps = self.get_capabilities_xml()
                 logging.debug("%s capabilities:\n%s" %
-                              (self.get_uri(), self.vmm.getCapabilities()))
+                              (self.get_uri(), caps))
 
                 self.tick()
                 # If VMs disappeared since the last time we connected to
@@ -956,8 +1039,8 @@ class vmmConnection(gobject.GObject):
                                                  self.vms.keys())
 
             if self.state == self.STATE_DISCONNECTED:
-                gobject.idle_add(util.idle_emit, self, "connect-error",
-                                 self.connectError)
+                util.safe_idle_add(util.idle_emit, self, "connect-error",
+                                   self.connectError)
                 self.connectError = None
         finally:
             self.connectThreadEvent.set()
@@ -1055,6 +1138,13 @@ class vmmConnection(gobject.GObject):
             if self.storage_capable is False:
                 logging.debug("Connection doesn't seem to support storage "
                               "APIs. Skipping all storage polling.")
+
+            else:
+                # Try to create the default storage pool
+                try:
+                    util.build_default_pool(self.vmm)
+                except Exception, e:
+                    logging.debug("Building default pool failed: %s" % str(e))
 
         if not self.storage_capable:
             return (stopPools, startPools, origPools, newPools, currentPools)
@@ -1316,7 +1406,6 @@ class vmmConnection(gobject.GObject):
                 curUUIDs[uuid] = vm
             else:
                 vm = self.vms[uuid]
-                vm.release_handle()
                 vm.set_handle(rawvm)
                 curUUIDs[uuid] = vm
 
@@ -1334,6 +1423,7 @@ class vmmConnection(gobject.GObject):
             return
 
         self.hostinfo = self.vmm.getInfo()
+        self._invalidate_caps()
 
         # Poll for new virtual network objects
         (startNets, stopNets, newNets,
@@ -1360,6 +1450,10 @@ class vmmConnection(gobject.GObject):
             updates need to go here to enable threading that doesn't block the
             app with long tick operations.
             """
+            # Connection closed out from under us
+            if not self.vmm:
+                return
+
             # Make sure device polling is setup
             if not self.netdev_initialized:
                 self._init_netdev()
@@ -1370,6 +1464,12 @@ class vmmConnection(gobject.GObject):
             # Update VM states
             for uuid in oldVMs:
                 self.emit("vm-removed", self.uri, uuid)
+
+                # This forces the backing virDomain to be deleted and
+                # unreferenced. Not forcing this seems to cause refcount
+                # issues, and if the user creates another domain with the
+                # same name, libvirt will return the original UUID when
+                # requested, causing confusion.
                 oldVMs[uuid].release_handle()
             for uuid in newVMs:
                 self.emit("vm-added", self.uri, uuid)
@@ -1412,7 +1512,7 @@ class vmmConnection(gobject.GObject):
             for name in newNodedevs:
                 self.emit("nodedev-added", self.uri, name)
 
-        gobject.idle_add(tick_send_signals)
+        util.safe_idle_add(tick_send_signals)
 
         # Finally, we sample each domain
         now = time()
@@ -1435,11 +1535,14 @@ class vmmConnection(gobject.GObject):
         if not noStatsUpdate:
             self._recalculate_stats(now)
 
-            gobject.idle_add(util.idle_emit, self, "resources-sampled")
+            util.safe_idle_add(util.idle_emit, self, "resources-sampled")
 
         return 1
 
     def _recalculate_stats(self, now):
+        if self.vmm is None:
+            return
+
         expected = self.config.get_stats_history_length()
         current = len(self.record)
         if current > expected:

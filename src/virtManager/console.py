@@ -21,15 +21,19 @@
 import gobject
 import gtk
 import gtk.glade
+
 import libvirt
-import logging
-import traceback
-import sys
 import dbus
 import gtkvnc
-import os
-import socket
 
+import os
+import sys
+import signal
+import socket
+import logging
+import traceback
+
+from virtManager import util
 from virtManager.error import vmmErrorDialog
 
 # Console pages
@@ -443,21 +447,27 @@ class vmmConsolePages(gobject.GObject):
     ########################
 
     def _vnc_disconnected(self, src):
+        errout = ""
         if self.vncTunnel is not None:
+            errout = self.get_tunnel_err_output()
             self.close_tunnel()
+
         self.vnc_connected = False
         logging.debug("VNC disconnected")
-        if self.vm.status() in [ libvirt.VIR_DOMAIN_SHUTOFF,
-                                 libvirt.VIR_DOMAIN_CRASHED ]:
+
+        if (self.skip_connect_attempt() or
+            self.guest_not_avail()):
+            # Exit was probably for legitimate reasons
             self.view_vm_status()
             return
 
-        self.activate_unavailable_page(_("TCP/IP error: VNC connection to hypervisor host got refused or disconnected!"))
+        error = _("Error: VNC connection to hypervisor host got refused "
+                  "or disconnected!")
+        if errout:
+            logging.debug("Error output from closed console: %s" % errout)
+            error += "\n\nError: %s" % errout
 
-        if not self.is_visible():
-            return
-
-        self.schedule_retry()
+        self.activate_unavailable_page(error)
 
     def _vnc_initialized(self, src):
         self.vnc_connected = True
@@ -469,29 +479,14 @@ class vmmConsolePages(gobject.GObject):
         self.vncViewerRetryDelay = 125
 
     def schedule_retry(self):
-        self.vncViewerRetriesScheduled = self.vncViewerRetriesScheduled + 1
         if self.vncViewerRetriesScheduled >= 10:
             logging.error("Too many connection failures, not retrying again")
             return
-        logging.warn("Retrying connection in %d ms", self.vncViewerRetryDelay)
-        gobject.timeout_add(self.vncViewerRetryDelay, self.retry_login)
+
+        util.safe_timeout_add(self.vncViewerRetryDelay, self.try_login)
+
         if self.vncViewerRetryDelay < 2000:
             self.vncViewerRetryDelay = self.vncViewerRetryDelay * 2
-
-    def retry_login(self):
-        if self.vnc_connected:
-            return
-
-        if self.vm.status() in [ libvirt.VIR_DOMAIN_SHUTOFF,
-                                 libvirt.VIR_DOMAIN_CRASHED ]:
-            return
-
-        gtk.gdk.threads_enter()
-        try:
-            self.try_login()
-            return
-        finally:
-            gtk.gdk.threads_leave()
 
     def open_tunnel(self, server, vncaddr, vncport, username, sshport):
         if self.vncTunnel is not None:
@@ -505,96 +500,155 @@ class vmmConsolePages(gobject.GObject):
         if username:
             argv += ['-l', username]
 
-        argv += [ server, "nc", vncaddr, str(vncport) ]
+        argv += [ server ]
 
-        logging.debug("Creating SSH tunnel: %s" % argv)
+        # Build 'nc' command run on the remote host
+        #
+        # This ugly thing is a shell script to detect availability of
+        # the -q option for 'nc': debian and suse based distros need this
+        # flag to ensure the remote nc will exit on EOF, so it will go away
+        # when we close the VNC tunnel. If it doesn't go away, subsequent
+        # VNC connection attempts will hang.
+        #
+        # Fedora's 'nc' doesn't have this option, and apparently defaults
+        # to the desired behavior.
+        #
+        nc_params = "%s %s" % (vncaddr, str(vncport))
+        nc_cmd = [\
+            "nc -q 2>&1 | grep -q 'requires an argument';"
+            "if [ $? -eq 0 ] ; then"
+            "   CMD='nc -q 0 %(nc_params)s';"
+            "else"
+            "   CMD='nc %(nc_params)s';"
+            "fi;"
+            "$CMD;" % {'nc_params': nc_params}
+        ]
 
-        fds = socket.socketpair()
+        argv += nc_cmd
+
+        argv_str = reduce(lambda x, y: x + " " + y, argv[1:])
+        logging.debug("Creating SSH tunnel: %s" % argv_str)
+
+        fds      = socket.socketpair()
+        errorfds = socket.socketpair()
+
         pid = os.fork()
         if pid == 0:
             fds[0].close()
+            errorfds[0].close()
+
             os.close(0)
             os.close(1)
+            os.close(2)
             os.dup(fds[1].fileno())
             os.dup(fds[1].fileno())
+            os.dup(errorfds[1].fileno())
             os.execlp(*argv)
             os._exit(1)
         else:
             fds[1].close()
+            errorfds[1].close()
 
-        logging.debug("Tunnel PID %d FD %d" % (fds[0].fileno(), pid))
-        self.vncTunnel = [fds[0], pid]
+        logging.debug("Tunnel PID=%d OUTFD=%d ERRFD=%d" %
+                      (pid, fds[0].fileno(), errorfds[0].fileno()))
+        errorfds[0].setblocking(0)
+        self.vncTunnel = [fds[0], errorfds[0], pid]
+
         return fds[0].fileno()
 
     def close_tunnel(self):
         if self.vncTunnel is None:
             return
 
-        logging.debug("Shutting down tunnel PID %d FD %d" %
-                      (self.vncTunnel[1], self.vncTunnel[0].fileno()))
+        logging.debug("Shutting down tunnel PID=%d OUTFD=%d ERRFD=%d" %
+                      (self.vncTunnel[2], self.vncTunnel[0].fileno(),
+                       self.vncTunnel[1].fileno()))
         self.vncTunnel[0].close()
-        os.waitpid(self.vncTunnel[1], 0)
+        self.vncTunnel[1].close()
+
+        os.kill(self.vncTunnel[2], signal.SIGKILL)
         self.vncTunnel = None
 
+    def get_tunnel_err_output(self):
+        errfd = self.vncTunnel[1]
+        errout = ""
+        while True:
+            new = errfd.recv(1024)
+            if not new:
+                break
+
+            errout += new
+
+        return errout
+
+    def skip_connect_attempt(self):
+        return (self.vnc_connected or
+                not self.is_visible())
+
+    def guest_not_avail(self):
+        return (not self.vm.get_handle() or
+                self.vm.status() in [ libvirt.VIR_DOMAIN_SHUTOFF,
+                                      libvirt.VIR_DOMAIN_CRASHED ] or
+                self.vm.get_id() < 0)
+
     def try_login(self, src=None):
-        if not self.vm.get_handle():
-            # VM was removed, skip login attempt
+        if self.skip_connect_attempt():
+            # Don't try and login for these cases
             return
 
-        if self.vm.get_id() < 0:
+        if self.guest_not_avail():
+            # Guest isn't running, schedule another try
             self.activate_unavailable_page(_("Guest not running"))
             self.schedule_retry()
             return
 
         try:
-            (protocol, host,
-             port, trans, username) = self.vm.get_graphics_console()
+            (protocol, connhost,
+             vncport, trans, username,
+             connport, vncuri) = self.vm.get_graphics_console()
         except Exception, e:
             # We can fail here if VM is destroyed: xen is a bit racy
             # and can't handle domain lookups that soon after
             logging.debug("Getting graphics console failed: %s" % str(e))
             return
 
-        connport = None
-        if host.count(":"):
-            host, connport = host.split(":", 1)
-
         if protocol is None:
             logging.debug("No graphics configured in guest")
-            self.activate_unavailable_page(_("Graphical console not configured for guest"))
+            self.activate_unavailable_page(
+                            _("Graphical console not configured for guest"))
             return
-
-        uri = str(protocol) + "://"
-        if username:
-            uri = uri + str(username) + '@'
-        uri = uri + str(host) + ":" + str(port)
-
-        logging.debug("Graphics console configured at " + uri)
 
         if protocol != "vnc":
             logging.debug("Not a VNC console, disabling")
-            self.activate_unavailable_page(_("Graphical console not supported for guest"))
+            self.activate_unavailable_page(
+                            _("Graphical console not supported for guest"))
             return
 
-        if int(port) == -1:
-            self.activate_unavailable_page(_("Graphical console is not yet active for guest"))
+        if vncport == -1:
+            self.activate_unavailable_page(
+                            _("Graphical console is not yet active for guest"))
             self.schedule_retry()
             return
 
-        self.activate_unavailable_page(_("Connecting to graphical console for guest"))
-        logging.debug("Starting connect process for %s %s" % (host, str(port)))
+        self.activate_unavailable_page(
+                _("Connecting to graphical console for guest"))
+        logging.debug("Starting connect process for %s: %s %s" %
+                      (vncuri, connhost, str(vncport)))
+
         try:
-            if trans is not None and trans in ("ssh", "ext"):
+            if trans in ("ssh", "ext"):
                 if self.vncTunnel:
-                    logging.debug("Tunnel already open, skipping open_tunnel.")
+                    # Tunnel already open, no need to continue
                     return
 
-                fd = self.open_tunnel(host, "127.0.0.1", port, username,
-                                      connport)
+                fd = self.open_tunnel(connhost, "127.0.0.1", vncport,
+                                      username, connport)
                 if fd >= 0:
                     self.vncViewer.open_fd(fd)
+
             else:
-                self.vncViewer.open_host(host, str(port))
+                self.vncViewer.open_host(connhost, str(vncport))
+
         except:
             (typ, value, stacktrace) = sys.exc_info ()
             details = \
@@ -673,7 +727,7 @@ class vmmConsolePages(gobject.GObject):
 
         def unset_cb(src):
             src.queue_resize_no_redraw()
-            gobject.idle_add(restore_scroll, src)
+            util.safe_idle_add(restore_scroll, src)
             return False
 
         def request_cb(src, req):
@@ -683,7 +737,7 @@ class vmmConsolePages(gobject.GObject):
 
             src.disconnect(signal_id)
 
-            gobject.idle_add(unset_cb, widget)
+            util.safe_idle_add(unset_cb, widget)
             return False
 
         # Disable scroll bars while we resize, since resizing to the VM's

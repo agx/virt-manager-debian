@@ -21,16 +21,17 @@
 import gobject
 
 import virtinst
-import libvirt
 from virtinst import Interface
 
-class vmmInterface(gobject.GObject):
+from virtManager import util
+from virtManager.libvirtobject import vmmLibvirtObject
+
+class vmmInterface(vmmLibvirtObject):
     __gsignals__ = { }
 
     def __init__(self, config, connection, interface, name, active):
-        self.__gobject_init__()
-        self.config = config
-        self.connection = connection
+        vmmLibvirtObject.__init__(self, config, connection)
+
         self.interface = interface  # Libvirt virInterface object
         self.name = name            # String name
         self.active = active        # bool indicating if it is running
@@ -38,52 +39,45 @@ class vmmInterface(gobject.GObject):
         self._xml = None            # xml cache
         self._xml_flags = None
 
-        self._check_xml_flags()
+        (self._inactive_xml_flags,
+         self._active_xml_flags) = self.connection.get_interface_flags(
+                                                            self.interface)
 
-        self._update_xml()
+        self.refresh_xml()
 
-    def _check_xml_flags(self):
-        self._xml_flags = 0
-        if virtinst.support.check_interface_support(
-                            self.interface,
-                            virtinst.support.SUPPORT_INTERFACE_XML_INACTIVE):
-            self._xml_flags = libvirt.VIR_INTERFACE_XML_INACTIVE
+    # Routines from vmmLibvirtObject
+    def _XMLDesc(self, flags):
+        return self.interface.XMLDesc(flags)
+
+    def _define(self, xml):
+        return self.get_connection().define_interface(xml)
+
+    def xpath(self, path):
+        return virtinst.util.get_xml_path(self.get_xml(), path)
 
     def set_active(self, state):
         self.active = state
-        self._update_xml()
+        self.refresh_xml()
 
     def is_active(self):
         return self.active
-
-    def get_connection(self):
-        return self.connection
 
     def get_name(self):
         return self.name
 
     def get_mac(self):
-        return virtinst.util.get_xml_path(self.get_xml(),
-                                          "/interface/mac/@address")
+        return self.xpath("/interface/mac/@address")
 
     def start(self):
         self.interface.create(0)
-        self._update_xml()
+        self.refresh_xml()
 
     def stop(self):
         self.interface.destroy(0)
-        self._update_xml()
+        self.refresh_xml()
 
     def delete(self):
         self.interface.undefine()
-
-    def _update_xml(self):
-        self._xml = self.interface.XMLDesc(self._xml_flags)
-
-    def get_xml(self):
-        if self._xml is None:
-            self._update_xml()
-        return self._xml
 
     def is_bridge(self):
         typ = self.get_type()
@@ -98,15 +92,28 @@ class vmmInterface(gobject.GObject):
         if itype == Interface.Interface.INTERFACE_TYPE_VLAN:
             return "VLAN"
         elif itype:
-            return itype.capitalize()
+            return str(itype).capitalize()
         else:
             return "Interface"
 
     def get_startmode(self):
-        return virtinst.util.get_xml_path(self.get_xml(),
-                                          "/interface/start/@mode") or "none"
-    def set_startmode(self):
-        return
+        return self.xpath("/interface/start/@mode") or "none"
+
+    def set_startmode(self, newmode):
+        def set_start_xml(doc, ctx):
+            node = ctx.xpathEval("/interface/start[1]")
+            node = (node and node[0] or None)
+            iface_node = ctx.xpathEval("/interface")[0]
+
+            if not node:
+                node = iface_node.newChild(None, "start", None)
+
+            node.setProp("mode", newmode)
+
+            return doc.serialize()
+
+        self._redefine(util.xml_parse_wrapper, set_start_xml)
+
 
     def get_slaves(self):
         typ = self.get_type()
@@ -137,5 +144,65 @@ class vmmInterface(gobject.GObject):
         slaves = self.get_slaves()
         return map(lambda x: x[0], slaves)
 
+    def get_ipv4(self):
+        base_xpath = "/interface/protocol[@family='ipv4']"
+        if not self.xpath(base_xpath):
+            return []
+
+        dhcp = bool(self.xpath("count(%s/dhcp)" % base_xpath))
+        addr = self.xpath(base_xpath + "/ip/@address")
+        if addr:
+            prefix = self.xpath(base_xpath + "/ip[@address='%s']/@prefix" %
+                                addr)
+            if prefix:
+                addr += "/%s" % prefix
+
+        return [dhcp, addr]
+
+    def get_ipv6(self):
+        base_xpath = "/interface/protocol[@family='ipv6']"
+        if not self.xpath(base_xpath):
+            return []
+
+        dhcp = bool(self.xpath("count(%s/dhcp)" % base_xpath))
+        autoconf = bool(self.xpath("count(%s/autoconf)" % base_xpath))
+
+        def addr_func(ctx):
+            nodes = ctx.xpathEval(base_xpath + "/ip")
+            nodes = nodes or []
+            ret = []
+
+            for node in nodes:
+                addr = node.prop("address")
+                pref = node.prop("prefix")
+
+                if not addr:
+                    continue
+
+                if pref:
+                    addr += "/%s" % pref
+                ret.append(addr)
+
+            return ret
+
+        ret = virtinst.util.get_xml_path(self.get_xml(), func=addr_func)
+
+        return [dhcp, autoconf, ret]
+
+    def get_protocol_xml(self):
+        def protocol(ctx):
+            node = ctx.xpathEval("/interface/protocol")
+            node = node and node[0] or None
+
+            ret = None
+            if node:
+                ret = node.serialize()
+
+            return ret
+
+        ret = virtinst.util.get_xml_path(self.get_xml(), func=protocol)
+        if ret:
+            ret = "  %s\n" % ret
+        return ret
 
 gobject.type_register(vmmInterface)
