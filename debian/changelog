@@ -1,3 +1,13 @@
+virt-manager (0.8.4-6) unstable; urgency=low
+
+  * [bacb45b] Add README.Debian (Closes: #501824)
+  * [b5e83b0] Fix icon location (Closes: #588964)
+  * [6466da1] New patch 0005-Add-conn-info-to-virtinst.VirtualGraphics.patch
+    Add conn info to virtinst.VirtualGraphics (Closes: #583534) - thanks to
+    Cole Robinson
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 15 Jul 2010 09:31:07 +0200
+
 virt-manager (0.8.4-5) unstable; urgency=low
 
   * create: Skip post-install restart if user destroys VM
