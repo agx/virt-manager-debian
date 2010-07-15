@@ -1,0 +1,42 @@
+From: =?UTF-8?q?Guido=20G=C3=BCnther?= <agx@sigxcpu.org>
+Date: Thu, 15 Jul 2010 09:29:36 +0200
+Subject: [PATCH] Add conn info to virtinst.VirtualGraphics
+
+so we know if we have to add a keymap option.
+
+Closes: #583534
+---
+ src/virtManager/addhardware.py |    3 ++-
+ src/virtManager/create.py      |    4 +++-
+ 2 files changed, 5 insertions(+), 2 deletions(-)
+
+diff --git a/src/virtManager/addhardware.py b/src/virtManager/addhardware.py
+index 4ecfb8f..13ec813 100644
+--- a/src/virtManager/addhardware.py
++++ b/src/virtManager/addhardware.py
+@@ -1209,7 +1209,8 @@ class vmmAddHardware(gobject.GObject):
+         else:
+             _type = virtinst.VirtualGraphics.TYPE_SDL
+ 
+-        self._dev = virtinst.VirtualGraphics(type=_type)
++        self._dev = virtinst.VirtualGraphics(type=_type,
++                                             conn=self.vm.get_connection().vmm)
+         try:
+             self._dev.port   = self.get_config_vnc_port()
+             self._dev.passwd = self.get_config_vnc_password()
+diff --git a/src/virtManager/create.py b/src/virtManager/create.py
+index dbacc3a..628bdd5 100644
+--- a/src/virtManager/create.py
++++ b/src/virtManager/create.py
+@@ -1110,7 +1110,9 @@ class vmmCreate(gobject.GObject):
+ 
+         # Set up graphics device
+         try:
+-            guest._graphics_dev = virtinst.VirtualGraphics(type=virtinst.VirtualGraphics.TYPE_VNC)
++            guest._graphics_dev = virtinst.VirtualGraphics(
++                                        type=virtinst.VirtualGraphics.TYPE_VNC,
++                                        conn=guest.conn)
+             guest.add_device(virtinst.VirtualVideoDevice(conn=guest.conn))
+         except Exception, e:
+             self.err.show_err(_("Error setting up graphics device:") + str(e),
+-- 
