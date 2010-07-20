@@ -1,3 +1,11 @@
+virt-manager (0.8.4-4~bpo50+2) lenny-backports; urgency=low
+
+  * [e2efa4b] Revert "Switch to new source format 3.0 (quilt)." This
+    reverts commit cc8c30f2d49dfd8ace65f6a635e17e3975526968.
+  * [3abd690] Add gbp.conf for Lenny backports
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 20 Jul 2010 18:43:56 +0200
+
 virt-manager (0.8.4-4~bpo50+1) lenny-backports; urgency=low
 
   * Rebuild for lenny-backports.
