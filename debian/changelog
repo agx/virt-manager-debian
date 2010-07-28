@@ -1,3 +1,14 @@
+virt-manager (0.8.4-7) unstable; urgency=low
+
+  * [b234741] Recommend gnome-icon-theme for missing icons like system-
+    shutdown (Closes: #588964)
+  * [8757061] Suggest ssh-askpass. (Closes: #590649)
+  * [e07202f] New patch 0006-Fix-error-launching-create-wizard-on-qemu-
+    session.patch. Fix error launching create wizard on qemu:///session
+    (Closes: #590491) - thanks to Cole Robinson
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 28 Jul 2010 09:47:41 +0200
+
 virt-manager (0.8.4-6) unstable; urgency=low
 
   * [bacb45b] Add README.Debian (Closes: #501824)
