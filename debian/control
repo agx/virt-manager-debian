@@ -18,7 +18,7 @@ Depends: ${misc:Depends}, ${python:Depends}, python-gtk2,
  librsvg2-common, python-libvirt (>= 0.7.1), virtinst (>= 0.500.3),
  python-gtk-vnc (>= 0.3.8)
 Recommends: libvirt-bin (>= 0.4.6), gnome-icon-theme
-Suggests: virt-viewer
+Suggests: virt-viewer, ssh-askpass
 Description: desktop application for managing virtual machines
  It presents a summary view of running domains and their live performance &
  resource utilization statistics. A detailed view presents graphs showing
