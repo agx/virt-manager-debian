@@ -27,6 +27,17 @@ try:
 except:
     appindicator = None
 
+def build_image_menu_item(label):
+    hasfunc = hasattr(gtk.ImageMenuItem, "set_use_underline")
+    if hasfunc:
+        label.replace("_", "__")
+
+    menu_item = gtk.ImageMenuItem(label)
+    if hasfunc:
+        menu_item.set_use_underline(False)
+
+    return menu_item
+
 class vmmSystray(gobject.GObject):
     __gsignals__ = {
         "action-toggle-manager": (gobject.SIGNAL_RUN_FIRST,
@@ -284,7 +295,7 @@ class vmmSystray(gobject.GObject):
         if self.conn_menuitems.has_key(conn.get_uri()):
             return
 
-        menu_item = gtk.MenuItem(conn.get_pretty_desc_inactive())
+        menu_item = gtk.MenuItem(conn.get_pretty_desc_inactive(), False)
         menu_item.show()
         vm_submenu = gtk.Menu()
         vm_submenu.show()
@@ -298,9 +309,6 @@ class vmmSystray(gobject.GObject):
         self.conn_state_changed(conn)
         self.populate_vm_list(conn)
 
-        if self.systray_indicator:
-            self.systray_icon.set_menu (self.systray_menu)
-
     def conn_removed(self, engine, conn):
         if not self.conn_menuitems.has_key(conn.get_uri()):
             return
@@ -312,17 +320,11 @@ class vmmSystray(gobject.GObject):
 
         self.repopulate_menu_list()
 
-        if self.systray_indicator:
-            self.systray_icon.set_menu (self.systray_menu)
-
     def conn_state_changed(self, conn):
         # XXX: Even 'paused' conn?
         sensitive = conn.is_active()
         menu_item = self.conn_menuitems[conn.get_uri()]
         menu_item.set_sensitive(sensitive)
-
-        if self.systray_indicator:
-            self.systray_icon.set_menu (self.systray_menu)
 
     def populate_vm_list(self, conn):
         uri = conn.get_uri()
@@ -364,7 +366,7 @@ class vmmSystray(gobject.GObject):
             return
 
         # Build VM list entry
-        menu_item = gtk.ImageMenuItem(vm.get_name())
+        menu_item = build_image_menu_item(vm.get_name())
         vm_mappings[uuid] = menu_item
         vm_action_menu, vm_action_dict = self.build_vm_menu(vm)
         menu_item.set_submenu(vm_action_menu)
@@ -376,9 +378,6 @@ class vmmSystray(gobject.GObject):
         # Update state
         self.vm_state_changed(vm)
         menu_item.show()
-
-        if self.systray_indicator:
-            self.systray_icon.set_menu (self.systray_menu)
 
     def vm_removed(self, conn, uri, uuid):
         vm_mappings = self.conn_vm_menuitems[uri]
@@ -393,13 +392,10 @@ class vmmSystray(gobject.GObject):
             del(vm_mappings[uuid])
 
             if len(vm_menu.get_children()) == 0:
-                placeholder = gtk.MenuItem(_("No VMs available"))
+                placeholder = gtk.MenuItem(_("No virtual machines"))
                 placeholder.show()
                 placeholder.set_sensitive(False)
                 vm_menu.add(placeholder)
-
-            if self.systray_indicator:
-                self.systray_icon.set_menu (self.systray_menu)
 
     def vm_state_changed(self, vm, ignore=None, ignore2=None):
         menu_item = self._get_vm_menu_item(vm)
@@ -422,9 +418,6 @@ class vmmSystray(gobject.GObject):
 
         actions["pause"].set_property("visible", not is_paused)
         actions["resume"].set_property("visible", is_paused)
-
-        if self.systray_indicator:
-            self.systray_icon.set_menu (self.systray_menu)
 
     def run_vm_action(self, ignore, signal_name, uuid):
         uri = None

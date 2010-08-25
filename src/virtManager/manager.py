@@ -23,12 +23,10 @@ import gtk
 import gtk.glade
 
 import logging
-import traceback
 
 import virtManager.config as cfg
 import virtManager.uihelpers as uihelpers
 from virtManager.connection import vmmConnection
-from virtManager.asyncjob import vmmAsyncJob
 from virtManager.error import vmmErrorDialog
 from virtManager.delete import vmmDeleteDialog
 from virtManager.graphwidgets import CellRendererSparkline
@@ -105,6 +103,8 @@ class vmmManager(gobject.GObject):
                                  gobject.TYPE_NONE, (str, str)),
         "action-destroy-domain": (gobject.SIGNAL_RUN_FIRST,
                                   gobject.TYPE_NONE, (str, str)),
+        "action-save-domain": (gobject.SIGNAL_RUN_FIRST,
+                               gobject.TYPE_NONE, (str, str)),
         "action-connect": (gobject.SIGNAL_RUN_FIRST,
                            gobject.TYPE_NONE, [str]),
         "action-show-help": (gobject.SIGNAL_RUN_FIRST,
@@ -165,7 +165,6 @@ class vmmManager(gobject.GObject):
             "on_menu_file_add_connection_activate": self.new_connection,
             "on_menu_file_quit_activate": self.exit_app,
             "on_menu_file_close_activate": self.close,
-            "on_menu_restore_saved_activate": self.restore_saved,
             "on_vmm_close_clicked": self.close,
             "on_vm_open_clicked": self.open_vm_console,
             "on_vm_run_clicked": self.start_vm,
@@ -275,7 +274,8 @@ class vmmManager(gobject.GObject):
                                    self.window.get_widget("vm-shutdown"),
                                    self.poweroff_vm,
                                    self.reboot_vm,
-                                   self.destroy_vm)
+                                   self.destroy_vm,
+                                   self.save_vm)
 
         tool = self.window.get_widget("vm-toolbar")
         util.safe_set_prop(tool, "icon-size", gtk.ICON_SIZE_LARGE_TOOLBAR)
@@ -296,122 +296,67 @@ class vmmManager(gobject.GObject):
         destroy_icon        = build_icon(icon_name)
         run_icon            = build_stock(gtk.STOCK_MEDIA_PLAY)
         pause_icon          = build_stock(gtk.STOCK_MEDIA_PAUSE)
+        save_icon           = build_stock(gtk.STOCK_SAVE)
         resume_icon         = build_stock(gtk.STOCK_MEDIA_PAUSE)
         delete_icon         = build_stock(gtk.STOCK_DELETE)
 
-        self.vmmenu_items["run"] = gtk.ImageMenuItem(_("_Run"))
-        self.vmmenu_items["run"].set_image(run_icon)
-        self.vmmenu_items["run"].show()
-        self.vmmenu_items["run"].connect("activate", self.start_vm)
-        self.vmmenu.add(self.vmmenu_items["run"])
+        def add_to_menu(menu, items, idx, text, icon, cb):
+            item = gtk.ImageMenuItem(text)
+            if icon:
+                item.set_image(icon)
+            item.show()
+            if cb:
+                item.connect("activate", cb)
+            menu.add(item)
+            items[idx] = item
 
-        self.vmmenu_items["pause"] = gtk.ImageMenuItem(_("_Pause"))
-        self.vmmenu_items["pause"].set_image(pause_icon)
-        self.vmmenu_items["pause"].set_sensitive(False)
-        self.vmmenu_items["pause"].show()
-        self.vmmenu_items["pause"].connect("activate", self.pause_vm)
-        self.vmmenu.add(self.vmmenu_items["pause"])
+        def add_vm_menu(idx, text, icon, cb):
+            add_to_menu(self.vmmenu, self.vmmenu_items, idx, text, icon, cb)
+        def add_shutdown_menu(idx, text, icon, cb):
+            add_to_menu(self.vmmenushutdown, self.vmmenushutdown_items,
+                        idx, text, icon, cb)
+        def add_conn_menu(idx, text, icon, cb):
+            add_to_menu(self.connmenu, self.connmenu_items,
+                        idx, text, icon, cb)
+        def add_sep(menu, items, idx):
+            sep = gtk.SeparatorMenuItem()
+            sep.show()
+            menu.add(sep)
+            items[idx] = sep
 
-        self.vmmenu_items["resume"] = gtk.ImageMenuItem(_("R_esume"))
-        self.vmmenu_items["resume"].set_image(resume_icon)
-        self.vmmenu_items["resume"].show()
-        self.vmmenu_items["resume"].connect("activate", self.resume_vm)
-        self.vmmenu.add(self.vmmenu_items["resume"])
+        # Build VM context menu
+        add_vm_menu("run", _("_Run"), run_icon, self.start_vm)
+        add_vm_menu("pause", _("_Pause"), pause_icon, self.pause_vm)
+        add_vm_menu("resume", _("R_esume"), resume_icon, self.resume_vm)
 
-
-        self.vmmenu_items["shutdown"] = gtk.ImageMenuItem(_("_Shut Down"))
-        self.vmmenu_items["shutdown"].set_image(shutdownmenu_icon)
+        add_vm_menu("shutdown", _("_Shut Down"), shutdownmenu_icon, None)
         self.vmmenu_items["shutdown"].set_submenu(self.vmmenushutdown)
-        self.vmmenu_items["shutdown"].show()
-        self.vmmenu.add(self.vmmenu_items["shutdown"])
+        add_shutdown_menu("reboot", _("_Reboot"), reboot_icon, self.reboot_vm)
+        add_shutdown_menu("poweroff", _("_Shut Down"), shutdown_icon,
+                          self.poweroff_vm)
+        add_shutdown_menu("forcepoweroff", _("_Force Off"), destroy_icon,
+                          self.destroy_vm)
+        add_sep(self.vmmenushutdown, self.vmmenushutdown_items, "sep")
+        add_shutdown_menu("save", _("Sa_ve"), save_icon, self.save_vm)
 
-        self.vmmenushutdown_items["reboot"] = gtk.ImageMenuItem(_("_Reboot"))
-        self.vmmenushutdown_items["reboot"].set_image(reboot_icon)
-        self.vmmenushutdown_items["reboot"].show()
-        self.vmmenushutdown_items["reboot"].connect("activate", self.reboot_vm)
-        self.vmmenushutdown.add(self.vmmenushutdown_items["reboot"])
+        add_sep(self.vmmenu, self.vmmenu_items, "hsep1")
+        add_vm_menu("clone", _("_Clone..."), None, self.open_clone_window)
+        add_vm_menu("migrate", _("_Migrate..."), None, self.migrate_vm)
+        add_vm_menu("delete", _("_Delete"), delete_icon, self.do_delete)
 
-        self.vmmenushutdown_items["poweroff"] = gtk.ImageMenuItem(_("_Shut Down"))
-        self.vmmenushutdown_items["poweroff"].set_image(shutdown_icon)
-        self.vmmenushutdown_items["poweroff"].show()
-        self.vmmenushutdown_items["poweroff"].connect("activate",
-                                                      self.poweroff_vm)
-        self.vmmenushutdown.add(self.vmmenushutdown_items["poweroff"])
-
-        self.vmmenushutdown_items["forcepoweroff"] = gtk.ImageMenuItem(_("_Force Off"))
-        self.vmmenushutdown_items["forcepoweroff"].set_image(destroy_icon)
-        self.vmmenushutdown_items["forcepoweroff"].show()
-        self.vmmenushutdown_items["forcepoweroff"].connect("activate",
-                                                           self.destroy_vm)
-        self.vmmenushutdown.add(self.vmmenushutdown_items["forcepoweroff"])
-
-        self.vmmenu_items["hsep1"] = gtk.SeparatorMenuItem()
-        self.vmmenu_items["hsep1"].show()
-        self.vmmenu.add(self.vmmenu_items["hsep1"])
-
-        self.vmmenu_items["clone"] = gtk.ImageMenuItem(_("_Clone"))
-        self.vmmenu_items["clone"].show()
-        self.vmmenu_items["clone"].connect("activate", self.open_clone_window)
-        self.vmmenu.add(self.vmmenu_items["clone"])
-
-        self.vmmenu_items["migrate"] = gtk.ImageMenuItem(_("_Migrate..."))
-        self.vmmenu_items["migrate"].show()
-        self.vmmenu_items["migrate"].connect("activate", self.migrate_vm)
-        self.vmmenu.add(self.vmmenu_items["migrate"])
-
-        self.vmmenu_items["delete"] = gtk.ImageMenuItem(_("_Delete"))
-        self.vmmenu_items["delete"].set_image(delete_icon)
-        self.vmmenu_items["delete"].show()
-        self.vmmenu_items["delete"].connect("activate", self.do_delete)
-        self.vmmenu.add(self.vmmenu_items["delete"])
-
-        self.vmmenu_items["hsep2"] = gtk.SeparatorMenuItem()
-        self.vmmenu_items["hsep2"].show()
-        self.vmmenu.add(self.vmmenu_items["hsep2"])
-
-        self.vmmenu_items["open"] = gtk.ImageMenuItem(gtk.STOCK_OPEN)
-        self.vmmenu_items["open"].connect("activate", self.open_vm_console)
-        self.vmmenu_items["open"].show()
-        self.vmmenu.add(self.vmmenu_items["open"])
-
+        add_sep(self.vmmenu, self.vmmenu_items, "hsep2")
+        add_vm_menu("open", gtk.STOCK_OPEN, None, self.open_vm_console)
         self.vmmenu.show()
 
-        self.connmenu_items["create"] = gtk.ImageMenuItem(gtk.STOCK_NEW)
-        self.connmenu_items["create"].show()
-        self.connmenu_items["create"].connect("activate", self.new_vm)
-        self.connmenu.add(self.connmenu_items["create"])
-
-        self.connmenu_items["connect"] = gtk.ImageMenuItem(gtk.STOCK_CONNECT)
-        self.connmenu_items["connect"].show()
-        self.connmenu_items["connect"].connect("activate",
-                                               self.open_connection)
-        self.connmenu.add(self.connmenu_items["connect"])
-
-        self.connmenu_items["disconnect"] = gtk.ImageMenuItem(gtk.STOCK_DISCONNECT)
-        self.connmenu_items["disconnect"].show()
-        self.connmenu_items["disconnect"].connect("activate",
-                                                  self.close_connection)
-        self.connmenu.add(self.connmenu_items["disconnect"])
-
-        self.connmenu_items["hsep1"] = gtk.SeparatorMenuItem()
-        self.connmenu_items["hsep1"].show()
-        self.connmenu.add(self.connmenu_items["hsep1"])
-
-        self.connmenu_items["delete"] = gtk.ImageMenuItem(gtk.STOCK_DELETE)
-        self.connmenu_items["delete"].show()
-        self.connmenu_items["delete"].connect("activate",
-                                              self.do_delete)
-        self.connmenu.add(self.connmenu_items["delete"])
-
-        self.connmenu_items["hsep2"] = gtk.SeparatorMenuItem()
-        self.connmenu_items["hsep2"].show()
-        self.connmenu.add(self.connmenu_items["hsep2"])
-
-        self.connmenu_items["details"] = gtk.ImageMenuItem(_("_Details"))
-        self.connmenu_items["details"].connect("activate", self.show_host)
-        self.connmenu_items["details"].show()
-        self.connmenu.add(self.connmenu_items["details"])
-
+        # Build connection context menu
+        add_conn_menu("create", gtk.STOCK_NEW, None, self.new_vm)
+        add_conn_menu("connect", gtk.STOCK_CONNECT, None, self.open_connection)
+        add_conn_menu("disconnect", gtk.STOCK_DISCONNECT, None,
+                      self.close_connection)
+        add_sep(self.connmenu, self.connmenu_items, "hsep1")
+        add_conn_menu("delete", gtk.STOCK_DELETE, None, self.do_delete)
+        add_sep(self.connmenu, self.connmenu_items, "hsep2")
+        add_conn_menu("details", _("_Details"), None, self.show_host)
         self.connmenu.show()
 
     def init_vmlist(self):
@@ -546,11 +491,21 @@ class vmmManager(gobject.GObject):
             return None
         return vm.get_uuid()
 
-    def current_connection_uri(self):
+    def current_connection_uri(self, default_selection=False):
+        vmlist = self.window.get_widget("vm-list")
+        model = vmlist.get_model()
+
         conn = self.current_connection()
-        if conn is None:
-            return None
-        return conn.get_uri()
+        if conn is None and default_selection:
+            # Nothing selected, use first connection row
+            for row in model:
+                if row[ROW_IS_CONN]:
+                    conn = row[ROW_HANDLE]
+                    break
+
+        if conn:
+            return conn.get_uri()
+        return None
 
     ####################
     # Action listeners #
@@ -582,7 +537,8 @@ class vmmManager(gobject.GObject):
         self.emit("action-show-preferences")
 
     def show_host(self, src):
-        self.emit("action-show-host", self.current_connection_uri())
+        uri = self.current_connection_uri(default_selection=True)
+        self.emit("action-show-host", uri)
 
     def open_vm_console(self,ignore,ignore2=None,ignore3=None):
         if self.current_vmuuid():
@@ -607,41 +563,6 @@ class vmmManager(gobject.GObject):
         else:
             self.emit("action-show-console",
                       conn.get_uri(), self.vm.get_uuid())
-
-    def restore_saved(self, src=None):
-        conn = self.current_connection()
-        if conn.is_remote():
-            self.err.val_err(_("Restoring virtual machines over remote "
-                               "connections is not yet supported"))
-            return
-
-        path = util.browse_local(self.window.get_widget("vmm-manager"),
-                                 _("Restore Virtual Machine"),
-                                 self.config, conn,
-                                 browse_reason=self.config.CONFIG_DIR_RESTORE)
-
-        if not path:
-            return
-
-        progWin = vmmAsyncJob(self.config, self.restore_saved_callback,
-                              [path], _("Restoring Virtual Machine"))
-        progWin.run()
-        error, details = progWin.get_error()
-
-        if error is not None:
-            self.err.show_err(error, details,
-                              title=_("Error restoring domain"))
-
-    def restore_saved_callback(self, file_to_load, asyncjob):
-        try:
-            newconn = util.dup_conn(self.config, self.current_connection(),
-                                    return_conn_class=True)
-            newconn.restore(file_to_load)
-        except Exception, e:
-            err = (_("Error restoring domain '%s': %s") %
-                                  (file_to_load, str(e)))
-            details = "".join(traceback.format_exc())
-            asyncjob.set_error(err, details)
 
     def do_delete(self, ignore=None):
         conn = self.current_connection()
@@ -717,6 +638,12 @@ class vmmManager(gobject.GObject):
         vm = self.current_vm()
         if vm is not None:
             self.emit("action-destroy-domain",
+                      vm.get_connection().get_uri(), vm.get_uuid())
+
+    def save_vm(self, ignore):
+        vm = self.current_vm()
+        if vm is not None:
+            self.emit("action-save-domain",
                       vm.get_connection().get_uri(), vm.get_uuid())
 
     def pause_vm(self, ignore):
@@ -987,6 +914,15 @@ class vmmManager(gobject.GObject):
                     child = model.iter_children(parent)
         model.row_changed(row.path, row.iter)
 
+    def change_run_text(self, can_restore):
+        if can_restore:
+            text = _("_Restore")
+        else:
+            text = _("_Run")
+        strip_text = text.replace("_", "")
+
+        self.vmmenu_items["run"].get_child().set_label(text)
+        self.window.get_widget("vm-run").set_label(strip_text)
 
     def vm_selected(self, ignore=None):
         conn = self.current_connection()
@@ -994,7 +930,8 @@ class vmmManager(gobject.GObject):
 
         show_open = bool(vm)
         show_details = bool(vm)
-        host_details = bool(vm or conn)
+        host_details = bool(len(self.rows))
+
         delete = bool((vm and vm.is_runable()) or
                       (not vm and conn))
         show_run = bool(vm and vm.is_runable())
@@ -1004,7 +941,9 @@ class vmmManager(gobject.GObject):
         else:
             show_pause = bool(vm and vm.is_pauseable())
         show_shutdown = bool(vm and vm.is_stoppable())
-        restore = bool(conn and conn.get_state() == vmmConnection.STATE_ACTIVE)
+
+        if vm and vm.managedsave_supported:
+            self.change_run_text(vm.hasSavedImage())
 
         self.window.get_widget("vm-open").set_sensitive(show_open)
         self.window.get_widget("vm-run").set_sensitive(show_run)
@@ -1015,7 +954,6 @@ class vmmManager(gobject.GObject):
         self.window.get_widget("menu_edit_details").set_sensitive(show_details)
         self.window.get_widget("menu_host_details").set_sensitive(host_details)
         self.window.get_widget("menu_edit_delete").set_sensitive(delete)
-        self.window.get_widget("menu_file_restore_saved").set_sensitive(restore)
 
     def popup_vm_menu_key(self, widget, event):
         if gtk.gdk.keyval_name(event.keyval) != "Menu":
@@ -1065,6 +1003,7 @@ class vmmManager(gobject.GObject):
             self.vmmenushutdown_items["poweroff"].set_sensitive(stop)
             self.vmmenushutdown_items["reboot"].set_sensitive(stop)
             self.vmmenushutdown_items["forcepoweroff"].set_sensitive(destroy)
+            self.vmmenushutdown_items["save"].set_sensitive(destroy)
             self.vmmenu.popup(None, None, None, 0, event.time)
         else:
             # Pop up connection menu

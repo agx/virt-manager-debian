@@ -1,16 +1,16 @@
-# translation of virt-manager.tip.po to Korean
-# translation of ko.po to
+# translation of ko.new.po to Korean
 # This file is distributed under the same license as the PACKAGE package.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER.
 #
 # Eunju Kim <eukim@redhat.com>, 2006, 2007, 2009.
+# Hyunsok Oh <hoh@redhat.com>, 2010.
 msgid ""
 msgstr ""
-"Project-Id-Version: virt-manager.tip\n"
+"Project-Id-Version: ko.new\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2010-03-24 11:50-0400\n"
-"PO-Revision-Date: 2009-09-17 16:34+1000\n"
-"Last-Translator: Eunju Kim <eukim@redhat.com>\n"
+"POT-Creation-Date: 2010-08-24 17:10-0400\n"
+"PO-Revision-Date: 2010-04-06 11:10+1000\n"
+"Last-Translator: Hyunsok Oh <hoh@redhat.com>\n"
 "Language-Team: Korean <ko@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -20,92 +20,91 @@ msgstr ""
 
 #: ../src/virt-manager.desktop.in.in.h:1
 msgid "Manage virtual machines"
-msgstr "가상 장치 관리  "
+msgstr "가상 머신 관리  "
 
-#: ../src/virt-manager.desktop.in.in.h:2 ../src/virtManager/systray.py:136
-#: ../src/vmm-manager.glade.h:9
+#: ../src/virt-manager.desktop.in.in.h:2 ../src/virtManager/systray.py:147
+#: ../src/vmm-manager.glade.h:7
 msgid "Virtual Machine Manager"
-msgstr "가상 장치 관리자"
+msgstr "가상 머신 관리자"
 
 #: ../src/virt-manager.py.in:64
 msgid "Error starting Virtual Machine Manager"
-msgstr "가상 장치 관리자 시작 오류  "
+msgstr "가상 머신 관리자 시작 오류  "
 
 #. ...the risk is we catch too much though
 #. Damned if we do, damned if we dont :-)(
-#: ../src/virt-manager.py.in:289
+#: ../src/virt-manager.py.in:294
 #, python-format
 msgid "Unable to initialize GTK: %s"
 msgstr "GTK 초기화 불가능: %s "
 
 #: ../src/virt-manager.schemas.in.h:1
 msgid "Confirm device interface start and stop"
-msgstr ""
+msgstr "장치 인터페이스 시작과 종료를 확인"
 
 #: ../src/virt-manager.schemas.in.h:2
 msgid "Confirm device removal request"
-msgstr ""
+msgstr "디바이스 제거 요청 확인"
 
 #: ../src/virt-manager.schemas.in.h:3
 msgid "Confirm force poweroff request"
-msgstr ""
+msgstr "강제 전원 차단 요청 확인"
 
 #: ../src/virt-manager.schemas.in.h:4
 msgid "Confirm pause request"
-msgstr ""
+msgstr "일시정지 요청 확인"
 
 #: ../src/virt-manager.schemas.in.h:5
 msgid "Confirm poweroff request"
-msgstr ""
+msgstr "전원차단 요청 확인"
 
 #: ../src/virt-manager.schemas.in.h:6
 msgid "Default image path"
-msgstr "기본값 이미지 경로  "
+msgstr "이미지 경로 기본값"
 
 #: ../src/virt-manager.schemas.in.h:7
 msgid "Default manager window height"
-msgstr ""
+msgstr "관리자 창 높이 기본값"
 
 #: ../src/virt-manager.schemas.in.h:8
-#, fuzzy
 msgid "Default manager window width"
-msgstr "기본값 이미지 경로  "
+msgstr "관리자 창 너비 기본값 "
 
 #: ../src/virt-manager.schemas.in.h:9
 msgid "Default media path"
-msgstr "기본값 미디어 경로  "
+msgstr "미디어 경로 기본값 "
 
 #: ../src/virt-manager.schemas.in.h:10
 msgid "Default path for choosing VM images"
-msgstr "VM 이미지 선택을 위한 기본값 경로  "
+msgstr "VM 이미지 선택 경로 기본값 "
 
 #: ../src/virt-manager.schemas.in.h:11
 msgid "Default path for choosing media"
-msgstr "미디어 선택을 위한 기본값 경로  "
+msgstr "미디어 선택 경로 기본값 "
 
 #: ../src/virt-manager.schemas.in.h:12
 msgid "Default path for saving VM snaphots"
-msgstr "VM 스냅샷 저장을 위한 기본값 경로  "
+msgstr "VM 스냅샷 저장 경로 기본값"
 
 #: ../src/virt-manager.schemas.in.h:13
 msgid "Default path for saving screenshots from VMs"
-msgstr "VM에서 스크린샷을 저장하기 위한 기본값 경로  "
+msgstr "VM 스크린샷 저장 경로 기본값"
 
 #: ../src/virt-manager.schemas.in.h:14
 msgid "Default path for stored VM snapshots"
-msgstr "VM 스냅샷을 저장하기 위한 기본값 경로  "
+msgstr "VM 스냅샷 저장 경로 기본값"
 
 #: ../src/virt-manager.schemas.in.h:15
 msgid "Default restore path"
-msgstr "기본값 복구 경로  "
+msgstr "복구 경로 기본값"
 
 #: ../src/virt-manager.schemas.in.h:16
 msgid "Default save domain path"
-msgstr "기본값 저장 도메인 경로  "
+msgstr "저장 도메인 경로 기본값"
 
 #: ../src/virt-manager.schemas.in.h:17
 msgid "Default screenshot path"
-msgstr "기본값 스크린샷 경로  "
+msgstr "스크린샷 경로 기본값"
 
 #: ../src/virt-manager.schemas.in.h:18
 msgid "Install sound device for local VM"
@@ -117,407 +116,421 @@ msgstr "원격 VM에 대한 사운드 장치 설치  "
 
 #: ../src/virt-manager.schemas.in.h:20
 msgid "Poll disk i/o stats"
-msgstr ""
+msgstr "디스크 i/o 상태 폴링"
 
 #: ../src/virt-manager.schemas.in.h:21
 msgid "Poll net i/o stats"
-msgstr ""
+msgstr "네트워크 i/o 상태 폴링"
 
 #: ../src/virt-manager.schemas.in.h:22
 msgid "Show cpu usage in summary"
-msgstr ""
+msgstr "요약정보에 cpu 사용량 표시"
 
 #: ../src/virt-manager.schemas.in.h:23
 msgid "Show disk I/O in summary"
-msgstr ""
+msgstr "요약정보에 디스크 I/O 표시"
 
 #: ../src/virt-manager.schemas.in.h:24
 msgid "Show network I/O in summary"
-msgstr ""
+msgstr "요약정보에 네트워크 I/O 표시"
 
 #: ../src/virt-manager.schemas.in.h:25
 msgid "Show system tray icon"
-msgstr "시스템 트레이 아이콘 표시  "
+msgstr "시스템 트레이 아이콘 표시"
 
 #: ../src/virt-manager.schemas.in.h:26
 msgid "Show system tray icon while app is running"
-msgstr "응용 프로그램이 실행되는 동안 시스템 트레이 아이콘 표시  "
+msgstr "응용 프로그램이 실행되는 동안 시스템 트레이 아이콘 표시"
 
 #: ../src/virt-manager.schemas.in.h:27
 msgid "Show the cpu usage field in the domain list summary view"
-msgstr ""
+msgstr "도메인 목록 요약 뷰에 cpu 사용량 항목 표시"
 
 #: ../src/virt-manager.schemas.in.h:28
 msgid "Show the disk I/O field in the domain list summary view"
-msgstr ""
+msgstr "도메인 목록 요약 뷰에 디스크 I/O 항목 표시"
 
 #: ../src/virt-manager.schemas.in.h:29
 msgid "Show the network I/O field in the domain list summary view"
-msgstr ""
+msgstr "도메인 목록 요약 뷰에 네트워크 I/O 항목 표시"
 
 #: ../src/virt-manager.schemas.in.h:30
 msgid "The length of the list of URLs"
-msgstr "URL 목록의 길이  "
+msgstr "URL 목록의 길이"
 
 #: ../src/virt-manager.schemas.in.h:31
 msgid "The number of samples to keep in the statistics history"
-msgstr ""
+msgstr "통계 기록에 저장할 샘플 갯수"
 
 #: ../src/virt-manager.schemas.in.h:32
 msgid ""
 "The number of urls to keep in the history for the install media address page."
-msgstr ""
+msgstr "매체 주소 설치 페이지 기록에 저장할 url 갯수"
 
 #: ../src/virt-manager.schemas.in.h:33
 msgid "The statistics history length"
-msgstr "통계 기록 길이  "
+msgstr "통계 기록 길이"
 
 #: ../src/virt-manager.schemas.in.h:34
 msgid "The statistics update interval"
-msgstr "통계 업데이트 간격  "
+msgstr "통계 업데이트 간격"
 
 #: ../src/virt-manager.schemas.in.h:35
 msgid "The statistics update interval in seconds"
-msgstr ""
+msgstr "통계 업데이트 간격(초단위)"
 
 #: ../src/virt-manager.schemas.in.h:36
 msgid "When to grab keyboard input for the console"
-msgstr ""
+msgstr "콘솔로 키보드 입력 강제 고정하는 경우"
 
 #: ../src/virt-manager.schemas.in.h:37
 msgid "When to pop up a console for a guest"
-msgstr ""
+msgstr "게스트를 위한 콘솔을 표시하는 경우"
 
 #: ../src/virt-manager.schemas.in.h:38
 msgid "When to scale the VM graphical console"
-msgstr ""
+msgstr "VM 그래픽 콘솔의 크기를 재조정하는 경우"
 
 #: ../src/virt-manager.schemas.in.h:39
 msgid ""
 "When to scale the VM graphical console. 0 = never, 1 = only when in full "
 "screen mode, 2 = Always"
 msgstr ""
+"VM 그래픽 콘솔의 크기를 재조정하는 경우. 0 = 하지않음, 1 = 전체화면 모드에서"
+"만, 2 = 항상"
 
 #: ../src/virt-manager.schemas.in.h:40
 msgid "Whether or not the app will poll VM disk i/o statistics"
-msgstr ""
+msgstr "어플리케이션이 VM 디스크 i/o 통계를 폴링할지 여부"
 
 #: ../src/virt-manager.schemas.in.h:41
 msgid "Whether or not the app will poll VM network i/o statistics"
-msgstr ""
+msgstr "어플리케이션이 VM 네트워크 통계를 폴링할지 여부"
 
 #: ../src/virt-manager.schemas.in.h:42
 msgid ""
 "Whether to grab keyboard input for a guest console. 0 = never, 1 = only when "
 "in full screen mode, 2 = when mouse is over console"
 msgstr ""
+"케스트 콘솔로 키보드 입력을 강제 고정할지 여부. 0 = 하지않음, 1 = 전체화면 모"
+"드에서만, 2 = 마우스가 콘솔위에 있는 경우에"
 
 #: ../src/virt-manager.schemas.in.h:43
 msgid "Whether to install a sound device for local VMs or not"
-msgstr "로컬 VM에 대한 사운드 장치 설치 여부  "
+msgstr "로컬 VM에 대한 사운드 장치 설치 여부"
 
 #: ../src/virt-manager.schemas.in.h:44
 msgid "Whether to install a sound device for remote VMs or not"
-msgstr "원격 VM에 대한 사운드 장치 설치 여부  "
+msgstr "원격 VM에 대한 사운드 장치 설치 여부"
 
 #: ../src/virt-manager.schemas.in.h:45
 msgid ""
 "Whether to pop up a console for a guest. 0 = never, 1 = only on creation of "
 "a new guest, 2 = On creation of any guest"
 msgstr ""
+"게스트를 위한 콘솔을 표시할지 여부. 0 = 하지 않음, 1 = 새로운 게스트의 생성시"
+"에만, 2 = 모든 게스트의 생성시에"
 
 #: ../src/virt-manager.schemas.in.h:46
 msgid "Whether to show VM button toolbar in Details display"
-msgstr ""
+msgstr "상세 디스플레이에서 VM 버튼 툴바 표시 여부"
 
 #: ../src/virt-manager.schemas.in.h:47
 msgid "Whether to show notification when grabbing mouse"
-msgstr ""
+msgstr "마우스를 강제 고정시 통지를 표시할지 여부"
 
 #: ../src/virt-manager.schemas.in.h:48
 msgid ""
 "Whether to show the notification hint when grabbing the mouse in the console"
-msgstr ""
+msgstr "콘솔에 마우스를 강제 고정할 때 통지 힌트를 표시할지 여부"
 
 #: ../src/virt-manager.schemas.in.h:49
 msgid ""
 "Whether to show toolbar containing Virtual Machine action buttons (such as "
 "Run, Pause, Shutdown) in the details display"
 msgstr ""
+"상세 디스플레이에서 가상 머신 동작 버튼(실행,일시중단,종료 등)을 포함하는 도"
+"구상자를 표시할지 여부"
 
 #: ../src/virt-manager.schemas.in.h:50
 msgid "Whether we require confirmation to forcepoweroff a VM"
-msgstr ""
+msgstr "VM을 강제 전원차단 할 때 사용자 확인을 요청할지 여부"
 
 #: ../src/virt-manager.schemas.in.h:51
 msgid "Whether we require confirmation to pause a VM"
-msgstr ""
+msgstr "VM을 일시정지할 때 사용자 확인을 요청할지 여부"
 
 #: ../src/virt-manager.schemas.in.h:52
 msgid "Whether we require confirmation to poweroff/reboot a VM"
-msgstr ""
+msgstr "VM을 전원차단/리부트 할 때 사용자 확인을 요청할지 여부"
 
 #: ../src/virt-manager.schemas.in.h:53
 msgid "Whether we require confirmation to remove a virtual device"
-msgstr ""
+msgstr "가상 장치를 제거할 때 사용자 확인을 요청할지 여부"
 
 #: ../src/virt-manager.schemas.in.h:54
 msgid ""
 "Whether we require confirmation to start or stop a libvirt virtual interface"
-msgstr ""
+msgstr "libvirt 가상 인터페이스를 시작/정지할 때 사용자 확인을 요청할 지 여부"
 
 #: ../src/virtManager/addhardware.py:81 ../src/virtManager/choosecd.py:49
-#: ../src/virtManager/clone.py:108 ../src/virtManager/console.py:63
-#: ../src/virtManager/create.py:89 ../src/virtManager/createinterface.py:82
-#: ../src/virtManager/createnet.py:55 ../src/virtManager/createpool.py:53
-#: ../src/virtManager/createvol.py:54 ../src/virtManager/delete.py:61
-#: ../src/virtManager/details.py:161 ../src/virtManager/engine.py:224
-#: ../src/virtManager/host.py:65 ../src/virtManager/manager.py:126
-#: ../src/virtManager/migrate.py:65 ../src/virtManager/storagebrowse.py:57
-#: ../src/virtManager/uihelpers.py:53
+#: ../src/virtManager/clone.py:108 ../src/virtManager/connect.py:64
+#: ../src/virtManager/console.py:63 ../src/virtManager/create.py:89
+#: ../src/virtManager/createinterface.py:82 ../src/virtManager/createnet.py:55
+#: ../src/virtManager/createpool.py:53 ../src/virtManager/createvol.py:54
+#: ../src/virtManager/delete.py:61 ../src/virtManager/details.py:161
+#: ../src/virtManager/engine.py:234 ../src/virtManager/host.py:67
+#: ../src/virtManager/manager.py:126 ../src/virtManager/migrate.py:65
+#: ../src/virtManager/storagebrowse.py:57 ../src/virtManager/uihelpers.py:56
 msgid "Unexpected Error"
 msgstr "예기치 않은 오류  "
 
 #: ../src/virtManager/addhardware.py:82 ../src/virtManager/choosecd.py:50
-#: ../src/virtManager/clone.py:109 ../src/virtManager/console.py:64
-#: ../src/virtManager/create.py:90 ../src/virtManager/createinterface.py:83
-#: ../src/virtManager/createnet.py:56 ../src/virtManager/createpool.py:54
-#: ../src/virtManager/createvol.py:55 ../src/virtManager/delete.py:62
-#: ../src/virtManager/details.py:162 ../src/virtManager/engine.py:225
-#: ../src/virtManager/host.py:66 ../src/virtManager/manager.py:127
-#: ../src/virtManager/migrate.py:66 ../src/virtManager/storagebrowse.py:58
-#: ../src/virtManager/uihelpers.py:54
+#: ../src/virtManager/clone.py:109 ../src/virtManager/connect.py:65
+#: ../src/virtManager/console.py:64 ../src/virtManager/create.py:90
+#: ../src/virtManager/createinterface.py:83 ../src/virtManager/createnet.py:56
+#: ../src/virtManager/createpool.py:54 ../src/virtManager/createvol.py:55
+#: ../src/virtManager/delete.py:62 ../src/virtManager/details.py:162
+#: ../src/virtManager/engine.py:235 ../src/virtManager/host.py:68
+#: ../src/virtManager/manager.py:127 ../src/virtManager/migrate.py:66
+#: ../src/virtManager/storagebrowse.py:58 ../src/virtManager/uihelpers.py:57
 msgid "An unexpected error occurred"
 msgstr "예기치 않은 오류 발생  "
 
-#: ../src/virtManager/addhardware.py:344 ../src/virtManager/create.py:436
+#: ../src/virtManager/addhardware.py:348 ../src/virtManager/create.py:436
 #: ../src/virtManager/create.py:528
 msgid "Connection does not support storage management."
-msgstr ""
+msgstr "연결이 저장소 관리를 지원하지 않음"
 
-#: ../src/virtManager/addhardware.py:415 ../src/virtManager/addhardware.py:420
-#: ../src/virtManager/addhardware.py:423 ../src/virtManager/addhardware.py:426
-#: ../src/virtManager/addhardware.py:438
+#: ../src/virtManager/addhardware.py:419 ../src/virtManager/addhardware.py:424
+#: ../src/virtManager/addhardware.py:427 ../src/virtManager/addhardware.py:430
+#: ../src/virtManager/addhardware.py:442
 msgid "Not supported for this guest type."
-msgstr "이러한 게스트 유형에 대해 지원할 수 없음  "
+msgstr "이러한 게스트 유형을 지원하지 않음"
 
-#: ../src/virtManager/addhardware.py:429
+#: ../src/virtManager/addhardware.py:433
 msgid "Connection does not support host device enumeration"
-msgstr ""
+msgstr "연결이 호스트 장치 검색을 지원하지 않음"
 
-#: ../src/virtManager/addhardware.py:435
+#: ../src/virtManager/addhardware.py:439
 msgid "Libvirt version does not support video devices."
-msgstr "Libvirt 버전은 비디오 장치를 지원하지 않습니다.  "
+msgstr "Libvirt 버전이 비디오 장치를 지원하지 않음"
 
-#: ../src/virtManager/addhardware.py:471 ../src/virtManager/details.py:1796
+#: ../src/virtManager/addhardware.py:475 ../src/virtManager/details.py:1874
 msgid "EvTouch USB Graphics Tablet"
-msgstr ""
+msgstr "EvTouch USB 그래픽 타블렛"
 
 #. XXX libvirt needs to support 'model' for input devices to distinguish
 #. wacom from evtouch tablets
 #. model.append([_("Wacom Graphics Tablet"), "tablet", "usb", True])
-#: ../src/virtManager/addhardware.py:475 ../src/virtManager/details.py:1798
+#: ../src/virtManager/addhardware.py:479 ../src/virtManager/details.py:1876
 msgid "Generic USB Mouse"
-msgstr ""
+msgstr "일반 USB 마우스"
 
-#: ../src/virtManager/addhardware.py:479 ../src/virtManager/addhardware.py:780
-#: ../src/virtManager/details.py:1830
+#: ../src/virtManager/addhardware.py:483 ../src/virtManager/addhardware.py:792
+#: ../src/virtManager/details.py:1908
 msgid "VNC server"
-msgstr "VNC 서버  "
+msgstr "VNC 서버"
 
-#: ../src/virtManager/addhardware.py:480 ../src/virtManager/addhardware.py:780
-#: ../src/virtManager/details.py:1835
+#: ../src/virtManager/addhardware.py:484 ../src/virtManager/addhardware.py:792
+#: ../src/virtManager/details.py:1913
 msgid "Local SDL window"
-msgstr ""
+msgstr "로컬 SDL 창"
 
-#: ../src/virtManager/addhardware.py:507
+#: ../src/virtManager/addhardware.py:511
 msgid "No Devices Available"
-msgstr "사용 가능한 장치가 없음  "
+msgstr "사용 가능한 장치가 없음"
 
-#: ../src/virtManager/addhardware.py:665
+#: ../src/virtManager/addhardware.py:676
 #, python-format
 msgid "Uncaught error validating hardware input: %s"
-msgstr ""
+msgstr "하드웨어 입력 검증 중 해결할 수 없는 오류 발생: %s"
 
-#: ../src/virtManager/addhardware.py:741
+#: ../src/virtManager/addhardware.py:752
 msgid "Disk image:"
-msgstr "디스크 이미지:  "
+msgstr "디스크 이미지:"
 
-#: ../src/virtManager/addhardware.py:742
+#: ../src/virtManager/addhardware.py:753
 msgid "Disk size:"
-msgstr "디스크 크기:  "
+msgstr "디스크 크기:"
 
-#: ../src/virtManager/addhardware.py:743
+#: ../src/virtManager/addhardware.py:754
 msgid "Device type:"
-msgstr "장치 유형:  "
+msgstr "장치 유형:"
 
-#: ../src/virtManager/addhardware.py:744
+#: ../src/virtManager/addhardware.py:755
 msgid "Bus type:"
-msgstr "버스 유형:  "
-
-#: ../src/virtManager/addhardware.py:746 ../src/vmm-create.glade.h:40
-#: ../src/vmm-host.glade.h:50
-msgid "Storage"
-msgstr "저장  "
+msgstr "버스 유형:"
 
 #: ../src/virtManager/addhardware.py:756
-msgid "Network type:"
-msgstr "네트워크 유형:  "
+#, fuzzy
+msgid "Cache mode:"
+msgstr "장치 모델(_E):"
 
-#: ../src/virtManager/addhardware.py:757
-msgid "Target:"
-msgstr "대상:  "
-
-#: ../src/virtManager/addhardware.py:758 ../src/vmm-details.glade.h:55
-msgid "MAC address:"
-msgstr "MAC 주소:  "
-
-#: ../src/virtManager/addhardware.py:759 ../src/virtManager/addhardware.py:807
-#: ../src/virtManager/addhardware.py:849 ../src/virtManager/addhardware.py:856
-msgid "Model:"
-msgstr "모델:  "
-
-#: ../src/virtManager/addhardware.py:761
-msgid "Network"
-msgstr "네트워크 "
-
-#: ../src/virtManager/addhardware.py:766
-msgid "Absolute movement"
-msgstr ""
+#: ../src/virtManager/addhardware.py:758 ../src/vmm-create.glade.h:40
+#: ../src/vmm-host.glade.h:53
+msgid "Storage"
+msgstr "저장소"
 
 #: ../src/virtManager/addhardware.py:768
+msgid "Network type:"
+msgstr "네트워크 유형:"
+
+#: ../src/virtManager/addhardware.py:769
+msgid "Target:"
+msgstr "대상:"
+
+#: ../src/virtManager/addhardware.py:770 ../src/vmm-details.glade.h:58
+msgid "MAC address:"
+msgstr "MAC 주소:"
+
+#: ../src/virtManager/addhardware.py:771 ../src/virtManager/addhardware.py:819
+#: ../src/virtManager/addhardware.py:861 ../src/virtManager/addhardware.py:868
+msgid "Model:"
+msgstr "모델:"
+
+#: ../src/virtManager/addhardware.py:773
+msgid "Network"
+msgstr "네트워크"
+
+#: ../src/virtManager/addhardware.py:778
+msgid "Absolute movement"
+msgstr "절대 움직임"
+
+#: ../src/virtManager/addhardware.py:780
 msgid "Relative movement"
-msgstr ""
+msgstr "상대 움직임"
 
-#: ../src/virtManager/addhardware.py:771 ../src/virtManager/addhardware.py:797
-#: ../src/virtManager/addhardware.py:815 ../src/virtManager/addhardware.py:842
-#: ../src/vmm-create-net.glade.h:47 ../src/vmm-details.glade.h:100
+#: ../src/virtManager/addhardware.py:783 ../src/virtManager/addhardware.py:809
+#: ../src/virtManager/addhardware.py:827 ../src/virtManager/addhardware.py:854
+#: ../src/vmm-create-net.glade.h:47 ../src/vmm-details.glade.h:104
 msgid "Type:"
-msgstr "유형:  "
+msgstr "유형:"
 
-#: ../src/virtManager/addhardware.py:772 ../src/vmm-details.glade.h:65
+#: ../src/virtManager/addhardware.py:784 ../src/vmm-details.glade.h:68
 #: ../src/vmm-host.glade.h:35
 msgid "Mode:"
-msgstr "모드:  "
+msgstr "모드:"
 
-#: ../src/virtManager/addhardware.py:774
+#: ../src/virtManager/addhardware.py:786
 msgid "Pointer"
-msgstr "포인터  "
+msgstr "포인터"
 
-#: ../src/virtManager/addhardware.py:781 ../src/virtManager/addhardware.py:782
-#: ../src/virtManager/addhardware.py:783 ../src/virtManager/addhardware.py:784
-#: ../src/virtManager/details.py:1828 ../src/virtManager/details.py:1839
-#: ../src/virtManager/details.py:1840 ../src/virtManager/details.py:1841
+#: ../src/virtManager/addhardware.py:793 ../src/virtManager/addhardware.py:794
+#: ../src/virtManager/addhardware.py:795 ../src/virtManager/addhardware.py:796
+#: ../src/virtManager/details.py:1906 ../src/virtManager/details.py:1917
+#: ../src/virtManager/details.py:1918 ../src/virtManager/details.py:1919
 msgid "N/A"
 msgstr "N/A"
 
-#: ../src/virtManager/addhardware.py:793
+#: ../src/virtManager/addhardware.py:805
 msgid "Yes"
-msgstr ""
+msgstr "예"
 
-#: ../src/virtManager/addhardware.py:793
+#: ../src/virtManager/addhardware.py:805
 msgid "No"
-msgstr ""
+msgstr "아니오"
 
-#: ../src/virtManager/addhardware.py:794 ../src/virtManager/details.py:1558
-#: ../src/vmm-add-hardware.glade.h:42
+#: ../src/virtManager/addhardware.py:806 ../src/virtManager/details.py:1623
+#: ../src/vmm-add-hardware.glade.h:43
 msgid "Same as host"
-msgstr "호스트와 동일  "
+msgstr "호스트와 동일"
 
-#: ../src/virtManager/addhardware.py:798 ../src/vmm-details.glade.h:24
+#: ../src/virtManager/addhardware.py:810 ../src/vmm-details.glade.h:25
 #: ../src/vmm-host.glade.h:15
 msgid "Address:"
-msgstr "주소:  "
+msgstr "주소:"
 
-#: ../src/virtManager/addhardware.py:799 ../src/vmm-details.glade.h:74
+#: ../src/virtManager/addhardware.py:811 ../src/vmm-details.glade.h:77
 msgid "Port:"
-msgstr "포트:  "
+msgstr "포트:"
 
-#: ../src/virtManager/addhardware.py:800 ../src/vmm-details.glade.h:71
+#: ../src/virtManager/addhardware.py:812 ../src/vmm-details.glade.h:74
 msgid "Password:"
 msgstr "암호:"
 
-#: ../src/virtManager/addhardware.py:801 ../src/vmm-details.glade.h:54
+#: ../src/virtManager/addhardware.py:813 ../src/vmm-details.glade.h:56
 msgid "Keymap:"
-msgstr "키맵:  "
+msgstr "키맵:"
 
-#: ../src/virtManager/addhardware.py:803
+#: ../src/virtManager/addhardware.py:815
 msgid "Graphics"
-msgstr "그래픽  "
+msgstr "그래픽"
 
-#: ../src/virtManager/addhardware.py:809 ../src/vmm-details.glade.h:88
+#: ../src/virtManager/addhardware.py:821 ../src/vmm-details.glade.h:92
 msgid "Sound"
-msgstr "사운드  "
+msgstr "사운드"
 
-#: ../src/virtManager/addhardware.py:836
+#: ../src/virtManager/addhardware.py:848
 msgid "Protocol:"
-msgstr "프로토콜:  "
+msgstr "프로토콜:"
 
-#: ../src/virtManager/addhardware.py:843 ../src/vmm-details.glade.h:41
+#: ../src/virtManager/addhardware.py:855 ../src/vmm-details.glade.h:44
 #: ../src/vmm-host.glade.h:24
 msgid "Device:"
-msgstr "장치:  "
-
-#: ../src/virtManager/addhardware.py:845
-msgid "Physical Host Device"
-msgstr "물리적 호스트 장치  "
-
-#: ../src/virtManager/addhardware.py:851 ../src/virtManager/details.py:2134
-msgid "Video"
-msgstr "비디오  "
-
-#: ../src/virtManager/addhardware.py:854 ../src/virtManager/details.py:2139
-msgid "Watchdog"
-msgstr ""
+msgstr "장치:"
 
 #: ../src/virtManager/addhardware.py:857
-#, fuzzy
-msgid "Action:"
-msgstr "ISO 위치(_L):"
+msgid "Physical Host Device"
+msgstr "물리적 호스트 장치"
 
-#: ../src/virtManager/addhardware.py:872
+#: ../src/virtManager/addhardware.py:863 ../src/virtManager/details.py:2213
+msgid "Video"
+msgstr "비디오"
+
+#: ../src/virtManager/addhardware.py:866 ../src/virtManager/details.py:2218
+msgid "Watchdog"
+msgstr "와치독"
+
+#: ../src/virtManager/addhardware.py:869
+msgid "Action:"
+msgstr "동작:"
+
+#: ../src/virtManager/addhardware.py:884
 #, python-format
 msgid "Unable to add device: %s"
-msgstr "장치 추가 불가능: %s "
+msgstr "장치 추가 불가능: %s"
 
-#: ../src/virtManager/addhardware.py:991
+#: ../src/virtManager/addhardware.py:1003
 msgid "Creating Storage File"
-msgstr "저장 파일 생성  "
+msgstr "저장소 파일 생성"
 
-#: ../src/virtManager/addhardware.py:992
+#: ../src/virtManager/addhardware.py:1004
 msgid "Allocation of disk storage may take a few minutes to complete."
-msgstr ""
+msgstr "디스크 저장소의 할당을 완료하려면 몇 분이 소요될 수 있습니다."
 
-#: ../src/virtManager/addhardware.py:1021
+#: ../src/virtManager/addhardware.py:1033
 msgid "Are you sure you want to add this device?"
-msgstr "정말로 이 장치를 추가하시겠습니까?  "
+msgstr "정말로 이 장치를 추가하시겠습니까?"
 
-#: ../src/virtManager/addhardware.py:1023
+#: ../src/virtManager/addhardware.py:1035
 msgid ""
 "This device could not be attached to the running machine. Would you like to "
 "make the device available after the next VM shutdown?"
 msgstr ""
+"이 장치는 실행중인 머신에는 추가될 수 없습니다. 다음 VM 종료 후 사용 가능하도"
+"록 하시겠습니까?"
 
-#: ../src/virtManager/addhardware.py:1033
-#, fuzzy, python-format
+#: ../src/virtManager/addhardware.py:1045
+#, python-format
 msgid "Error adding device: %s"
-msgstr "볼륨 생성 도중 오류 발생: %s  "
+msgstr "장치 추가중 오류 발생: %s"
 
-#: ../src/virtManager/addhardware.py:1052
-#: ../src/virtManager/addhardware.py:1054 ../src/virtManager/create.py:1583
+#: ../src/virtManager/addhardware.py:1064
+#: ../src/virtManager/addhardware.py:1066 ../src/virtManager/create.py:1597
 #, python-format
 msgid "Unable to complete install: '%s'"
-msgstr "설치를 완료할 수 없음: '%s'  "
+msgstr "설치를 완료할 수 없음: '%s'"
 
-#: ../src/virtManager/addhardware.py:1086
+#: ../src/virtManager/addhardware.py:1098
 msgid "Hardware Type Required"
-msgstr "하드웨어 유형 필요  "
+msgstr "하드웨어 유형 필요"
 
-#: ../src/virtManager/addhardware.py:1087
+#: ../src/virtManager/addhardware.py:1099
 msgid "You must specify what type of hardware to add."
-msgstr "추가할 하드웨어 유형을 지정해야 합니다.       "
+msgstr "추가할 하드웨어 유형을 지정해야 합니다."
 
-#: ../src/virtManager/addhardware.py:1120 ../src/virtManager/create.py:1344
+#: ../src/virtManager/addhardware.py:1139 ../src/virtManager/create.py:1359
 #, python-format
 msgid ""
 "The following path already exists, but is not\n"
@@ -527,147 +540,150 @@ msgid ""
 "\n"
 "Would you like to use this path?"
 msgstr ""
+"다음 경로가 이미 존재하지만, 다른 가상 머신에 의해\n"
+"사용되고 있지 않습니다:\n"
+"\n"
+"%s\n"
+"\n"
+"이 경로를 사용하겠습니까?"
 
-#: ../src/virtManager/addhardware.py:1128 ../src/virtManager/create.py:1352
+#: ../src/virtManager/addhardware.py:1147 ../src/virtManager/create.py:1367
 msgid "A storage path must be specified."
-msgstr "저장 경로를 지정해야 합니다.  "
+msgstr "저장소 경로를 지정해야 합니다."
 
-#: ../src/virtManager/addhardware.py:1144 ../src/virtManager/create.py:1361
+#: ../src/virtManager/addhardware.py:1164 ../src/virtManager/create.py:1376
 msgid "Storage parameter error."
-msgstr "저장 매개 변수 오류.  "
+msgstr "저장소 매개 변수 오류."
 
 #. Fatal errors are reported when setting 'size'
-#: ../src/virtManager/addhardware.py:1158 ../src/virtManager/create.py:1366
+#: ../src/virtManager/addhardware.py:1178 ../src/virtManager/create.py:1381
 msgid "Not Enough Free Space"
-msgstr "여유 공간이 충분하지 않음  "
+msgstr "여유 공간이 충분하지 않음"
 
-#: ../src/virtManager/addhardware.py:1164 ../src/virtManager/create.py:1372
+#: ../src/virtManager/addhardware.py:1184 ../src/virtManager/create.py:1387
 #, python-format
 msgid "Disk \"%s\" is already in use by another guest!"
-msgstr "\"%s\" 디스크는 다른 게스트에 의해 이미 사용되고 있습니다!  "
+msgstr "\"%s\" 디스크는 다른 게스트가 이미 사용중입니다!"
 
-#: ../src/virtManager/addhardware.py:1166 ../src/virtManager/create.py:1374
+#: ../src/virtManager/addhardware.py:1186 ../src/virtManager/create.py:1389
 msgid "Do you really want to use the disk?"
-msgstr "정말로 디스크를 사용하시겠습니까? "
+msgstr "정말로 디스크를 사용하겠습니까? "
 
-#: ../src/virtManager/addhardware.py:1183
+#: ../src/virtManager/addhardware.py:1203
 msgid "Network selection error."
-msgstr ""
+msgstr "네트워크 선택 오류"
 
-#: ../src/virtManager/addhardware.py:1184
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1204
 msgid "A network source must be selected."
-msgstr "장치를 선택해야 합니다.  "
+msgstr "장치를 선택해야 합니다."
 
-#: ../src/virtManager/addhardware.py:1187
+#: ../src/virtManager/addhardware.py:1207
 msgid "Invalid MAC address"
-msgstr "잘못된 MAC 주소  "
+msgstr "잘못된 MAC 주소"
 
-#: ../src/virtManager/addhardware.py:1188
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1208
 msgid "A MAC address must be entered."
-msgstr "장치를 선택해야 합니다.  "
-
-#: ../src/virtManager/addhardware.py:1219
-msgid "Graphics device parameter error"
-msgstr "그래픽 장치 매개 변수 오류  "
-
-#: ../src/virtManager/addhardware.py:1226
-msgid "Sound device parameter error"
-msgstr "사운드 장치 매개 변수 오류  "
-
-#: ../src/virtManager/addhardware.py:1232
-msgid "Physical Device Requried"
-msgstr "물리적 장치 필요   "
-
-#: ../src/virtManager/addhardware.py:1233
-msgid "A device must be selected."
-msgstr "장치를 선택해야 합니다.  "
+msgstr "MAC 주소를 입력해야 합니다."
 
 #: ../src/virtManager/addhardware.py:1240
+msgid "Graphics device parameter error"
+msgstr "그래픽 장치 매개 변수 오류"
+
+#: ../src/virtManager/addhardware.py:1248
+msgid "Sound device parameter error"
+msgstr "사운드 장치 매개 변수 오류"
+
+#: ../src/virtManager/addhardware.py:1254
+#, fuzzy
+msgid "Physical Device Required"
+msgstr "물리적 장치 필요 "
+
+#: ../src/virtManager/addhardware.py:1255
+msgid "A device must be selected."
+msgstr "장치를 선택해야 합니다."
+
+#: ../src/virtManager/addhardware.py:1262
 msgid "Host device parameter error"
-msgstr "호스트 장치 매개 변수 오류   "
+msgstr "호스트 장치 매개 변수 오류 "
 
-#: ../src/virtManager/addhardware.py:1280
-#, fuzzy, python-format
+#: ../src/virtManager/addhardware.py:1302
+#, python-format
 msgid "%s device parameter error"
-msgstr "%s 장치 매개 변수 오류.  "
+msgstr "%s 장치 매개 변수 오류."
 
-#: ../src/virtManager/addhardware.py:1291
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1313
 msgid "Video device parameter error"
-msgstr "비디오 장치 매개 변수 오류.  "
+msgstr "비디오 장치 매개 변수 오류."
 
-#: ../src/virtManager/addhardware.py:1304
-#, fuzzy
+#: ../src/virtManager/addhardware.py:1326
 msgid "Watchdog parameter error"
-msgstr "저장 매개 변수 오류.  "
+msgstr "와치독 매개 변수 오류."
 
 #: ../src/virtManager/asyncjob.py:43 ../src/vmm-progress.glade.h:2
 msgid "Please wait a few moments..."
-msgstr "잠시만 기다려 주십시오...   "
+msgstr "잠시만 기다려 주십시오..."
 
 #: ../src/virtManager/asyncjob.py:44 ../src/vmm-progress.glade.h:1
 msgid "Operation in progress"
-msgstr "실행 중인 작업  "
+msgstr "실행 중인 작업"
 
 #: ../src/virtManager/asyncjob.py:102 ../src/virtManager/asyncjob.py:115
 #: ../src/vmm-progress.glade.h:3
 msgid "Processing..."
-msgstr "처리 중...   "
+msgstr "처리 중..."
 
 #: ../src/virtManager/asyncjob.py:134
 msgid "Completed"
-msgstr "완료 "
+msgstr "완료"
 
 #: ../src/virtManager/choosecd.py:106 ../src/virtManager/choosecd.py:116
 msgid "Invalid Media Path"
-msgstr "잘못된 미디어 경로  "
+msgstr "잘못된 미디어 경로"
 
 #: ../src/virtManager/choosecd.py:107
 msgid "A media path must be specified."
-msgstr "미디어 경로를 지정해야 합니다.  "
+msgstr "미디어 경로를 지정해야 합니다."
 
 #: ../src/virtManager/choosecd.py:158
 msgid "Floppy D_rive"
-msgstr ""
+msgstr "플로피 드라이브(_R)"
 
 #: ../src/virtManager/choosecd.py:159
 msgid "Floppy _Image"
-msgstr ""
+msgstr "플로피 이미지(_I)"
 
 #: ../src/virtManager/clone.py:221 ../src/virtManager/clone.py:437
 msgid "Details..."
-msgstr "상세정보...   "
+msgstr "상세정보..."
 
 #: ../src/virtManager/clone.py:252
 msgid "Usermode"
-msgstr "사용자 모드  "
+msgstr "사용자 모드"
 
 #: ../src/virtManager/clone.py:264
 msgid "Virtual Network"
-msgstr "가상 네트워크  "
+msgstr "가상 네트워크"
 
 #: ../src/virtManager/clone.py:336
 msgid "Nothing to clone."
-msgstr ""
+msgstr "복제할 것이 없습니다."
 
 #: ../src/virtManager/clone.py:429
 msgid "Clone this disk"
-msgstr ""
+msgstr "이 디스크 복제"
 
 #: ../src/virtManager/clone.py:433
 #, python-format
 msgid "Share disk with %s"
-msgstr ""
+msgstr "%s와 디스크 공유"
 
 #: ../src/virtManager/clone.py:445
 msgid "Storage cannot be shared or cloned."
-msgstr ""
+msgstr "저장소를 공유하거나 복제할 수 없습니다."
 
 #: ../src/virtManager/clone.py:498
 msgid "One or more disks cannot be cloned or shared."
-msgstr ""
+msgstr "하나 이상의 디스크를 공유 또는 복제할 수 없습니다."
 
 #: ../src/virtManager/clone.py:599
 #, python-format
@@ -676,22 +692,24 @@ msgstr "MAC 주소 변경 중 오류 발생: %s  "
 
 #: ../src/virtManager/clone.py:627
 msgid "Cloning will overwrite the existing file"
-msgstr ""
+msgstr "복제는 기존 파일을 덮어쓸 것임"
 
 #: ../src/virtManager/clone.py:629
 msgid ""
 "Using an existing image will overwrite the path during the clone process. "
 "Are you sure you want to use this path?"
 msgstr ""
+"기존 이미지를 사용하면 복제 과정에서 해당 경로를 덮어쓰게 됩니다. 이 경로를 "
+"사용하겠습니까?"
 
 #: ../src/virtManager/clone.py:640
 #, python-format
 msgid "Error changing storage path: %s"
-msgstr "저장 경로를 변경하는 도중 오류 발생: %s    "
+msgstr "저장 경로를 변경하는 도중 오류 발생: %s"
 
 #: ../src/virtManager/clone.py:691
 msgid "Skipping disks may cause data to be overwritten."
-msgstr ""
+msgstr "디스크를 생략하면 데이터를 덮어쓸 수 있습니다."
 
 #: ../src/virtManager/clone.py:692
 #, python-format
@@ -701,243 +719,244 @@ msgid ""
 "%s\n"
 "Running the new guest could overwrite data in these disk images."
 msgstr ""
+"다음 디스크 장치가 복제되지 않을 것입니다:\n"
+"\n"
+"%s\n"
+"새로운 게스트를 실행하면 이 디스크 이미지에 있는 정보를 덮어쓰게 될 것입니다."
 
-#: ../src/virtManager/clone.py:712 ../src/virtManager/createpool.py:393
+#: ../src/virtManager/clone.py:712 ../src/virtManager/createpool.py:392
 #: ../src/virtManager/createvol.py:207 ../src/virtManager/migrate.py:413
 #, python-format
 msgid "Uncaught error validating input: %s"
-msgstr ""
+msgstr "입력 검증 중 해결 할 수 없는 오류 발생: %s"
 
 #: ../src/virtManager/clone.py:719
-#, fuzzy, python-format
+#, python-format
 msgid "Creating virtual machine clone '%s'"
-msgstr "가상 장치 생성"
+msgstr "가상 머신 복제 '%s' 생성"
 
 #: ../src/virtManager/clone.py:723 ../src/virtManager/delete.py:144
 msgid " and selected storage (this may take a while)"
-msgstr ""
+msgstr "그리고 선택된 저장소(시간이 걸릴 수 있습니다.)"
 
-#: ../src/virtManager/clone.py:757
-#, fuzzy, python-format
+#: ../src/virtManager/clone.py:763
+#, python-format
 msgid "Error creating virtual machine clone '%s': %s"
-msgstr "새 가상 시스템 생성"
-
-#: ../src/virtManager/clone.py:789
-#, fuzzy
-msgid "No storage to clone."
-msgstr "ISO 이미지 위치(_I):"
+msgstr "가상 머신 복제 '%s' 생성 중 오류 발생 : %s"
 
 #: ../src/virtManager/clone.py:795
+msgid "No storage to clone."
+msgstr "복제할 저장소가 없습니다."
+
+#: ../src/virtManager/clone.py:801
 msgid "Connection does not support managed storage cloning."
-msgstr ""
+msgstr "연결이 관리중인 저장소의 복제를 지원하지 않습니다."
 
-#: ../src/virtManager/clone.py:799
+#: ../src/virtManager/clone.py:805
 msgid "Cannot clone unmanaged remote storage."
-msgstr ""
+msgstr "관리중이지 않은 원격 저장소를 복제할 수 없습니다."
 
-#: ../src/virtManager/clone.py:802
+#: ../src/virtManager/clone.py:808
+#, fuzzy
 msgid ""
-"Block devices to clone should be managed\n"
-"storage volumes."
+"Block devices to clone must be libvirt\n"
+"managed storage volumes."
 msgstr ""
+"복제할 블럭 장치가 관리중인\n"
+"저장소 볼륨이어야 합니다."
 
-#: ../src/virtManager/clone.py:805 ../src/virtManager/delete.py:344
+#: ../src/virtManager/clone.py:811 ../src/virtManager/delete.py:344
 msgid "No write access to parent directory."
-msgstr ""
+msgstr "부모 디렉토리에 대한 쓰기 권한이 없습니다."
 
-#: ../src/virtManager/clone.py:807 ../src/virtManager/delete.py:342
+#: ../src/virtManager/clone.py:813 ../src/virtManager/delete.py:342
 msgid "Path does not exist."
-msgstr "경로가 존재하지 않음.   "
+msgstr "경로가 존재하지 않습니다."
 
-#: ../src/virtManager/clone.py:828
+#: ../src/virtManager/clone.py:834
 msgid "Removable"
-msgstr ""
+msgstr "이동식"
 
-#: ../src/virtManager/clone.py:831
+#: ../src/virtManager/clone.py:837
 msgid "Read Only"
-msgstr "읽기 전용  "
+msgstr "읽기 전용"
 
-#: ../src/virtManager/clone.py:833
+#: ../src/virtManager/clone.py:839
 msgid "No write access"
-msgstr ""
+msgstr "쓰기 권한 없음"
 
-#: ../src/virtManager/clone.py:836
+#: ../src/virtManager/clone.py:842
 msgid "Shareable"
-msgstr "공유 가능  "
+msgstr "공유 가능"
 
 #: ../src/virtManager/config.py:63
-#, fuzzy
 msgid "Locate or create storage volume"
-msgstr "새 저장 파일 생성 및 위치 지정"
+msgstr "저장소 볼륨 생성 또는 위치 지정"
 
 #: ../src/virtManager/config.py:64
 msgid "Locate existing storage"
-msgstr "기존 저장 장치 위치 지정  "
+msgstr "기존 저장소 위치 지정"
 
 #: ../src/virtManager/config.py:69
-#, fuzzy
 msgid "Locate ISO media volume"
-msgstr "ISO 이미지 위치 지정"
+msgstr "ISO 매체 볼륨 위치 지정"
 
 #: ../src/virtManager/config.py:70
-#, fuzzy
 msgid "Locate ISO media"
-msgstr "ISO 이미지 위치 지정"
+msgstr "ISO 매체 위치 지정"
 
-#: ../src/virtManager/connect.py:77 ../src/virtManager/createinterface.py:222
-#: ../src/virtManager/manager.py:432 ../src/virtManager/storagebrowse.py:125
-#: ../src/vmm-create-net.glade.h:29 ../src/vmm-create-pool.glade.h:9
-#: ../src/vmm-create.glade.h:30
-msgid "Name"
-msgstr "이름"
+#: ../src/virtManager/connect.py:324
+#, fuzzy
+msgid "A hostname is required for remote connections."
+msgstr "URL 설치가 원격 연결에서 사용 불가능합니다."
 
-#: ../src/virtManager/connection.py:185
+#: ../src/virtManager/connection.py:186
 #, python-format
 msgid "Could not build physical interface list via libvirt: %s"
-msgstr ""
+msgstr "libvirt를 통한 물리 인터페이스를 구축할 수 없음: %s"
 
-#: ../src/virtManager/connection.py:191
-#, fuzzy
+#: ../src/virtManager/connection.py:192
 msgid "Libvirt version does not support physical interface listing"
-msgstr "Libvirt 버전은 비디오 장치를 지원하지 않습니다.  "
+msgstr "Libvirt 버전이 물리 인터페이스 목록을 지원하지 않음"
 
-#: ../src/virtManager/connection.py:201
+#: ../src/virtManager/connection.py:202
 #, python-format
 msgid "Could not initialize HAL for interface listing: %s"
-msgstr ""
+msgstr "인터페이스 목록을 위한 HAL을 초기화 할 수 없음: %s"
 
-#: ../src/virtManager/connection.py:204
-#, fuzzy
+#: ../src/virtManager/connection.py:205
 msgid "Libvirt version does not support physical interface listing."
-msgstr "Libvirt 버전은 비디오 장치를 지원하지 않습니다.  "
+msgstr "Libvirt 버전이 물리 인터페이스 목록을 지원하지 않음"
 
-#: ../src/virtManager/connection.py:223
+#: ../src/virtManager/connection.py:224
 #, python-format
 msgid "Could not build media list via libvirt: %s"
-msgstr ""
+msgstr "libvirt를 통해 매체 목록을 구축할 수 없음: %s"
 
-#: ../src/virtManager/connection.py:230 ../src/virtManager/connection.py:243
-#, fuzzy
+#: ../src/virtManager/connection.py:231 ../src/virtManager/connection.py:244
 msgid "Libvirt version does not support media listing."
-msgstr "Libvirt 버전은 비디오 장치를 지원하지 않습니다.  "
+msgstr "Libvirt 버전이 매체 목록을 지원하지 않습니다."
 
-#: ../src/virtManager/connection.py:240
+#: ../src/virtManager/connection.py:241
 #, python-format
 msgid "Could not initialize HAL for media listing: %s"
-msgstr ""
+msgstr "매체 목록을 위한 HAL을 초기화할 수 없음: %s"
 
-#: ../src/virtManager/connection.py:568
+#: ../src/virtManager/connection.py:580
 msgid "Disconnected"
-msgstr "연결 해제  "
+msgstr "연결 해제됨"
 
-#: ../src/virtManager/connection.py:570
+#: ../src/virtManager/connection.py:582
 msgid "Connecting"
-msgstr "연결 중  "
+msgstr "연결 중"
 
-#: ../src/virtManager/connection.py:573
+#: ../src/virtManager/connection.py:585
 msgid "Active (RO)"
-msgstr ""
+msgstr "활성 (RO)"
 
-#: ../src/virtManager/connection.py:575 ../src/virtManager/host.py:492
-#: ../src/virtManager/host.py:732 ../src/virtManager/host.py:981
+#: ../src/virtManager/connection.py:587 ../src/virtManager/host.py:500
+#: ../src/virtManager/host.py:753 ../src/virtManager/host.py:1002
 #: ../src/vmm-host.glade.h:11
 msgid "Active"
-msgstr "활성  "
+msgstr "활성"
 
-#: ../src/virtManager/connection.py:577 ../src/virtManager/host.py:492
-#: ../src/virtManager/host.py:535 ../src/virtManager/host.py:732
-#: ../src/virtManager/host.py:763 ../src/virtManager/host.py:981
-#: ../src/virtManager/uihelpers.py:300
+#: ../src/virtManager/connection.py:589 ../src/virtManager/host.py:500
+#: ../src/virtManager/host.py:543 ../src/virtManager/host.py:753
+#: ../src/virtManager/host.py:784 ../src/virtManager/host.py:1002
+#: ../src/virtManager/uihelpers.py:342
 msgid "Inactive"
-msgstr "비활성  "
+msgstr "비활성"
 
-#: ../src/virtManager/connection.py:579 ../src/virtManager/create.py:1683
-#: ../src/virtManager/create.py:1684 ../src/virtManager/create.py:1686
-#: ../src/virtManager/details.py:1544 ../src/virtManager/details.py:1725
-#: ../src/virtManager/host.py:976
+#: ../src/virtManager/connection.py:591 ../src/virtManager/create.py:1703
+#: ../src/virtManager/create.py:1704 ../src/virtManager/create.py:1706
+#: ../src/virtManager/details.py:1609 ../src/virtManager/details.py:1802
+#: ../src/virtManager/host.py:997
 msgid "Unknown"
-msgstr "알 수 없음  "
+msgstr "알 수 없음"
 
-#: ../src/virtManager/console.py:165
-msgid "Press Ctrl+Alt to release pointer."
-msgstr ""
+#: ../src/virtManager/console.py:200
+#, fuzzy, python-format
+msgid "Press %s to release pointer."
+msgstr "포인터를 풀려면 Ctrl-Alt를 누르십시오."
 
-#: ../src/virtManager/console.py:181
+#: ../src/virtManager/console.py:216
 msgid "Pointer grabbed"
-msgstr ""
+msgstr "포인터 강제 고정됨"
 
-#: ../src/virtManager/console.py:182
+#: ../src/virtManager/console.py:217
+#, fuzzy
 msgid ""
 "The mouse pointer has been restricted to the virtual console window. To "
-"release the pointer, press the key pair: Ctrl+Alt"
+"release the pointer, press the key pair"
 msgstr ""
+"마우스 포인터가 가상 콘솔 창 내부로만 제한됩니다. 포인터를 풀려면, 다음 키 조"
+"합을 입력하십시오: ctrl+Alt"
 
-#: ../src/virtManager/console.py:183
+#: ../src/virtManager/console.py:218
 msgid "Do not show this notification in the future."
-msgstr ""
+msgstr "다음부터 이 통지를 보지 않기."
 
 #. Guest isn't running, schedule another try
-#: ../src/virtManager/console.py:366 ../src/virtManager/console.py:601
+#: ../src/virtManager/console.py:400 ../src/virtManager/console.py:641
 msgid "Guest not running"
-msgstr ""
+msgstr "게스트가 실행중이지 않음"
 
-#: ../src/virtManager/console.py:369
+#: ../src/virtManager/console.py:403
 msgid "Guest has crashed"
-msgstr ""
+msgstr "게스트가 크래시됨"
 
-#: ../src/virtManager/console.py:464
+#: ../src/virtManager/console.py:499
 msgid "Error: VNC connection to hypervisor host got refused or disconnected!"
-msgstr ""
+msgstr "오류: hypervisor 호스트에 대한 VNC 연결이 거절되거나 끊겼습니다!"
 
-#: ../src/virtManager/console.py:618
+#: ../src/virtManager/console.py:658
 msgid "Graphical console not configured for guest"
-msgstr ""
+msgstr "게스트를 위한 그래픽 콘솔이 설정되지 않음"
 
-#: ../src/virtManager/console.py:624
+#: ../src/virtManager/console.py:664
 msgid "Graphical console not supported for guest"
-msgstr ""
+msgstr "게스트를 위한 그래픽 콘솔이 지원되지 않음"
 
-#: ../src/virtManager/console.py:629
+#: ../src/virtManager/console.py:669
 msgid "Graphical console is not yet active for guest"
-msgstr ""
+msgstr "게스트를 위한 그래픽 콘솔이 아직 활성화되지 않음"
 
-#: ../src/virtManager/console.py:634
+#: ../src/virtManager/console.py:674
 msgid "Connecting to graphical console for guest"
-msgstr ""
+msgstr "게스트를 위한 그래픽 콘솔에 연결 중"
 
-#: ../src/virtManager/console.py:679
+#: ../src/virtManager/console.py:719
 msgid "Unable to provide requested credentials to the VNC server"
-msgstr ""
+msgstr "VNC 서버에 대해 요청된 자격을 제공할 수 없음"
 
-#: ../src/virtManager/console.py:680
+#: ../src/virtManager/console.py:720
 #, python-format
 msgid "The credential type %s is not supported"
-msgstr ""
+msgstr "자격 유형 %s를 지원하지 않음"
 
-#: ../src/virtManager/console.py:681
-#, fuzzy
+#: ../src/virtManager/console.py:721
 msgid "Unable to authenticate"
-msgstr "GTK 초기화 불가능:"
+msgstr "인증 실패"
 
-#: ../src/virtManager/console.py:685
+#: ../src/virtManager/console.py:725
 msgid "Unsupported console authentication type"
-msgstr ""
+msgstr "지원하지 않는 콘솔 인증 유형"
 
 #: ../src/virtManager/create.py:319
-#, fuzzy
 msgid "No active connection to install on."
-msgstr "연결(_n)"
+msgstr "설치할 활성화된 연결 없음"
 
 #: ../src/virtManager/create.py:372
-#, fuzzy
 msgid "Connection is read only."
-msgstr "연결(_n)"
+msgstr "연결이 읽기 전용임"
 
 #: ../src/virtManager/create.py:375
 msgid ""
 "No hypervisor options were found for this\n"
 "connection."
 msgstr ""
+"이 연결에 대한 hypervisor 옵션을\n"
+"찾을 수 없음"
 
 #: ../src/virtManager/create.py:380
 msgid ""
@@ -945,6 +964,9 @@ msgid ""
 "installed on your machine. Please ensure they\n"
 "are installed as intended."
 msgstr ""
+"이는 일반적으로 qemu나 kvm이 여러분의 머신에\n"
+"설치되지 않았다는 의미입니다. 여러분의 의도대로\n"
+"그것이 설치되어 있는지 확인하십시오."
 
 #: ../src/virtManager/create.py:394
 msgid ""
@@ -953,12 +975,18 @@ msgid ""
 "This may mean support is disabled in your\n"
 "system BIOS."
 msgstr ""
+"호스트가 가상화를 완전히 지원하지만,\n"
+"관련 설치 옵션이 사용 불가능합니다.\n"
+"시스템 BIOS에서 해당 지원을 사용불가로\n"
+"설정했기 때문일 수 있습니다."
 
 #: ../src/virtManager/create.py:401
 msgid ""
 "Host does not appear to support hardware\n"
 "virtualization. Install options may be limited."
 msgstr ""
+"호스트가 하드웨어 가상화를 지원하지 않는 것\n"
+"같습니다. 설치 옵션이 제한될 것입니다."
 
 #: ../src/virtManager/create.py:407
 msgid ""
@@ -966,224 +994,224 @@ msgid ""
 "package is not installed, or the KVM kernel modules \n"
 "are not loaded. Your virtual machines may perform poorly."
 msgstr ""
+"KVM을 사용할 수 없습니다. 이것은 KVM 패키지가 설치되지\n"
+"않았거나, KVM 커널 모듈이 로드되지 않았음을 의미합니다.\n"
+"가상 머신 동작시 성능이 좋지 않을 수 있습니다."
 
 #: ../src/virtManager/create.py:430
 #, python-format
 msgid "%s installs not available for paravirt guests."
-msgstr ""
+msgstr "%s 설치가 paravirt 게스트에서 사용 불가능합니다."
 
 #: ../src/virtManager/create.py:434
 msgid "URL installs not available for remote connections."
-msgstr ""
+msgstr "URL 설치가 원격 연결에서 사용 불가능합니다."
 
 #: ../src/virtManager/create.py:448
 msgid "No install options available for this connection."
-msgstr ""
+msgstr "이 연결에 대해 사용 가능한 설치 옵션이 없습니다."
 
 #: ../src/virtManager/create.py:488
 #, python-format
 msgid "Up to %(maxmem)s available on the host"
-msgstr ""
+msgstr "호스트에 최대 %(maxmem)s 까지 사용 가능"
 
 #: ../src/virtManager/create.py:502
 #, python-format
 msgid "Hypervisor only supports %d virtual CPUs."
-msgstr ""
+msgstr "hypervisor는 단지 %d 개의 가상 CPU를 지원합니다."
 
 #: ../src/virtManager/create.py:512
 #, python-format
 msgid "Up to %(numcpus)d available"
-msgstr ""
+msgstr "최대 %(numcpus)d 개 사용가능"
 
-#: ../src/virtManager/create.py:584
+#: ../src/virtManager/create.py:586
 msgid "Only URL or import installs are supported for paravirt."
-msgstr ""
+msgstr "paravirt에서는 URL이나 가져오기 설치만 지원합니다."
 
-#: ../src/virtManager/create.py:661 ../src/virtManager/create.py:670
-#: ../src/virtManager/create.py:743 ../src/virtManager/create.py:745
+#: ../src/virtManager/create.py:663 ../src/virtManager/create.py:672
+#: ../src/virtManager/create.py:745 ../src/virtManager/create.py:747
 msgid "Generic"
-msgstr ""
-
-#: ../src/virtManager/create.py:725
-msgid "Local CDROM/ISO"
-msgstr "로컬 CDROM/ISO  "
+msgstr "일반"
 
 #: ../src/virtManager/create.py:727
-msgid "URL Install Tree"
-msgstr "URL 설치 트리  "
+msgid "Local CDROM/ISO"
+msgstr "로컬 CDROM/ISO"
 
 #: ../src/virtManager/create.py:729
-msgid "PXE Install"
-msgstr "PXE 설치  "
+msgid "URL Install Tree"
+msgstr "URL 설치 트리"
 
 #: ../src/virtManager/create.py:731
-#, fuzzy
+msgid "PXE Install"
+msgstr "PXE 설치"
+
+#: ../src/virtManager/create.py:733
 msgid "Import existing OS image"
-msgstr "기존 저장 장치 위치 지정  "
+msgstr "기존 OS 이미지 가져오기"
 
-#: ../src/virtManager/create.py:734 ../src/virtManager/details.py:1545
-#: ../src/virtManager/details.py:1841
+#: ../src/virtManager/create.py:736 ../src/virtManager/details.py:1610
+#: ../src/virtManager/details.py:1919
 msgid "None"
-msgstr ""
+msgstr "없음"
 
-#: ../src/virtManager/create.py:1068 ../src/virtManager/createinterface.py:891
+#: ../src/virtManager/create.py:1075 ../src/virtManager/createinterface.py:891
 #, python-format
 msgid "Step %(current_page)d of %(max_page)d"
-msgstr ""
+msgstr "%(max_page)d 중 %(current_page)d 단계"
 
-#: ../src/virtManager/create.py:1107
+#: ../src/virtManager/create.py:1114
 #, python-format
 msgid "Error setting UUID: %s"
-msgstr "UUID 설정 도중 오류 발생: %s  "
+msgstr "UUID 설정 중 오류 발생: %s  "
 
-#: ../src/virtManager/create.py:1116
+#: ../src/virtManager/create.py:1125
 msgid "Error setting up graphics device:"
-msgstr "그래픽 장치를 설정하는 도중 오류 발생:  "
+msgstr "그래픽 장치 설정 중 오류 발생:"
 
-#: ../src/virtManager/create.py:1126
+#: ../src/virtManager/create.py:1135
 msgid "Error setting up sound device:"
-msgstr "사운드 장치를 설정하는 도중 오류 발생:  "
+msgstr "사운드 장치 설정 중 오류 발생:"
 
-#: ../src/virtManager/create.py:1166 ../src/virtManager/createinterface.py:920
+#: ../src/virtManager/create.py:1175 ../src/virtManager/createinterface.py:920
 #, python-format
 msgid "Uncaught error validating install parameters: %s"
-msgstr ""
+msgstr "설치 매개 변수 검증 중 해결 할 수 없는 오류 발생: %s"
 
-#: ../src/virtManager/create.py:1178
+#: ../src/virtManager/create.py:1187
 msgid "Invalid System Name"
 msgstr "잘못된 시스템 이름"
 
-#: ../src/virtManager/create.py:1203
+#: ../src/virtManager/create.py:1212
 msgid "An install media selection is required."
-msgstr "설치 미디어를 선택해야 합니다.  "
+msgstr "설치 매체를 선택해야 합니다."
 
-#: ../src/virtManager/create.py:1213
+#: ../src/virtManager/create.py:1222
 msgid "An install tree is required."
-msgstr "설치 트리가 필요합니다.  "
+msgstr "설치 트리가 필요합니다."
 
-#: ../src/virtManager/create.py:1226
-#, fuzzy
+#: ../src/virtManager/create.py:1235
 msgid "A storage path to import is required."
-msgstr "저장 경로를 지정해야 합니다.  "
+msgstr "불러올 저장소 경로를 지정해야 합니다."
 
-#: ../src/virtManager/create.py:1236
+#: ../src/virtManager/create.py:1245
 msgid "Error setting installer parameters."
-msgstr "설치 프로그램 매개 변수 설정 도중 오류 발생.  "
+msgstr "설치 프로그램 매개 변수 설정 중 오류 발생."
 
-#: ../src/virtManager/create.py:1254
+#: ../src/virtManager/create.py:1263
 msgid "Error setting install media location."
-msgstr "설치 미디어 위치 설정 도중 오류 발생.  "
+msgstr "설치 매체 위치 설정 중 오류 발생."
 
-#: ../src/virtManager/create.py:1264
+#: ../src/virtManager/create.py:1273
 msgid "Error setting OS information."
-msgstr "OS 정보 설정 도중 오류 발생.  "
+msgstr "OS 정보 설정 중 오류 발생."
 
-#: ../src/virtManager/create.py:1301
+#: ../src/virtManager/create.py:1310
 msgid "Error setting CPUs."
-msgstr "CPU 설정 도중 오류 발생.  "
+msgstr "CPU 설정 중 오류 발생."
 
-#: ../src/virtManager/create.py:1308
+#: ../src/virtManager/create.py:1317
 msgid "Error setting guest memory."
-msgstr "게스트 메모리 설정 도중 오류 발생.  "
+msgstr "게스트 메모리 설정 중 오류 발생."
 
-#: ../src/virtManager/create.py:1399
+#: ../src/virtManager/create.py:1414
 #, python-format
 msgid "Network device required for %s install."
-msgstr "%s 설치를 위해 네트워크 장치가 필요합니다.  "
+msgstr "%s 설치를 위해 네트워크 장치가 필요합니다."
 
-#: ../src/virtManager/create.py:1478
-#, fuzzy
+#: ../src/virtManager/create.py:1492
 msgid "Error launching customize dialog: "
-msgstr "저장 경로를 변경하는 도중 오류 발생: %s    "
+msgstr "사용자 설정 대화창 표시 중 오류 발생:"
 
-#: ../src/virtManager/create.py:1509
+#: ../src/virtManager/create.py:1523
 msgid "Creating Virtual Machine"
-msgstr "가상 장치 생성"
+msgstr "가상 머신 생성"
 
-#: ../src/virtManager/create.py:1510
+#: ../src/virtManager/create.py:1524
 msgid ""
 "The virtual machine is now being created. Allocation of disk storage and "
 "retrieval of the installation images may take a few minutes to complete."
 msgstr ""
+"가상 머신이 지금 생성 중 입니다. 디스크 저장소의 할당과 새로운 설치 이미지를 "
+"읽어들이는 작업을 완료하기 위해 몇 분이 필요할 것입니다."
 
-#: ../src/virtManager/create.py:1555
+#: ../src/virtManager/create.py:1569
 msgid "Guest installation failed to complete"
-msgstr "게스트 설치를 완료하지 못했습니다   "
+msgstr "게스트 설치를 완료하지 못했습니다"
 
-#: ../src/virtManager/create.py:1613
-#, fuzzy, python-format
+#: ../src/virtManager/create.py:1633
+#, python-format
 msgid "Error continue install: %s"
-msgstr "볼륨 생성 도중 오류 발생: %s  "
+msgstr "설치 계속 중 오류 발생: %s"
 
-#: ../src/virtManager/create.py:1722
+#: ../src/virtManager/create.py:1742
 msgid "Detecting"
-msgstr "감지  "
+msgstr "감지"
 
 #: ../src/virtManager/createinterface.py:201
-#: ../src/virtManager/uihelpers.py:208
+#: ../src/virtManager/uihelpers.py:252
 msgid "Bridge"
-msgstr ""
+msgstr "브릿지"
 
 #: ../src/virtManager/createinterface.py:203
-#, fuzzy
 msgid "Bond"
-msgstr "사운드  "
+msgstr "부착"
 
 #: ../src/virtManager/createinterface.py:205
-#, fuzzy
 msgid "Ethernet"
-msgstr "기타  "
+msgstr "이더넷"
 
 #: ../src/virtManager/createinterface.py:207
 msgid "VLAN"
-msgstr ""
+msgstr "VLAN"
+
+#: ../src/virtManager/createinterface.py:222 ../src/virtManager/manager.py:377
+#: ../src/virtManager/storagebrowse.py:125 ../src/vmm-create-net.glade.h:29
+#: ../src/vmm-create-pool.glade.h:9 ../src/vmm-create.glade.h:30
+msgid "Name"
+msgstr "이름"
 
 #: ../src/virtManager/createinterface.py:223
-#, fuzzy
 msgid "Type"
-msgstr "유형:  "
+msgstr "유형"
 
 #: ../src/virtManager/createinterface.py:224
 msgid "In use by"
-msgstr ""
+msgstr "사용중임"
 
 #: ../src/virtManager/createinterface.py:262
 #: ../src/virtManager/createinterface.py:272
-#, fuzzy
 msgid "System default"
-msgstr "하이퍼바이저 기본값  "
+msgstr "시스템 기본값"
 
 #: ../src/virtManager/createinterface.py:511
 msgid "Choose interface(s) to bridge:"
-msgstr ""
+msgstr "브릿지할 인터페이스(들) 선택:"
 
 #: ../src/virtManager/createinterface.py:514
-#, fuzzy
 msgid "Choose parent interface:"
-msgstr "대상 디렉토리 선택  "
+msgstr "부모 인터페이스 선택:"
 
 #: ../src/virtManager/createinterface.py:516
 msgid "Choose interfaces to bond:"
-msgstr ""
+msgstr "부착할 인터페이스 선택:"
 
 #: ../src/virtManager/createinterface.py:518
 msgid "Choose an unconfigured interface:"
-msgstr ""
+msgstr "미설정 인터페이스 선택:"
 
 #: ../src/virtManager/createinterface.py:573
-#, fuzzy
 msgid "No interface selected"
-msgstr "저장 경로를 지정해야 합니다.  "
+msgstr "인터페이스 선택되지 않음"
 
 #: ../src/virtManager/createinterface.py:933
-#, fuzzy
 msgid "An interface name is required."
-msgstr "설치 트리가 필요합니다.  "
+msgstr "인터페이스 이름이 필요합니다."
 
 #: ../src/virtManager/createinterface.py:937
-#, fuzzy
 msgid "An interface must be selected"
-msgstr "저장 경로를 지정해야 합니다.  "
+msgstr "인터페이스가 선택되어야 함"
 
 #: ../src/virtManager/createinterface.py:968
 #, python-format
@@ -1195,40 +1223,43 @@ msgid ""
 "Using these may overwrite their existing configuration. Are you sure you "
 "want to use the selected interface(s)?"
 msgstr ""
+"다음 인터페이스가 이미 설정되었습니다:\n"
+"\n"
+"%s\n"
+"\n"
+"이를 사용시 기존 설정을 덮어쓰게 됩니다. 선택된 인터페이스를 사용하기 원하십"
+"니까?"
 
 #: ../src/virtManager/createinterface.py:1006
-#, fuzzy
 msgid "Error setting interface parameters."
-msgstr "설치 프로그램 매개 변수 설정 도중 오류 발생.  "
+msgstr "인터페이스 매개 변수 설정 중 오류가 발생했습니다."
 
 #: ../src/virtManager/createinterface.py:1083
-#, fuzzy, python-format
+#, python-format
 msgid "Error validating IP configuration: %s"
-msgstr "저장 경로를 변경하는 도중 오류 발생: %s    "
+msgstr "IP 설정 검증 중 오류 발생: %s"
 
 #: ../src/virtManager/createinterface.py:1129
-#, fuzzy
 msgid "Creating virtual interface"
-msgstr "가상 장치 생성"
+msgstr "가상 인터페이스 생성중"
 
 #: ../src/virtManager/createinterface.py:1130
 msgid "The virtual interface is now being created."
-msgstr ""
+msgstr "가상 인터페이스가 지금 생성 중 입니다."
 
 #: ../src/virtManager/createinterface.py:1165
-#, fuzzy, python-format
+#, python-format
 msgid "Error creating interface: '%s'"
-msgstr "볼륨 생성 도중 오류 발생: %s  "
+msgstr "인터페이스 생성 중 오류 발생: '%s'"
 
 #: ../src/virtManager/createnet.py:105
-#, fuzzy
 msgid "Any physical device"
-msgstr "물리적 호스트 장치  "
+msgstr "물리 디바이스"
 
 #: ../src/virtManager/createnet.py:108
-#, fuzzy, python-format
+#, python-format
 msgid "Physical device %s"
-msgstr "물리적 호스트 장치  "
+msgstr "물리 디바이스 %s"
 
 #: ../src/virtManager/createnet.py:119 ../src/virtManager/network.py:36
 msgid "NAT"
@@ -1236,238 +1267,237 @@ msgstr "NAT"
 
 #: ../src/virtManager/createnet.py:120
 msgid "Routed"
-msgstr ""
-
-#: ../src/virtManager/createnet.py:181
-#, python-format
-msgid "%d addresses"
-msgstr "%d 주소  "
-
-#: ../src/virtManager/createnet.py:183
-msgid "Public"
-msgstr "공개  "
-
-#: ../src/virtManager/createnet.py:185 ../src/vmm-create-net.glade.h:40
-msgid "Private"
-msgstr "비공개  "
+msgstr "라우팅됨"
 
 #: ../src/virtManager/createnet.py:187
+#, python-format
+msgid "%d addresses"
+msgstr "%d 주소"
+
+#: ../src/virtManager/createnet.py:191
+msgid "Public"
+msgstr "공개"
+
+#: ../src/virtManager/createnet.py:193 ../src/vmm-create-net.glade.h:40
+msgid "Private"
+msgstr "비공개"
+
+#: ../src/virtManager/createnet.py:195
 msgid "Reserved"
-msgstr "보존  "
+msgstr "예약됨"
 
-#: ../src/virtManager/createnet.py:189
+#: ../src/virtManager/createnet.py:197
 msgid "Other"
-msgstr "기타  "
+msgstr "기타"
 
-#: ../src/virtManager/createnet.py:292 ../src/vmm-create-net.glade.h:43
-#, fuzzy
+#: ../src/virtManager/createnet.py:300 ../src/vmm-create-net.glade.h:43
 msgid "Start address:"
-msgstr "MAC 주소"
+msgstr "시작 주소:"
 
-#: ../src/virtManager/createnet.py:298 ../src/vmm-details.glade.h:94
+#: ../src/virtManager/createnet.py:306 ../src/vmm-details.glade.h:98
 msgid "Status:"
 msgstr "상태:"
 
-#: ../src/virtManager/createnet.py:299 ../src/virtManager/details.py:1591
-#: ../src/virtManager/details.py:1592 ../src/virtManager/details.py:1593
-#: ../src/virtManager/details.py:1594 ../src/virtManager/host.py:514
-#: ../src/virtManager/host.py:515
+#: ../src/virtManager/createnet.py:307 ../src/virtManager/details.py:1662
+#: ../src/virtManager/details.py:1663 ../src/virtManager/details.py:1664
+#: ../src/virtManager/details.py:1665 ../src/virtManager/host.py:522
+#: ../src/virtManager/host.py:523
 msgid "Disabled"
-msgstr ""
+msgstr "비활성화됨"
 
-#: ../src/virtManager/createnet.py:351
+#: ../src/virtManager/createnet.py:359
 #, python-format
 msgid "Error creating virtual network: %s"
-msgstr "가상 네트워크를 생성하는 도중 오류 발생: %s  "
+msgstr "가상 네트워크 생성 중 오류 발생: %s"
 
-#: ../src/virtManager/createnet.py:362 ../src/virtManager/createnet.py:365
+#: ../src/virtManager/createnet.py:370 ../src/virtManager/createnet.py:373
 msgid "Invalid Network Name"
-msgstr "잘못된 네트워크 이름  "
+msgstr "잘못된 네트워크 이름"
 
-#: ../src/virtManager/createnet.py:363
+#: ../src/virtManager/createnet.py:371
 msgid "Network name must be non-blank and less than 50 characters"
-msgstr "네트워크 이름은 빈 칸과 공백없이 50자 이하로 지정해야 합니다.  "
+msgstr "네트워크 이름은 공백 없이 50자 이하로 지정해야 함"
 
-#: ../src/virtManager/createnet.py:366
+#: ../src/virtManager/createnet.py:374
 msgid "Network name may contain alphanumeric and '_' characters only"
-msgstr ""
+msgstr "네트워크 이름은 알파벳,숫자, '_' 문자만을 포함할 수 있음"
 
-#: ../src/virtManager/createnet.py:372 ../src/virtManager/createnet.py:376
-#: ../src/virtManager/createnet.py:380
+#: ../src/virtManager/createnet.py:380 ../src/virtManager/createnet.py:384
+#: ../src/virtManager/createnet.py:388
 msgid "Invalid Network Address"
-msgstr "잘못된 네트워크 주소  "
-
-#: ../src/virtManager/createnet.py:373
-msgid "The network address could not be understood"
-msgstr ""
-
-#: ../src/virtManager/createnet.py:377
-msgid "The network must be an IPv4 address"
-msgstr "네트워크는 IPv4 주소이어야 합니다  "
+msgstr "잘못된 네트워크 주소"
 
 #: ../src/virtManager/createnet.py:381
-msgid "The network prefix must be at least /4 (16 addresses)"
-msgstr ""
-
-#: ../src/virtManager/createnet.py:384
-msgid "Check Network Address"
-msgstr "네트워크 주소 확인  "
+msgid "The network address could not be understood"
+msgstr "네트워크 주소를 해설할 수 없음"
 
 #: ../src/virtManager/createnet.py:385
+msgid "The network must be an IPv4 address"
+msgstr "네트워크는 IPv4 주소여야 함"
+
+#: ../src/virtManager/createnet.py:389
+msgid "The network prefix must be at least /4 (16 addresses)"
+msgstr "네트워크 접두어는 최소 /4(16 주소)여야 함"
+
+#: ../src/virtManager/createnet.py:392
+msgid "Check Network Address"
+msgstr "네트워크 주소 확인"
+
+#: ../src/virtManager/createnet.py:393
 msgid ""
 "The network should normally use a private IPv4 address. Use this non-private "
 "address anyway?"
 msgstr ""
+"네트워크는 보통 사설 IPv4 주소를 사용해야 합니다. 이 비-사설 주소를 어쨌든 사"
+"용하겠습니까?"
 
-#: ../src/virtManager/createnet.py:394 ../src/virtManager/createnet.py:397
-#: ../src/virtManager/createnet.py:401 ../src/virtManager/createnet.py:404
+#: ../src/virtManager/createnet.py:403 ../src/virtManager/createnet.py:406
+#: ../src/virtManager/createnet.py:410 ../src/virtManager/createnet.py:413
 msgid "Invalid DHCP Address"
-msgstr "잘못된 DHCP 주소  "
+msgstr "잘못된 DHCP 주소"
 
-#: ../src/virtManager/createnet.py:395
+#: ../src/virtManager/createnet.py:404
 msgid "The DHCP start address could not be understood"
-msgstr ""
+msgstr "DHCP 시작 주소를 해설 할 수 없음"
 
-#: ../src/virtManager/createnet.py:398
+#: ../src/virtManager/createnet.py:407
 msgid "The DHCP end address could not be understood"
-msgstr ""
-
-#: ../src/virtManager/createnet.py:402
-#, python-format
-msgid "The DHCP start address is not with the network %s"
-msgstr ""
-
-#: ../src/virtManager/createnet.py:405
-#, python-format
-msgid "The DHCP end address is not with the network %s"
-msgstr ""
-
-#: ../src/virtManager/createnet.py:410
-msgid "Invalid forwarding mode"
-msgstr "잘못된 포워딩 모드  "
+msgstr "DHCP 끝 주소를 해석할 수 없음"
 
 #: ../src/virtManager/createnet.py:411
+#, python-format
+msgid "The DHCP start address is not with the network %s"
+msgstr "DHCP 시작주소가 네트워크 %s 상에 있지 않음"
+
+#: ../src/virtManager/createnet.py:414
+#, python-format
+msgid "The DHCP end address is not with the network %s"
+msgstr "DHCP 끝 주소가 네트워크 %s 상에 있지 않음"
+
+#: ../src/virtManager/createnet.py:419
+msgid "Invalid forwarding mode"
+msgstr "잘못된 포워딩 모드"
+
+#: ../src/virtManager/createnet.py:420
 msgid "Please select where the traffic should be forwarded"
-msgstr ""
+msgstr "흐름이 포워드될 위치를 선택하십시오"
 
-#: ../src/virtManager/createpool.py:369
+#: ../src/virtManager/createpool.py:368
 msgid "Choose source path"
-msgstr "소스 경로 선택  "
+msgstr "소스 경로 선택"
 
-#: ../src/virtManager/createpool.py:375
+#: ../src/virtManager/createpool.py:374
 msgid "Choose target directory"
-msgstr "대상 디렉토리 선택  "
+msgstr "대상 디렉토리 선택"
+
+#: ../src/virtManager/createpool.py:406
+msgid "Creating storage pool..."
+msgstr "저장소 풀 생성중..."
 
 #: ../src/virtManager/createpool.py:407
-#, fuzzy
-msgid "Creating storage pool..."
-msgstr "새 저장 파일 생성 및 위치 지정"
-
-#: ../src/virtManager/createpool.py:408
 msgid "Creating the storage pool may take a while..."
-msgstr ""
+msgstr "저장소 풀을 생성하는 데 시간이 걸릴 것입니다..."
 
-#: ../src/virtManager/createpool.py:436
+#: ../src/virtManager/createpool.py:435
 #, python-format
 msgid "Error creating pool: %s"
-msgstr "풀 생성 도중 오류 발생: %s  "
+msgstr "풀 생성 중 오류 발생: %s"
 
-#: ../src/virtManager/createpool.py:485 ../src/virtManager/createpool.py:507
+#: ../src/virtManager/createpool.py:484 ../src/virtManager/createpool.py:506
 msgid "Pool Parameter Error"
-msgstr "풀 매개 변수 오류  "
+msgstr "풀 매개 변수 오류"
 
-#: ../src/virtManager/createpool.py:512
+#: ../src/virtManager/createpool.py:511
 msgid ""
 "Building a pool of this type will format the source device. Are you sure you "
 "want to 'build' this pool?"
 msgstr ""
-
-#: ../src/virtManager/createpool.py:526
-msgid "Format the source device."
-msgstr ""
+"이러한 형태의 풀을 구축하면 원본 장치를 포맷하게 됩니다. 이러한 풀을 '구축' "
+"하겠습니까?"
 
 #: ../src/virtManager/createpool.py:528
+msgid "Format the source device."
+msgstr "원본 장치 포맷"
+
+#: ../src/virtManager/createpool.py:530
 msgid "Create a logical volume group from the source device."
-msgstr "소스 장치에서 논리 볼륨 그룹을 생성합니다.  "
+msgstr "소스 장치에서 논리 볼륨 그룹을 생성합니다."
 
 #: ../src/virtManager/createvol.py:218
 msgid "Creating storage volume..."
-msgstr "저장 볼륨 생성 중....   "
+msgstr "저장소 볼륨 생성 중..."
 
 #: ../src/virtManager/createvol.py:219
 msgid "Creating the storage volume may take a while..."
-msgstr ""
+msgstr "저장소 볼륨 생성에는 시간이 걸릴 것입니다..."
 
 #: ../src/virtManager/createvol.py:247
 #, python-format
 msgid "Error creating vol: %s"
-msgstr "볼륨 생성 도중 오류 발생: %s  "
+msgstr "볼륨 생성 중 오류 발생: %s"
 
 #: ../src/virtManager/createvol.py:267
-#, fuzzy
 msgid "Volume Parameter Error"
-msgstr "네트워크 사용량:"
+msgstr "네트워크 매개 변수 오류"
 
 #: ../src/virtManager/delete.py:98
 msgid "Delete"
-msgstr "삭제 "
+msgstr "삭제"
 
 #: ../src/virtManager/delete.py:141
 #, python-format
 msgid "Deleting virtual machine '%s'"
-msgstr "'%s' 가상 장치 삭제 중     "
+msgstr "'%s' 가상 머신 삭제 중"
 
 #: ../src/virtManager/delete.py:176
 #, python-format
 msgid "Deleting path '%s'"
-msgstr ""
+msgstr "경로 '%s' 삭제 중"
 
 #: ../src/virtManager/delete.py:187
-#, fuzzy, python-format
+#, python-format
 msgid "Error deleting virtual machine '%s': %s"
-msgstr "도메인 '%s' 복구 중 오류가 발생했습니다. 이미 도메인이 실행 중 입니까?"
+msgstr "가상 머신 '%s' 삭제 중 오류 발생: %s"
 
 #: ../src/virtManager/delete.py:203
 msgid "Additionally, there were errors removing certain storage devices: \n"
-msgstr ""
+msgstr "또한, 몇몇 저장소 장치 삭제 중 오류가 있었습니다:\n"
 
 #: ../src/virtManager/delete.py:207
 msgid "Errors encountered while removing certain storage devices."
-msgstr ""
+msgstr "몇몇 저장소 장치 삭제 중 오류가 발생했습니다."
 
 #: ../src/virtManager/delete.py:288
-#, fuzzy
 msgid "Storage Path"
-msgstr "<b>저장</b>"
+msgstr "저장소 경로"
 
 #: ../src/virtManager/delete.py:289
 msgid "Target"
-msgstr "대상  "
+msgstr "대상"
 
 #: ../src/virtManager/delete.py:337
 msgid "Cannot delete iscsi share."
-msgstr ""
+msgstr "iscsi 공유를 삭제할 수 없습니다."
 
 #: ../src/virtManager/delete.py:340
 msgid "Cannot delete unmanaged remote storage."
-msgstr ""
+msgstr "관리안된 원격 저장소를 삭제할 수 없습니다."
 
 #: ../src/virtManager/delete.py:346
 msgid "Cannot delete unmanaged block device."
-msgstr ""
+msgstr "관리안된 블럭 장치를 삭제할 수 없습니다."
 
 #: ../src/virtManager/delete.py:366
-#, fuzzy
 msgid "Storage is read-only."
-msgstr "연결(_n)"
+msgstr "저장소가 읽기 전용입니다."
 
 #: ../src/virtManager/delete.py:368
 msgid "No write access to path."
-msgstr ""
+msgstr "경로에 대한 쓰기 권한이 없습니다."
 
 #: ../src/virtManager/delete.py:371
 msgid "Storage is marked as shareable."
-msgstr ""
+msgstr "저장소가 공유 가능으로 표시되어 있습니다."
 
 #: ../src/virtManager/delete.py:381
 #, python-format
@@ -1475,257 +1505,287 @@ msgid ""
 "Storage is in use by the following virtual machines:\n"
 "- %s "
 msgstr ""
+"다음 가상 머신이 저장소를 사용중입니다:\n"
+"- '%s'"
 
-#: ../src/virtManager/details.py:389
+#: ../src/virtManager/details.py:393
 msgid "Add Hardware"
-msgstr ""
+msgstr "하드웨어 추가"
 
-#: ../src/virtManager/details.py:425
+#: ../src/virtManager/details.py:429
 msgid "Close tab"
-msgstr ""
+msgstr "탭 닫기"
 
-#: ../src/virtManager/details.py:498
+#: ../src/virtManager/details.py:504
+#, fuzzy
 msgid ""
 "Static SELinux security type tells libvirt to always start the guest process "
 "with the specified label. The administrator is responsible for making sure "
-"the images are labeled corectly on disk."
+"the images are labeled correctly on disk."
 msgstr ""
+"고정 SELinux 보안 타입에 따라 libvert는 항상 지정된 레이블로 게스트 프로세스"
+"를 시작할 것입니다. 관리자는 디스크에 있는 이미지가 제대로 레이블이 붙었는지 "
+"확인해야할 책임이 있습니다."
 
-#: ../src/virtManager/details.py:500
+#: ../src/virtManager/details.py:506
 msgid ""
 "The dynamic SELinux security type tells libvirt to automatically pick a "
 "unique label for the guest process and guest image, ensuring total isolation "
 "of the guest. (Default)"
 msgstr ""
+"동적 SELinux 보안 타입에 따라 libvirt는 게스트 프로세스와 게스트 이미지에 대"
+"한 유일한 레이블을 자동으로 부여해서, 게스트가 완전히 독립성을 유지하도록 보"
+"장할 것입니다.(기본값임)"
 
-#: ../src/virtManager/details.py:508
-#, fuzzy
+#: ../src/virtManager/details.py:515
+msgid "Libvirt did not detect NUMA capabilities."
+msgstr ""
+
+#: ../src/virtManager/details.py:523
 msgid "VCPU"
 msgstr "VCPU"
 
-#: ../src/virtManager/details.py:509
-#, fuzzy
+#: ../src/virtManager/details.py:524
 msgid "On CPU"
-msgstr "VCPU"
+msgstr "CPU 상에"
 
-#: ../src/virtManager/details.py:510
-#, fuzzy
+#: ../src/virtManager/details.py:525
 msgid "Pinning"
-msgstr "실행 중"
+msgstr "고정하기"
 
-#: ../src/virtManager/details.py:619
+#: ../src/virtManager/details.py:638
 msgid "No serial devices found"
-msgstr ""
+msgstr "직렬 장치를 찾을 수 없음"
 
-#: ../src/virtManager/details.py:641
+#: ../src/virtManager/details.py:660
 msgid "Serial console not yet supported over remote connection."
-msgstr ""
+msgstr "원격 연결을 통한 직렬 콘솔은 아직 지원하지 않습니다."
 
-#: ../src/virtManager/details.py:644
+#: ../src/virtManager/details.py:663
 msgid "Serial console not available for inactive guest."
-msgstr ""
+msgstr "비활성화된 직렬 콘솔은 사용할 수 없습니다."
 
-#: ../src/virtManager/details.py:646
+#: ../src/virtManager/details.py:665
 #, python-format
 msgid "Console for device type '%s' not yet supported."
-msgstr ""
+msgstr "장치 유형 '%s'에 대한 콘솔은 아직 지원하지 않습니다."
 
-#: ../src/virtManager/details.py:649
+#: ../src/virtManager/details.py:668
 #, python-format
 msgid "Can not access console path '%s'."
-msgstr ""
+msgstr "콘솔 경로 '%s'를 사용할 수 없습니다."
 
-#: ../src/virtManager/details.py:667
+#: ../src/virtManager/details.py:686
 msgid "No graphics console found."
-msgstr ""
+msgstr "그래픽 콘솔을 찾을 수 없습니다."
 
-#: ../src/virtManager/details.py:672
-#, fuzzy, python-format
+#: ../src/virtManager/details.py:691
+#, python-format
 msgid "Graphical Console %s"
-msgstr "그래픽형식 콘솔(_G)"
+msgstr "그래픽 콘솔 %s"
 
-#: ../src/virtManager/details.py:764
-#, fuzzy, python-format
+#: ../src/virtManager/details.py:783
+#, python-format
 msgid "Error refreshing hardware page: %s"
-msgstr "저장 경로를 변경하는 도중 오류 발생: %s    "
+msgstr "하드웨어 페이지를 새로고치는 중 오류 발생: %s"
 
-#: ../src/virtManager/details.py:938
+#: ../src/virtManager/details.py:838 ../src/virtManager/manager.py:919
+#, fuzzy
+msgid "_Restore"
+msgstr "재개(_R)"
+
+#. Build VM context menu
+#: ../src/virtManager/details.py:840 ../src/virtManager/manager.py:328
+#: ../src/virtManager/manager.py:921 ../src/virtManager/systray.py:182
+#: ../src/vmm-details.glade.h:131 ../src/vmm-manager.glade.h:19
+msgid "_Run"
+msgstr "실행(_R)"
+
+#: ../src/virtManager/details.py:970
 msgid "Save Virtual Machine Screenshot"
-msgstr "가상 기계장치 스크린샷 저장"
+msgstr "가상 머신 스크린샷 저장"
 
-#: ../src/virtManager/details.py:963
+#: ../src/virtManager/details.py:995
 #, python-format
 msgid ""
 "The screenshot has been saved to:\n"
 "%s"
 msgstr ""
-"스크린샷이 저장되었습니다:\n"
+"스크린샷을 다음과 같이 저장했습니다:\n"
 "%s"
 
-#: ../src/virtManager/details.py:965
+#: ../src/virtManager/details.py:997
 msgid "Screenshot saved"
-msgstr "스크린샷 저장"
+msgstr "스크린샷 저장됨"
 
-#: ../src/virtManager/details.py:1297
+#: ../src/virtManager/details.py:1145
 #, fuzzy, python-format
-msgid "Error building pin list: %s"
-msgstr "새 가상 시스템 생성"
+msgid "Error generating CPU configuration: %s"
+msgstr "IP 설정 검증 중 오류 발생: %s"
 
-#: ../src/virtManager/details.py:1303
-#, fuzzy, python-format
-msgid "Error pinning vcpus: %s"
-msgstr "새 가상 시스템 생성"
-
-#: ../src/virtManager/details.py:1337
+#: ../src/virtManager/details.py:1359
 #, python-format
-msgid "Error changing autostart value: %s"
-msgstr ""
+msgid "Error building pin list: %s"
+msgstr "고정(pin) 목록 구축 중 오류 발생: %s"
+
+#: ../src/virtManager/details.py:1365
+#, python-format
+msgid "Error pinning vcpus: %s"
+msgstr "vcpus 고정 중 오류 발생: %s"
 
 #: ../src/virtManager/details.py:1399
+#, python-format
+msgid "Error changing autostart value: %s"
+msgstr "autostart 값 변경 중 오류 발상: %s"
+
+#: ../src/virtManager/details.py:1464
 msgid "Are you sure you want to remove this device?"
-msgstr ""
+msgstr "이 장치를 삭제하겠습니까?"
 
-#: ../src/virtManager/details.py:1400 ../src/virtManager/engine.py:752
-#: ../src/virtManager/engine.py:776 ../src/virtManager/engine.py:822
-#: ../src/virtManager/engine.py:846
+#: ../src/virtManager/details.py:1465 ../src/virtManager/engine.py:739
+#: ../src/virtManager/engine.py:822 ../src/virtManager/engine.py:846
+#: ../src/virtManager/engine.py:892 ../src/virtManager/engine.py:916
 msgid "Don't ask me again."
-msgstr ""
+msgstr "다시 묻지 않습니다."
 
-#: ../src/virtManager/details.py:1412
+#: ../src/virtManager/details.py:1477
 #, python-format
 msgid "Error Removing Device: %s"
-msgstr ""
+msgstr "장치 삭제 중 오류 발생: %s"
 
-#: ../src/virtManager/details.py:1427
+#: ../src/virtManager/details.py:1492
 msgid "Device could not be removed from the running machine."
-msgstr ""
+msgstr "실행 중인 머신에서 장치를 삭제할 수 없습니다."
 
-#: ../src/virtManager/details.py:1428
+#: ../src/virtManager/details.py:1493
 msgid "This change will take effect after the next VM reboot"
-msgstr ""
+msgstr "본 변경은 다음번 VM 리부팅 후 적용 됨"
 
-#: ../src/virtManager/details.py:1476
-#, fuzzy, python-format
+#: ../src/virtManager/details.py:1541
+#, python-format
 msgid "Error changing VM configuration: %s"
-msgstr "저장 경로를 변경하는 도중 오류 발생: %s    "
+msgstr "VM 설정 변경 중 오류 발생: %s"
 
-#: ../src/virtManager/details.py:1483
+#: ../src/virtManager/details.py:1548
 msgid "Some changes may require a guest reboot to take effect."
-msgstr ""
+msgstr "몇몇 변경을 적용하기 위해서는 게스트 리부팅이 필요함"
 
-#: ../src/virtManager/details.py:1486
+#: ../src/virtManager/details.py:1551
 msgid "These changes will take effect after the next guest reboot."
-msgstr ""
+msgstr "본 변경은 다음번 게스트 리부팅 후 적용됩니다."
 
-#: ../src/virtManager/details.py:1656
+#: ../src/virtManager/details.py:1732
 msgid "VCPU info only available for running domain."
-msgstr ""
+msgstr "VCPU 정보는 실행중인 도메인에서만 사용 가능합니다."
 
-#: ../src/virtManager/details.py:1658
+#: ../src/virtManager/details.py:1734
 msgid "Virtual machine does not support runtime VPCU info."
-msgstr ""
+msgstr "가상 머신이 실행중 VCPU 정보를 지원하지 않습니다."
 
-#: ../src/virtManager/details.py:1663
-#, fuzzy, python-format
+#: ../src/virtManager/details.py:1739
+#, python-format
 msgid "Error getting VCPU info: %s"
-msgstr "새 가상 시스템 생성"
+msgstr "VCPU 정보를 얻는 중 오류 발생: %s"
 
-#: ../src/virtManager/details.py:1800
+#: ../src/virtManager/details.py:1878
 msgid "Xen Mouse"
-msgstr ""
+msgstr "Xen 마우스"
 
-#: ../src/virtManager/details.py:1802
+#: ../src/virtManager/details.py:1880
 msgid "PS/2 Mouse"
-msgstr ""
+msgstr "PS/2 마우스"
 
-#: ../src/virtManager/details.py:1807
+#: ../src/virtManager/details.py:1885
 msgid "Absolute Movement"
-msgstr ""
+msgstr "절대 움직임"
 
-#: ../src/virtManager/details.py:1809
+#: ../src/virtManager/details.py:1887
 msgid "Relative Movement"
-msgstr ""
+msgstr "상대 움직임"
 
-#: ../src/virtManager/details.py:1832
-#, fuzzy
+#: ../src/virtManager/details.py:1910
 msgid "Automatically allocated"
-msgstr "자동으로 콘솔을 엽니다:"
+msgstr "자동 할당"
 
-#: ../src/virtManager/details.py:1873
-#, fuzzy
+#: ../src/virtManager/details.py:1951
 msgid "Primary Console"
-msgstr "직렬 콘솔(_S)"
+msgstr "1차 콘솔"
 
-#: ../src/virtManager/details.py:2089
+#: ../src/virtManager/details.py:2167
 msgid "Tablet"
-msgstr ""
+msgstr "타블렛"
 
-#: ../src/virtManager/details.py:2092
-#, fuzzy
+#: ../src/virtManager/details.py:2170
 msgid "Mouse"
-msgstr "정지"
+msgstr "마우스"
 
-#: ../src/virtManager/details.py:2094 ../src/vmm-details.glade.h:53
-#, fuzzy
+#: ../src/virtManager/details.py:2172 ../src/vmm-details.glade.h:55
 msgid "Input"
-msgstr "소개"
+msgstr "입력"
 
-#: ../src/virtManager/details.py:2102
+#: ../src/virtManager/details.py:2180
 #, python-format
 msgid "Display %s"
-msgstr ""
+msgstr "디스플레이 %s"
 
-#: ../src/virtManager/details.py:2109
+#: ../src/virtManager/details.py:2187
 #, python-format
 msgid "Sound: %s"
-msgstr ""
+msgstr "사운드: %s"
 
-#: ../src/virtManager/domain.py:809 ../src/virtManager/domain.py:2241
+#: ../src/virtManager/domain.py:833 ../src/virtManager/domain.py:2322
 #, python-format
 msgid "Unknown device type '%s'"
-msgstr ""
+msgstr "알려져있지 않은 장치 유형 '%s'"
 
-#: ../src/virtManager/domain.py:812
+#: ../src/virtManager/domain.py:836
 #, python-format
 msgid "Couldn't build xpath for device %s:%s"
-msgstr ""
+msgstr "장치 %s에 대한 xpath를 구축할 수 없음:%s"
 
-#: ../src/virtManager/domain.py:837
-#, fuzzy, python-format
+#: ../src/virtManager/domain.py:861
+#, python-format
 msgid "Could not find device %s"
-msgstr "장치 추가 불가능: %s "
+msgstr "장치 %s 검색 불가능"
 
-#: ../src/virtManager/domain.py:1086
+#: ../src/virtManager/domain.py:1116
 msgid "Running"
 msgstr "실행 중"
 
-#: ../src/virtManager/domain.py:1088
+#: ../src/virtManager/domain.py:1118
 msgid "Paused"
-msgstr "정지"
+msgstr "일시 정지"
 
-#: ../src/virtManager/domain.py:1090
+#: ../src/virtManager/domain.py:1120
 #, fuzzy
-msgid "Shuting Down"
-msgstr "종료"
+msgid "Shutting Down"
+msgstr "종료 중"
 
-#: ../src/virtManager/domain.py:1092
+#: ../src/virtManager/domain.py:1122
 msgid "Shutoff"
 msgstr "종료"
 
-#: ../src/virtManager/domain.py:1094
+#: ../src/virtManager/domain.py:1124
 msgid "Crashed"
 msgstr "충돌"
 
-#: ../src/virtManager/domain.py:2250
-#, fuzzy
-msgid "Did not find selected device."
-msgstr "장치 추가 불가능: %s "
-
-#: ../src/virtManager/engine.py:103
-msgid "Searching for available hypervisors..."
+#: ../src/virtManager/domain.py:1319
+msgid "Cannot start guest while cloning operation in progress"
 msgstr ""
 
-#: ../src/virtManager/engine.py:126
+#: ../src/virtManager/domain.py:1333
+msgid "Cannot resume guest while cloning operation in progress"
+msgstr ""
+
+#: ../src/virtManager/domain.py:2331
+msgid "Did not find selected device."
+msgstr "선택된 장치를 검색하지 않았습니다."
+
+#: ../src/virtManager/engine.py:106
+msgid "Searching for available hypervisors..."
+msgstr "사용 가능한 hypervisor를 검색중..."
+
+#: ../src/virtManager/engine.py:129
 #, python-format
 msgid ""
 "The following packages are not installed:\n"
@@ -1734,18 +1794,23 @@ msgid ""
 "These are required to create KVM guests locally.\n"
 "Would you like to install them now?"
 msgstr ""
+"다음 패키지가 설치되지 않았습니다:\n"
+"%s\n"
+"\n"
+"이 패키지들은 KVM 게스트를 로컬에 만들기 위해 필요합니다.\n"
+"지금 설치하겠습니까?"
 
-#: ../src/virtManager/engine.py:131
+#: ../src/virtManager/engine.py:134
 msgid "Packages required for KVM usage"
-msgstr ""
+msgstr "KVM 사용을 위해 필요한 패키지들"
 
-#: ../src/virtManager/engine.py:140
-#, fuzzy, python-format
+#: ../src/virtManager/engine.py:143
+#, python-format
 msgid "Error talking to PackageKit: %s"
-msgstr "저장 경로를 변경하는 도중 오류 발생: %s    "
+msgstr "PackageKit과의 연결 중 오류 발생: %s"
 
 #. Manager fail message
-#: ../src/virtManager/engine.py:290
+#: ../src/virtManager/engine.py:300
 msgid ""
 "Could not detect a default hypervisor. Make\n"
 "sure the appropriate virtualization packages\n"
@@ -1755,8 +1820,14 @@ msgid ""
 "A hypervisor connection can be manually\n"
 "added via File->Add Connection"
 msgstr ""
+"기본값 hypervisor를 탐지할 수 없습니다. 적절한\n"
+"가상화 패키지(kvm,qemu, libvirt등)가 설치되어\n"
+"있는지와 libvirtd가 실행중인지 확인하십시오.\n"
+"\n"
+"hypervisor 연결은 '파일->연결 추가'를 통해\n"
+"수동으로 추가할 수 있습니다."
 
-#: ../src/virtManager/engine.py:321
+#: ../src/virtManager/engine.py:331
 msgid ""
 "Libvirt was just installed, so the 'libvirtd' service will\n"
 "will need to be started. This can be done with one \n"
@@ -1769,387 +1840,396 @@ msgid ""
 "virt-manager will connect to libvirt on the next application\n"
 "start up."
 msgstr ""
+"libvirt가 방금 설치되었습니다. 따라서 \"libvirtd' 서비스를\n"
+"시작할 필요가 있습니다. 다음 중 한 가지 방법으로 시작할 수\n"
+"있습니다:\n"
+"- GNOME 메뉴에서: 시스템->관리->서비스\n"
+"- 터미널에서: su -c 'service libvirtd restart'\n"
+"- 컴퓨터를 재시작\n"
+"\n"
+"virt-manager는 다음 번 어플리케이션 시작시 libvirt에\n"
+"연결할 것입니다."
 
-#: ../src/virtManager/engine.py:329
-#, fuzzy
+#: ../src/virtManager/engine.py:339
 msgid "Libvirt service must be started"
-msgstr "장치를 선택해야 합니다.  "
+msgstr "Libvirt 서비스가 시작되어야만 함"
 
-#: ../src/virtManager/engine.py:586
+#: ../src/virtManager/engine.py:600
 #, python-format
 msgid "Error bringing up domain details: %s"
-msgstr ""
+msgstr "도메인 상세정보를 불러오는 중 오류 발생: %s"
 
-#: ../src/virtManager/engine.py:705
-#, fuzzy, python-format
-msgid "Unknown connection URI %s"
-msgstr "연결하기"
-
-#. FIXME: This should work with remote storage stuff
-#: ../src/virtManager/engine.py:712
-msgid "Saving virtual machines over remote connections is not yet supported."
-msgstr ""
-
-#: ../src/virtManager/engine.py:719
-msgid "Save Virtual Machine"
-msgstr "가상 장치 저장"
-
-#: ../src/virtManager/engine.py:728
-msgid "Saving Virtual Machine"
-msgstr "가상 장치 저장"
-
-#: ../src/virtManager/engine.py:733
+#: ../src/virtManager/engine.py:720
 #, python-format
-msgid "Error saving domain: %s"
-msgstr ""
+msgid "Unknown connection URI %s"
+msgstr "연결 URI %s가 알려져 있지 않음"
 
-#: ../src/virtManager/engine.py:748
+#: ../src/virtManager/engine.py:730
+#, fuzzy
+msgid ""
+"Saving virtual machines over remote connections is not supported with this "
+"libvirt version or hypervisor."
+msgstr "원격 연결을 통한 가상 머신 저장은 아직 지원하지 않습니다."
+
+#: ../src/virtManager/engine.py:737
 #, fuzzy, python-format
-msgid "Are you sure you want to force poweroff '%s'?"
-msgstr "정마로 이 주소를 사용하시겠습니까?  "
+msgid "Are you sure you want to save '%s'?"
+msgstr "정말 '%s'를 일시 정지하겠습니까?"
 
 #: ../src/virtManager/engine.py:750
+msgid "Save Virtual Machine"
+msgstr "가상 머신 저장"
+
+#: ../src/virtManager/engine.py:759
+msgid "Saving Virtual Machine"
+msgstr "가상 머신 저장"
+
+#: ../src/virtManager/engine.py:764
+#, python-format
+msgid "Error saving domain: %s"
+msgstr "도메인 저장 중 오류 발생: %s"
+
+#: ../src/virtManager/engine.py:779
+msgid "Restoring virtual machines over remote connections is not yet supported"
+msgstr "원격 접속에 의한 가상 머신 복구은 아직 지원하지 않습니다."
+
+#: ../src/virtManager/engine.py:784
+msgid "Restore Virtual Machine"
+msgstr "가상 머신 복구"
+
+#: ../src/virtManager/engine.py:792
+msgid "Restoring Virtual Machine"
+msgstr "가상 머신 복구중"
+
+#: ../src/virtManager/engine.py:798
+msgid "Error restoring domain"
+msgstr "도메인 복구 중 오류 발생"
+
+#: ../src/virtManager/engine.py:806
+#, python-format
+msgid "Error restoring domain '%s': %s"
+msgstr "도메인 '%s' 복구 중 오류 발생: %s"
+
+#: ../src/virtManager/engine.py:818
+#, python-format
+msgid "Are you sure you want to force poweroff '%s'?"
+msgstr "정말로 강제로 '%s'의 전원을 차단하시겠습니까?"
+
+#: ../src/virtManager/engine.py:820
 msgid ""
 "This will immediately poweroff the VM without shutting down the OS and may "
 "cause data loss."
 msgstr ""
+"이는 OS를 종료하지 않고, VM의 전원을 즉시 끄게 됩니다. 이에 따라 데이터 유실"
+"이 발생할 수 있습니다."
 
-#: ../src/virtManager/engine.py:764 ../src/virtManager/engine.py:834
+#: ../src/virtManager/engine.py:834 ../src/virtManager/engine.py:904
 #, python-format
 msgid "Error shutting down domain: %s"
-msgstr ""
-
-#: ../src/virtManager/engine.py:774
-#, fuzzy, python-format
-msgid "Are you sure you want to pause '%s'?"
-msgstr "정마로 이 주소를 사용하시겠습니까?  "
-
-#: ../src/virtManager/engine.py:788
-#, python-format
-msgid "Error pausing domain: %s"
-msgstr ""
-
-#: ../src/virtManager/engine.py:799
-#, python-format
-msgid "Error unpausing domain: %s"
-msgstr ""
-
-#: ../src/virtManager/engine.py:810
-#, python-format
-msgid "Error starting domain: %s"
-msgstr ""
-
-#: ../src/virtManager/engine.py:820
-#, fuzzy, python-format
-msgid "Are you sure you want to poweroff '%s'?"
-msgstr "정마로 이 주소를 사용하시겠습니까?  "
+msgstr "도메인 종료 중 오류: %s"
 
 #: ../src/virtManager/engine.py:844
-#, fuzzy, python-format
+#, python-format
+msgid "Are you sure you want to pause '%s'?"
+msgstr "정말 '%s'를 일시 정지하겠습니까?"
+
+#: ../src/virtManager/engine.py:858
+#, python-format
+msgid "Error pausing domain: %s"
+msgstr "도메인 일시 정지 중 오류 발생: %s"
+
+#: ../src/virtManager/engine.py:869
+#, python-format
+msgid "Error unpausing domain: %s"
+msgstr "도매인 재개중 오류 발생: %s"
+
+#: ../src/virtManager/engine.py:880
+#, python-format
+msgid "Error starting domain: %s"
+msgstr "도메인 시작 중 오류 발생: %s"
+
+#: ../src/virtManager/engine.py:890
+#, python-format
+msgid "Are you sure you want to poweroff '%s'?"
+msgstr "정말로 '%s'의 전원을 끄시겠습니까?"
+
+#: ../src/virtManager/engine.py:914
+#, python-format
 msgid "Are you sure you want to reboot '%s'?"
-msgstr "정마로 이 주소를 사용하시겠습니까?  "
+msgstr "정말로 '%s'를 리부트하시겠습니까?"
 
 #. Raise the original error message
-#: ../src/virtManager/engine.py:862 ../src/virtManager/engine.py:877
-#, fuzzy, python-format
+#: ../src/virtManager/engine.py:932 ../src/virtManager/engine.py:947
+#, python-format
 msgid "Error rebooting domain: %s"
-msgstr "도메인 '%s' 복구 중 오류가 발생했습니다. 이미 도메인이 실행 중 입니까?"
+msgstr "도메인 리부팅 중 오류 발생: %s"
 
-#: ../src/virtManager/engine.py:906
-#, fuzzy, python-format
+#: ../src/virtManager/engine.py:976
+#, python-format
 msgid "Error setting clone parameters: %s"
-msgstr "가상 장치 관리자"
+msgstr "복제 매개 변수 설정 중 오류 발생: %s"
 
 #: ../src/virtManager/error.py:36
 msgid "Error"
-msgstr ""
+msgstr "오류"
 
 #. Expander section with details.
-#: ../src/virtManager/error.py:53 ../src/vmm-details.glade.h:38
-#, fuzzy
+#: ../src/virtManager/error.py:53 ../src/vmm-details.glade.h:41
 msgid "Details"
-msgstr "상세정보(_D)"
+msgstr "상세정보"
 
 #: ../src/virtManager/error.py:120
-#, fuzzy
 msgid "Input Error"
-msgstr "소개"
+msgstr "입력 오류"
 
-#: ../src/virtManager/host.py:185
+#: ../src/virtManager/host.py:189
 msgid "Copy Volume Path"
-msgstr ""
+msgstr "볼륨 경로 복사"
 
-#: ../src/virtManager/host.py:337
+#: ../src/virtManager/host.py:344
 #, python-format
 msgid "%(currentmem)s of %(maxmem)s"
-msgstr ""
+msgstr "전체 %(maxmem)s 중 %(currentmem)s"
 
-#: ../src/virtManager/host.py:354 ../src/virtManager/host.py:355
-#: ../src/virtManager/host.py:356
-#, fuzzy
+#: ../src/virtManager/host.py:362 ../src/virtManager/host.py:363
+#: ../src/virtManager/host.py:364
 msgid "Connection not active."
-msgstr "연결(_n)"
+msgstr "연결이 비활성화 되어 있습니다."
 
-#: ../src/virtManager/host.py:361
-#, fuzzy
+#: ../src/virtManager/host.py:369
 msgid "Libvirt connection does not support virtual network management."
-msgstr "Libvirt 버전은 비디오 장치를 지원하지 않습니다.  "
+msgstr "Libvirt 연결이 가상 네트워크 관리를 지원하지 않습니다."
 
-#: ../src/virtManager/host.py:366
-#, fuzzy
+#: ../src/virtManager/host.py:374
 msgid "Libvirt connection does not support storage management."
-msgstr "Libvirt 버전은 비디오 장치를 지원하지 않습니다.  "
+msgstr "Libvirt 연결이 저장소 관리를 지원하지 않습니다."
 
-#: ../src/virtManager/host.py:370
-#, fuzzy
+#: ../src/virtManager/host.py:378
 msgid "Libvirt connection does not support interface management."
-msgstr "Libvirt 버전은 비디오 장치를 지원하지 않습니다.  "
+msgstr "Libvirt 연결이 인터페이스 관리를 지원하지 않습니다."
 
-#: ../src/virtManager/host.py:385
+#: ../src/virtManager/host.py:393
 #, python-format
 msgid "Are you sure you want to permanently delete the network %s?"
-msgstr ""
+msgstr "정말로 네트워크 %s를 영구히 삭제하시겠습니까?"
 
-#: ../src/virtManager/host.py:392
+#: ../src/virtManager/host.py:400
 #, python-format
 msgid "Error deleting network: %s"
-msgstr ""
+msgstr "네트워크 삭제 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:403
+#: ../src/virtManager/host.py:411
 #, python-format
 msgid "Error starting network: %s"
-msgstr ""
+msgstr "네트워크 시작 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:414
+#: ../src/virtManager/host.py:422
 #, python-format
 msgid "Error stopping network: %s"
-msgstr ""
+msgstr "네트워크 중단 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:423
+#: ../src/virtManager/host.py:431
 #, python-format
 msgid "Error launching network wizard: %s"
-msgstr ""
+msgstr "네트워크 마법사 실행 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:434
+#: ../src/virtManager/host.py:442
 #, python-format
 msgid "Error setting net autostart: %s"
-msgstr ""
+msgstr "네트워크 autostart 설정 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:442 ../src/virtManager/host.py:506
-#: ../src/virtManager/host.py:692 ../src/virtManager/host.py:733
+#: ../src/virtManager/host.py:450 ../src/virtManager/host.py:514
+#: ../src/virtManager/host.py:713 ../src/virtManager/host.py:754
 msgid "On Boot"
-msgstr ""
+msgstr "부트시"
 
-#: ../src/virtManager/host.py:443 ../src/virtManager/host.py:506
-#: ../src/virtManager/host.py:540 ../src/virtManager/host.py:693
-#: ../src/virtManager/host.py:733 ../src/virtManager/host.py:765
+#: ../src/virtManager/host.py:451 ../src/virtManager/host.py:514
+#: ../src/virtManager/host.py:548 ../src/virtManager/host.py:714
+#: ../src/virtManager/host.py:754 ../src/virtManager/host.py:786
 msgid "Never"
-msgstr ""
+msgstr "하지않음"
 
-#: ../src/virtManager/host.py:471
-#, fuzzy
+#: ../src/virtManager/host.py:479
 msgid "No virtual network selected."
-msgstr "가상 CPU"
+msgstr "가상 네트워크가 선택되지 않았습니다."
 
-#: ../src/virtManager/host.py:481
-#, fuzzy, python-format
+#: ../src/virtManager/host.py:489
+#, python-format
 msgid "Error selecting network: %s"
-msgstr "도메인 '%s' 복구 중 오류가 발생했습니다. 이미 도메인이 실행 중 입니까?"
+msgstr "네트워크 선택 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:546
+#: ../src/virtManager/host.py:554
 msgid "Isolated virtual network"
-msgstr ""
+msgstr "독립된 가상 네트워크"
 
-#: ../src/virtManager/host.py:578 ../src/virtManager/host.py:588
+#: ../src/virtManager/host.py:586 ../src/virtManager/host.py:596
 #, python-format
 msgid "Error starting pool '%s': %s"
-msgstr ""
+msgstr "풀 '%s' 시작 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:597
+#: ../src/virtManager/host.py:605
 #, python-format
 msgid "Are you sure you want to permanently delete the pool %s?"
-msgstr ""
-
-#: ../src/virtManager/host.py:604
-#, python-format
-msgid "Error deleting pool: %s"
-msgstr ""
+msgstr "정말로 풀 %s를 영구히 삭제하시겠습니까?"
 
 #: ../src/virtManager/host.py:612
 #, python-format
-msgid "Are you sure you want to permanently delete the volume %s?"
-msgstr ""
+msgid "Error deleting pool: %s"
+msgstr "풀 삭제 중 오류 발생 : %s"
 
-#: ../src/virtManager/host.py:621
+#: ../src/virtManager/host.py:624
+#, fuzzy, python-format
+msgid "Error refreshing pool '%s': %s"
+msgstr "풀 '%s' 시작 중 오류 발생: %s"
+
+#: ../src/virtManager/host.py:633
+#, python-format
+msgid "Are you sure you want to permanently delete the volume %s?"
+msgstr "정말로 볼륨 %s를 영구히 삭제하시겠습니까?"
+
+#: ../src/virtManager/host.py:642
 #, python-format
 msgid "Error deleting volume: %s"
-msgstr ""
+msgstr "볼륨 삭제 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:632
+#: ../src/virtManager/host.py:653
 #, python-format
 msgid "Error launching pool wizard: %s"
-msgstr ""
+msgstr "풀 마법사 실행 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:647 ../src/virtManager/storagebrowse.py:273
+#: ../src/virtManager/host.py:668 ../src/virtManager/storagebrowse.py:273
 #, python-format
 msgid "Error launching volume wizard: %s"
-msgstr ""
-
-#: ../src/virtManager/host.py:684
-#, python-format
-msgid "Error setting pool autostart: %s"
-msgstr ""
+msgstr "볼륨 마법사 실행 중 오류 발생: %s"
 
 #: ../src/virtManager/host.py:705
-#, fuzzy
+#, python-format
+msgid "Error setting pool autostart: %s"
+msgstr "풀 autostart 설정 중 오류 발생: %s"
+
+#: ../src/virtManager/host.py:726
 msgid "No storage pool selected."
-msgstr "저장 경로를 지정해야 합니다.  "
+msgstr "저장소 풀이 선택되지 않았습니다."
 
-#: ../src/virtManager/host.py:715
-#, fuzzy, python-format
+#: ../src/virtManager/host.py:736
+#, python-format
 msgid "Error selecting pool: %s"
-msgstr "풀 생성 도중 오류 발생: %s  "
+msgstr "풀 선택 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:829
-#, fuzzy, python-format
+#: ../src/virtManager/host.py:850
+#, python-format
 msgid "Are you sure you want to stop the interface '%s'?"
-msgstr "정마로 이 주소를 사용하시겠습니까?  "
+msgstr "정말로 인터페이스 '%s'를 중지하시겠습니까?"
 
-#: ../src/virtManager/host.py:831 ../src/virtManager/host.py:857
+#: ../src/virtManager/host.py:852 ../src/virtManager/host.py:878
 msgid "Don't ask me again for interface start/stop."
-msgstr ""
+msgstr "인터페이스 시작/정지에 대해 다시 묻지 않습니다."
 
-#: ../src/virtManager/host.py:842
-#, fuzzy, python-format
+#: ../src/virtManager/host.py:863
+#, python-format
 msgid "Error stopping interface '%s': %s"
-msgstr "도메인 '%s' 복구 중 오류가 발생했습니다. 이미 도메인이 실행 중 입니까?"
+msgstr "인터페이스 '%s' 정지 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:855
-#, fuzzy, python-format
+#: ../src/virtManager/host.py:876
+#, python-format
 msgid "Are you sure you want to start the interface '%s'?"
-msgstr "정마로 이 주소를 사용하시겠습니까?  "
+msgstr "정말로 인터페이스 '%s'를 시작하시겠습니까?"
 
-#: ../src/virtManager/host.py:868
-#, fuzzy, python-format
+#: ../src/virtManager/host.py:889
+#, python-format
 msgid "Error starting interface '%s': %s"
-msgstr "도메인 '%s' 복구 중 오류가 발생했습니다. 이미 도메인이 실행 중 입니까?"
+msgstr "인터페이스 '%s' 시작 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:877
-#, fuzzy, python-format
+#: ../src/virtManager/host.py:898
+#, python-format
 msgid "Are you sure you want to permanently delete the interface %s?"
-msgstr "정말로 이 장치를 추가하시겠습니까?  "
+msgstr "정말로 인터페이스 '%s'를 영구히 삭제하시겠습니까?"
 
-#: ../src/virtManager/host.py:886
-#, fuzzy, python-format
+#: ../src/virtManager/host.py:907
+#, python-format
 msgid "Error deleting interface: %s"
-msgstr "도메인 '%s' 복구 중 오류가 발생했습니다. 이미 도메인이 실행 중 입니까?"
+msgstr "인터페이스 삭제 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:895
-#, fuzzy, python-format
+#: ../src/virtManager/host.py:916
+#, python-format
 msgid "Error launching interface wizard: %s"
-msgstr "저장 경로를 변경하는 도중 오류 발생: %s    "
+msgstr "인터페이스 마법사 실행 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:926
-#, fuzzy, python-format
+#: ../src/virtManager/host.py:947
+#, python-format
 msgid "Error setting interface startmode: %s"
-msgstr "가상 장치 관리자"
+msgstr "인터페이스 startmode 설정 중 오류 발생: %s"
 
-#: ../src/virtManager/host.py:946
-#, fuzzy
+#: ../src/virtManager/host.py:967
 msgid "No interface selected."
-msgstr "저장 경로를 지정해야 합니다.  "
+msgstr "인터페이스가 선택되지 않았습니다."
 
-#: ../src/virtManager/host.py:957
-#, fuzzy, python-format
+#: ../src/virtManager/host.py:978
+#, python-format
 msgid "Error selecting interface: %s"
-msgstr "도메인 '%s' 복구 중 오류가 발생했습니다. 이미 도메인이 실행 중 입니까?"
+msgstr "인터페이스 선택 중 오류 발생: %s"
 
-#: ../src/virtManager/manager.py:302 ../src/virtManager/systray.py:171
-#: ../src/vmm-details.glade.h:126 ../src/vmm-manager.glade.h:21
-msgid "_Run"
-msgstr "실행(_R)"
-
-#: ../src/virtManager/manager.py:308 ../src/virtManager/systray.py:158
-#: ../src/vmm-details.glade.h:123 ../src/vmm-manager.glade.h:20
+#: ../src/virtManager/manager.py:329 ../src/virtManager/systray.py:169
+#: ../src/vmm-details.glade.h:128 ../src/vmm-manager.glade.h:18
 msgid "_Pause"
-msgstr "정지(_P)"
+msgstr "일시정지(_P)"
 
-#: ../src/virtManager/manager.py:315
+#: ../src/virtManager/manager.py:330
 msgid "R_esume"
-msgstr ""
+msgstr "재개(_E)"
 
-#: ../src/virtManager/manager.py:322 ../src/virtManager/manager.py:334
-#: ../src/virtManager/systray.py:185 ../src/virtManager/systray.py:203
-#: ../src/virtManager/uihelpers.py:612
-#, fuzzy
+#: ../src/virtManager/manager.py:332 ../src/virtManager/manager.py:335
+#: ../src/virtManager/systray.py:196 ../src/virtManager/systray.py:214
+#: ../src/virtManager/uihelpers.py:656
 msgid "_Shut Down"
-msgstr "종료"
+msgstr "종료(_S)"
 
 #. Shutdown menu
-#: ../src/virtManager/manager.py:328 ../src/virtManager/systray.py:178
-#: ../src/virtManager/uihelpers.py:606 ../src/vmm-details.glade.h:124
+#: ../src/virtManager/manager.py:334 ../src/virtManager/systray.py:189
+#: ../src/virtManager/uihelpers.py:650 ../src/vmm-details.glade.h:129
 msgid "_Reboot"
-msgstr ""
+msgstr "리부팅(_R)"
 
-#: ../src/virtManager/manager.py:341 ../src/virtManager/systray.py:192
-#: ../src/virtManager/uihelpers.py:618 ../src/vmm-details.glade.h:114
+#: ../src/virtManager/manager.py:337 ../src/virtManager/systray.py:203
+#: ../src/virtManager/uihelpers.py:662 ../src/vmm-details.glade.h:119
 msgid "_Force Off"
-msgstr ""
+msgstr "강제종료(_F)"
 
-#: ../src/virtManager/manager.py:352 ../src/vmm-details.glade.h:110
+#: ../src/virtManager/manager.py:340 ../src/virtManager/uihelpers.py:672
 #, fuzzy
-msgid "_Clone"
-msgstr "검색(_B)"
+msgid "Sa_ve"
+msgstr "저장(_S)"
 
-#: ../src/virtManager/manager.py:357 ../src/vmm-details.glade.h:119
+#: ../src/virtManager/manager.py:343
+#, fuzzy
+msgid "_Clone..."
+msgstr "복제(_C)"
+
+#: ../src/virtManager/manager.py:344 ../src/vmm-details.glade.h:124
 msgid "_Migrate..."
-msgstr ""
+msgstr "이식...(_M)"
 
-#: ../src/virtManager/manager.py:362
-#, fuzzy
+#: ../src/virtManager/manager.py:345
 msgid "_Delete"
-msgstr "삭제 "
+msgstr "삭제(_D)"
 
-#: ../src/virtManager/manager.py:410 ../src/vmm-details.glade.h:112
+#: ../src/virtManager/manager.py:359 ../src/vmm-details.glade.h:117
 msgid "_Details"
 msgstr "상세정보(_D)"
 
-#: ../src/virtManager/manager.py:435
+#: ../src/virtManager/manager.py:380
 msgid "CPU usage"
 msgstr "CPU 사용량"
 
-#: ../src/virtManager/manager.py:436
-#, fuzzy
+#: ../src/virtManager/manager.py:381
 msgid "Disk I/O"
-msgstr "디스크"
+msgstr "디스크 I/O"
 
-#: ../src/virtManager/manager.py:437
-#, fuzzy
+#: ../src/virtManager/manager.py:382
 msgid "Network I/O"
-msgstr "네트워크"
+msgstr "네트워크 I/O"
 
-#: ../src/virtManager/manager.py:614
-msgid "Restoring virtual machines over remote connections is not yet supported"
-msgstr ""
-
-#: ../src/virtManager/manager.py:619
-msgid "Restore Virtual Machine"
-msgstr "가상 장치 복구"
-
-#: ../src/virtManager/manager.py:627
-msgid "Restoring Virtual Machine"
-msgstr "가상 장치 복구"
-
-#: ../src/virtManager/manager.py:633
-msgid "Error restoring domain"
-msgstr ""
-
-#: ../src/virtManager/manager.py:641
-#, fuzzy, python-format
-msgid "Error restoring domain '%s': %s"
-msgstr "도메인 '%s' 복구 중 오류가 발생했습니다. 이미 도메인이 실행 중 입니까?"
-
-#: ../src/virtManager/manager.py:658
+#: ../src/virtManager/manager.py:579
 #, python-format
 msgid ""
 "This will remove the connection:\n"
@@ -2158,59 +2238,59 @@ msgid ""
 "\n"
 "Are you sure?"
 msgstr ""
+"다음 연결을 제거합니다:\n"
+"\n"
+"%s\n"
+"\n"
+"제거하겠습니까?"
 
-#: ../src/virtManager/manager.py:753
+#: ../src/virtManager/manager.py:680
 msgid ""
 "Unable to open a connection to the Xen hypervisor/daemon.\n"
 "\n"
 msgstr ""
-"Xen 하이퍼바이저/데몬에 연결할 수 없습니다.\n"
+"Xen hypervisor/데몬에 연결할 수 없습니다.\n"
 "\n"
 
-#: ../src/virtManager/manager.py:758 ../src/virtManager/manager.py:766
+#: ../src/virtManager/manager.py:685 ../src/virtManager/manager.py:693
 msgid "Virtual Machine Manager Connection Failure"
-msgstr "가상 장치 관리자 연결 실패"
+msgstr "가상 머신 관리자 연결 실패"
 
-#: ../src/virtManager/manager.py:760
-#, fuzzy
+#: ../src/virtManager/manager.py:687
 msgid ""
 "Unable to open a connection to the libvirt management daemon.\n"
 "\n"
 msgstr ""
-"Xen 하이퍼바이저/데몬에 연결할 수 없습니다.\n"
+"libvert 관리 데몬에 연결할 수 없습니다.\n"
 "\n"
 
-#: ../src/virtManager/manager.py:815
+#: ../src/virtManager/manager.py:742
 msgid "Double click to connect"
-msgstr ""
+msgstr "연결하려면 더블클릭하십시오"
 
-#: ../src/virtManager/manager.py:1116
+#: ../src/virtManager/manager.py:1055
 msgid "Disabled in preferences dialog."
-msgstr ""
+msgstr "설정 대화창에서 비활성화됨."
 
 #: ../src/virtManager/mediadev.py:104
-#, fuzzy
 msgid "No media detected"
 msgstr "매체가 존재하지 않습니다."
 
 #: ../src/virtManager/mediadev.py:106
-#, fuzzy
 msgid "Media Unknown"
-msgstr "알 수 없음  "
+msgstr "알 수 없는 매체"
 
 #: ../src/virtManager/migrate.py:122
 msgid "Migrate"
-msgstr ""
+msgstr "이식"
 
 #: ../src/virtManager/migrate.py:156
-#, fuzzy
 msgid "Libvirt version does not support tunnelled migration."
-msgstr "Libvirt 버전은 비디오 장치를 지원하지 않습니다.  "
+msgstr "Libvirt 버전이 터널링을 사용한 이식을 지원하지 않습니다."
 
 #: ../src/virtManager/migrate.py:173
-#, fuzzy
 msgid "A valid destination connection must be selected."
-msgstr "장치를 선택해야 합니다.  "
+msgstr "올바른 목적 연결이 선택되어야 합니다."
 
 #. We couldn't find a host name for the destination machine
 #. that is accessible from the source machine.
@@ -2220,230 +2300,246 @@ msgstr "장치를 선택해야 합니다.  "
 #: ../src/virtManager/migrate.py:242
 msgid ""
 "Could not determine remotely accessible hostname for destination connection."
-msgstr ""
+msgstr "목적 연결에서 원격 연결 가능한 호스트명을 결정할 수 없습니다."
 
 #: ../src/virtManager/migrate.py:298
-#, fuzzy
 msgid "No connections available."
-msgstr "연결(_n)"
+msgstr "사용 가능한 연결이 없습니다."
 
 #: ../src/virtManager/migrate.py:367
 msgid "Connection hypervisors do not match."
-msgstr ""
+msgstr "hypervisor 연결이 일치하지 않습니다."
 
 #: ../src/virtManager/migrate.py:369
-#, fuzzy
 msgid "Connection is disconnected."
-msgstr "연결(_n)"
+msgstr "연결이 끊어졌습니다."
 
 #: ../src/virtManager/migrate.py:387
-#, fuzzy
 msgid "An interface must be specified."
-msgstr "저장 경로를 지정해야 합니다.  "
+msgstr "인터페이스를 지정해야만 합니다."
 
 #: ../src/virtManager/migrate.py:390
 msgid "Transfer rate must be greater than 0."
-msgstr ""
+msgstr "전송속도는 0보다 커야 합니다."
 
 #: ../src/virtManager/migrate.py:393
 msgid "Port must be greater than 0."
-msgstr ""
+msgstr "포트는 0보다 커야 합니다."
 
 #: ../src/virtManager/migrate.py:422
 #, python-format
 msgid "Migrating VM '%s'"
-msgstr ""
+msgstr "VM '%s' 이식중"
 
 #: ../src/virtManager/migrate.py:423
 #, python-format
 msgid "Migrating VM '%s' from %s to %s. This may take awhile."
-msgstr ""
+msgstr "VM '%s'를 %s에서 %s로 이식중입니다. 시간이 소요될 것입니다."
 
 #: ../src/virtManager/network.py:34
 #, python-format
 msgid "NAT to %s"
-msgstr ""
+msgstr "NAT를 %s에 보냄"
 
 #: ../src/virtManager/network.py:39
 #, python-format
 msgid "Route to %s"
-msgstr ""
+msgstr "%s로 라우팅"
 
 #: ../src/virtManager/network.py:41
-#, fuzzy
 msgid "Routed network"
-msgstr "네트워크"
+msgstr "라우팅 된 네트워크"
 
 #: ../src/virtManager/network.py:48
-#, fuzzy
 msgid "Isolated network"
-msgstr "네트워크"
+msgstr "독립된 네트워크"
+
+#: ../src/virtManager/preferences.py:159
+msgid "Installed version of GTK-VNC doesn't support configurable grab keys"
+msgstr ""
+
+#: ../src/virtManager/preferences.py:207
+#, fuzzy
+msgid "Configure key combination"
+msgstr "IP 설정"
+
+#: ../src/virtManager/preferences.py:212
+msgid "Please press desired grab key combination"
+msgstr ""
 
 #: ../src/virtManager/storagebrowse.py:132
-#, fuzzy
 msgid "Size"
-msgstr "크기(_S):"
+msgstr "크기"
 
 #: ../src/virtManager/storagebrowse.py:139 ../src/vmm-create-pool.glade.h:7
 msgid "Format"
-msgstr ""
+msgstr "포맷"
 
 #: ../src/virtManager/storagebrowse.py:146
 msgid "Used By"
-msgstr ""
+msgstr "사용됨"
 
 #: ../src/virtManager/storagebrowse.py:186
 msgid "Cannot use local storage on remote connection."
-msgstr ""
+msgstr "로컬 저장소를 원격 연결위에 사용할 수 없습니다."
 
-#: ../src/virtManager/systray.py:164
+#: ../src/virtManager/systray.py:175
 msgid "_Resume"
-msgstr ""
+msgstr "재개(_R)"
 
-#: ../src/virtManager/systray.py:344
-#, fuzzy
+#: ../src/virtManager/systray.py:346 ../src/virtManager/systray.py:395
 msgid "No virtual machines"
-msgstr "가상 장치 저장"
+msgstr "가상 머신 없음"
 
-#: ../src/virtManager/systray.py:396
+#: ../src/virtManager/uihelpers.py:69
 #, fuzzy
-msgid "No VMs available"
-msgstr "연결(_n)"
-
-#: ../src/virtManager/uihelpers.py:66
 msgid ""
-"Fully allocating storage will take longer now, but the OS install phase will "
+"Fully allocating storage may take longer now, but the OS install phase will "
 "be quicker. \n"
 "\n"
 "Skipping allocation can also cause space issues on the host machine, if the "
 "maximum image size exceeds available storage space."
 msgstr ""
+"저장소를 완전히 할당하면, 지금은 시간이 더 걸리겠지만, OS 설치 단계를 더 빠르"
+"게 진행할\n"
+"수 있습니다.\n"
+"\n"
+"할당을 생략하면 호스트 머신에서 저장 공간에 따른 문제가 발생할 수도 있습니"
+"다. 최대 이미지 크기가 사용 가능한 저장 공간보다 커질 경우 그렇습니다."
+
+#: ../src/virtManager/uihelpers.py:112
+#, fuzzy
+msgid "Default pool is not active."
+msgstr "가상 네트워크가 활성화되지 않았습니다."
+
+#: ../src/virtManager/uihelpers.py:113
+#, fuzzy, python-format
+msgid "Storage pool '%s' is not active. Would you like to start the pool now?"
+msgstr ""
+"'%s' 가상 네트워크가 활성화되지 않았습니다. 지금 네트워크를 시작하겠습니까?"
+
+#: ../src/virtManager/uihelpers.py:124
+#, fuzzy, python-format
+msgid "Could not start storage_pool '%s': %s"
+msgstr "저장소 풀 기본값 '%s'를 생성할 수 없음: %s"
 
 #. [xml value, label]
-#: ../src/virtManager/uihelpers.py:186
+#: ../src/virtManager/uihelpers.py:215
 msgid "Hypervisor default"
-msgstr "하이퍼바이저 기본값  "
+msgstr "hypervisor 기본값"
 
-#: ../src/virtManager/uihelpers.py:204
-#, fuzzy
+#: ../src/virtManager/uihelpers.py:248
 msgid "Usermode networking"
-msgstr "사용자 모드 네트워킹  "
+msgstr "사용자 모드 네트워킹"
 
-#: ../src/virtManager/uihelpers.py:210
+#: ../src/virtManager/uihelpers.py:254
 msgid "Virtual network"
-msgstr "가상 네트워크  "
+msgstr "가상 네트워크"
 
-#: ../src/virtManager/uihelpers.py:318
-#, fuzzy
+#: ../src/virtManager/uihelpers.py:360
 msgid "No virtual networks available"
-msgstr "연결(_n)"
-
-#: ../src/virtManager/uihelpers.py:340
-msgid "(Empty bridge)"
-msgstr ""
-
-#: ../src/virtManager/uihelpers.py:343
-msgid "Not bridged"
-msgstr ""
-
-#: ../src/virtManager/uihelpers.py:345
-#, python-format
-msgid "Host device %s %s"
-msgstr "호스트 장치 %s %s "
+msgstr "사용 가능 가상 네트워크가 없습니다"
 
 #: ../src/virtManager/uihelpers.py:382
-#, fuzzy
+msgid "(Empty bridge)"
+msgstr "(빈 브릿지)"
+
+#: ../src/virtManager/uihelpers.py:385
+msgid "Not bridged"
+msgstr "브릿지되지 않음"
+
+#: ../src/virtManager/uihelpers.py:387
+#, python-format
+msgid "Host device %s %s"
+msgstr "호스트 장치 %s %s"
+
+#: ../src/virtManager/uihelpers.py:424
 msgid "No networking."
-msgstr "네트워크"
+msgstr "네트워크 없음"
 
 #. After all is said and done, add a manual bridge option
-#: ../src/virtManager/uihelpers.py:387
+#: ../src/virtManager/uihelpers.py:429
 msgid "Specify shared device name"
-msgstr ""
+msgstr "공유 장치 이름을 지정"
 
-#: ../src/virtManager/uihelpers.py:406
+#: ../src/virtManager/uihelpers.py:448
 msgid "Virtual Network is not active."
-msgstr "가상 네트워크가 활성화되지 않음.   "
+msgstr "가상 네트워크가 활성화되지 않았습니다."
 
-#: ../src/virtManager/uihelpers.py:407
+#: ../src/virtManager/uihelpers.py:449
 #, python-format
 msgid ""
 "Virtual Network '%s' is not active. Would you like to start the network now?"
 msgstr ""
-"'%s' 가상 네트워크가 활성화되어 있지 않습니다. 지금 네트워크를 시작하시겠습니"
-"까?       "
+"'%s' 가상 네트워크가 활성화되지 않았습니다. 지금 네트워크를 시작하겠습니까?"
 
-#: ../src/virtManager/uihelpers.py:419
+#: ../src/virtManager/uihelpers.py:461
 #, python-format
 msgid "Could not start virtual network '%s': %s"
-msgstr "'%s' 가상 네트워크를 시작할 수 없음: %s "
+msgstr "'%s' 가상 네트워크를 시작할 수 없음: %s"
 
-#: ../src/virtManager/uihelpers.py:440
-#, fuzzy
+#: ../src/virtManager/uihelpers.py:483
 msgid "Error with network parameters."
-msgstr "잘못된 시스템 이름"
+msgstr "네트워크 매개 변수에 오류가 있습니다."
 
-#: ../src/virtManager/uihelpers.py:445 ../src/virtManager/uihelpers.py:447
+#: ../src/virtManager/uihelpers.py:488 ../src/virtManager/uihelpers.py:490
 msgid "Mac address collision."
-msgstr ""
+msgstr "Mac 주소가 충돌합니다."
 
-#: ../src/virtManager/uihelpers.py:448
+#: ../src/virtManager/uihelpers.py:491
 #, python-format
 msgid "%s Are you sure you want to use this address?"
-msgstr "%s 정말로 이 주소를 사용하시겠습니까?  "
+msgstr "정말로 %s 주소를 사용하시겠습니까?"
 
-#: ../src/virtManager/uihelpers.py:500
-#, fuzzy
+#: ../src/virtManager/uihelpers.py:543
 msgid "No device present"
-msgstr "매체가 존재하지 않습니다."
+msgstr "장치가 존재하지 않음"
 
-#: ../src/virtManager/uihelpers.py:646
+#: ../src/virtManager/uihelpers.py:700
 #, python-format
 msgid "The emulator may not have search permissions for the path '%s'."
-msgstr ""
+msgstr "에뮬레이터가 경로 '%s'를 검색할 권한이 없습니다."
 
-#: ../src/virtManager/uihelpers.py:648
-#, fuzzy
+#: ../src/virtManager/uihelpers.py:702
 msgid "Do you want to correct this now?"
-msgstr "정말로 디스크를 사용하시겠습니까? "
+msgstr "지금 이 문제를 수정하겠습니까?"
 
-#: ../src/virtManager/uihelpers.py:649 ../src/virtManager/uihelpers.py:673
+#: ../src/virtManager/uihelpers.py:703 ../src/virtManager/uihelpers.py:727
 msgid "Don't ask about these directories again."
-msgstr ""
+msgstr "이러한 디렉토리에 대해 다시 묻지 않습니다."
 
-#: ../src/virtManager/uihelpers.py:662
+#: ../src/virtManager/uihelpers.py:716
 msgid ""
 "Errors were encountered changing permissions for the following directories:"
-msgstr ""
+msgstr "다음 디렉토리의 권한을 변경하는 중 오류가 발생했습니다:"
 
 #: ../src/virtManager/util.py:64
 #, python-format
 msgid "Couldn't create default storage pool '%s': %s"
-msgstr ""
+msgstr "저장소 풀 기본값 '%s'를 생성할 수 없음: %s"
 
 #: ../src/vmm-about.glade.h:1
-#, fuzzy
 msgid "Copyright (C) 2006-2009 Red Hat Inc."
-msgstr "저작권 (C) 2006 Red Hat Inc."
+msgstr "Copyright (C) 2006-2009 Red Hat Inc."
 
 #: ../src/vmm-about.glade.h:2
 msgid "Powered by libvirt"
-msgstr "libvirt에서 실행"
+msgstr "libvirt 사용으로 강력해짐"
 
 #. TRANSLATORS: Replace this string with your names, one name per line.
 #: ../src/vmm-about.glade.h:4
 msgid "translator-credits"
-msgstr "translator-credits"
+msgstr ""
+"김은주 <eukim@redhat.com>, 2006, 2007, 2009\n"
+"오현석 <hoh@redhat.com>, 2010"
 
 #: ../src/vmm-add-hardware.glade.h:1
-#, fuzzy
 msgid "<b>Character Device</b>"
-msgstr "<b>콘솔</b>"
+msgstr "<b>문자 장치</b>"
 
 #: ../src/vmm-add-hardware.glade.h:2
-#, fuzzy
 msgid "<b>Device Parameters</b>"
-msgstr "<b>콘솔</b>"
+msgstr "<b>장치 매개 변수</b>"
 
 #: ../src/vmm-add-hardware.glade.h:3
 msgid ""
@@ -2451,6 +2547,9 @@ msgid ""
 "virtual machine uses a unique port. If two machines try to use the same "
 "port, one of them will fail to start.</small>"
 msgstr ""
+"<small><b>팁:</b> 포트를 자동으로 할당하면 모든 가상 머신이 유일한 포트를 사"
+"용하는 것을 보장할 수 있습니다. 만약 두 머신이 같은 포트를 사용하려고 하면, "
+"둘 중 하나는 시작 할 수 없습니다.</small>"
 
 #: ../src/vmm-add-hardware.glade.h:4
 msgid ""
@@ -2458,6 +2557,10 @@ msgid ""
 "virtual display to be embedded inside this application. It may also be used "
 "to allow access to the virtual display from a remote system.</small>"
 msgstr ""
+"<small><b>팁:</b> 본 어플리케이션의 내부에 가상 디스플레이를 내장시킬 수 있"
+"기 때문에, VNC 서버를 사용하는 것을 강력히 권장합니다. 그것은 원격 시스템으로"
+"부터 가상 디스플레이에 접속하는 것을 허용하기 위해 사용할 수 있습니다.</"
+"small>"
 
 #: ../src/vmm-add-hardware.glade.h:5
 msgid ""
@@ -2465,412 +2568,362 @@ msgid ""
 "default pointer in the virtual machine) will ensure the virtual cursor moves "
 "in sync with the local desktop cursor.</small>"
 msgstr ""
+"<small><b>팁:</b>그래픽 타블렛(또, 그것을 가상 머신의 기본 포인팅 장치로 지정"
+"하는 것)을 쓰면, 가상 머신 커서가 로컬 데스크탑 커서와 동기화 되서 움직이게 "
+"할 수 있습니다.</small>"
 
 #: ../src/vmm-add-hardware.glade.h:6
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Adding Virtual "
 "Hardware</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">새 가상 시스템 "
-"생성</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">가상 하드웨어 추"
+"가</span>"
 
 #: ../src/vmm-add-hardware.glade.h:7
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Finish Adding "
 "Virtual Hardware</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">새 가상 시스템 "
-"생성</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">가상 하드웨어 추"
+"가 마침</span>"
 
 #: ../src/vmm-add-hardware.glade.h:8
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Graphics</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">저장 공간 할당</"
-"span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">그래픽</span>"
 
 #: ../src/vmm-add-hardware.glade.h:9
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Host Device</"
 "span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">저장 공간 할당</"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">호스트 장치</"
 "span>"
 
 #: ../src/vmm-add-hardware.glade.h:10
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Input</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">저장 공간 할당</"
-"span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">입력</span>"
 
 #: ../src/vmm-add-hardware.glade.h:11
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Network</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">저장 공간 할당</"
-"span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">네트워크</span>"
 
 #: ../src/vmm-add-hardware.glade.h:12
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Sound</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">메모리 및 CPU 할"
-"당</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">사운드</span>"
 
 #: ../src/vmm-add-hardware.glade.h:13
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Storage</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">저장 공간 할당</"
-"span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">저장소</span>"
 
 #: ../src/vmm-add-hardware.glade.h:14
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Video Device</"
 "span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">저장 공간 할당</"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">비디오 장치</"
 "span>"
 
 #: ../src/vmm-add-hardware.glade.h:15
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Watchdog "
 "Device</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">저장 공간 할당</"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">와치독 장치</"
 "span>"
 
 #: ../src/vmm-add-hardware.glade.h:16
-#, fuzzy
 msgid "A_utomatically allocated"
-msgstr "자동으로 콘솔을 엽니다:"
+msgstr "자동으로 할당됨(_U)"
 
 #: ../src/vmm-add-hardware.glade.h:17
-#, fuzzy
 msgid "Ac_tion:"
-msgstr "ISO 위치(_L):"
+msgstr "동작(_T)"
 
 #: ../src/vmm-add-hardware.glade.h:18
 msgid "Add new virtual hardware"
-msgstr ""
+msgstr "새 가상 하드웨어 추가"
 
 #: ../src/vmm-add-hardware.glade.h:19 ../src/vmm-create.glade.h:10
-#, fuzzy
 msgid "B_rowse..."
-msgstr "검색"
+msgstr "검색..(_R)"
 
 #: ../src/vmm-add-hardware.glade.h:20 ../src/vmm-create.glade.h:14
 msgid "C_reate a disk image on the computer's hard drive"
-msgstr ""
+msgstr "컴퓨터의 하드 드라이브에 디스크 이미지 생성(_R)"
 
 #: ../src/vmm-add-hardware.glade.h:21
 #, fuzzy
-msgid "D_evice model:"
-msgstr "종류"
+msgid "Cache _mode:"
+msgstr "장치 모델(_E):"
 
 #: ../src/vmm-add-hardware.glade.h:22
-msgid "Device Type Field"
-msgstr ""
+msgid "D_evice model:"
+msgstr "장치 모델(_E):"
 
 #: ../src/vmm-add-hardware.glade.h:23
-#, fuzzy
-msgid "Device _Type:"
-msgstr "종류"
+msgid "Device Type Field"
+msgstr "장치 종류 필드"
 
 #: ../src/vmm-add-hardware.glade.h:24
-#, fuzzy
-msgid "H_ost:"
-msgstr "호스트(_H):"
+msgid "Device _Type:"
+msgstr "장치 종류(_T):"
 
 #: ../src/vmm-add-hardware.glade.h:25
-#, fuzzy
-msgid "Ha_rdware type:"
-msgstr "하드웨어"
+msgid "H_ost:"
+msgstr "호스트(_O):"
 
 #: ../src/vmm-add-hardware.glade.h:26
-#, fuzzy
-msgid "Hardware Type Select"
-msgstr "하드웨어 지원 필요"
+msgid "Ha_rdware type:"
+msgstr "하드웨어 종류(_R):"
 
 #: ../src/vmm-add-hardware.glade.h:27
-msgid "Listen on all public network interfaces "
-msgstr ""
+msgid "Hardware Type Select"
+msgstr "하드웨어 종류 선택"
 
 #: ../src/vmm-add-hardware.glade.h:28
-#, fuzzy
-msgid "MAC Address Field"
-msgstr "MAC 주소"
+msgid "Listen on all public network interfaces "
+msgstr "모든 공용 네트워크 인터페이스를 리스닝함"
 
 #: ../src/vmm-add-hardware.glade.h:29
-#, fuzzy
-msgid "Pa_ssword:"
-msgstr "암호:"
+msgid "MAC Address Field"
+msgstr "MAC 주소 항목"
 
 #: ../src/vmm-add-hardware.glade.h:30
-msgid "Please indicate how you would like to view the virtual display."
-msgstr ""
+msgid "Pa_ssword:"
+msgstr "암호(_S):"
 
 #: ../src/vmm-add-hardware.glade.h:31
-#, fuzzy
+msgid "Please indicate how you would like to view the virtual display."
+msgstr "가상 디스플레이를 보고 싶은지 지정해 주십시오."
+
+#: ../src/vmm-add-hardware.glade.h:32
 msgid ""
 "Please indicate how you'd like to assign space on this physical host system "
 "for your new virtual storage device."
 msgstr ""
-"실제 호스트 시스템에서 새로운 가상 시스템이 차지할 공간을 할당하는 방법을 선"
-"택합니다. 이 공간은 가상 시스템의 운영 체제를 설치하는 데 사용됩니다."
+"새 가상 저장소 장치에 대해 어떻게 호스트 시스템의 물리적인 공간을 배정할지를 "
+"지정해 주십시오."
 
-#: ../src/vmm-add-hardware.glade.h:32
+#: ../src/vmm-add-hardware.glade.h:33
 msgid ""
 "Please indicate how you'd like to connect your new virtual network device to "
 "the host network."
 msgstr ""
+"호스트 네트워크에 가상 네트워크 장치를 어떻게 연결할지를 지정해 주십시오."
 
-#: ../src/vmm-add-hardware.glade.h:33
+#: ../src/vmm-add-hardware.glade.h:34
 msgid ""
 "Please indicate what kind of pointer device to connect to the virtual "
 "machine."
-msgstr ""
+msgstr "가상 머신에 연결할 포인팅 디바이스의 종류를 결정해 주십시오."
 
-#: ../src/vmm-add-hardware.glade.h:34
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:35
 msgid ""
 "Please indicate what physical device\n"
 "to connect to the virtual machine."
 msgstr ""
-"실제 호스트 시스템에서 새로운 가상 시스템이 차지할 공간을 할당하는 방법을 선"
-"택합니다. 이 공간은 가상 시스템의 운영 체제를 설치하는 데 사용됩니다."
-
-#: ../src/vmm-add-hardware.glade.h:36
-#, fuzzy
-msgid ""
-"Please indicate what sound device type to connect to the virtual machine."
-msgstr ""
-"실제 호스트 시스템에서 새로운 가상 시스템이 차지할 공간을 할당하는 방법을 선"
-"택합니다. 이 공간은 가상 시스템의 운영 체제를 설치하는 데 사용됩니다."
+"가상 머신에 어떤 물리 디바이스를\n"
+"접속할지 지정해 주십시오."
 
 #: ../src/vmm-add-hardware.glade.h:37
-#, fuzzy
+msgid ""
+"Please indicate what sound device type to connect to the virtual machine."
+msgstr "가상 머신에 연결할 사운드 장치의 종류를 결정해 주십시오."
+
+#: ../src/vmm-add-hardware.glade.h:38
 msgid ""
 "Please indicate what video device type\n"
 "to connect to the virtual machine."
 msgstr ""
-"실제 호스트 시스템에서 새로운 가상 시스템이 차지할 공간을 할당하는 방법을 선"
-"택합니다. 이 공간은 가상 시스템의 운영 체제를 설치하는 데 사용됩니다."
+"가상 머신에 접속할 비디오 장치의\n"
+"종류를 결정해 주십시오."
 
-#: ../src/vmm-add-hardware.glade.h:39
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:40
 msgid ""
 "Please indicate what watchdog device type\n"
 "and default action should be used."
 msgstr ""
-"실제 호스트 시스템에서 새로운 가상 시스템이 차지할 공간을 할당하는 방법을 선"
-"택합니다. 이 공간은 가상 시스템의 운영 체제를 설치하는 데 사용됩니다."
+"사용할 와치독 장치의 종류와\n"
+"기본값 행동을 지정해 주십시오."
 
-#: ../src/vmm-add-hardware.glade.h:41
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:42
 msgid "Po_rt:"
-msgstr "포트:  "
+msgstr "포트(_R):"
 
-#: ../src/vmm-add-hardware.glade.h:43 ../src/vmm-create.glade.h:38
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:44 ../src/vmm-create.glade.h:38
 msgid "Select _managed or other existing storage"
-msgstr "기존 저장 장치 위치 지정  "
+msgstr "관리중이거나 기존의 저장소 선택(_M)"
 
-#: ../src/vmm-add-hardware.glade.h:44
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:45
 msgid ""
 "This assistant will guide you through adding a new piece of virtual "
 "hardware. First select what type of hardware you wish to add:"
 msgstr ""
-"새 가상 시스템을 생성하도록 안내해 드립니다. 다음과 같이 생성하고자 하는 가"
-"상 시스템에 관한 정보가 필요합니다:"
+"이 도우미는 새로운 가상 하드웨어를 추가하는 과정에서 여러분을 도울 것입니다. "
+"우선, 어떤 종류의 하드웨어를 추가할지 결정하십시오:"
 
-#: ../src/vmm-add-hardware.glade.h:45
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:46
 msgid "Use Te_lnet:"
-msgstr "호스트(_H):"
+msgstr "텔넷 사용(_L):"
 
-#: ../src/vmm-add-hardware.glade.h:46 ../src/vmm-create-interface.glade.h:34
+#: ../src/vmm-add-hardware.glade.h:47 ../src/vmm-create-interface.glade.h:34
 #: ../src/vmm-migrate.glade.h:9
-#, fuzzy
 msgid "_Address:"
-msgstr "주소:  "
+msgstr "주소(_A):"
 
-#: ../src/vmm-add-hardware.glade.h:47 ../src/vmm-create.glade.h:46
+#: ../src/vmm-add-hardware.glade.h:48 ../src/vmm-create.glade.h:46
 msgid "_Allocate entire disk now"
-msgstr ""
+msgstr "지금 전체 디스크를 할당(_A)"
 
-#: ../src/vmm-add-hardware.glade.h:48
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:49
 msgid "_Bind Host:"
-msgstr "호스트(_H):"
+msgstr "호스트 바인드함(_H):"
 
-#: ../src/vmm-add-hardware.glade.h:49 ../src/vmm-create.glade.h:48
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:50 ../src/vmm-create.glade.h:48
 msgid "_Bridge name:"
-msgstr "호스트(_H):"
-
-#: ../src/vmm-add-hardware.glade.h:50
-#, fuzzy
-msgid "_Device type:"
-msgstr "장치 유형:  "
+msgstr "브릿지 이름(_B):"
 
 #: ../src/vmm-add-hardware.glade.h:51
-msgid "_Device:"
-msgstr ""
+msgid "_Device type:"
+msgstr "장치 유형(_T):"
 
-#: ../src/vmm-add-hardware.glade.h:52 ../src/vmm-create-interface.glade.h:37
+#: ../src/vmm-add-hardware.glade.h:52
+msgid "_Device:"
+msgstr "장치(_D):"
+
+#: ../src/vmm-add-hardware.glade.h:53 ../src/vmm-create-interface.glade.h:37
 #: ../src/vmm-create-net.glade.h:52 ../src/vmm-create-pool.glade.h:13
 #: ../src/vmm-create-vol.glade.h:22 ../src/vmm-create.glade.h:50
 msgid "_Finish"
 msgstr "완료(_F)"
 
-#: ../src/vmm-add-hardware.glade.h:53 ../src/vmm-create.glade.h:51
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:54 ../src/vmm-create.glade.h:51
 msgid "_GB"
-msgstr "5 GB"
-
-#: ../src/vmm-add-hardware.glade.h:54
-#, fuzzy
-msgid "_Host device:"
-msgstr "호스트 장치 %s %s "
+msgstr "_GB"
 
 #: ../src/vmm-add-hardware.glade.h:55
-#, fuzzy
-msgid "_Keymap:"
-msgstr "키맵:  "
+msgid "_Host device:"
+msgstr "호스트 장치(_H):"
 
 #: ../src/vmm-add-hardware.glade.h:56
-#, fuzzy
+msgid "_Keymap:"
+msgstr "키맵(_K):"
+
+#: ../src/vmm-add-hardware.glade.h:57
 msgid "_MAC address:"
-msgstr "MAC 주소"
+msgstr "_MAC 주소"
 
-#: ../src/vmm-add-hardware.glade.h:57 ../src/vmm-create-interface.glade.h:40
+#: ../src/vmm-add-hardware.glade.h:58 ../src/vmm-create-interface.glade.h:40
 #: ../src/vmm-create-net.glade.h:54
-#, fuzzy
 msgid "_Mode:"
-msgstr "모드:  "
-
-#: ../src/vmm-add-hardware.glade.h:58
-#, fuzzy
-msgid "_Model:"
-msgstr "모델:  "
+msgstr "모드(_M):"
 
 #: ../src/vmm-add-hardware.glade.h:59
-#, fuzzy
-msgid "_Other:"
-msgstr "기타  "
+msgid "_Model:"
+msgstr "모델(_M):"
 
 #: ../src/vmm-add-hardware.glade.h:60
-#, fuzzy
+msgid "_Other:"
+msgstr "기타(_O):"
+
+#: ../src/vmm-add-hardware.glade.h:61
 msgid "_Path:"
+msgstr "경로(_P):"
+
+#: ../src/vmm-add-hardware.glade.h:62 ../src/vmm-migrate.glade.h:12
+msgid "_Port:"
 msgstr "포트(_P):"
 
-#: ../src/vmm-add-hardware.glade.h:61 ../src/vmm-migrate.glade.h:12
-#, fuzzy
-msgid "_Port:"
-msgstr "포트:  "
-
-#: ../src/vmm-add-hardware.glade.h:62 ../src/vmm-create-pool.glade.h:17
-#, fuzzy
+#: ../src/vmm-add-hardware.glade.h:63 ../src/vmm-create-pool.glade.h:17
 msgid "_Type:"
-msgstr "유형:  "
+msgstr "유형(_T):"
 
-#: ../src/vmm-add-hardware.glade.h:63
+#: ../src/vmm-add-hardware.glade.h:64
 msgid "aa:bb:cc:dd:ee:ff"
-msgstr ""
+msgstr "aa:bb:cc:dd:ee:ff"
 
-#: ../src/vmm-add-hardware.glade.h:64 ../src/vmm-create-pool.glade.h:18
+#: ../src/vmm-add-hardware.glade.h:65 ../src/vmm-create-pool.glade.h:18
 msgid "label"
-msgstr ""
+msgstr "레이블"
 
 #: ../src/vmm-choose-cd.glade.h:1
-#, fuzzy
 msgid "<b>Choose Source Device or File</b>"
-msgstr "<b>콘솔</b>"
+msgstr "<b>소스 장치 또는 파일 선택</b>"
 
 #: ../src/vmm-choose-cd.glade.h:2
-#, fuzzy
 msgid "CD-_ROM or DVD"
-msgstr "CD-ROM 또는 DVD(_C):"
+msgstr "CD-_ROM 또는 DVD:"
 
 #: ../src/vmm-choose-cd.glade.h:3
-#, fuzzy
 msgid "Choose Media"
-msgstr "소스 경로 선택  "
+msgstr "매체 선택"
 
 #: ../src/vmm-choose-cd.glade.h:4 ../src/vmm-clone.glade.h:23
 msgid "_Browse..."
-msgstr "검색(_B)"
+msgstr "검색(_B)..."
 
 #: ../src/vmm-choose-cd.glade.h:5
-#, fuzzy
 msgid "_Device Media:"
-msgstr "종류"
+msgstr "장치 매체(_D):"
 
 #: ../src/vmm-choose-cd.glade.h:6
-#, fuzzy
 msgid "_ISO Image Location"
-msgstr "ISO 이미지 위치(_I):"
+msgstr "_ISO 이미지 위치"
 
 #: ../src/vmm-choose-cd.glade.h:7
-#, fuzzy
 msgid "_Location:"
-msgstr "ISO 위치(_L):"
+msgstr "위치(_L):"
 
 #: ../src/vmm-clone.glade.h:1
 msgid "<span color='#484848'>MAC:</span>"
-msgstr ""
+msgstr "<span color='#484848'>MAC:</span>"
 
 #: ../src/vmm-clone.glade.h:2
 msgid "<span color='#484848'>Networking:</span>"
-msgstr ""
+msgstr "<span color='#484848'>네트워킹:</span>"
 
 #: ../src/vmm-clone.glade.h:3
 msgid "<span color='#484848'>New _Path:</span>"
-msgstr ""
+msgstr "<span color='#484848'>새 경로(_P):</span>"
 
 #: ../src/vmm-clone.glade.h:4
 msgid "<span color='#484848'>Path:</span>"
-msgstr ""
+msgstr "<span color='#484848'>경로:</span>"
 
 #: ../src/vmm-clone.glade.h:5
 msgid "<span color='#484848'>Size:</span>"
-msgstr ""
+msgstr "<span color='#484848'>크기:</span>"
 
 #: ../src/vmm-clone.glade.h:6 ../src/vmm-create.glade.h:6
 msgid "<span color='#484848'>Storage:</span>"
-msgstr ""
+msgstr "<span color='#484848'>저장소:</span>"
 
 #: ../src/vmm-clone.glade.h:7
 msgid "<span color='#484848'>Target:</span>"
-msgstr ""
+msgstr "<span color='#484848'>타겟:</span>"
 
 #: ../src/vmm-clone.glade.h:8
 msgid "<span color='#484848'>Type:</span>"
-msgstr ""
+msgstr "<span color='#484848'>유형:</span>"
 
 #: ../src/vmm-clone.glade.h:9
 msgid "<span color='#484848'>_Name:</span>"
-msgstr ""
+msgstr "<span color='#484848'>이름(_N):</span>"
 
 #: ../src/vmm-clone.glade.h:10
-#, fuzzy
 msgid "<span size='large' color='white'>Clone virtual machine</span>"
-msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">새 가상 시스템 "
-"생성</span>"
+msgstr "<span size='large' color='white'>가상 머신 복제</span>"
 
 #: ../src/vmm-clone.glade.h:11
 msgid ""
@@ -2879,281 +2932,246 @@ msgid ""
 "uses the existing disk image for both the original and the new machine.</"
 "span>"
 msgstr ""
+"<span size='small'>복제는 원본 디스크에 대한 독립적인 복사본을 새로 만듭니"
+"다.\n"
+"공유는 기존 디스크 이미지를 기존 머신과 새 머신에서 함께 사용합니다.</span>"
 
 #: ../src/vmm-clone.glade.h:13
-#, fuzzy
 msgid "C_lone"
-msgstr "검색(_B)"
+msgstr "복제(_L)"
 
 #: ../src/vmm-clone.glade.h:14
-#, fuzzy
 msgid "Change MAC address"
-msgstr "MAC 주소"
+msgstr "MAC 주소 변경"
 
 #: ../src/vmm-clone.glade.h:15
-#, fuzzy
 msgid "Change storage path"
-msgstr "새 저장 파일 생성 및 위치 지정"
+msgstr "저장소 경로 변경"
 
 #: ../src/vmm-clone.glade.h:16
-#, fuzzy
 msgid "Clone Virtual Machine"
-msgstr "가상 장치 복구"
+msgstr "가상 머신 복제"
 
 #: ../src/vmm-clone.glade.h:17
 msgid "Create a clone based on:"
-msgstr ""
+msgstr "다음으로부터 복제:"
 
 #: ../src/vmm-clone.glade.h:18
-#, fuzzy
 msgid "Create a new disk (c_lone) for the virtual machine"
-msgstr "새 가상 시스템 생성"
+msgstr "가상 머신에 새로운 디스크(복제) 생성(_L)"
 
 #: ../src/vmm-clone.glade.h:19
 msgid "Existing disk"
-msgstr ""
+msgstr "기존 디스크"
 
 #: ../src/vmm-clone.glade.h:20
-#, fuzzy
 msgid "New _MAC:"
-msgstr "<b>네트워크</b>"
+msgstr "새 _MAC:"
 
 #: ../src/vmm-clone.glade.h:21
-#, fuzzy
 msgid "No networking devices"
-msgstr "네트워크"
+msgstr "네트워크 장치 없음"
 
 #: ../src/vmm-clone.glade.h:22
-#, fuzzy
 msgid "No storage to clone"
-msgstr "ISO 이미지 위치(_I):"
+msgstr "복제할 저장소 없음"
 
 #: ../src/vmm-create-interface.glade.h:1
-#, fuzzy
 msgid "<b>ARP settings</b>"
-msgstr "<b>기본 정보</b>"
+msgstr "<b>ARP 설정</b>"
 
 #: ../src/vmm-create-interface.glade.h:2
-#, fuzzy
 msgid "<b>Bond configuration</b>"
-msgstr "<b>콘솔</b>"
+msgstr "<b>부착 설정</b>"
 
 #: ../src/vmm-create-interface.glade.h:3
-#, fuzzy
 msgid "<b>Bridge configuration</b>"
-msgstr "<b>콘솔</b>"
+msgstr "<b>브릿지 설정</b>"
 
 #: ../src/vmm-create-interface.glade.h:4
-#, fuzzy
 msgid "<b>IP Configuration</b>"
-msgstr "<b>콘솔</b>"
+msgstr "<b>IP 설정</b>"
 
 #: ../src/vmm-create-interface.glade.h:5
-#, fuzzy
 msgid "<b>MII settings</b>"
-msgstr "<b>기본 정보</b>"
+msgstr "<b>MII 설정</b>"
 
 #: ../src/vmm-create-interface.glade.h:6
-#, fuzzy
 msgid "<span size='large' color='white'>Configure network interface</span>"
-msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">새 가상 시스템 "
-"생성</span>"
+msgstr "<span size='large' color='white'>네트워크 인터페이스 설정</span>"
 
 #: ../src/vmm-create-interface.glade.h:7
-#, fuzzy
 msgid "A_utoconf"
-msgstr "연결(_n)"
+msgstr "자동설정(A_utoconf)"
 
 #: ../src/vmm-create-interface.glade.h:8
-#, fuzzy
 msgid "Addresses:"
-msgstr "주소:  "
+msgstr "주소:"
 
 #: ../src/vmm-create-interface.glade.h:9
 msgid "Bond mode:"
-msgstr ""
+msgstr "부착 모드:"
 
 #: ../src/vmm-create-interface.glade.h:10
 msgid "Bond monitor mode:"
-msgstr ""
+msgstr "부착 감시 모드:"
 
 #: ../src/vmm-create-interface.glade.h:11
-#, fuzzy
 msgid "Bonding configuration"
-msgstr "저장 경로를 변경하는 도중 오류 발생: %s    "
+msgstr "부착 설정"
 
 #: ../src/vmm-create-interface.glade.h:12
-#, fuzzy
 msgid "Bridge configuration"
-msgstr "저장 경로를 변경하는 도중 오류 발생: %s    "
+msgstr "브릿지 설정"
 
 #: ../src/vmm-create-interface.glade.h:13
 msgid "Bridge settings:"
-msgstr ""
+msgstr "브릿시 설정:"
 
 #: ../src/vmm-create-interface.glade.h:14
-#, fuzzy
 msgid "C_onfigure"
-msgstr "검색(_B)"
+msgstr "설정(_O)"
 
 #: ../src/vmm-create-interface.glade.h:15
-#, fuzzy
 msgid "Carrier type:"
-msgstr "하드웨어"
+msgstr "캐리어 유형:"
 
 #: ../src/vmm-create-interface.glade.h:16
-#, fuzzy
 msgid "Configure network interface"
-msgstr "네트워크 사용량:"
+msgstr "네트워크 인터페이스 설정"
 
 #: ../src/vmm-create-interface.glade.h:17
 msgid "Down delay:"
-msgstr ""
+msgstr "하방 지연:"
 
 #: ../src/vmm-create-interface.glade.h:18
 msgid "Enable STP:"
-msgstr ""
+msgstr "STP 활성화:"
 
 #: ../src/vmm-create-interface.glade.h:19
 msgid "Forward delay:"
-msgstr ""
+msgstr "순방향 지연:"
 
 #: ../src/vmm-create-interface.glade.h:20
 msgid "Frequency:"
-msgstr ""
+msgstr "주파수:"
 
 #: ../src/vmm-create-interface.glade.h:21
-#, fuzzy
 msgid "IP Configuration"
-msgstr "저장 경로를 변경하는 도중 오류 발생: %s    "
+msgstr "IP 설정"
 
 #: ../src/vmm-create-interface.glade.h:22
-#, fuzzy
 msgid "IP settings:"
-msgstr "<b>기본 정보</b>"
+msgstr "IP 설정"
 
 #: ../src/vmm-create-interface.glade.h:23 ../src/vmm-create-net.glade.h:26
 msgid "IPv4"
-msgstr ""
+msgstr "IPv4"
 
 #: ../src/vmm-create-interface.glade.h:24
 msgid "IPv6"
-msgstr ""
+msgstr "IPv6"
 
 #: ../src/vmm-create-interface.glade.h:25
 msgid "Insert list desc:"
-msgstr ""
+msgstr "목록 설명을 넣으십시오:"
 
 #: ../src/vmm-create-interface.glade.h:26
-#, fuzzy
 msgid "Interval:"
-msgstr "PV설치"
+msgstr "간격:"
 
 #: ../src/vmm-create-interface.glade.h:27
-#, fuzzy
 msgid "Ma_nually configure:"
-msgstr "검색(_B)"
+msgstr "수동 설정(_N):"
 
 #: ../src/vmm-create-interface.glade.h:28
 msgid "Select the interface type you would like to configure."
-msgstr ""
+msgstr "설정하려는 인터페이스 유형을 선택하십시오."
 
 #: ../src/vmm-create-interface.glade.h:29
-#, fuzzy
 msgid "Static configuration:"
-msgstr "저장 경로를 변경하는 도중 오류 발생: %s    "
+msgstr "고정 설정:"
 
 #: ../src/vmm-create-interface.glade.h:30
-#, fuzzy
 msgid "Target address:"
-msgstr "MAC 주소"
+msgstr "타겟 주소:"
 
 #: ../src/vmm-create-interface.glade.h:31
 msgid "Up delay:"
-msgstr ""
+msgstr "상방 지연:"
 
 #: ../src/vmm-create-interface.glade.h:32
 msgid "Validate mode:"
-msgstr ""
+msgstr "모드 검증:"
 
 #: ../src/vmm-create-interface.glade.h:33
-#, fuzzy
 msgid "_Activate now:"
-msgstr "활성  "
+msgstr "지금 활성화(_A):"
 
 #: ../src/vmm-create-interface.glade.h:35
-#, fuzzy
 msgid "_Configure"
-msgstr "검색(_B)"
+msgstr "설정(_C)"
 
 #: ../src/vmm-create-interface.glade.h:36
-#, fuzzy
 msgid "_Copy interface configuration from:"
-msgstr "저장 경로를 변경하는 도중 오류 발생: %s    "
+msgstr "다음에서 인터페이스 설정 복사(_C):"
 
 #: ../src/vmm-create-interface.glade.h:38
 msgid "_Gateway:"
-msgstr ""
+msgstr "게이트웨이(_G):"
 
 #: ../src/vmm-create-interface.glade.h:39
-#, fuzzy
 msgid "_Interface type:"
-msgstr "장치 유형:  "
+msgstr "인터페이스 유형(_I):"
 
 #: ../src/vmm-create-interface.glade.h:41 ../src/vmm-create-pool.glade.h:14
 #: ../src/vmm-create-vol.glade.h:24 ../src/vmm-create.glade.h:54
-#, fuzzy
 msgid "_Name:"
-msgstr "이름:"
+msgstr "이름(_N):"
 
 #: ../src/vmm-create-interface.glade.h:42
-#, fuzzy
 msgid "_Start mode:"
-msgstr "상태:"
+msgstr "시작 모드(_S):"
 
 #: ../src/vmm-create-interface.glade.h:43
 msgid "_VLAN tag:"
-msgstr ""
+msgstr "_VLAN 태그:"
 
 #: ../src/vmm-create-interface.glade.h:44
 msgid "ip desc"
-msgstr ""
+msgstr "ip 설명"
 
-#: ../src/vmm-create-interface.glade.h:45 ../src/vmm-preferences.glade.h:38
+#: ../src/vmm-create-interface.glade.h:45 ../src/vmm-preferences.glade.h:41
 msgid "seconds"
 msgstr "초"
 
 #: ../src/vmm-create-net.glade.h:1
-#, fuzzy
 msgid "<b>DHCP</b>"
-msgstr "<b>CPU</b>"
+msgstr "<b>DHCP</b>"
 
 #: ../src/vmm-create-net.glade.h:2
-#, fuzzy
 msgid "<b>Example:</b> network1"
-msgstr "<b>예:</b> 시스템1"
+msgstr "<b>예:</b> network1"
 
 #: ../src/vmm-create-net.glade.h:3
-#, fuzzy
 msgid "<b>Forwarding</b>"
-msgstr "<b>저장</b>"
+msgstr "<b>포워딩</b>"
 
 #: ../src/vmm-create-net.glade.h:4
 msgid ""
 "<b>Hint:</b> The network should be chosen from one of the IPv4 private "
 "address ranges. eg 10.0.0.0/8,  172.16.0.0/12, or 192.168.0.0/16"
 msgstr ""
+"<b>힌트:</b> 네트워크는 IPv4의 전용 주소 영역에서 선택해야만 합니다.예 "
+"10.0.0.0/8,  172.16.0.0/12, 또는 192.168.0.0/16"
 
 #: ../src/vmm-create-net.glade.h:5
-#, fuzzy
 msgid "<b>IPv4 network</b>"
-msgstr "<b>네트워크</b>"
+msgstr "<b>IPv4 네트워크</b>"
 
 #: ../src/vmm-create-net.glade.h:6
-#, fuzzy
 msgid "<b>Summary</b>"
-msgstr "<b>요약:</b>"
+msgstr "<b>요약</b>"
 
 #: ../src/vmm-create-net.glade.h:7
 msgid ""
@@ -3161,113 +3179,104 @@ msgid ""
 "network configuration in virtual machines, these parameters can be left with "
 "their default values."
 msgstr ""
+"<b>팁:</b> 가상 머신에서 고정 네트워크 설정을 허용하기 위해 몇몇 주소를 예약"
+"하고 싶지 않다면, 이 매개 변수의 초기 값을 그대로 남겨둘 수 있습니다."
 
 #: ../src/vmm-create-net.glade.h:8
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Choosing an "
 "IPv4 address space</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">저장 공간 할당</"
-"span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">IPv4 주소 공간 "
+"선택</span>"
 
 #: ../src/vmm-create-net.glade.h:9
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Connecting to "
 "physical network</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">저장 공간 할당</"
-"span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">물리 네트워크에 "
+"접속</span>"
 
 #: ../src/vmm-create-net.glade.h:10
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Creating a new "
 "virtual network </span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">새 가상 시스템 "
-"생성</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">새 가상 네트워"
+"크 생성</span>"
 
 #: ../src/vmm-create-net.glade.h:11
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Naming your "
 "virtual network </span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">가상 시스템 이"
-"름 짓기</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">가상 네트워크 이"
+"름 붙이기</span>"
 
 #: ../src/vmm-create-net.glade.h:12
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Ready to create "
 "network</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">설치 시작 준비</"
-"span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">네트워크 생성 준"
+"비됨</span>"
 
 #: ../src/vmm-create-net.glade.h:13
-#, fuzzy
 msgid ""
 "<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">Selecting the "
 "DHCP range</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">저장 공간 할당</"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">DHCP 범위 설정</"
 "span>"
 
 #: ../src/vmm-create-net.glade.h:14
-#, fuzzy
 msgid "A <b>name</b> for your new virtual network"
-msgstr "새 가상 시스템 <b>이름</b>"
+msgstr "새 가상 네트워크 <b>이름</b>"
 
 #: ../src/vmm-create-net.glade.h:15
 msgid "Broadcast:"
-msgstr ""
+msgstr "브로드캐스트:"
 
 #: ../src/vmm-create-net.glade.h:16
 msgid "Complete"
 msgstr "완료"
 
 #: ../src/vmm-create-net.glade.h:17
-#, fuzzy
 msgid "Connectivity:"
-msgstr "연결(_n)"
+msgstr "연결:"
 
 #: ../src/vmm-create-net.glade.h:18
-#, fuzzy
 msgid "Create a new virtual network"
-msgstr "새 가상 시스템 생성"
+msgstr "새 가상 네트워크 생성"
 
 #: ../src/vmm-create-net.glade.h:19
 msgid "DHCP"
-msgstr ""
+msgstr "DHCP"
 
 #: ../src/vmm-create-net.glade.h:20
 msgid "E_nd:"
-msgstr ""
+msgstr "끝(_N):"
 
 #: ../src/vmm-create-net.glade.h:21
-#, fuzzy
 msgid "End Address"
-msgstr "MAC 주소"
+msgstr "끝 주소"
 
 #: ../src/vmm-create-net.glade.h:22
-#, fuzzy
 msgid "End address:"
-msgstr "MAC 주소"
+msgstr "끝 주소:"
 
 #: ../src/vmm-create-net.glade.h:23
 msgid "For_warding to physical network"
-msgstr ""
+msgstr "물리적 네트워크로 포워딩(_W)"
 
 #: ../src/vmm-create-net.glade.h:24
 msgid "Forwarding"
-msgstr ""
+msgstr "포워딩"
 
 #: ../src/vmm-create-net.glade.h:25
 msgid "Gateway:"
-msgstr ""
+msgstr "게이트웨이:"
 
 #: ../src/vmm-create-net.glade.h:27
 msgid "Intro"
@@ -3275,178 +3284,163 @@ msgstr "소개"
 
 #: ../src/vmm-create-net.glade.h:28 ../src/vmm-host.glade.h:36
 msgid "NAT to any physical device"
-msgstr ""
+msgstr "물리 디바이스에 NAT 보내기"
 
 #: ../src/vmm-create-net.glade.h:30
 msgid "Net Name Field"
-msgstr ""
+msgstr "네트워크 이름 항목"
 
 #: ../src/vmm-create-net.glade.h:31
 msgid "Netmask:"
-msgstr ""
+msgstr "넷마스크:"
 
 #: ../src/vmm-create-net.glade.h:32
-#, fuzzy
 msgid "Network Range"
-msgstr "네트워크 사용량:"
+msgstr "네트워크 범위"
 
 #: ../src/vmm-create-net.glade.h:33
-#, fuzzy
 msgid "Network _Name:"
-msgstr "네트워크 사용량:"
+msgstr "네트워크 이름(_N):"
 
 #: ../src/vmm-create-net.glade.h:34
-#, fuzzy
 msgid "Network name:"
-msgstr "네트워크 사용량:"
+msgstr "네트워크 이름:"
 
 #: ../src/vmm-create-net.glade.h:35 ../src/vmm-host.glade.h:39
-#, fuzzy
 msgid "Network:"
-msgstr "네트워크"
+msgstr "네트워크:"
 
 #: ../src/vmm-create-net.glade.h:36
-#, fuzzy
 msgid "Physical Network"
-msgstr "가상 CPU"
+msgstr "물리 네트워크"
 
 #: ../src/vmm-create-net.glade.h:37
-#, fuzzy
 msgid "Please choose a name for your virtual network:"
-msgstr "가상 시스템 이름을 선택합니다:"
+msgstr "가상 네트워크의 이름을 선택하십시오:"
 
 #: ../src/vmm-create-net.glade.h:38
 msgid ""
 "Please choose the range of addresses the DHCP server will allocate to "
 "virtual machines attached to the virtual network."
 msgstr ""
+"DHCP 서버가 가상 네트워크에 연결되는 가상 머신에 할당할 주소의 범위를 지정해 "
+"주십시오."
 
 #: ../src/vmm-create-net.glade.h:39
 msgid ""
 "Please indicate whether this virtual network should be connected to the "
 "physical network."
-msgstr ""
+msgstr "이 가상 네트워크가 물리적 네트워크에 연결되야 하는지 지정해 주십시오."
 
 #: ../src/vmm-create-net.glade.h:41
-#, fuzzy
 msgid "Size:"
-msgstr "크기(_S):"
+msgstr "크기:"
 
 #: ../src/vmm-create-net.glade.h:42
-#, fuzzy
 msgid "Start Address"
-msgstr "MAC 주소"
+msgstr "시작 주소"
 
 #: ../src/vmm-create-net.glade.h:44
 msgid ""
 "The <b>address range</b> from which the <b>DHCP</b> server will allocate "
 "addresses for virtual machines"
-msgstr ""
+msgstr "<b>DHCP</b> 서버가 가상 머신에 주소를 할당할 때 쓸 <b>주소 범위</b>"
 
 #: ../src/vmm-create-net.glade.h:45
 msgid "The IPv4 <b>address</b> and <b>netmask</b> to assign"
-msgstr ""
+msgstr "할당할 IPv4 <b>주소</b>와 <b>넷마스크</b>"
 
 #: ../src/vmm-create-net.glade.h:46
-#, fuzzy
 msgid ""
 "This assistant will guide you through creating a new virtual network. You "
 "will be asked for some information about the virtual network you'd like to "
 "create, such as:"
 msgstr ""
-"새 가상 시스템을 생성하도록 안내해 드립니다. 다음과 같이 생성하고자 하는 가"
-"상 시스템에 관한 정보가 필요합니다:"
+"본 도우미는 여러분이 새로운 가상 네트워크를 생성하는 과정을 도울 것입니다. 여"
+"러분이 생성할 가상 네트워크에 대한 여러가지 정보를 질문하게 될 것입니다. 다음"
+"과 같은 예가 있습니다:"
 
 #: ../src/vmm-create-net.glade.h:48
 msgid "Whether to <b>forward</b> traffic to the physical network"
-msgstr ""
+msgstr "네트워크 트래픽을 물리적 네트워크로 <b>포워딩</b>할지 여부"
 
 #: ../src/vmm-create-net.glade.h:49
 msgid "You will need to choose an IPv4 address space for the virtual network:"
-msgstr ""
+msgstr "가상 네트워크에 사용할 IPv4 주소 공간을 선택해야 할 것입니다:"
 
 #: ../src/vmm-create-net.glade.h:50
-#, fuzzy
 msgid "_Destination:"
-msgstr "수신지"
+msgstr "수신지(_D):"
 
 #: ../src/vmm-create-net.glade.h:51
 msgid "_Enable DHCP:"
-msgstr ""
+msgstr "DHCP 활성화(_E):"
 
 #: ../src/vmm-create-net.glade.h:53
-#, fuzzy
 msgid "_Isolated virtual network"
-msgstr "네트워크"
+msgstr "독립된 가상 네트워크(_I)"
 
 #: ../src/vmm-create-net.glade.h:55
-#, fuzzy
 msgid "_Network:"
-msgstr "네트워크"
+msgstr "네트워크(_N):"
 
 #: ../src/vmm-create-net.glade.h:56
-#, fuzzy
 msgid "_Start:"
-msgstr "상태:"
+msgstr "상태(_S):"
 
 #: ../src/vmm-create-pool.glade.h:1
 msgid "<span size='x-large'>Add Storage Pool</span>"
-msgstr ""
+msgstr "<span size='x-large'>저장소 풀 추가</span>"
 
 #: ../src/vmm-create-pool.glade.h:2
 msgid "Add a New Storage Pool"
-msgstr ""
+msgstr "새로운 저장소 풀 추가"
 
 #: ../src/vmm-create-pool.glade.h:3
-#, fuzzy
 msgid "B_rowse"
-msgstr "검색"
+msgstr "검색(_R)"
 
 #: ../src/vmm-create-pool.glade.h:4
 msgid "B_uild Pool:"
-msgstr ""
+msgstr "풀 구축(_U):"
 
 #: ../src/vmm-create-pool.glade.h:5
-#, fuzzy
 msgid "Bro_wse"
-msgstr "검색"
+msgstr "검색(_W)"
 
 #: ../src/vmm-create-pool.glade.h:6
-#, fuzzy
 msgid "F_ormat:"
-msgstr "포트(_P):"
+msgstr "포맷(_O):"
 
 #: ../src/vmm-create-pool.glade.h:8
-#, fuzzy
 msgid "Host Na_me:"
-msgstr "호스트(_H):"
+msgstr "호스트명(_M):"
 
 #: ../src/vmm-create-pool.glade.h:10
 msgid ""
 "Specify a storage location to be later split into virtual machine storage."
 msgstr ""
+"나중에 가상 머신 저장소로 나뉘어 들어가게 될 저장소 위치를 지정하십시오."
 
 #: ../src/vmm-create-pool.glade.h:11
 msgid "Step 1 of 2"
-msgstr ""
+msgstr "2단계 중 1단계"
 
 #: ../src/vmm-create-pool.glade.h:12
 msgid "Step 2 of 2"
-msgstr ""
+msgstr "2단계 중 2단계"
 
 #: ../src/vmm-create-pool.glade.h:15
-#, fuzzy
 msgid "_Source Path:"
-msgstr "<b>저장</b>"
+msgstr "원본 경로(_S):"
 
 #: ../src/vmm-create-pool.glade.h:16
-#, fuzzy
 msgid "_Target Path:"
-msgstr "대상:  "
+msgstr "목적 경로(_T):"
 
 #: ../src/vmm-create-vol.glade.h:1
 msgid "<span size='large'>Storage Volume Quota</span>"
-msgstr ""
+msgstr "<span size='large'>저장소 볼륨 쿼터</span>"
 
 #: ../src/vmm-create-vol.glade.h:2
 msgid ""
@@ -3465,296 +3459,276 @@ msgid ""
 "  allocated to volume\n"
 "  at this time.</i></span>"
 msgstr ""
+"<span size='small'><i><u>이름</u>: 생성할\n"
+"  볼륨의 이름. 파일의\n"
+"  확장자를 뒤에\n"
+"  붙일 수 있습니다.\n"
+"\n"
+"<u>포맷</u>: 볼륨의 \n"
+"  파일/파티션 형식\n"
+"\n"
+"<u>용량</u>: 볼륨의\n"
+"  최대 크기.\n"
+"\n"
+"<u>할당용량</u>: 실제로 현재\n"
+"  해당 볼륨에 \n"
+"  할당된 용량.</i></span>"
 
 #: ../src/vmm-create-vol.glade.h:16
 msgid "<span size='x-large'>New Storage Volume</span>"
-msgstr ""
+msgstr "<span size='x-large'>새로운 저장소 볼륨</span>"
 
 #: ../src/vmm-create-vol.glade.h:17
-#, fuzzy
 msgid "Add a Storage Volume"
-msgstr "시스템 이름(_N):"
+msgstr "저장소 볼륨 추가"
 
 #: ../src/vmm-create-vol.glade.h:18
 msgid "Create a storage unit that can be used directly by a virtual machine."
-msgstr ""
+msgstr "가상 머신에서 직접 사용할 수 있는 저장소 유니트를 생성합니다."
 
 #: ../src/vmm-create-vol.glade.h:19 ../src/vmm-create.glade.h:28
-#: ../src/vmm-details.glade.h:56
+#: ../src/vmm-details.glade.h:59
 msgid "MB"
 msgstr "MB"
 
 #: ../src/vmm-create-vol.glade.h:20
 msgid "Max Ca_pacity:"
-msgstr ""
+msgstr "최대 용량(_P):"
 
 #: ../src/vmm-create-vol.glade.h:21
-#, fuzzy
 msgid "_Allocation:"
-msgstr "ISO 위치(_L):"
+msgstr "할당(_A):"
 
 #: ../src/vmm-create-vol.glade.h:23
-#, fuzzy
 msgid "_Format:"
-msgstr "포트(_P):"
+msgstr "형식(_F):"
 
 #: ../src/vmm-create-vol.glade.h:25
-#, fuzzy
 msgid "available space:"
-msgstr "사용 불가능"
+msgstr "가용 공간:"
 
 #: ../src/vmm-create.glade.h:1
 msgid "(Insert host mem)"
-msgstr ""
+msgstr "(호스트 메모리 입력)"
 
 #: ../src/vmm-create.glade.h:2
 msgid "<span color='#484848'>CPUs:</span>"
-msgstr ""
+msgstr "<span color='#484848'>CPU들:</span>"
 
 #: ../src/vmm-create.glade.h:3
 msgid "<span color='#484848'>Install:</span>"
-msgstr ""
+msgstr "<span color='#484848'>설치:</span>"
 
 #: ../src/vmm-create.glade.h:4
 msgid "<span color='#484848'>Memory:</span>"
-msgstr ""
+msgstr "<span color='#484848'>메모리:</span>"
 
 #: ../src/vmm-create.glade.h:5
 msgid "<span color='#484848'>OS:</span>"
-msgstr ""
+msgstr "<span color='#484848'>OS:</span>"
 
 #: ../src/vmm-create.glade.h:7
-#, fuzzy
 msgid "<span size='large' color='white'>Create a new virtual machine</span>"
 msgstr ""
-"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">새 가상 시스템 "
-"생성</span>"
+"<span weight=\"heavy\" size=\"xx-large\" foreground=\"#FFF\">새 가상 머신 생"
+"성</span>"
 
 #: ../src/vmm-create.glade.h:8
 msgid "A_utomatically detect operating system based on install media"
-msgstr ""
+msgstr "설치 매체에 따라 자동으로 운영 체제를 감지함(_U)"
 
 #: ../src/vmm-create.glade.h:9 ../src/vmm-migrate.glade.h:6
-#, fuzzy
 msgid "Advanced options"
-msgstr "연결(_n)"
+msgstr "추가 옵션"
 
 #: ../src/vmm-create.glade.h:11
-#, fuzzy
 msgid "Bro_wse..."
-msgstr "검색"
+msgstr "검색(_W)..."
 
 #: ../src/vmm-create.glade.h:12
-#, fuzzy
 msgid "C_PUs:"
-msgstr "VCPU"
+msgstr "C_PU들"
 
 #: ../src/vmm-create.glade.h:13
-#, fuzzy
 msgid "C_onnection:"
-msgstr "연결(_n)"
+msgstr "연결(_O):"
 
 #: ../src/vmm-create.glade.h:15
 msgid "C_ustomize configuration before install"
-msgstr ""
+msgstr "설치 전에 사용자 설정(_U)"
 
 #: ../src/vmm-create.glade.h:16
-#, fuzzy
 msgid "Choose Memory and CPU settings"
-msgstr "CPU 설정 수정"
+msgstr "CPU와 메모리 설정 선택"
 
 #: ../src/vmm-create.glade.h:17
-msgid "Choose an operating systen type and version"
-msgstr ""
+#, fuzzy
+msgid "Choose an operating system type and version"
+msgstr "운영 제체 종류와 버전을 선택"
 
 #: ../src/vmm-create.glade.h:18
 msgid "Choose how you would like to install the operating system"
-msgstr ""
+msgstr "운영 체제를 설치하는 방법 선택"
 
 #: ../src/vmm-create.glade.h:19
-#, fuzzy
 msgid "Enter your virtual machine details"
-msgstr "가상 장치 정보"
+msgstr "가상 머신 상세정보 입력"
 
 #: ../src/vmm-create.glade.h:20
 msgid "Error message"
-msgstr ""
+msgstr "오류 메시지"
 
 #: ../src/vmm-create.glade.h:21
-#, fuzzy
 msgid "Finish"
-msgstr "완료(_F)"
+msgstr "완료"
 
 #: ../src/vmm-create.glade.h:22
 msgid "ISO"
-msgstr ""
+msgstr "ISO"
 
 #: ../src/vmm-create.glade.h:23
-#, fuzzy
 msgid "Import _existing disk image"
-msgstr "기존 저장 장치 위치 지정  "
+msgstr "기존 디스크 이미지 불러오기(_E)"
 
 #: ../src/vmm-create.glade.h:24
-#, fuzzy
 msgid "Install"
-msgstr "PV설치"
+msgstr "설치"
 
 #: ../src/vmm-create.glade.h:25
-#, fuzzy
 msgid "Kernel options:"
-msgstr "연결(_n)"
+msgstr "커널 옵션:"
 
 #: ../src/vmm-create.glade.h:26
-#, fuzzy
 msgid "Kickstart URL:"
-msgstr "킥스타트 URL(_R):"
+msgstr "킥스타트 URL:"
 
 #: ../src/vmm-create.glade.h:27
-#, fuzzy
 msgid "Locate your install media"
-msgstr "설치 매체 경로(_P):"
+msgstr "설치 매체 경로"
 
 #: ../src/vmm-create.glade.h:29
-#, fuzzy
 msgid "Memory"
 msgstr "메모리"
 
 #: ../src/vmm-create.glade.h:31
-#, fuzzy
 msgid "Network _Boot (PXE)"
-msgstr "네트워크"
+msgstr "네트워크 부트(PXE)(_B)"
 
 #: ../src/vmm-create.glade.h:32
 msgid "Network _Install (HTTP, FTP, or NFS)"
-msgstr ""
+msgstr "네트워크 설치(HTTP,FTP 또는 NFC)(_I)"
 
 #: ../src/vmm-create.glade.h:33
-#, fuzzy
 msgid "New VM"
-msgstr "<b>네트워크</b>"
+msgstr "새로운 VM"
 
 #: ../src/vmm-create.glade.h:34
-#, fuzzy
 msgid "OS _type:"
-msgstr "종류"
+msgstr "OS 종류(_T):"
 
 #: ../src/vmm-create.glade.h:35
 msgid "PXE"
-msgstr ""
+msgstr "PXE"
 
 #: ../src/vmm-create.glade.h:36
-#, fuzzy
 msgid "Provide the existing storage path:"
-msgstr "기존 저장 장치 위치 지정  "
+msgstr "기존 저장소 위치 지정:"
 
 #: ../src/vmm-create.glade.h:37
 msgid "Provide the operating system install URL"
-msgstr ""
+msgstr "운영 체제 설치 URL 지정"
 
 #: ../src/vmm-create.glade.h:39
-#, fuzzy
 msgid "Set a fixed _MAC address"
-msgstr "잘못된 저장 주소"
+msgstr "고정 _MAC 주소 설정"
 
 #: ../src/vmm-create.glade.h:41
 msgid "URL"
-msgstr ""
+msgstr "URL"
 
 #: ../src/vmm-create.glade.h:42
 msgid "URL Options"
-msgstr ""
+msgstr "URL 옵션"
 
 #: ../src/vmm-create.glade.h:43
-#, fuzzy
 msgid "URL:"
-msgstr "URI(_U):"
+msgstr "URL:"
 
 #: ../src/vmm-create.glade.h:44
-#, fuzzy
 msgid "Use CD_ROM or DVD"
-msgstr "CD-ROM 또는 DVD(_C):"
+msgstr "CD_ROM 또는 DVD 사용"
 
 #: ../src/vmm-create.glade.h:45
-#, fuzzy
 msgid "Use _ISO image:"
-msgstr "ISO 이미지 위치 지정"
+msgstr "_ISO 이미지 사용:"
 
 #: ../src/vmm-create.glade.h:47
 msgid "_Architecture:"
-msgstr ""
+msgstr "아키텍쳐(_A):"
 
 #: ../src/vmm-create.glade.h:49
-#, fuzzy
 msgid "_Enable storage for this virtual machine"
-msgstr "가상 장치 저장"
+msgstr "본 가상정치에 저장소 활성화(_E)"
 
 #: ../src/vmm-create.glade.h:52
 msgid "_Local install media (ISO image or CDROM)"
-msgstr ""
+msgstr "로컬 설치 매체(ISO 이미지나 CDROM)(_L)"
 
 #: ../src/vmm-create.glade.h:53
-#, fuzzy
 msgid "_Memory (RAM):"
-msgstr "VM 최대 메모리(_M):"
+msgstr "메모리(RAM)(_M):"
 
 #: ../src/vmm-create.glade.h:55
-#, fuzzy
 msgid "_Version:"
-msgstr "파티션(_a):"
+msgstr "버전(_V):"
 
 #: ../src/vmm-create.glade.h:56
-#, fuzzy
 msgid "_Virt Type:"
-msgstr "종류"
+msgstr "_Virt 종류:"
 
 #: ../src/vmm-delete.glade.h:1
-#, fuzzy
 msgid "Delete Confirmation"
-msgstr "장치 삭제"
+msgstr "삭제 확인"
 
 #: ../src/vmm-delete.glade.h:2
 msgid "Delete _associated storage files"
-msgstr ""
+msgstr "관련 저장소 파일 삭제(_A)"
 
 #: ../src/vmm-details.glade.h:1
 msgid ""
 "0 KBytes/s\n"
 "0KBytes/s"
 msgstr ""
+"0 KBytes/s\n"
+"0KBytes/s"
 
 #: ../src/vmm-details.glade.h:3
-#, fuzzy
 msgid "<b>Autostart</b>"
-msgstr "<b>요약:</b>"
+msgstr "<b>Autostart:</b>"
 
 #: ../src/vmm-details.glade.h:4
-#, fuzzy
 msgid "<b>Basic Details</b>"
 msgstr "<b>기본 정보</b>"
 
 #: ../src/vmm-details.glade.h:5
-#, fuzzy
 msgid "<b>Boot device order</b>"
-msgstr "<b>콘솔</b>"
+msgstr "<b>부트 장치 순서</b>"
 
 #: ../src/vmm-details.glade.h:6
-#, fuzzy
 msgid "<b>CPU Pinning</b>"
-msgstr "<b>CPU</b>"
+msgstr "<b>CPU 고정</b>"
 
 #: ../src/vmm-details.glade.h:7
 msgid "<b>CPUs</b>"
 msgstr "<b>CPU</b>"
 
 #: ../src/vmm-details.glade.h:8
-#, fuzzy
 msgid "<b>Hypervisor Details</b>"
-msgstr "다른 하이퍼바이저(_O)"
+msgstr "<b>hypervisor 상세정보</b>"
 
 #: ../src/vmm-details.glade.h:9
-#, fuzzy
 msgid "<b>Machine Settings</b>"
-msgstr "<b>기본 정보</b>"
+msgstr "<b>머신 설정</b>"
 
 #: ../src/vmm-details.glade.h:10
 msgid "<b>Memory</b>"
@@ -3762,27 +3736,27 @@ msgstr "<b>메모리</b>"
 
 #: ../src/vmm-details.glade.h:11 ../src/vmm-host.glade.h:6
 msgid "<b>Performance</b>"
-msgstr "<b>실행</b>"
+msgstr "<b>성능</b>"
 
 #: ../src/vmm-details.glade.h:12
-#, fuzzy
 msgid "<b>Security</b>"
-msgstr "<b>요약:</b>"
+msgstr "<b>보안</b>"
 
 #: ../src/vmm-details.glade.h:13
-#, fuzzy
 msgid "<b>Sound Device</b>"
-msgstr "<b>저장</b>"
+msgstr "<b>사운드 장치</b>"
 
 #: ../src/vmm-details.glade.h:14
 msgid "<b>The console is currently unavailable</b>"
-msgstr "<b>현재 콘솔을 사용 할 수 없습니다.</b>"
+msgstr "<b>현재 콘솔을 사용 할 수 없음</b>"
 
 #: ../src/vmm-details.glade.h:15
 msgid ""
 "<b>Tip:</b> 'source' refers to information seen from the host OS, while "
 "'target' refers to information seen from the guest OS"
 msgstr ""
+"<b>팁:</b> '원본'은 호스트 OS에서 보이는 정보를 의미하며, '목적'은 게스트 OS"
+"에서 보이는 정보를 의미합니다."
 
 #: ../src/vmm-details.glade.h:16
 msgid ""
@@ -3790,1120 +3764,946 @@ msgid ""
 "OS will ensure that the virtual cursor moves in sync with the local desktop "
 "cursor."
 msgstr ""
+"<small><b>팁:</b>그래픽 타블렛을 게스트 OS의 기본 포인팅 장치로 지정하면, 가"
+"상 머신 커서가 로컬 데스크탑 커서와 동기화 되서 움직이게 할 수 있습니다.</"
+"small>"
 
 #: ../src/vmm-details.glade.h:17
-#, fuzzy
 msgid "<b>Virtual Disk</b>"
-msgstr "<b>가상화 CPU:</b>"
+msgstr "<b>가상 디스크</b>"
 
 #: ../src/vmm-details.glade.h:18
-#, fuzzy
 msgid "<b>Virtual Display</b>"
-msgstr "<b>가상화 CPU:</b>"
+msgstr "<b>가상 디스플레이</b>"
 
 #: ../src/vmm-details.glade.h:19
-#, fuzzy
 msgid "<b>Virtual Network Interface</b>"
-msgstr "<b>네트워크</b>"
+msgstr "<b>가상 네트워크 인터페이스</b>"
 
 #: ../src/vmm-details.glade.h:20
-#, fuzzy
 msgid "<b>Virtual Pointer</b>"
-msgstr "<b>가상화 CPU:</b>"
+msgstr "<b>가상화 포인터</b>"
 
 #: ../src/vmm-details.glade.h:21
-#, fuzzy
 msgid "<b>insert type</b>"
-msgstr "<b>콘솔</b>"
+msgstr "<b>유형 입력</b>"
 
 #: ../src/vmm-details.glade.h:22
-#, fuzzy
-msgid "A_ction:"
-msgstr "ISO 위치(_L):"
+msgid "<small>Overcommitting vCPUs can hurt performance</small>"
+msgstr ""
 
 #: ../src/vmm-details.glade.h:23
+msgid "A_ction:"
+msgstr "동작(_C):"
+
+#: ../src/vmm-details.glade.h:24
 msgid "A_dd Hardware"
-msgstr ""
+msgstr "하드웨어 추가(_D)"
 
-#: ../src/vmm-details.glade.h:25 ../src/vmm-host.glade.h:16
+#: ../src/vmm-details.glade.h:26 ../src/vmm-host.glade.h:16
 msgid "Architecture:"
-msgstr ""
+msgstr "아키텍쳐"
 
-#: ../src/vmm-details.glade.h:26
+#: ../src/vmm-details.glade.h:27
 msgid "Auth"
 msgstr "인증"
 
-#: ../src/vmm-details.glade.h:27
-msgid "Boot"
-msgstr ""
-
 #: ../src/vmm-details.glade.h:28
 #, fuzzy
+msgid "Begin Installation"
+msgstr "설치 종료"
+
+#: ../src/vmm-details.glade.h:29
+msgid "Boot"
+msgstr "부트"
+
+#: ../src/vmm-details.glade.h:30
 msgid ""
 "CPU\n"
 "usage:"
-msgstr "CPU 사용량:"
-
-#: ../src/vmm-details.glade.h:30
-msgid "C_lock Offset:"
 msgstr ""
-
-#: ../src/vmm-details.glade.h:31
-#, fuzzy
-msgid "Change a_llocation:"
-msgstr "할당 변경:"
+"CPU\n"
+"usage:"
 
 #: ../src/vmm-details.glade.h:32
-msgid "Char"
-msgstr ""
+msgid "C_lock Offset:"
+msgstr "클럭 오프셋(_L):"
 
 #: ../src/vmm-details.glade.h:33
 #, fuzzy
-msgid "Connect or disconnect media"
-msgstr "연결(_n)"
+msgid "Cac_he mode:"
+msgstr "장치 모델(_E):"
 
 #: ../src/vmm-details.glade.h:34
-#, fuzzy
-msgid "Console"
-msgstr "직렬 콘솔(_S)"
+msgid "Change a_llocation:"
+msgstr "할당 변경(_L):"
 
 #: ../src/vmm-details.glade.h:35
+msgid "Char"
+msgstr "Char"
+
+#: ../src/vmm-details.glade.h:36
+msgid "Connect or disconnect media"
+msgstr "매체 연결/연결해제"
+
+#: ../src/vmm-details.glade.h:37
+msgid "Console"
+msgstr "콘솔"
+
+#: ../src/vmm-details.glade.h:38
 msgid "Current allocation:"
 msgstr "현재 할당:"
 
-#: ../src/vmm-details.glade.h:36
-msgid "D_ynamic"
-msgstr ""
-
-#: ../src/vmm-details.glade.h:37
-#, fuzzy
-msgid "Description:"
-msgstr "수신지"
-
 #: ../src/vmm-details.glade.h:39
-#, fuzzy
-msgid "Device Type:"
-msgstr "종류"
+msgid "D_ynamic"
+msgstr "동적(_Y)"
 
 #: ../src/vmm-details.glade.h:40
-#, fuzzy
-msgid "Device m_odel:"
-msgstr "종류"
+msgid "Description:"
+msgstr "설명:"
 
 #: ../src/vmm-details.glade.h:42
+msgid "Device Type:"
+msgstr "장치 종류:"
+
+#: ../src/vmm-details.glade.h:43
+msgid "Device m_odel:"
+msgstr "장치 모델(_O):"
+
+#: ../src/vmm-details.glade.h:45
 msgid "Disk"
 msgstr "디스크"
 
-#: ../src/vmm-details.glade.h:43
-#, fuzzy
+#: ../src/vmm-details.glade.h:46
 msgid ""
 "Disk\n"
 "I/O:"
-msgstr "디스크"
-
-#: ../src/vmm-details.glade.h:45
-msgid "Emulator:"
 msgstr ""
-
-#: ../src/vmm-details.glade.h:46
-msgid "Enable A_CPI:"
-msgstr ""
-
-#: ../src/vmm-details.glade.h:47
-msgid "Enable A_PIC:"
-msgstr ""
+"디스크\n"
+"I/O:"
 
 #: ../src/vmm-details.glade.h:48
-#, fuzzy
-msgid "Finish Install"
-msgstr "PV설치"
+msgid "Emulator:"
+msgstr "에뮬레이터:"
 
 #: ../src/vmm-details.glade.h:49
-msgid "Heads:"
-msgstr ""
+msgid "Enable A_CPI:"
+msgstr "A_CPI 활성화:"
 
 #: ../src/vmm-details.glade.h:50
-#, fuzzy
-msgid "Host CPUs:"
-msgstr "VCPU"
+msgid "Enable A_PIC:"
+msgstr "A_PIC 활성화:"
 
-#: ../src/vmm-details.glade.h:51 ../src/vmm-host.glade.h:28
-#, fuzzy
-msgid "Hypervisor:"
-msgstr "다른 하이퍼바이저(_O)"
+#: ../src/vmm-details.glade.h:51
+msgid "Generate from host _NUMA configuration"
+msgstr ""
 
 #: ../src/vmm-details.glade.h:52
+msgid "Heads:"
+msgstr "헤드:"
+
+#: ../src/vmm-details.glade.h:53 ../src/vmm-host.glade.h:28
+msgid "Hypervisor:"
+msgstr "Hypervisor:"
+
+#: ../src/vmm-details.glade.h:54
 msgid "Initial _pinning:"
-msgstr ""
+msgstr "최초 고정(_P):"
 
 #: ../src/vmm-details.glade.h:57
 #, fuzzy
-msgid "M_odel:"
-msgstr "모델:  "
-
-#: ../src/vmm-details.glade.h:58
-#, fuzzy
-msgid "Ma_ximum allocation:"
-msgstr "최대 할당:"
-
-#: ../src/vmm-details.glade.h:59
-msgid "Max Memory Select"
-msgstr ""
+msgid "Logical host CPUs:"
+msgstr "논리적 CPU:"
 
 #: ../src/vmm-details.glade.h:60
+msgid "M_odel:"
+msgstr "모델(_O):"
+
+#: ../src/vmm-details.glade.h:61
+msgid "Ma_ximum allocation:"
+msgstr "최대 할당(_X):"
+
+#: ../src/vmm-details.glade.h:62
+msgid "Max Memory Select"
+msgstr "최대 메모리 선택"
+
+#: ../src/vmm-details.glade.h:63
 msgid "Maximum allocation:"
 msgstr "최대 할당:"
 
-#: ../src/vmm-details.glade.h:61
-#, fuzzy
+#: ../src/vmm-details.glade.h:64
 msgid "Mem"
 msgstr "메모리"
 
-#: ../src/vmm-details.glade.h:62
-#, fuzzy
+#: ../src/vmm-details.glade.h:65
 msgid ""
 "Memory\n"
 "usage:"
-msgstr "메모리 사용량:"
+msgstr ""
+"메모리\n"
+"사용량:"
 
-#: ../src/vmm-details.glade.h:64
-#, fuzzy
+#: ../src/vmm-details.glade.h:67
 msgid "Memory Select"
-msgstr "메모리 사용량"
+msgstr "메모리 선택"
 
-#: ../src/vmm-details.glade.h:66 ../src/vmm-host.glade.h:37
+#: ../src/vmm-details.glade.h:69 ../src/vmm-host.glade.h:37
 msgid "Name:"
 msgstr "이름:"
 
-#: ../src/vmm-details.glade.h:67
-#, fuzzy
+#: ../src/vmm-details.glade.h:70
 msgid "Net"
 msgstr "네트워크"
 
-#: ../src/vmm-details.glade.h:68
-#, fuzzy
+#: ../src/vmm-details.glade.h:71
 msgid ""
 "Network\n"
 "I/O:"
-msgstr "네트워크"
-
-#: ../src/vmm-details.glade.h:70
-#, fuzzy
-msgid "Over"
-msgstr "개요"
-
-#: ../src/vmm-details.glade.h:72
-msgid "Pause"
-msgstr "정지"
-
-#: ../src/vmm-details.glade.h:73 ../src/vmm-manager.glade.h:3
-#, fuzzy
-msgid "Pause the virtual machine"
-msgstr "가상 장치 복구"
-
-#: ../src/vmm-details.glade.h:75 ../src/vmm-manager.glade.h:4
-#, fuzzy
-msgid "Power on the virtual machine"
-msgstr "가상 장치 복구"
-
-#: ../src/vmm-details.glade.h:76
-#, fuzzy
-msgid "Proc"
-msgstr "프로세서"
-
-#: ../src/vmm-details.glade.h:77
-msgid "RAM:"
 msgstr ""
+"네트워크\n"
+"I/O:"
 
-#: ../src/vmm-details.glade.h:78
-#, fuzzy
-msgid "R_eadonly:"
-msgstr "읽기 전용  "
+#: ../src/vmm-details.glade.h:73
+msgid "Over"
+msgstr "상"
+
+#: ../src/vmm-details.glade.h:75
+msgid "Pause"
+msgstr "일시정지"
+
+#: ../src/vmm-details.glade.h:76 ../src/vmm-manager.glade.h:3
+msgid "Pause the virtual machine"
+msgstr "가상 머신 일시 정지"
+
+#: ../src/vmm-details.glade.h:78 ../src/vmm-manager.glade.h:4
+msgid "Power on the virtual machine"
+msgstr "가상 머신 전원 차단"
 
 #: ../src/vmm-details.glade.h:79
-msgid "Run"
-msgstr "실행"
+msgid "Proc"
+msgstr "프로세스"
 
 #: ../src/vmm-details.glade.h:80
-#, fuzzy
-msgid "S_hut Down"
-msgstr "종료"
+msgid "RAM:"
+msgstr "램:"
 
 #: ../src/vmm-details.glade.h:81
-msgid "Send _Key"
-msgstr ""
+msgid "R_eadonly:"
+msgstr "읽기 전용(_E):"
 
 #: ../src/vmm-details.glade.h:82
 #, fuzzy
-msgid "Sharea_ble:"
-msgstr "공유 가능  "
+msgid "R_untime pinning:"
+msgstr "최초 고정(_P):"
 
 #: ../src/vmm-details.glade.h:83
-#, fuzzy
-msgid "Show the graphical console"
-msgstr "그래픽형식 콘솔(_G)"
+msgid "Run"
+msgstr "실행"
 
 #: ../src/vmm-details.glade.h:84
-#, fuzzy
-msgid "Show virtual hardware details"
-msgstr "가상 장치 정보"
+msgid "S_hut Down"
+msgstr "종료(_H)"
 
 #: ../src/vmm-details.glade.h:85
-#, fuzzy
+msgid "Send _Key"
+msgstr "키 보내기(_K)"
+
+#: ../src/vmm-details.glade.h:86
+msgid "Sharea_ble:"
+msgstr "공유 가능(_B):"
+
+#: ../src/vmm-details.glade.h:87
+msgid "Show the graphical console"
+msgstr "그래픽 콘솔 표시"
+
+#: ../src/vmm-details.glade.h:88
+msgid "Show virtual hardware details"
+msgstr "가상 머신 상세 정보 표시"
+
+#: ../src/vmm-details.glade.h:89
 msgid "Shut Down"
 msgstr "종료"
 
-#: ../src/vmm-details.glade.h:86
+#: ../src/vmm-details.glade.h:90
 msgid "Shut down"
 msgstr "종료"
 
-#: ../src/vmm-details.glade.h:87 ../src/vmm-manager.glade.h:8
-#, fuzzy
+#: ../src/vmm-details.glade.h:91 ../src/vmm-manager.glade.h:6
 msgid "Shutdown the virtual machine"
-msgstr "가상 장치 복구"
+msgstr "가상 머신 종료"
 
-#: ../src/vmm-details.glade.h:89
+#: ../src/vmm-details.glade.h:93
 msgid "Source Path:"
-msgstr ""
+msgstr "원본 경로:"
 
-#: ../src/vmm-details.glade.h:90
+#: ../src/vmm-details.glade.h:94
 msgid "Source device:"
-msgstr ""
+msgstr "원본 장치:"
 
-#: ../src/vmm-details.glade.h:91
+#: ../src/vmm-details.glade.h:95
 msgid "Source path:"
-msgstr ""
+msgstr "원본 경로:"
 
-#: ../src/vmm-details.glade.h:92
-#, fuzzy
+#: ../src/vmm-details.glade.h:96
 msgid "Start virt_ual machine on host boot up"
-msgstr "가상 기계장치 스크린샷 저장"
+msgstr "호스트 부팅시 가상 머신 시작(_U)"
 
-#: ../src/vmm-details.glade.h:93 ../src/vmm-preferences.glade.h:27
-#, fuzzy
+#: ../src/vmm-details.glade.h:97 ../src/vmm-preferences.glade.h:30
 msgid "Stats"
 msgstr "상태"
 
-#: ../src/vmm-details.glade.h:95
-#, fuzzy
-msgid "Storage size:"
-msgstr "저장  "
-
-#: ../src/vmm-details.glade.h:96
-msgid "Switch to fullscreen view"
-msgstr ""
-
-#: ../src/vmm-details.glade.h:97
-#, fuzzy
-msgid "T_oolbar"
-msgstr "툴바"
-
-#: ../src/vmm-details.glade.h:98
-msgid "Target device:"
-msgstr ""
-
 #: ../src/vmm-details.glade.h:99
-msgid "Total host memory:"
-msgstr ""
+msgid "Storage size:"
+msgstr "저장소 크기:"
+
+#: ../src/vmm-details.glade.h:100
+msgid "Switch to fullscreen view"
+msgstr "전체화면 보기로 전환"
 
 #: ../src/vmm-details.glade.h:101
+msgid "T_oolbar"
+msgstr "툴바(_O)"
+
+#: ../src/vmm-details.glade.h:102
+msgid "Target device:"
+msgstr "목적 디바이스:"
+
+#: ../src/vmm-details.glade.h:103
+msgid "Total host memory:"
+msgstr "전체 호스트 메모리:"
+
+#: ../src/vmm-details.glade.h:105
 msgid "UUID:"
 msgstr "UUID:"
 
-#: ../src/vmm-details.glade.h:102
+#: ../src/vmm-details.glade.h:106
 msgid "Unavailable"
 msgstr "사용 불가능"
 
-#: ../src/vmm-details.glade.h:103
+#: ../src/vmm-details.glade.h:107
 msgid "VNC"
 msgstr "VNC"
 
-#: ../src/vmm-details.glade.h:104
-msgid "Vid"
-msgstr ""
-
-#: ../src/vmm-details.glade.h:105
-#, fuzzy
-msgid "Virtual CPU Affinity Select"
-msgstr "가상 CPU 통지"
-
-#: ../src/vmm-details.glade.h:106
-#, fuzzy
-msgid "Virtual CPU Select"
-msgstr "가상 CPU 통지"
-
-#: ../src/vmm-details.glade.h:107
-#, fuzzy
-msgid "Virtual Machine"
-msgstr "가상 장치(_M)"
-
 #: ../src/vmm-details.glade.h:108
-msgid "Virtual _Machine"
-msgstr "가상 장치(_M)"
+msgid "Vid"
+msgstr "Vid"
 
 #: ../src/vmm-details.glade.h:109
-msgid "_Always"
-msgstr ""
+msgid "Virtual CPU Affinity Select"
+msgstr "가상 CPU 친화도 선택"
+
+#: ../src/vmm-details.glade.h:110
+msgid "Virtual CPU Select"
+msgstr "가상 CPU 선택"
 
 #: ../src/vmm-details.glade.h:111
-#, fuzzy
-msgid "_Console"
-msgstr "직렬 콘솔(_S)"
+msgid "Virtual Machine"
+msgstr "가상 머신"
 
-#: ../src/vmm-details.glade.h:113 ../src/vmm-host.glade.h:53
-#: ../src/vmm-manager.glade.h:14
+#: ../src/vmm-details.glade.h:112
+msgid "Virtual _Machine"
+msgstr "가상 머신(_M)"
+
+#: ../src/vmm-details.glade.h:113
+msgid "_Always"
+msgstr "항상(_A)"
+
+#: ../src/vmm-details.glade.h:114
+#, fuzzy
+msgid "_Begin Installation"
+msgstr "설치 종료"
+
+#: ../src/vmm-details.glade.h:115
+msgid "_Clone"
+msgstr "복제(_C)"
+
+#: ../src/vmm-details.glade.h:116
+msgid "_Console"
+msgstr "콘솔(_C)"
+
+#: ../src/vmm-details.glade.h:118 ../src/vmm-host.glade.h:56
+#: ../src/vmm-manager.glade.h:13
 msgid "_File"
 msgstr "파일(_F)"
 
-#: ../src/vmm-details.glade.h:115
-#, fuzzy
+#: ../src/vmm-details.glade.h:120
 msgid "_Fullscreen"
-msgstr "전체 화면(_F)"
+msgstr "전체화면(_F)"
 
-#: ../src/vmm-details.glade.h:116 ../src/vmm-host.glade.h:54
-#: ../src/vmm-manager.glade.h:16
+#: ../src/vmm-details.glade.h:121 ../src/vmm-host.glade.h:57
+#: ../src/vmm-manager.glade.h:15
 msgid "_Help"
 msgstr "도움말(_H)"
 
-#: ../src/vmm-details.glade.h:117
-msgid "_Label:"
-msgstr ""
-
-#: ../src/vmm-details.glade.h:118
-#, fuzzy
-msgid "_Login"
-msgstr "로그인"
-
-#: ../src/vmm-details.glade.h:120
-#, fuzzy
-msgid "_Never"
-msgstr "VNC 서버  "
-
-#: ../src/vmm-details.glade.h:121
-#, fuzzy
-msgid "_Only when Fullscreen"
-msgstr "전체 화면(_F)"
-
 #: ../src/vmm-details.glade.h:122
-#, fuzzy
-msgid "_Password:"
-msgstr "암호:"
+msgid "_Label:"
+msgstr "레이블(_L):"
+
+#: ../src/vmm-details.glade.h:123
+msgid "_Login"
+msgstr "로그인(_L)"
 
 #: ../src/vmm-details.glade.h:125
-msgid "_Resize to VM"
-msgstr ""
+msgid "_Never"
+msgstr "하지않음(_N)"
+
+#: ../src/vmm-details.glade.h:126
+msgid "_Only when Fullscreen"
+msgstr "전체 화면의 경우만(_O)"
 
 #: ../src/vmm-details.glade.h:127
-msgid "_Save"
-msgstr "저장(_S)"
-
-#: ../src/vmm-details.glade.h:128
-#, fuzzy
-msgid "_Save this password in your keyring"
-msgstr "키링에 암호 저장"
-
-#: ../src/vmm-details.glade.h:129
-msgid "_Scale Display"
-msgstr ""
+msgid "_Password:"
+msgstr "암호(_P):"
 
 #: ../src/vmm-details.glade.h:130
-#, fuzzy
-msgid "_Static"
-msgstr "상태"
+msgid "_Resize to VM"
+msgstr "VM에 맞게 재조정(_R)"
 
-#: ../src/vmm-details.glade.h:131
+#: ../src/vmm-details.glade.h:132
+msgid "_Save this password in your keyring"
+msgstr "키링에 암호 저장(_S)"
+
+#: ../src/vmm-details.glade.h:133
+msgid "_Scale Display"
+msgstr "디스플레이 크기변경(_S)"
+
+#: ../src/vmm-details.glade.h:134
+msgid "_Static"
+msgstr "고정(_S)"
+
+#: ../src/vmm-details.glade.h:135
 msgid "_Take Screenshot"
 msgstr "스크린샷 찍기(_T)"
 
-#: ../src/vmm-details.glade.h:132
-#, fuzzy
+#: ../src/vmm-details.glade.h:136
 msgid "_Text Consoles"
-msgstr "직렬 콘솔(_S)"
+msgstr "문자 콘솔(_T)"
 
-#: ../src/vmm-details.glade.h:133
-#, fuzzy
+#: ../src/vmm-details.glade.h:137 ../src/vmm-open-connection.glade.h:16
 msgid "_Username:"
-msgstr "호스트(_H):"
+msgstr "사용자명(_U):"
 
-#: ../src/vmm-details.glade.h:134 ../src/vmm-manager.glade.h:23
+#: ../src/vmm-details.glade.h:138 ../src/vmm-manager.glade.h:21
 msgid "_View"
 msgstr "보기(_V)"
 
-#: ../src/vmm-details.glade.h:135 ../src/vmm-host.glade.h:56
-#, fuzzy
+#: ../src/vmm-details.glade.h:139 ../src/vmm-host.glade.h:59
 msgid "_View Manager"
-msgstr "가상 장치 관리자"
+msgstr "보기 관리(_V)"
 
 #: ../src/vmm-host.glade.h:1
 msgid "<b>Basic details</b>"
 msgstr "<b>기본 정보</b>"
 
 #: ../src/vmm-host.glade.h:2
-#, fuzzy
 msgid "<b>IPv4 Configuration</b>"
-msgstr "<b>콘솔</b>"
+msgstr "<b>IPv4 설정</b>"
 
 #: ../src/vmm-host.glade.h:3
 msgid "<b>IPv4 configuration</b>"
-msgstr ""
+msgstr "<b>IPv4 설정</b>"
 
 #: ../src/vmm-host.glade.h:4
-#, fuzzy
 msgid "<b>IPv6 Configuration</b>"
-msgstr "<b>콘솔</b>"
+msgstr "<b>IPv6 설정</b>"
 
 #: ../src/vmm-host.glade.h:5
-#, fuzzy
 msgid "<b>Name</b>"
-msgstr "<b>저장</b>"
+msgstr "<b>이름</b>"
 
 #: ../src/vmm-host.glade.h:7
-#, fuzzy
 msgid "<b>Slave Interfaces</b>"
-msgstr "<b>네트워크</b>"
+msgstr "<b>슬레이브 인터페이스</b>"
 
 #: ../src/vmm-host.glade.h:8
-#, fuzzy
 msgid "<b>Volumes</b>"
-msgstr "<b>콘솔</b>"
+msgstr "<b>볼륨</b>"
 
-#: ../src/vmm-host.glade.h:9 ../src/vmm-open-connection.glade.h:1
-#, fuzzy
+#: ../src/vmm-host.glade.h:9
 msgid "A_utoconnect:"
-msgstr "연결(_n)"
+msgstr "자동연결(_U):"
 
 #: ../src/vmm-host.glade.h:10
-#, fuzzy
 msgid "A_utostart:"
-msgstr "<b>요약:</b>"
+msgstr "자동시작(_U):"
 
 #: ../src/vmm-host.glade.h:12
-#, fuzzy
 msgid "Add Interface"
-msgstr "네트워크 사용량:"
+msgstr "인터페이스 추가"
 
 #: ../src/vmm-host.glade.h:13
-#, fuzzy
 msgid "Add Network"
-msgstr "네트워크"
+msgstr "네트워크 추가"
 
 #: ../src/vmm-host.glade.h:14
 msgid "Add Pool"
-msgstr ""
+msgstr "풀 추가"
 
 #: ../src/vmm-host.glade.h:17
 msgid "CPU usage:"
 msgstr "CPU 사용량:"
 
 #: ../src/vmm-host.glade.h:18
-#, fuzzy
 msgid "Connection:"
-msgstr "연결(_n)"
+msgstr "연결:"
 
 #: ../src/vmm-host.glade.h:19
 msgid "DHCP end:"
-msgstr ""
+msgstr "DHCP 끝:"
 
 #: ../src/vmm-host.glade.h:20
 msgid "DHCP start:"
-msgstr ""
+msgstr "DHCP 시작:"
 
 #: ../src/vmm-host.glade.h:21
-#, fuzzy
 msgid "Delete Interface"
-msgstr "네트워크 사용량:"
+msgstr "인터페이스 삭제"
 
 #: ../src/vmm-host.glade.h:22
-#, fuzzy
 msgid "Delete Network"
-msgstr "네트워크"
+msgstr "네트워크 삭제"
 
 #: ../src/vmm-host.glade.h:23
 msgid "Delete Pool"
-msgstr ""
+msgstr "풀 삭제"
 
 #: ../src/vmm-host.glade.h:25
 msgid "Forwarding:"
-msgstr ""
+msgstr "포워딩:"
 
 #: ../src/vmm-host.glade.h:26
-#, fuzzy
 msgid "Host Details"
-msgstr "정보(_t)"
+msgstr "호스트 상세정보"
 
 #: ../src/vmm-host.glade.h:27
-#, fuzzy
 msgid "Hostname:"
-msgstr "호스트(_H):"
+msgstr "호스트명:"
 
 #: ../src/vmm-host.glade.h:29
 msgid "In use by:"
-msgstr ""
+msgstr "다음이 사용중:"
 
 #: ../src/vmm-host.glade.h:30
-#, fuzzy
 msgid "Location:"
-msgstr "ISO 위치(_L):"
+msgstr "위치:"
 
 #: ../src/vmm-host.glade.h:31
-#, fuzzy
 msgid "Logical CPUs:"
-msgstr "논리적 호스트 CPU:"
+msgstr "논리적 CPU:"
 
 #: ../src/vmm-host.glade.h:32
-#, fuzzy
 msgid "MAC:"
-msgstr "<b>네트워크</b>"
+msgstr "MAC:"
 
 #: ../src/vmm-host.glade.h:33
 msgid "Memory usage:"
 msgstr "메모리 사용량:"
 
 #: ../src/vmm-host.glade.h:34
-#, fuzzy
 msgid "Memory:"
-msgstr "메모리"
+msgstr "메모리:"
 
 #: ../src/vmm-host.glade.h:38
-#, fuzzy
 msgid "Network Interfaces"
-msgstr "네트워크 사용량:"
+msgstr "네트워크 인터페이스"
 
 #: ../src/vmm-host.glade.h:40
 msgid "Overview"
 msgstr "개요"
 
 #: ../src/vmm-host.glade.h:41
-#, fuzzy
 msgid "Pool Type:"
-msgstr "종류"
+msgstr "풀 종류:"
 
 #: ../src/vmm-host.glade.h:42
-#, fuzzy
-msgid "Start Interface"
-msgstr "네트워크 사용량:"
+msgid "Refresh volume list"
+msgstr ""
 
 #: ../src/vmm-host.glade.h:43
-#, fuzzy
-msgid "Start Network"
-msgstr "네트워크"
+msgid "Restore Saved Machine..."
+msgstr "저장된 머신 복구..."
 
 #: ../src/vmm-host.glade.h:44
-#, fuzzy
-msgid "Start Pool"
-msgstr "상태"
+msgid "Restore a saved machine from a filesystem image"
+msgstr "파일 시스템 이미지에 저장된 머신 복구"
 
 #: ../src/vmm-host.glade.h:45
-#, fuzzy
-msgid "Start mode:"
-msgstr "MAC 주소"
+msgid "Start Interface"
+msgstr "인터페이스 시작"
 
 #: ../src/vmm-host.glade.h:46
-#, fuzzy
+msgid "Start Network"
+msgstr "네트워크 시작"
+
+#: ../src/vmm-host.glade.h:47
+msgid "Start Pool"
+msgstr "풀 시작"
+
+#: ../src/vmm-host.glade.h:48
+msgid "Start mode:"
+msgstr "스타트 모드:"
+
+#: ../src/vmm-host.glade.h:49
 msgid "State:"
 msgstr "상태:"
 
-#: ../src/vmm-host.glade.h:47
-#, fuzzy
+#: ../src/vmm-host.glade.h:50
 msgid "Stop Interface"
-msgstr "네트워크 사용량:"
-
-#: ../src/vmm-host.glade.h:48
-#, fuzzy
-msgid "Stop Network"
-msgstr "네트워크"
-
-#: ../src/vmm-host.glade.h:49
-msgid "Stop Pool"
-msgstr ""
+msgstr "인터페이스 중단"
 
 #: ../src/vmm-host.glade.h:51
-#, fuzzy
-msgid "Virtual Networks"
-msgstr "가상 CPU"
+msgid "Stop Network"
+msgstr "네트워크 중단"
 
 #: ../src/vmm-host.glade.h:52
-#, fuzzy
-msgid "_Delete Volume"
-msgstr "장치 삭제"
+msgid "Stop Pool"
+msgstr "풀 중단"
 
-#: ../src/vmm-host.glade.h:55 ../src/vmm-storage-browse.glade.h:4
-#, fuzzy
+#: ../src/vmm-host.glade.h:54
+msgid "Virtual Networks"
+msgstr "가상 네트워크"
+
+#: ../src/vmm-host.glade.h:55
+msgid "_Delete Volume"
+msgstr "볼륨 삭제(_D)"
+
+#: ../src/vmm-host.glade.h:58 ../src/vmm-storage-browse.glade.h:4
 msgid "_New Volume"
-msgstr "장치 삭제"
+msgstr "새 볼륨(_N)"
 
 #: ../src/vmm-manager.glade.h:1
-#, fuzzy
 msgid "Create a new virtual machine"
-msgstr "새 가상 시스템 생성"
+msgstr "새 가상 머신 생성"
 
 #: ../src/vmm-manager.glade.h:2
-#, fuzzy
 msgid "New"
-msgstr "보기(_V)"
+msgstr "새"
 
 #: ../src/vmm-manager.glade.h:5
-#, fuzzy
-msgid "Restore Saved Machine..."
-msgstr "저장된 장치 복구"
-
-#: ../src/vmm-manager.glade.h:6
-msgid "Restore a saved machine from a filesystem image"
-msgstr "파일 시스템 이미지에서 저장된 장치 복구"
-
-#: ../src/vmm-manager.glade.h:7
-#, fuzzy
 msgid "Show the virtual machine console and details"
-msgstr "가상 장치 정보"
+msgstr "가상 머신 콘솔과 상세 정보 표시"
+
+#: ../src/vmm-manager.glade.h:8
+msgid "_Add Connection..."
+msgstr "연결 추가...(_A)"
+
+#: ../src/vmm-manager.glade.h:9
+msgid "_CPU Usage"
+msgstr "CPU 사용량(_C)"
 
 #: ../src/vmm-manager.glade.h:10
 #, fuzzy
-msgid "_Add Connection..."
-msgstr "연결하기"
+msgid "_Connection Details"
+msgstr "연결 선택"
 
-#: ../src/vmm-manager.glade.h:11
-#, fuzzy
-msgid "_CPU Usage"
-msgstr "CPU 사용량"
-
-#: ../src/vmm-manager.glade.h:12 ../src/vmm-preferences.glade.h:29
-#, fuzzy
+#: ../src/vmm-manager.glade.h:11 ../src/vmm-preferences.glade.h:32
 msgid "_Disk I/O"
-msgstr "디스크"
+msgstr "디스크 I/O(_D)"
 
-#: ../src/vmm-manager.glade.h:13
+#: ../src/vmm-manager.glade.h:12
 msgid "_Edit"
 msgstr "편집(_E)"
 
-#: ../src/vmm-manager.glade.h:15
-#, fuzzy
+#: ../src/vmm-manager.glade.h:14
 msgid "_Graph"
-msgstr "그래픽형식 콘솔(_G)"
+msgstr "그래프(_G)"
+
+#: ../src/vmm-manager.glade.h:16 ../src/vmm-preferences.glade.h:36
+msgid "_Network I/O"
+msgstr "네트워크 I/O(_N)"
 
 #: ../src/vmm-manager.glade.h:17
-#, fuzzy
-msgid "_Host Details"
-msgstr "정보(_t)"
-
-#: ../src/vmm-manager.glade.h:18 ../src/vmm-preferences.glade.h:33
-#, fuzzy
-msgid "_Network I/O"
-msgstr "네트워크"
-
-#: ../src/vmm-manager.glade.h:19
 msgid "_Open"
-msgstr ""
+msgstr "열기(_O)"
 
-#: ../src/vmm-manager.glade.h:22
+#: ../src/vmm-manager.glade.h:20
 msgid "_Shutdown"
 msgstr "종료(_S)"
 
-#: ../src/vmm-manager.glade.h:24
-#, fuzzy
+#: ../src/vmm-manager.glade.h:22
 msgid "_Virtual Machine Details"
-msgstr "가상 장치 정보"
+msgstr "가상 머신 정보(_V)"
 
 #: ../src/vmm-migrate.glade.h:1
-#, fuzzy
 msgid "<b>Connectivity</b>"
-msgstr "연결(_n)"
+msgstr "<b>연결</b>"
 
 #: ../src/vmm-migrate.glade.h:2
 msgid "<span color='#484848'>Migrate _offline:</span>"
-msgstr ""
+msgstr "<span color='#484848'>오프라인 이식(_O):</span>"
 
 #: ../src/vmm-migrate.glade.h:3
 msgid "<span color='#484848'>Name:</span>"
-msgstr ""
+msgstr "<span color='#484848'>이름:</span>"
 
 #: ../src/vmm-migrate.glade.h:4
 msgid "<span color='#484848'>New host:</span>"
-msgstr ""
+msgstr "<span color='#484848'>새 호스트:</span>"
 
 #: ../src/vmm-migrate.glade.h:5
 msgid "<span color='#484848'>Original host:</span>"
-msgstr ""
+msgstr "<span color='#484848'>원래 host:</span>"
 
 #: ../src/vmm-migrate.glade.h:7
 msgid "Mbps"
-msgstr ""
+msgstr "Mbps"
 
 #: ../src/vmm-migrate.glade.h:8
-#, fuzzy
 msgid "Migrate the virtual machine"
-msgstr "가상 장치 복구"
+msgstr "가상 머신 이식"
 
 #: ../src/vmm-migrate.glade.h:10
 msgid "_Bandwidth:"
-msgstr ""
+msgstr "대역폭(_B):"
 
 #: ../src/vmm-migrate.glade.h:11
 msgid "_Migrate"
-msgstr ""
+msgstr "이식(_M)"
 
 #: ../src/vmm-migrate.glade.h:13
 msgid "_Tunnel migration through libvirt's daemon:"
-msgstr ""
+msgstr "libvirt 데몬을 통한 이식 터널링(_T):"
+
+#: ../src/vmm-open-connection.glade.h:1
+msgid "Add Connection"
+msgstr "연결 추가"
 
 #: ../src/vmm-open-connection.glade.h:2
-#, fuzzy
-msgid "Add Connection"
-msgstr "연결(_n)"
-
-#: ../src/vmm-open-connection.glade.h:3
 msgid "Co_nnect"
 msgstr "연결(_n)"
 
-#: ../src/vmm-open-connection.glade.h:4
+#: ../src/vmm-open-connection.glade.h:3
 #, fuzzy
-msgid "Connec_tion:"
-msgstr "연결(_n)"
+msgid "Connect to _remote host"
+msgstr "연결 선택"
+
+#: ../src/vmm-open-connection.glade.h:4
+msgid "Connection Select"
+msgstr "연결 선택"
 
 #: ../src/vmm-open-connection.glade.h:5
-#, fuzzy
-msgid "Connection Select"
-msgstr "연결(_n)"
+msgid "Generated URI:"
+msgstr ""
 
 #: ../src/vmm-open-connection.glade.h:6
-#, fuzzy
 msgid "H_ostname:"
-msgstr "호스트(_H):"
+msgstr "호스트명(_O):"
 
 #: ../src/vmm-open-connection.glade.h:7
-#, fuzzy
-msgid "Hostname Field"
-msgstr "호스트(_H):"
+msgid "Hypervisor Select"
+msgstr "hypervisor 선택"
 
 #: ../src/vmm-open-connection.glade.h:8
 #, fuzzy
-msgid "Hypervisor Select"
-msgstr "다른 하이퍼바이저(_O)"
+msgid "Me_thod:"
+msgstr "모델(_O):"
 
 #: ../src/vmm-open-connection.glade.h:9
 msgid ""
-"Local\n"
-"Remote Password or Kerberos\n"
-"Remote SSL/TLS with x509 certificate\n"
-"Remote tunnel over SSH"
+"SSH\n"
+"TCP (SASL, Kerberos, ...)\n"
+"SSL/TLS with certificates"
 msgstr ""
 
-#: ../src/vmm-open-connection.glade.h:13
+#: ../src/vmm-open-connection.glade.h:12
 msgid ""
 "Xen\n"
 "QEMU/KVM"
 msgstr ""
+"Xen\n"
+"QEMU/KVM"
+
+#: ../src/vmm-open-connection.glade.h:14
+#, fuzzy
+msgid "_Autoconnect:"
+msgstr "자동연결(_U):"
 
 #: ../src/vmm-open-connection.glade.h:15
-#, fuzzy
 msgid "_Hypervisor:"
-msgstr "다른 하이퍼바이저(_O)"
+msgstr "_Hypervisor:"
 
 #: ../src/vmm-preferences.glade.h:1
-#, fuzzy
 msgid "<b>Confirmations</b>"
-msgstr "<b>콘솔</b>"
+msgstr "<b>확인</b>"
 
 #: ../src/vmm-preferences.glade.h:2
-msgid "<b>Consoles</b>"
-msgstr "<b>콘솔</b>"
+msgid "<b>Enable Stats Polling</b>"
+msgstr "<b>상태 풀링 활성화</b>"
 
 #: ../src/vmm-preferences.glade.h:3
-#, fuzzy
-msgid "<b>Enable Stats Polling</b>"
-msgstr "<b>상태 모니터링</b>"
+msgid "<b>General</b>"
+msgstr "<b>일반</b>"
 
 #: ../src/vmm-preferences.glade.h:4
 #, fuzzy
-msgid "<b>General</b>"
-msgstr "<b>콘솔</b>"
+msgid "<b>Graphical Consoles</b>"
+msgstr "그래픽 콘솔 %s"
 
 #: ../src/vmm-preferences.glade.h:5
-#, fuzzy
 msgid "<b>New VM</b>"
-msgstr "<b>네트워크</b>"
+msgstr "<b>새 VM</b>"
 
 #: ../src/vmm-preferences.glade.h:6
-#, fuzzy
 msgid "<b>Stats Options</b>"
-msgstr "<b>상태 모니터링</b>"
+msgstr "<b>상태 옵션</b>"
 
 #: ../src/vmm-preferences.glade.h:7
-#, fuzzy
 msgid "Automatically _open consoles:"
-msgstr "자동으로 콘솔을 엽니다:"
+msgstr "자동으로 콘솔을 엽니다(_O):"
 
 #: ../src/vmm-preferences.glade.h:8
-#, fuzzy
-msgid "Device re_moval:"
-msgstr "종류"
+msgid "Change..."
+msgstr ""
 
 #: ../src/vmm-preferences.glade.h:9
-#, fuzzy
-msgid "Enable _system tray icon"
-msgstr "시스템 트레이 아이콘 표시  "
+msgid "Device re_moval:"
+msgstr "장치 제거(_M):"
 
 #: ../src/vmm-preferences.glade.h:10
-msgid "Feedback"
-msgstr ""
+msgid "Enable _system tray icon"
+msgstr "시스템 트레이 아이콘 활성화(_S)"
 
 #: ../src/vmm-preferences.glade.h:11
-msgid "General"
-msgstr ""
+msgid "Feedback"
+msgstr "피드백"
 
 #: ../src/vmm-preferences.glade.h:12
-#, fuzzy
-msgid "Grab _keyboard input:"
-msgstr "키보드 입력 설정:"
+msgid "General"
+msgstr "일반"
 
 #: ../src/vmm-preferences.glade.h:13
 #, fuzzy
-msgid "Graphical console _scaling:"
-msgstr "그래픽형식 콘솔(_G)"
+msgid "Grab _keyboard accelerators:"
+msgstr "키보드 입력 강제 고정(_K):"
 
 #: ../src/vmm-preferences.glade.h:14
-#, fuzzy
-msgid "Install Audio Device:"
-msgstr "<b>설치 소스:</b>"
+msgid "Grab keys:"
+msgstr ""
 
 #: ../src/vmm-preferences.glade.h:15
-#, fuzzy
-msgid "Maintain h_istory of"
-msgstr "히스토리 보존"
+msgid "Graphical console _scaling:"
+msgstr "그래픽 콘솔 크기조정(_S):"
 
 #: ../src/vmm-preferences.glade.h:16
-#, fuzzy
+msgid "Install Audio Device:"
+msgstr "오디오 장치 설치:"
+
+#: ../src/vmm-preferences.glade.h:17
+msgid "Maintain h_istory of"
+msgstr "다음의 기록 보존(_I)"
+
+#: ../src/vmm-preferences.glade.h:18
 msgid ""
 "Never\n"
 "For all new domains\n"
 "For all domains"
 msgstr ""
-"사용하지 않음\n"
-"새 도메인에서 사용\n"
-"모든 도메인에서 사용"
+"하지 않음\n"
+"모든 새 도메인에 사용\n"
+"모든 도메인에 사용"
 
-#: ../src/vmm-preferences.glade.h:19
+#: ../src/vmm-preferences.glade.h:21
 msgid ""
 "Never\n"
 "Fullscreen only\n"
 "Always"
 msgstr ""
+"하지 않음\n"
+"전체화면에서만 사용\n"
+"항상"
 
-#: ../src/vmm-preferences.glade.h:22
+#: ../src/vmm-preferences.glade.h:24
 msgid ""
 "Never\n"
 "When fullscreen\n"
 "On mouse over"
 msgstr ""
-"사용하지 않음\n"
-"전체 화면에서 사용\n"
-"마우스를 올렸을 때 사용"
+"하지 않음\n"
+"전체화면에서만 사용\n"
+"마우스가 위에 있을 때만 사용"
 
-#: ../src/vmm-preferences.glade.h:25
-msgid "Poweroff/_Reboot:"
-msgstr ""
-
-#: ../src/vmm-preferences.glade.h:26
-msgid "Preferences"
+#: ../src/vmm-preferences.glade.h:27
+msgid "Not supported"
 msgstr ""
 
 #: ../src/vmm-preferences.glade.h:28
 #, fuzzy
-msgid "VM Details"
-msgstr "상세정보(_D)"
+msgid "Poweroff/_Reboot/Save:"
+msgstr "전원끄기/리부트(_R):"
 
-#: ../src/vmm-preferences.glade.h:30
-msgid "_Force Poweroff:"
-msgstr ""
+#: ../src/vmm-preferences.glade.h:29
+msgid "Preferences"
+msgstr "환경설정"
 
 #: ../src/vmm-preferences.glade.h:31
-msgid "_Interface start/stop:"
-msgstr ""
+msgid "VM Details"
+msgstr "VM 상세정보"
 
-#: ../src/vmm-preferences.glade.h:32
-#, fuzzy
-msgid "_Local virtual machine"
-msgstr "가상 장치 저장"
+#: ../src/vmm-preferences.glade.h:33
+msgid "_Force Poweroff:"
+msgstr "강제 전원 차단(_F):"
 
 #: ../src/vmm-preferences.glade.h:34
-#, fuzzy
-msgid "_Pause:"
-msgstr "정지(_P)"
+msgid "_Interface start/stop:"
+msgstr "인터페이스 시작/종료(_I):"
 
 #: ../src/vmm-preferences.glade.h:35
-#, fuzzy
-msgid "_Remote virtual machine"
-msgstr "가상 장치 복구"
-
-#: ../src/vmm-preferences.glade.h:36
-#, fuzzy
-msgid "_Update status every"
-msgstr "매번 상태 업데이트"
+msgid "_Local virtual machine"
+msgstr "로컬 가상 머신(_L)"
 
 #: ../src/vmm-preferences.glade.h:37
+msgid "_Pause:"
+msgstr "일시정지(_P):"
+
+#: ../src/vmm-preferences.glade.h:38
+msgid "_Remote virtual machine"
+msgstr "원격 가상 머신(_R)"
+
+#: ../src/vmm-preferences.glade.h:39
+msgid "_Update status every"
+msgstr "매번 상태 업데이트(_U)"
+
+#: ../src/vmm-preferences.glade.h:40
 msgid "samples"
 msgstr "예"
 
 #: ../src/vmm-storage-browse.glade.h:1
-#, fuzzy
 msgid "Choose Storage Volume"
-msgstr "시스템 이름(_N):"
+msgstr "저장소 볼륨 선택"
 
 #: ../src/vmm-storage-browse.glade.h:2
 msgid "Choose _Volume"
-msgstr ""
+msgstr "볼륨 선택(_V)"
 
 #: ../src/vmm-storage-browse.glade.h:3
-#, fuzzy
 msgid "_Browse Local"
-msgstr "검색"
+msgstr "로컬 검색(_B)"
 
-#~ msgid "Storage Path Required"
-#~ msgstr "저장 경로 필요  "
+#~ msgid "No VMs available"
+#~ msgstr "사용가능 가상 머신 없음"
 
-#~ msgid "You must specify a partition or a file for disk storage."
-#~ msgstr "디스크 저장을 위한 파티션 또는 파일을 지정해야 합니다.  "
+#~ msgid "Host CPUs:"
+#~ msgstr "호스트 CPU:"
 
-#~ msgid "Target Device Required"
-#~ msgstr "대상 장치 필요  "
+#~ msgid "_Host Details"
+#~ msgstr "호스트 정보(_H)"
 
-#~ msgid "You must select a target device for the disk."
-#~ msgstr "디스크에 대한 대상 장치를 선택해야 합니다.     "
+#~ msgid "Connec_tion:"
+#~ msgstr "연결(_t):"
 
-#~ msgid "Invalid Storage Parameters"
-#~ msgstr "잘못된 저장 매개 변수  "
-
-#, fuzzy
-#~ msgid "Startup Error"
-#~ msgstr "킥스타트 URL(_R):"
-
-#, fuzzy
-#~ msgid "<b>Physical Host Device</b>"
-#~ msgstr "<b>콘솔</b>"
-
-#, fuzzy
-#~ msgid "<b>Source:</b>"
-#~ msgstr "<b>저장</b>"
-
-#, fuzzy
-#~ msgid "<b>Target:</b>"
-#~ msgstr "<b>저장</b>"
-
-#, fuzzy
-#~ msgid "<b>Video Device</b>"
-#~ msgstr "<b>콘솔</b>"
-
-#, fuzzy
-#~ msgid "<b>Virtual display</b>"
-#~ msgstr "<b>가상화 CPU:</b>"
-
-#, fuzzy
-#~ msgid "<b>Virtual pointer</b>"
-#~ msgstr "<b>가상화 CPU:</b>"
-
-#~ msgid "<small><b>Example:</b> /dev/hdc2</small>"
-#~ msgstr "<small><b>예:</b> /dev/hdc2</small>"
-
-#~ msgid "Browse..."
-#~ msgstr "검색"
-
-#, fuzzy
-#~ msgid "F_ile (disk image):"
-#~ msgstr "디스크 사용량:"
-
-#, fuzzy
-#~ msgid "File Location Field"
-#~ msgstr "파일 위치(_L):"
-
-#, fuzzy
-#~ msgid "File Size Field"
-#~ msgstr "파일 용량(_S):"
-
-#~ msgid "_Size:"
-#~ msgstr "크기(_S):"
-
-#, fuzzy
-#~ msgid "Device virtual machine will _boot from:"
-#~ msgstr "가상 기계장치 스크린샷 저장"
-
-#~ msgid "Unknown status code"
-#~ msgstr "알려지지 않은 상태 코드"
-
-#, fuzzy
-#~ msgid "insert type"
-#~ msgstr "<b>콘솔</b>"
-
-#~ msgid "ISO _Location:"
-#~ msgstr "ISO 위치(_L):"
-
-#~ msgid "Locate Storage Partition"
-#~ msgstr "저장 파티션 위치 지정"
-
-#~ msgid "Virtual Network Required"
-#~ msgstr "가상 네트워크 필요  "
-
-#~ msgid "You must select one of the virtual networks."
-#~ msgstr "가상 네트워크 중 하나를 선택해야 합니다.     "
-
-#~ msgid "Physical Device Required"
-#~ msgstr "물리적 장치 필요  "
-
-#~ msgid "You must select a physical device."
-#~ msgstr "물리적 장치를 선택해야 합니다.  "
-
-#~ msgid "Unsupported networking type"
-#~ msgstr "지원되지 않는 네트워크 유형  "
-
-#~ msgid "Invalid Network Parameter"
-#~ msgstr "잘못된 네트워크 매개 변수  "
-
-#~ msgid "paused"
-#~ msgstr "정지"
-
-#, fuzzy
-#~ msgid "Error Setting Security data: %s"
-#~ msgstr "새 가상 시스템 생성"
-
-#, fuzzy
-#~ msgid "About to poweroff virtual machine %s"
-#~ msgstr "가상 장치 복구"
-
-#, fuzzy
-#~ msgid "Set fixed MAC _address for this NIC?"
-#~ msgstr "지정된 MAC 주소:"
-
-#, fuzzy
-#~ msgid "_Virtual network"
-#~ msgstr "가상 장치(_M)"
-
-#, fuzzy
-#~ msgid "C_lone Virtual Machine"
-#~ msgstr "가상 장치 복구"
+#~ msgid "Hostname Field"
+#~ msgstr "호스트명 항목"
 
 #~ msgid ""
-#~ "<b>Tip:</b> For best performance, the number of virtual CPUs should be "
-#~ "less than (or equal to) the number of physical CPUs on the host system."
+#~ "Local\n"
+#~ "Remote Password or Kerberos\n"
+#~ "Remote SSL/TLS with x509 certificate\n"
+#~ "Remote tunnel over SSH"
 #~ msgstr ""
-#~ "<b>힌트:</b> 최상의 성능을 유지하려면, 가상 CPU의 개수는 호스트 시스템의 "
-#~ "실제 CPU 개수보다 적거나 같아야 합니다."
+#~ "로컬\n"
+#~ "원격 암호 또는 커베로스\n"
+#~ "원격 SSL/TLS(x509 인증과 함께)\n"
+#~ "SSH를 통한 원격 터널링"
 
-#, fuzzy
-#~ msgid "How many virtual CPUs should be allocated for this machine?"
-#~ msgstr "몇 개의 가상 CPU를 이 장치에 할당할 수 있나요?"
-
-#, fuzzy
-#~ msgid "How much memory should be allocated for this machine?"
-#~ msgstr "이 장치에 할당할 수 있는 메모리의 크기는 어떻게 되나요?"
-
-#, fuzzy
-#~ msgid "Permissions:"
-#~ msgstr "파티션(_a):"
-
-#~ msgid "Screenshot"
-#~ msgstr "스크린샷"
-
-#, fuzzy
-#~ msgid "Source Device:"
-#~ msgstr "<b>저장</b>"
-
-#~ msgid "Total memory on host machine:"
-#~ msgstr "가상 장치의 총 메모리:"
+#~ msgid "<b>Consoles</b>"
+#~ msgstr "<b>콘솔</b>"

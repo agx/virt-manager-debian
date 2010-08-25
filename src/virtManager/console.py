@@ -84,6 +84,21 @@ class vmmConsolePages(gobject.GObject):
         self.vncViewer = gtkvnc.Display()
         self.window.get_widget("console-vnc-viewport").add(self.vncViewer)
 
+        # Set default grab key combination if found and supported
+        if self.config.grab_keys_supported():
+            try:
+                grab_keys = self.config.get_keys_combination(True)
+                if grab_keys is not None:
+                    # If somebody edited this in GConf it would fail so
+                    # we encapsulate this into try/except block
+                    try:
+                        keys = map(int, grab_keys.split(','))
+                        self.vncViewer.set_grab_keys( keys )
+                    except:
+                        logging.debug("Error in grab_keys configuration in GConf")
+            except Exception, e:
+                logging.debug("Error when getting the grab keys combination: %s" % str(e))
+
         self.init_vnc()
 
         finish_img = gtk.image_new_from_stock(gtk.STOCK_YES,
@@ -138,10 +153,8 @@ class vmmConsolePages(gobject.GObject):
         self.vm.on_console_scaling_changed(self.refresh_scaling)
         self.refresh_scaling()
 
-        if self.config.get_console_keygrab() == 2:
-            self.vncViewer.set_keyboard_grab(True)
-        else:
-            self.vncViewer.set_keyboard_grab(False)
+        self.set_keyboard_grab()
+        self.config.on_console_keygrab_changed(self.set_keyboard_grab)
         self.vncViewer.set_pointer_grab(True)
 
         scroll = self.window.get_widget("console-vnc-scroll")
@@ -152,8 +165,8 @@ class vmmConsolePages(gobject.GObject):
         self.vncViewer.connect("vnc-auth-credential", self._vnc_auth_credential)
         self.vncViewer.connect("vnc-initialized", self._vnc_initialized)
         self.vncViewer.connect("vnc-disconnected", self._vnc_disconnected)
-        self.vncViewer.connect("vnc-keyboard-grab", self._disable_modifiers)
-        self.vncViewer.connect("vnc-keyboard-ungrab", self._enable_modifiers)
+        self.vncViewer.connect("vnc-keyboard-grab", self.keyboard_grabbed)
+        self.vncViewer.connect("vnc-keyboard-ungrab", self.keyboard_ungrabbed)
         self.vncViewer.connect("vnc-desktop-resize", self.desktop_resize)
         self.vncViewer.show()
 
@@ -161,8 +174,30 @@ class vmmConsolePages(gobject.GObject):
     # Listeners #
     #############
 
+    def keyboard_grabbed(self, src):
+        self._disable_modifiers()
+    def keyboard_ungrabbed(self, src=None):
+        self._enable_modifiers()
+
     def notify_grabbed(self, src):
-        self.topwin.set_title(_("Press Ctrl+Alt to release pointer.") +
+        keystr = None
+        if self.config.grab_keys_supported():
+            try:
+                keys = src.get_grab_keys()
+                for k in keys:
+                    if keystr is None:
+                        keystr = gtk.gdk.keyval_name(k)
+                    else:
+                        keystr = keystr + "+" + gtk.gdk.keyval_name(k)
+            except:
+                pass
+
+        # If grab keys are set to None then preserve old behaviour since
+        # the GTK-VNC - we're using older version of GTK-VNC
+        if keystr is None:
+            keystr = "Control_L+Alt_L"
+
+        self.topwin.set_title(_("Press %s to release pointer.") % keystr +
                               " " + self.title)
 
         if (not self.config.show_console_grab_notify() or
@@ -179,7 +214,7 @@ class vmmConsolePages(gobject.GObject):
                                                         0,
                                                         '',
                                                         _("Pointer grabbed"),
-                                                        _("The mouse pointer has been restricted to the virtual console window. To release the pointer, press the key pair: Ctrl+Alt"),
+                                                        _("The mouse pointer has been restricted to the virtual console window. To release the pointer, press the key pair") + " " + keystr,
                                                         ["dismiss", _("Do not show this notification in the future.")],
                                                         {"desktop-entry": "virt-manager",
                                                         "x": x+200, "y": y},
@@ -202,7 +237,7 @@ class vmmConsolePages(gobject.GObject):
             self.config.set_console_grab_notify(False)
 
 
-    def _disable_modifiers(self, ignore=None):
+    def _disable_modifiers(self):
         if self.gtk_settings_accel is not None:
             return
 
@@ -218,7 +253,7 @@ class vmmConsolePages(gobject.GObject):
             settings.set_property("gtk-enable-mnemonics", False)
 
 
-    def _enable_modifiers(self, ignore=None):
+    def _enable_modifiers(self):
         if self.gtk_settings_accel is None:
             return
 
@@ -233,11 +268,10 @@ class vmmConsolePages(gobject.GObject):
         for g in self.accel_groups:
             self.topwin.add_accel_group(g)
 
-    def keygrab_changed(self, src, ignore1=None,ignore2=None,ignore3=None):
-        if self.config.get_console_keygrab() == 2:
-            self.vncViewer.set_keyboard_grab(True)
-        else:
-            self.vncViewer.set_keyboard_grab(False)
+    def set_keyboard_grab(self, ignore=None, ignore1=None,
+                          ignore2=None, ignore3=None):
+        grab = self.config.get_console_keygrab() == 2
+        self.vncViewer.set_keyboard_grab(grab)
 
     def refresh_scaling(self,ignore1=None, ignore2=None, ignore3=None,
                         ignore4=None):
@@ -454,6 +488,7 @@ class vmmConsolePages(gobject.GObject):
 
         self.vnc_connected = False
         logging.debug("VNC disconnected")
+        self.keyboard_ungrabbed()
 
         if (self.skip_connect_attempt() or
             self.guest_not_avail()):
@@ -514,17 +549,18 @@ class vmmConsolePages(gobject.GObject):
         # to the desired behavior.
         #
         nc_params = "%s %s" % (vncaddr, str(vncport))
-        nc_cmd = [\
-            "nc -q 2>&1 | grep -q 'requires an argument';"
-            "if [ $? -eq 0 ] ; then"
-            "   CMD='nc -q 0 %(nc_params)s';"
-            "else"
-            "   CMD='nc %(nc_params)s';"
-            "fi;"
-            "$CMD;" % {'nc_params': nc_params}
-        ]
+        nc_cmd = (
+            """nc -q 2>&1 | grep -q "requires an argument";"""
+            """if [ $? -eq 0 ] ; then"""
+            """   CMD="nc -q 0 %(nc_params)s";"""
+            """else"""
+            """   CMD="nc %(nc_params)s";"""
+            """fi;"""
+            """eval "$CMD";""" %
+            {'nc_params': nc_params})
 
-        argv += nc_cmd
+        argv.append("sh -c")
+        argv.append("'%s'" % nc_cmd)
 
         argv_str = reduce(lambda x, y: x + " " + y, argv[1:])
         logging.debug("Creating SSH tunnel: %s" % argv_str)
@@ -573,7 +609,11 @@ class vmmConsolePages(gobject.GObject):
         errfd = self.vncTunnel[1]
         errout = ""
         while True:
-            new = errfd.recv(1024)
+            try:
+                new = errfd.recv(1024)
+            except:
+                break
+
             if not new:
                 break
 

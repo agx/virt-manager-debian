@@ -22,6 +22,7 @@ import logging
 import traceback
 import os, statvfs
 
+import libvirt
 import gtk
 
 import virtinst
@@ -37,6 +38,8 @@ OPTICAL_IS_MEDIA_PRESENT = 2
 OPTICAL_DEV_KEY = 3
 OPTICAL_MEDIA_KEY = 4
 OPTICAL_IS_VALID = 5
+
+SUPPORTED_SOUND_MODELS = None
 
 # What user we guess the qemu:///system starts the emulator as. Some distros
 # may use a nonroot user, so simply changing this will cause several UI
@@ -63,7 +66,7 @@ def set_error_parent(parent):
 ############################################################
 
 def set_sparse_tooltip(widget):
-    sparse_str = _("Fully allocating storage will take longer now, "
+    sparse_str = _("Fully allocating storage may take longer now, "
                    "but the OS install phase will be quicker. \n\n"
                    "Skipping allocation can also cause space issues on "
                    "the host machine, if the maximum image size exceeds "
@@ -79,7 +82,7 @@ def host_disk_space(conn, config):
         # FIXME: make sure not inactive?
         # FIXME: use a conn specific function after we send pool-added
         pool = virtinst.util.lookup_pool_by_path(conn.vmm, path)
-        if pool:
+        if pool and pool.info()[0] == libvirt.VIR_STORAGE_POOL_RUNNING:
             pool.refresh(0)
             avail = int(virtinst.util.get_xml_path(pool.XMLDesc(0),
                                                    "/pool/available"))
@@ -102,6 +105,27 @@ def host_space_tick(conn, config, widget):
     widget.set_markup(hd_label)
 
     return 1
+
+def check_default_pool_active(topwin, conn):
+    default_pool = util.get_default_pool(conn)
+    if default_pool and not default_pool.is_active():
+        res = err_dial.yes_no(_("Default pool is not active."),
+                              _("Storage pool '%s' is not active. "
+                                "Would you like to start the pool "
+                                "now?") % default_pool.get_name())
+        if not res:
+            return False
+
+        # Try to start the pool
+        try:
+            default_pool.start()
+            logging.info("Started pool '%s'." % default_pool.get_name())
+        except Exception, e:
+            return topwin.err.show_err(_("Could not start storage_pool "
+                                         "'%s': %s") %
+                                         (default_pool.get_name(), str(e)),
+                                         "".join(traceback.format_exc()))
+    return True
 
 #####################################################
 # Hardware model list building (for details, addhw) #
@@ -133,6 +157,11 @@ def build_sound_combo(vm, combo, no_default=False):
     for m in virtinst.VirtualAudio.MODELS:
         if m == virtinst.VirtualAudio.MODEL_DEFAULT and no_default:
             continue
+
+        if (SUPPORTED_SOUND_MODELS is not None and
+            m not in SUPPORTED_SOUND_MODELS):
+            continue
+
         dev_model.append([m])
     if len(dev_model) > 0:
         combo.set_active(0)
@@ -194,6 +223,21 @@ def populate_netmodel_combo(vm, combo):
         for m in mod_list:
             model.append([m, m])
 
+def build_cache_combo(vm, combo, no_default=False):
+    dev_model = gtk.ListStore(str, str)
+    combo.set_model(dev_model)
+    text = gtk.CellRendererText()
+    combo.pack_start(text, True)
+    combo.add_attribute(text, 'text', 1)
+    dev_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
+
+    combo.set_active(-1)
+    for m in virtinst.VirtualDisk.cache_types:
+        dev_model.append([m, m])
+
+    if not no_default:
+        dev_model.append([None, "default"])
+    combo.set_active(0)
 
 #######################################################################
 # Widgets for listing network device options (in create, addhardware) #
@@ -264,9 +308,6 @@ def populate_network_list(net_list, conn):
     bridge_dict = {}
     iface_dict = {}
 
-    def add_row(*args):
-        model.append(build_row(*args))
-
     def build_row(nettype, name, label, is_sensitive, is_running,
                   manual_bridge=False):
         return [nettype, name, label, is_sensitive, is_running, manual_bridge]
@@ -284,7 +325,8 @@ def populate_network_list(net_list, conn):
     # For qemu:///session
     if conn.is_qemu_session():
         nettype = VirtualNetworkInterface.TYPE_USER
-        add_row(nettype, None, pretty_network_desc(nettype), True)
+        r = build_row(nettype, None, pretty_network_desc(nettype), True, True)
+        model.append(r)
         set_active(0)
         return
 
@@ -431,7 +473,8 @@ def validate_network(parent, conn, nettype, devname, macaddr, model=None):
         elif nettype == VirtualNetworkInterface.TYPE_USER:
             pass
 
-        net = VirtualNetworkInterface(type = nettype,
+        net = VirtualNetworkInterface(conn = conn.vmm,
+                                      type = nettype,
                                       bridge = bridge,
                                       network = netname,
                                       macaddr = macaddr,
@@ -593,7 +636,7 @@ def mediadev_set_default_selection(widget):
 ####################################################################
 
 def build_shutdown_button_menu(config, widget, shutdown_cb, reboot_cb,
-                               destroy_cb):
+                               destroy_cb, save_cb):
     icon_name = config.get_shutdown_icon_name()
     widget.set_icon_name(icon_name)
     menu = gtk.Menu()
@@ -602,6 +645,7 @@ def build_shutdown_button_menu(config, widget, shutdown_cb, reboot_cb,
     rebootimg = gtk.image_new_from_icon_name(icon_name, gtk.ICON_SIZE_MENU)
     shutdownimg = gtk.image_new_from_icon_name(icon_name, gtk.ICON_SIZE_MENU)
     destroyimg = gtk.image_new_from_icon_name(icon_name, gtk.ICON_SIZE_MENU)
+    saveimg = gtk.image_new_from_icon_name(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU)
 
     reboot = gtk.ImageMenuItem(_("_Reboot"))
     reboot.set_image(rebootimg)
@@ -620,6 +664,16 @@ def build_shutdown_button_menu(config, widget, shutdown_cb, reboot_cb,
     destroy.show()
     destroy.connect("activate", destroy_cb)
     menu.add(destroy)
+
+    sep = gtk.SeparatorMenuItem()
+    sep.show()
+    menu.add(sep)
+
+    save = gtk.ImageMenuItem(_("Sa_ve"))
+    save.set_image(saveimg)
+    save.show()
+    save.connect("activate", save_cb)
+    menu.add(save)
 
 #####################################
 # Path permissions checker for qemu #

@@ -7,7 +7,7 @@
 %define _extra_release %{?dist:%{dist}}%{!?dist:%{?extra_release:%{extra_release}}}
 
 Name: virt-manager
-Version: 0.8.4
+Version: 0.8.5
 Release: 1%{_extra_release}
 Summary: Virtual Machine Manager
 
@@ -37,7 +37,7 @@ Requires: gnome-python2-gnomekeyring >= 2.15.4
 # Minimum we've tested with
 Requires: libxml2-python >= 2.6.23
 # Absolutely require this version or later
-Requires: python-virtinst >= 0.500.3
+Requires: python-virtinst >= 0.500.4
 # Required for loading the glade UI
 Requires: pygtk2-libglade
 # Required for our graphics which are currently SVG format
@@ -103,12 +103,14 @@ gconftool-2 --makefile-install-rule \
 
 update-desktop-database %{_datadir}/applications
 
-if which scrollkeeper-update>/dev/null 2>&1; then scrollkeeper-update -q -o %{_datadir}/omf/%{name}; fi
+# Revive when we update help docs
+#if which scrollkeeper-update>/dev/null 2>&1; then scrollkeeper-update -q -o %{_datadir}/omf/%{name}; fi
 
 %postun
 update-desktop-database %{_datadir}/applications
 
-if which scrollkeeper-update>/dev/null 2>&1; then scrollkeeper-update -q; fi
+# Revive when we update help docs
+#if which scrollkeeper-update>/dev/null 2>&1; then scrollkeeper-update -q; fi
 
 %preun
 if [ "$1" -eq 0 ]; then
@@ -138,19 +140,25 @@ fi
 %dir %{_datadir}/%{name}/pixmaps/hicolor/
 %dir %{_datadir}/%{name}/pixmaps/hicolor/*/
 %dir %{_datadir}/%{name}/pixmaps/hicolor/*/*/
-%dir %{_datadir}/%{name}/pixmaps/hicolor/*/*/*.png
+%{_datadir}/%{name}/pixmaps/hicolor/*/*/*.png
 
 %dir %{_datadir}/%{name}/virtManager/
 
 %{_datadir}/%{name}/virtManager/*.py*
 
-%{_datadir}/omf/%{name}/
-%{_datadir}/gnome/help/%{name}
+# Revive when we update help docs
+#%{_datadir}/omf/%{name}/
+#%{_datadir}/gnome/help/%{name}
 
 %{_datadir}/applications/%{name}.desktop
 %{_datadir}/dbus-1/services/%{name}.service
 
 %changelog
+* Tue Aug 24 2010 Cole Robinson <crobinso@redhat.com> - 0.8.5-1
+- Improved save/restore support
+- Option to view and change disk cache mode
+- Configurable VNC keygrab sequence (Michal Novotny)
+
 * Wed Mar 24 2010 Cole Robinson <crobinso@redhat.com> - 0.8.4-1
 - 'Import' install option, to create a VM around an existing OS image
 - Support multiple boot devices and boot order

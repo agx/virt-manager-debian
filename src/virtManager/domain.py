@@ -74,8 +74,12 @@ class vmmDomainBase(vmmLibvirtObject):
 
         self._backend = backend
         self.uuid = uuid
+        self.cloning = False
 
+        self._install_abort = False
         self._startup_vcpus = None
+
+        self.managedsave_supported = False
 
         self._network_traffic = None
         self._disk_io = None
@@ -119,6 +123,18 @@ class vmmDomainBase(vmmLibvirtObject):
 
     def get_autostart(self):
         raise NotImplementedError()
+
+    def get_cloning(self):
+        return self.cloning
+    def set_cloning(self, val):
+        self.cloning = bool(val)
+
+    # If manual shutdown or destroy specified, make sure we don't continue
+    # install process
+    def set_install_abort(self, val):
+        self._install_abort = bool(val)
+    def get_install_abort(self):
+        return bool(self._install_abort)
 
     # Device/XML altering API
     def set_autostart(self, val):
@@ -169,6 +185,8 @@ class vmmDomainBase(vmmLibvirtObject):
     def define_disk_readonly(self, dev_id_info, do_readonly):
         raise NotImplementedError()
     def define_disk_shareable(self, dev_id_info, do_shareable):
+        raise NotImplementedError()
+    def define_disk_cache(self, dev_id_info, new_cache):
         raise NotImplementedError()
 
     def define_network_model(self, dev_id_info, newmodel):
@@ -227,6 +245,9 @@ class vmmDomainBase(vmmLibvirtObject):
         if i < 0:
             return "-"
         return str(i)
+
+    def hasSavedImage(self):
+        return False
 
     def get_abi_type(self):
         return str(vutil.get_xml_path(self.get_xml(),
@@ -399,6 +420,7 @@ class vmmDomainBase(vmmLibvirtObject):
                 readonly = False
                 sharable = False
                 devtype = node.prop("device")
+                cache = None
                 if devtype == None:
                     devtype = "disk"
                 for child in node.children:
@@ -412,6 +434,8 @@ class vmmDomainBase(vmmLibvirtObject):
                         readonly = True
                     elif child.name == "shareable":
                         sharable = True
+                    elif child.name == "driver":
+                        cache = child.prop("cache")
 
                 if srcpath == None:
                     if devtype == "cdrom" or devtype == "floppy":
@@ -421,7 +445,7 @@ class vmmDomainBase(vmmLibvirtObject):
                 #   disk device type, disk type, readonly?, sharable?,
                 #   bus type, disk idx ]
                 disks.append(["disk", devdst, devdst, srcpath, devtype, typ,
-                              readonly, sharable, bus, 0])
+                              readonly, sharable, bus, 0, cache])
 
             # Iterate through all disks and calculate what number they are
             idx_mapping = {}
@@ -850,6 +874,12 @@ class vmmDomainBase(vmmLibvirtObject):
     def _sample_mem_stats(self, info):
         pcentCurrMem = info[2] * 100.0 / self.connection.host_memory_size()
         pcentMaxMem = info[1] * 100.0 / self.connection.host_memory_size()
+
+        if pcentCurrMem > 100:
+            pcentCurrMem = 100.0
+        if pcentMaxMem > 100:
+            pcentMaxMem = 100.0
+
         return pcentCurrMem, pcentMaxMem
 
     def _sample_cpu_stats(self, info, now):
@@ -1087,7 +1117,7 @@ class vmmDomainBase(vmmLibvirtObject):
         elif self.status() == libvirt.VIR_DOMAIN_PAUSED:
             return _("Paused")
         elif self.status() == libvirt.VIR_DOMAIN_SHUTDOWN:
-            return _("Shuting Down")
+            return _("Shutting Down")
         elif self.status() == libvirt.VIR_DOMAIN_SHUTOFF:
             return _("Shutoff")
         elif self.status() == libvirt.VIR_DOMAIN_CRASHED:
@@ -1166,8 +1196,6 @@ class vmmDomain(vmmDomainBase):
                            "netRxRate"  : 10.0,
                          }
 
-        self._update_status()
-
         self.config.on_stats_enable_net_poll_changed(
                                             self.toggle_sample_network_traffic)
         self.config.on_stats_enable_disk_poll_changed(
@@ -1175,6 +1203,7 @@ class vmmDomain(vmmDomainBase):
 
         self.getvcpus_supported = support.check_domain_support(self._backend,
                                             support.SUPPORT_DOMAIN_GETVCPUS)
+        self.managedsave_supported = self.connection.get_dom_managedsave_supported(self._backend)
 
         self.toggle_sample_network_traffic()
         self.toggle_sample_disk_io()
@@ -1188,6 +1217,7 @@ class vmmDomain(vmmDomainBase):
                                                             self._backend)
 
         # Hook up our own status listeners
+        self._update_status()
         self.connect("status-changed", self._update_start_vcpus)
 
     ##########################
@@ -1274,15 +1304,20 @@ class vmmDomain(vmmDomainBase):
                                                     reboot_listener, self)
 
     def shutdown(self):
+        self.set_install_abort(True)
         self._unregister_reboot_listener()
         self._backend.shutdown()
         self._update_status()
 
     def reboot(self):
+        self.set_install_abort(True)
         self._backend.reboot(0)
         self._update_status()
 
     def startup(self):
+        if self.get_cloning():
+            raise RuntimeError(_("Cannot start guest while cloning "
+                                 "operation in progress"))
         self._backend.create()
         self._update_status()
 
@@ -1294,20 +1329,28 @@ class vmmDomain(vmmDomainBase):
         self._backend.undefine()
 
     def resume(self):
+        if self.get_cloning():
+            raise RuntimeError(_("Cannot resume guest while cloning "
+                                 "operation in progress"))
+
         self._backend.resume()
         self._update_status()
 
-    def save(self, filename, background=True):
-        if background:
-            conn = util.dup_conn(self.config, self.connection)
-            vm = conn.lookupByID(self.get_id())
-        else:
-            vm = self._backend
+    def hasSavedImage(self):
+        if not self.managedsave_supported:
+            return False
+        return self._backend.hasManagedSaveImage(0)
 
-        vm.save(filename)
+    def save(self, filename=None):
+        self.set_install_abort(True)
+        if not self.managedsave_supported:
+            self._backend.save(filename)
+        else:
+            self._backend.managedSave(0)
         self._update_status()
 
     def destroy(self):
+        self.set_install_abort(True)
         self._unregister_reboot_listener()
         self._backend.destroy()
         self._update_status()
@@ -1786,6 +1829,29 @@ class vmmDomain(vmmDomainBase):
         return self._redefine(util.xml_parse_wrapper, self._change_disk_param,
                              dev_id_info, "shareable", do_shareable)
 
+    def define_disk_cache(self, dev_id_info, new_cache):
+        devtype = "disk"
+        if not self._check_device_is_present(devtype, dev_id_info):
+            return
+
+        def change_cache(doc, ctx):
+            dev_node = self._get_device_xml_nodes(ctx, devtype, dev_id_info)[0]
+            tmpnode = dev_node.xpathEval("./driver")
+            node = tmpnode and tmpnode[0] or None
+
+            if not node:
+                if new_cache:
+                    node = dev_node.newChild(None, "driver", None)
+
+            if new_cache:
+                node.setProp("cache", new_cache)
+            else:
+                node.unsetProp("cache")
+
+            return doc.serialize()
+
+        return self._redefine(util.xml_parse_wrapper, change_cache)
+
     # Network properties
     def define_network_model(self, dev_id_info, newmodel):
         devtype = "interface"
@@ -1874,7 +1940,7 @@ class vmmDomain(vmmDomainBase):
     # End XML Altering API #
     ########################
 
-    def _update_start_vcpus(self, ignore, status, oldstatus):
+    def _update_start_vcpus(self, ignore, oldstatus, status):
         if oldstatus not in [ libvirt.VIR_DOMAIN_SHUTDOWN,
                               libvirt.VIR_DOMAIN_SHUTOFF,
                               libvirt.VIR_DOMAIN_CRASHED ]:
@@ -1894,6 +1960,11 @@ class vmmDomain(vmmDomainBase):
         if status != self.lastStatus:
             oldstatus = self.lastStatus
             self.lastStatus = status
+
+            # Send 'config-changed' before a status-update, so users
+            # are operating with fresh XML
+            self.refresh_xml()
+
             util.safe_idle_add(util.idle_emit, self, "status-changed",
                                oldstatus, status)
 
@@ -1984,7 +2055,10 @@ class vmmDomainVirtinst(vmmDomainBase):
         return libvirt.VIR_DOMAIN_SHUTOFF
 
     def get_xml(self):
-        return self._backend.get_config_xml()
+        xml = self._backend.get_config_xml()
+        if not xml:
+            xml = self._backend.get_config_xml(install=False)
+        return xml
     def _get_inactive_xml(self):
         return self.get_xml()
 
@@ -2124,6 +2198,13 @@ class vmmDomainVirtinst(vmmDomainBase):
         def change_shareable():
             dev.shareable = do_shareable
         self._redefine(change_shareable)
+    def define_disk_cache(self, dev_id_info, new_cache):
+        dev = self._get_device_xml_object(VirtualDevice.VIRTUAL_DEV_DISK,
+                                          dev_id_info)
+
+        def change_cache():
+            dev.driver_cache = new_cache or None
+        self._redefine(change_cache)
 
     def define_network_model(self, dev_id_info, newmodel):
         dev = self._get_device_xml_object(VirtualDevice.VIRTUAL_DEV_NET,

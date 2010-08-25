@@ -48,6 +48,8 @@ class vmmHost(gobject.GObject):
                             gobject.TYPE_NONE, []),
         "action-view-manager": (gobject.SIGNAL_RUN_FIRST,
                                 gobject.TYPE_NONE, []),
+        "action-restore-domain": (gobject.SIGNAL_RUN_FIRST,
+                                  gobject.TYPE_NONE, (str,)),
         }
     def __init__(self, config, conn, engine):
         self.__gobject_init__()
@@ -114,6 +116,7 @@ class vmmHost(gobject.GObject):
             "on_menu_file_close_activate": self.close,
             "on_vmm_host_delete_event": self.close,
 
+            "on_menu_restore_saved_activate": self.restore_domain,
             "on_menu_help_contents_activate": self.show_help,
 
             "on_net_add_clicked": self.add_network,
@@ -128,6 +131,7 @@ class vmmHost(gobject.GObject):
             "on_pool_stop_clicked": self.stop_pool,
             "on_pool_start_clicked": self.start_pool,
             "on_pool_delete_clicked": self.delete_pool,
+            "on_pool_refresh_clicked": self.pool_refresh,
             "on_pool_autostart_toggled": self.pool_autostart_changed,
             "on_vol_delete_clicked": self.delete_vol,
             "on_vol_list_button_press_event": self.popup_vol_menu,
@@ -319,6 +323,9 @@ class vmmHost(gobject.GObject):
     def view_manager(self, src):
         self.emit("action-view-manager")
 
+    def restore_domain(self, src):
+        self.emit("action-restore-domain", self.conn.get_uri())
+
     def exit_app(self, src):
         self.emit("action-exit-app")
 
@@ -346,6 +353,7 @@ class vmmHost(gobject.GObject):
 
     def conn_state_changed(self, ignore1=None):
         state = (self.conn.get_state() == vmmConnection.STATE_ACTIVE)
+        self.window.get_widget("menu_file_restore_saved").set_sensitive(state)
         self.window.get_widget("net-add").set_sensitive(state)
         self.window.get_widget("pool-add").set_sensitive(state)
 
@@ -603,6 +611,19 @@ class vmmHost(gobject.GObject):
         except Exception, e:
             self.err.show_err(_("Error deleting pool: %s") % str(e),
                               "".join(traceback.format_exc()))
+
+    def pool_refresh(self, src):
+        pool = self.current_pool()
+        if pool is None:
+            return
+
+        try:
+            pool.refresh()
+            self.refresh_current_pool()
+        except Exception, e:
+            self.err.show_err(_("Error refreshing pool '%s': %s") % \
+                               (pool.get_name(), str(e)),
+                               "".join(traceback.format_exc()))
 
     def delete_vol(self, src):
         vol = self.current_vol()
