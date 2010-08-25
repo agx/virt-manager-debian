@@ -564,6 +564,7 @@ class vmmCreate(gobject.GObject):
             for dom in guest.domains:
                 domtype = dom.hypervisor_type
                 label = util.pretty_hv(gtype, domtype)
+                sensitive = True
 
                 # Don't add multiple rows for each arch
                 for m in model:
@@ -581,10 +582,11 @@ class vmmCreate(gobject.GObject):
                 if gtype == "xen":
                     if (instmethod == INSTALL_PAGE_PXE or
                         instmethod == INSTALL_PAGE_ISO):
+                        sensitive = False
                         tooltip = _("Only URL or import installs are supported "
                                     "for paravirt.")
 
-                model.append([label, gtype, domtype, not bool(tooltip)])
+                model.append([label, gtype, domtype, sensitive])
 
         hv_info = self.window.get_widget("config-hv-info")
         if tooltip:
@@ -1034,11 +1036,16 @@ class vmmCreate(gobject.GObject):
     def back(self, src):
         notebook = self.window.get_widget("create-pages")
         curpage = notebook.get_current_page()
+        is_import = (self.get_config_install_page() == INSTALL_PAGE_IMPORT)
+        next_page = curpage - 1
 
         if curpage == PAGE_INSTALL:
             self.reset_guest_type()
+        elif curpage == PAGE_FINISH and is_import:
+            # Skip over storage page
+            next_page -= 1
 
-        notebook.set_current_page(curpage - 1)
+        notebook.set_current_page(next_page)
 
     def forward(self, ignore):
         notebook = self.window.get_widget("create-pages")
@@ -1110,7 +1117,9 @@ class vmmCreate(gobject.GObject):
 
         # Set up graphics device
         try:
-            guest._graphics_dev = virtinst.VirtualGraphics(type=virtinst.VirtualGraphics.TYPE_VNC)
+            guest._graphics_dev = virtinst.VirtualGraphics(
+                                        type=virtinst.VirtualGraphics.TYPE_VNC,
+                                        conn=guest.conn)
             guest.add_device(virtinst.VirtualVideoDevice(conn=guest.conn))
         except Exception, e:
             self.err.show_err(_("Error setting up graphics device:") + str(e),
@@ -1121,7 +1130,7 @@ class vmmCreate(gobject.GObject):
         guest.sound_devs = []
         try:
             if self.get_config_sound():
-                guest.sound_devs.append(virtinst.VirtualAudio())
+                guest.sound_devs.append(virtinst.VirtualAudio(conn=guest.conn))
         except Exception, e:
             self.err.show_err(_("Error setting up sound device:") + str(e),
                               "".join(traceback.format_exc()))
@@ -1318,6 +1327,12 @@ class vmmCreate(gobject.GObject):
         if not use_storage:
             return True
 
+        # Make sure default pool is running
+        if self.is_default_storage():
+            ret = uihelpers.check_default_pool_active(self.topwin, self.conn)
+            if not ret:
+                return False
+
         try:
             # This can error out
             diskpath, disksize, sparse = self.get_storage_info()
@@ -1425,12 +1440,11 @@ class vmmCreate(gobject.GObject):
         if not self.conn.is_xen() and not self.conn.is_test_conn():
             return
 
-        conntype = self.conn.get_driver()
         # FIXME: some things are dependent on domain type (vcpu max)
         if instmeth == INSTALL_PAGE_URL:
-            self.change_caps(gtype = "xen", dtype = conntype)
+            self.change_caps(gtype = "xen")
         else:
-            self.change_caps(gtype = "hvm", dtype = conntype)
+            self.change_caps(gtype = "hvm")
 
     def reset_guest_type(self):
         self.change_caps()
@@ -1603,9 +1617,15 @@ class vmmCreate(gobject.GObject):
                     # out handler, removing the virtinst_guest which
                     # will force one final restart.
                     virtinst_guest.continue_install()
+
                     util.connect_opt_out(vm, "status-changed",
                                          self.check_install_status, None)
                     return True
+
+            if vm.get_install_abort():
+                logging.debug("User manually shutdown VM, not restarting "
+                              "guest after install.")
+                return True
 
             logging.debug("Install should be completed, starting VM.")
             vm.startup()

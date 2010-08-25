@@ -226,7 +226,7 @@ class vmmDetails(gobject.GObject):
             "on_details_menu_run_activate": self.control_vm_run,
             "on_details_menu_poweroff_activate": self.control_vm_shutdown,
             "on_details_menu_reboot_activate": self.control_vm_reboot,
-            "on_details_menu_save_activate": self.control_vm_save_domain,
+            "on_details_menu_save_activate": self.control_vm_save,
             "on_details_menu_destroy_activate": self.control_vm_destroy,
             "on_details_menu_pause_activate": self.control_vm_pause,
             "on_details_menu_clone_activate": self.control_vm_clone,
@@ -247,7 +247,9 @@ class vmmDetails(gobject.GObject):
             "on_security_type_changed": self.security_type_changed,
             "on_security_model_changed": self.security_model_changed,
 
-            "on_config_vcpus_changed": self.config_enable_apply,
+            "on_config_vcpus_changed": self.config_vcpus_changed,
+            "on_config_vcpupin_changed": self.config_vcpus_changed,
+            "on_config_vcpupin_generate_clicked": self.config_vcpupin_generate,
 
             "on_config_memory_changed": self.config_memory_changed,
             "on_config_maxmem_changed": self.config_maxmem_changed,
@@ -259,6 +261,7 @@ class vmmDetails(gobject.GObject):
 
             "on_disk_readonly_changed": self.config_enable_apply,
             "on_disk_shareable_changed": self.config_enable_apply,
+            "on_disk_cache_combo_changed": self.config_enable_apply,
 
             "on_network_model_combo_changed": self.config_enable_apply,
 
@@ -374,7 +377,8 @@ class vmmDetails(gobject.GObject):
                                    self.window.get_widget("control-shutdown"),
                                    self.control_vm_shutdown,
                                    self.control_vm_reboot,
-                                   self.control_vm_destroy)
+                                   self.control_vm_destroy,
+                                   self.control_vm_save)
 
         icon_name = self.config.get_shutdown_icon_name()
         for name in ["details-menu-shutdown",
@@ -457,6 +461,8 @@ class vmmDetails(gobject.GObject):
                                                      0x29, 0x5C, 0x45]))
         graph_table.attach(self.network_traffic_graph, 1, 2, 3, 4)
 
+        graph_table.show_all()
+
     def init_details(self):
         # Hardware list
         # [ label, icon name, icon size, hw type, hw data ]
@@ -495,11 +501,20 @@ class vmmDetails(gobject.GObject):
 
         # Security info tooltips
         util.tooltip_wrapper(self.window.get_widget("security-static-info"),
-            _("Static SELinux security type tells libvirt to always start the guest process with the specified label. The administrator is responsible for making sure the images are labeled corectly on disk."))
+            _("Static SELinux security type tells libvirt to always start the guest process with the specified label. The administrator is responsible for making sure the images are labeled correctly on disk."))
         util.tooltip_wrapper(self.window.get_widget("security-dynamic-info"),
             _("The dynamic SELinux security type tells libvirt to automatically pick a unique label for the guest process and guest image, ensuring total isolation of the guest. (Default)"))
 
         # VCPU Pinning list
+        generate_cpuset = self.window.get_widget("config-vcpupin-generate")
+        generate_warn = self.window.get_widget("config-vcpupin-generate-err")
+        if not self.conn.get_capabilities().host.topology:
+            generate_cpuset.set_sensitive(False)
+            generate_warn.show()
+            util.tooltip_wrapper(generate_warn,
+                                 _("Libvirt did not detect NUMA capabilities."))
+
+
         # [ VCPU #, Currently running on Phys CPU #, CPU Pinning list ]
         vcpu_list = self.window.get_widget("config-vcpu-list")
         vcpu_model = gtk.ListStore(str, str, str)
@@ -556,6 +571,10 @@ class vmmDetails(gobject.GObject):
         txtCol.add_attribute(text, 'sensitive', BOOT_ACTIVE)
 
         no_default= not self.is_customize_dialog
+        # Disk cache combo
+        disk_cache = self.window.get_widget("disk-cache-combo")
+        uihelpers.build_cache_combo(self.vm, disk_cache)
+
         # Network model
         net_model = self.window.get_widget("network-model-combo")
         uihelpers.build_netmodel_combo(self.vm, net_model)
@@ -727,7 +746,7 @@ class vmmDetails(gobject.GObject):
 
         self.window.get_widget("config-remove").set_sensitive(True)
         self.window.get_widget("hw-panel").set_sensitive(True)
-        self.window.get_widget("hw-panel").show_all()
+        self.window.get_widget("hw-panel").show()
 
         try:
             if pagetype == HW_LIST_TYPE_GENERAL:
@@ -814,6 +833,16 @@ class vmmDetails(gobject.GObject):
         if newpage == PAGE_CONSOLE or newpage >= PAGE_DYNAMIC_OFFSET:
             self.last_console_page = newpage
 
+    def change_run_text(self, can_restore):
+        if can_restore:
+            text = _("_Restore")
+        else:
+            text = _("_Run")
+        strip_text = text.replace("_", "")
+
+        self.window.get_widget("details-menu-run").get_child().set_label(text)
+        self.window.get_widget("control-run").set_label(strip_text)
+
     def update_widget_states(self, vm, status, ignore=None):
         self.toggle_toolbar(self.window.get_widget("details-menu-view-toolbar"))
 
@@ -822,6 +851,9 @@ class vmmDetails(gobject.GObject):
         stop    = vm.is_stoppable()
         paused  = vm.is_paused()
         ro      = vm.is_read_only()
+
+        if vm.managedsave_supported:
+            self.change_run_text(vm.hasSavedImage())
 
         self.window.get_widget("details-menu-destroy").set_sensitive(destroy)
         self.window.get_widget("control-run").set_sensitive(run)
@@ -917,7 +949,7 @@ class vmmDetails(gobject.GObject):
     def control_vm_console(self, src):
         self.emit("action-show-console", self.vm.get_connection().get_uri(), self.vm.get_uuid())
 
-    def control_vm_save_domain(self, src):
+    def control_vm_save(self, src):
         self.emit("action-save-domain", self.vm.get_connection().get_uri(), self.vm.get_uuid())
 
     def control_vm_destroy(self, src):
@@ -1100,6 +1132,33 @@ class vmmDetails(gobject.GObject):
             maxadj.value = mem
         maxadj.lower = mem
 
+    def generate_cpuset(self):
+        mem = int(self.vm.get_memory()) / 1024 / 1024
+        return virtinst.Guest.generate_cpuset(self.conn.vmm, mem)
+
+    # VCPUS
+    def config_vcpupin_generate(self, ignore):
+        try:
+            pinstr = self.generate_cpuset()
+        except Exception, e:
+            return self.err.val_err(
+                _("Error generating CPU configuration: %s") % str(e))
+
+        self.window.get_widget("config-vcpupin").set_text("")
+        self.window.get_widget("config-vcpupin").set_text(pinstr)
+
+    def config_vcpus_changed(self, ignore):
+        conn = self.vm.get_connection()
+        host_active_count = conn.host_active_processor_count()
+        vcpus_adj = self.window.get_widget("config-vcpus").get_adjustment()
+
+        # Warn about overcommit
+        warn = bool(vcpus_adj.value > host_active_count)
+        self.window.get_widget("config-vcpus-warn-box").set_property(
+                                                            "visible", warn)
+
+        self.config_enable_apply()
+
     # Boot device / Autostart
     def config_bootdev_selected(self, ignore):
         boot_row = self.get_boot_selection()
@@ -1221,10 +1280,13 @@ class vmmDetails(gobject.GObject):
     # Helper for accessing value of combo/label pattern
     def get_combo_label_value(self, prefix, model_idx=0):
         combo = self.window.get_widget(prefix + "-combo")
+        label = self.window.get_widget(prefix + "-label")
         value = None
 
         if combo.get_property("visible"):
             value = combo.get_model()[combo.get_active()][model_idx]
+        else:
+            value = label.get_text()
 
         return value
 
@@ -1353,11 +1415,14 @@ class vmmDetails(gobject.GObject):
     def config_disk_apply(self, dev_id_info):
         do_readonly = self.window.get_widget("disk-readonly").get_active()
         do_shareable = self.window.get_widget("disk-shareable").get_active()
+        cache = self.get_combo_label_value("disk-cache")
 
         return self._change_config_helper([self.vm.define_disk_readonly,
-                                           self.vm.define_disk_shareable],
+                                           self.vm.define_disk_shareable,
+                                           self.vm.define_disk_cache],
                                           [(dev_id_info, do_readonly),
-                                           (dev_id_info, do_shareable)])
+                                           (dev_id_info, do_shareable),
+                                           (dev_id_info, cache)])
 
     # Audio options
     def config_sound_apply(self, dev_id_info):
@@ -1585,8 +1650,14 @@ class vmmDetails(gobject.GObject):
         semodel_combo.emit("changed")
 
     def refresh_stats_page(self):
-        def _rx_tx_text(rx, tx, unit):
-            return '<span color="#82003B">%(rx)d %(unit)s in</span>\n<span color="#295C45">%(tx)d %(unit)s out</span>' % locals()
+        def _dsk_rx_tx_text(rx, tx, unit):
+            return ('<span color="#82003B">%(rx)d %(unit)s read</span>\n'
+                    '<span color="#295C45">%(tx)d %(unit)s write</span>' %
+                    locals())
+        def _net_rx_tx_text(rx, tx, unit):
+            return ('<span color="#82003B">%(rx)d %(unit)s in</span>\n'
+                    '<span color="#295C45">%(tx)d %(unit)s out</span>' %
+                    locals())
 
         cpu_txt = _("Disabled")
         mem_txt = _("Disabled")
@@ -1601,12 +1672,12 @@ class vmmDetails(gobject.GObject):
                                       int(round(host_memory/1024.0)))
 
         if self.config.get_stats_enable_disk_poll():
-            dsk_txt = _rx_tx_text(self.vm.disk_read_rate(),
-                                  self.vm.disk_write_rate(), "KB/s")
+            dsk_txt = _dsk_rx_tx_text(self.vm.disk_read_rate(),
+                                      self.vm.disk_write_rate(), "KB/s")
 
         if self.config.get_stats_enable_net_poll():
-            net_txt = _rx_tx_text(self.vm.network_rx_rate(),
-                                  self.vm.network_tx_rate(), "KB/s")
+            net_txt = _net_rx_tx_text(self.vm.network_rx_rate(),
+                                      self.vm.network_tx_rate(), "KB/s")
 
         self.window.get_widget("overview-cpu-usage-text").set_text(cpu_txt)
         self.window.get_widget("overview-memory-usage-text").set_text(mem_txt)
@@ -1643,6 +1714,11 @@ class vmmDetails(gobject.GObject):
             vcpus_adj.value = curvcpus
 
         self.window.get_widget("state-vm-vcpus").set_text(str(curvcpus))
+
+        # Warn about overcommit
+        warn = bool(vcpus_adj.value > host_active_count)
+        self.window.get_widget("config-vcpus-warn-box").set_property(
+                                                            "visible", warn)
 
         # Populate VCPU pinning
         self.window.get_widget("config-vcpupin").set_text(vcpupin)
@@ -1721,6 +1797,7 @@ class vmmDetails(gobject.GObject):
         share = diskinfo[7]
         bus = diskinfo[8]
         idx = diskinfo[9]
+        cache = diskinfo[10]
 
         size = _("Unknown")
         if not path:
@@ -1746,6 +1823,7 @@ class vmmDetails(gobject.GObject):
         self.window.get_widget("disk-readonly").set_sensitive(not is_cdrom)
         self.window.get_widget("disk-shareable").set_active(share)
         self.window.get_widget("disk-size").set_text(size)
+        self.set_combo_label("disk-cache", 0, cache)
 
         button = self.window.get_widget("config-cdrom-connect")
         if is_cdrom or is_floppy:
@@ -2099,7 +2177,7 @@ class vmmDetails(gobject.GObject):
         for gfxinfo in self.vm.get_graphics_devices():
             currentGraphics[gfxinfo[1]] = 1
             update_hwlist(HW_LIST_TYPE_GRAPHICS, gfxinfo,
-                          _("Display %s") % gfxinfo[1],
+                          _("Display %s") % (str(gfxinfo[2]).upper()),
                           "video-display")
 
         # Populate list of sound devices
@@ -2113,7 +2191,8 @@ class vmmDetails(gobject.GObject):
             currentChars[charinfo[1]] = 1
             label = charinfo[0].capitalize()
             if charinfo[0] != "console":
-                label += " %s" % charinfo[3] # Don't show port for console
+                # Don't show port for console
+                label += " %s" % (int(charinfo[3]) + 1)
 
             update_hwlist(HW_LIST_TYPE_CHAR, charinfo, label,
                           "device_serial")

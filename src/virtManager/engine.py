@@ -66,9 +66,11 @@ def default_uri():
     tryuri = None
     if os.path.exists("/var/lib/xend") and os.path.exists("/proc/xen"):
         tryuri = "xen:///"
-    elif (os.path.exists("/usr/bin/qemu") or
+    elif (os.path.exists("/dev/kvm") or
+          os.path.exists("/usr/bin/qemu") or
           os.path.exists("/usr/bin/qemu-kvm") or
-          os.path.exists("/usr/bin/kvm")):
+          os.path.exists("/usr/bin/kvm") or
+          os.path.exists("/usr/libexec/qemu-kvm")):
         tryuri = "qemu:///system"
 
     return tryuri
@@ -83,6 +85,7 @@ def check_packagekit(config, errbox):
     Returns (success, did we just install libvirt) otherwise.
     """
     if not PACKAGEKIT_PACKAGES:
+        logging.debug("No PackageKit packages to search for.")
         return
 
     logging.debug("Asking PackageKit what's installed locally.")
@@ -189,7 +192,14 @@ def packagekit_search(session, pk_control, package_name):
     pk_trans.connect_to_signal('Finished', finished)
     pk_trans.connect_to_signal('ErrorCode', error)
     pk_trans.connect_to_signal('Package', package)
-    pk_trans.SearchNames("installed", [package_name])
+    try:
+        pk_trans.SearchNames("installed", [package_name])
+    except dbus.exceptions.DBusException, e:
+        if e.get_dbus_name() != "org.freedesktop.DBus.Error.UnknownMethod":
+            raise
+
+        # Try older search API
+        pk_trans.SearchName("installed", package_name)
 
     # Call main() so this function is synchronous
     gtk.main()
@@ -428,7 +438,8 @@ class vmmEngine(gobject.GObject):
             except KeyboardInterrupt:
                 raise
             except libvirt.libvirtError, e:
-                if e.get_error_code() == libvirt.VIR_ERR_SYSTEM_ERROR:
+                if (e.get_error_domain() == libvirt.VIR_FROM_REMOTE and
+                    e.get_error_code() == libvirt.VIR_ERR_SYSTEM_ERROR):
                     logging.exception("Could not refresh connection %s." % uri)
                     logging.debug("Closing connection since libvirtd "
                                   "appears to have stopped.")
@@ -470,6 +481,8 @@ class vmmEngine(gobject.GObject):
         self.refresh_console(uri, uuid)
     def _do_save_domain(self, src, uri, uuid):
         self.save_domain(src, uri, uuid)
+    def _do_restore_domain(self, src, uri):
+        self.restore_domain(src, uri)
     def _do_destroy_domain(self, src, uri, uuid):
         self.destroy_domain(src, uri, uuid)
     def _do_suspend_domain(self, src, uri, uuid):
@@ -519,6 +532,7 @@ class vmmEngine(gobject.GObject):
             manager.connect("action-show-help", self._do_show_help)
             manager.connect("action-exit-app", self._do_exit_app)
             manager.connect("action-view-manager", self._do_show_manager)
+            manager.connect("action-restore-domain", self._do_restore_domain)
             self.connections[uri]["windowHost"] = manager
         self.connections[uri]["windowHost"].show()
 
@@ -600,6 +614,7 @@ class vmmEngine(gobject.GObject):
             self.windowManager.connect("action-shutdown-domain", self._do_shutdown_domain)
             self.windowManager.connect("action-reboot-domain", self._do_reboot_domain)
             self.windowManager.connect("action-destroy-domain", self._do_destroy_domain)
+            self.windowManager.connect("action-save-domain", self._do_save_domain)
             self.windowManager.connect("action-migrate-domain", self._do_migrate_domain)
             self.windowManager.connect("action-clone-domain", self._do_clone_domain)
             self.windowManager.connect("action-show-console", self._do_show_console)
@@ -707,24 +722,40 @@ class vmmEngine(gobject.GObject):
 
     def save_domain(self, src, uri, uuid):
         conn = self._lookup_connection(uri)
-        if conn.is_remote():
-            # FIXME: This should work with remote storage stuff
-            self.err.val_err(_("Saving virtual machines over remote "
-                               "connections is not yet supported."))
-            return
-
         vm = conn.get_vm(uuid)
+        managed = bool(vm.managedsave_supported)
+        do_prompt = self.config.get_confirm_poweroff()
 
-        path = util.browse_local(src.window.get_widget("vmm-details"),
-                                 _("Save Virtual Machine"),
-                                 self.config, conn,
-                                 dialog_type=gtk.FILE_CHOOSER_ACTION_SAVE,
-                                 browse_reason=self.config.CONFIG_DIR_SAVE)
-
-        if not path:
+        if managed and conn.is_remote():
+            self.err.val_err(_("Saving virtual machines over remote "
+                               "connections is not supported with this "
+                               "libvirt version or hypervisor."))
             return
 
-        progWin = vmmAsyncJob(self.config, self._save_callback, [vm, path],
+        if do_prompt:
+            res = self.err.warn_chkbox(
+                    text1=_("Are you sure you want to save "
+                            "'%s'?" % vm.get_name()),
+                    chktext=_("Don't ask me again."),
+                    buttons=gtk.BUTTONS_YES_NO)
+
+            response, skip_prompt = res
+            if not response:
+                return
+            self.config.set_confirm_poweroff(not skip_prompt)
+
+        path = None
+        if not managed:
+            path = util.browse_local(src.window.get_widget("vmm-details"),
+                                     _("Save Virtual Machine"),
+                                     self.config, conn,
+                                     dialog_type=gtk.FILE_CHOOSER_ACTION_SAVE,
+                                     browse_reason=self.config.CONFIG_DIR_SAVE)
+            if not path:
+                return
+
+        progWin = vmmAsyncJob(self.config, self._save_callback,
+                              [vm, path],
                               _("Saving Virtual Machine"))
         progWin.run()
         error, details = progWin.get_error()
@@ -734,9 +765,48 @@ class vmmEngine(gobject.GObject):
 
     def _save_callback(self, vm, file_to_save, asyncjob):
         try:
-            vm.save(file_to_save)
+            conn = util.dup_conn(self.config, vm.connection,
+                                 return_conn_class=True)
+            newvm = conn.get_vm(vm.get_uuid())
+
+            newvm.save(file_to_save)
         except Exception, e:
             asyncjob.set_error(str(e), "".join(traceback.format_exc()))
+
+    def restore_domain(self, src, uri):
+        conn = self._lookup_connection(uri)
+        if conn.is_remote():
+            self.err.val_err(_("Restoring virtual machines over remote "
+                               "connections is not yet supported"))
+            return
+
+        path = util.browse_local(src.window.get_widget("vmm-manager"),
+                                 _("Restore Virtual Machine"),
+                                 self.config, conn,
+                                 browse_reason=self.config.CONFIG_DIR_RESTORE)
+
+        if not path:
+            return
+
+        progWin = vmmAsyncJob(self.config, self.restore_saved_callback,
+                              [path, conn], _("Restoring Virtual Machine"))
+        progWin.run()
+        error, details = progWin.get_error()
+
+        if error is not None:
+            self.err.show_err(error, details,
+                              title=_("Error restoring domain"))
+
+    def restore_saved_callback(self, file_to_load, conn, asyncjob):
+        try:
+            newconn = util.dup_conn(self.config, conn,
+                                    return_conn_class=True)
+            newconn.restore(file_to_load)
+        except Exception, e:
+            err = (_("Error restoring domain '%s': %s") %
+                                  (file_to_load, str(e)))
+            details = "".join(traceback.format_exc())
+            asyncjob.set_error(err, details)
 
     def destroy_domain(self, src, uri, uuid):
         conn = self._lookup_connection(uri)

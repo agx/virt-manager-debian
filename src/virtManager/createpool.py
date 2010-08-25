@@ -193,10 +193,9 @@ class vmmCreatePool(gobject.GObject):
         for typ in types:
             model.append([typ, "%s: %s" % (typ, Storage.StoragePool.get_pool_type_desc(typ))])
 
-    def populate_pool_format(self):
+    def populate_pool_format(self, formats):
         model = self.window.get_widget("pool-format").get_model()
         model.clear()
-        formats = self._pool.formats
         for f in formats:
             model.append([f, f])
 
@@ -292,7 +291,7 @@ class vmmCreatePool(gobject.GObject):
         self.window.get_widget("pool-format").set_active(-1)
 
         if fmt:
-            self.populate_pool_format()
+            self.populate_pool_format(getattr(self._pool, "formats"))
             self.window.get_widget("pool-format").set_active(0)
 
         self.populate_pool_sources()
@@ -369,7 +368,7 @@ class vmmCreatePool(gobject.GObject):
         source = self._browse_file(_("Choose source path"),
                                    startfolder="/dev", foldermode=False)
         if source:
-            self.window.get_widget("pool-source-path").set_text(source)
+            self.window.get_widget("pool-source-path").child.set_text(source)
 
     def browse_target_path(self, ignore1=None):
         target = self._browse_file(_("Choose target directory"),
@@ -444,7 +443,6 @@ class vmmCreatePool(gobject.GObject):
             self.window.get_widget("pool-forward").show()
             self.window.get_widget("pool-forward").grab_focus()
         elif page_number == PAGE_FORMAT:
-            self.show_options_by_pool()
             self.window.get_widget("pool-target-path").child.set_text(self._pool.target_path)
             self.window.get_widget("pool-back").set_sensitive(True)
             buildret = self.get_build_default()
@@ -453,6 +451,7 @@ class vmmCreatePool(gobject.GObject):
             self.window.get_widget("pool-finish").show()
             self.window.get_widget("pool-finish").grab_focus()
             self.window.get_widget("pool-forward").hide()
+            self.show_options_by_pool()
 
     def get_pool_to_validate(self):
         """
@@ -509,9 +508,12 @@ class vmmCreatePool(gobject.GObject):
             buildval = self.window.get_widget("pool-build").get_active()
             buildsen = self.window.get_widget("pool-build").get_property("sensitive")
             if buildsen and buildval:
-                return self.err.yes_no(_("Building a pool of this type will "
+                ret =  self.err.yes_no(_("Building a pool of this type will "
                                          "format the source device. Are you "
                                          "sure you want to 'build' this pool?"))
+                if not ret:
+                    return ret
+
             self._pool = tmppool
             return True
 

@@ -227,6 +227,10 @@ class vmmAddHardware(gobject.GObject):
         target_list.pack_start(text, True)
         target_list.add_attribute(text, 'text', 3)
 
+        # Disk cache mode
+        cache_list = self.window.get_widget("config-storage-cache")
+        uihelpers.build_cache_combo(self.vm, cache_list)
+
         # Sparse tooltip
         sparse_info = self.window.get_widget("config-storage-nosparse-info")
         uihelpers.set_sparse_tooltip(sparse_info)
@@ -546,6 +550,13 @@ class vmmAddHardware(gobject.GObject):
         device = model[idx][1]
         return bus, device
 
+    def get_config_disk_cache(self, label=False):
+        cache = self.window.get_widget("config-storage-cache")
+        idx = 0
+        if label:
+            idx = 1
+        return cache.get_model()[cache.get_active()][idx]
+
     # Input getters
     def get_config_input(self):
         target = self.window.get_widget("input-type")
@@ -742,6 +753,7 @@ class vmmAddHardware(gobject.GObject):
                 (_("Disk size:"),   size_str),
                 (_("Device type:"), self._dev.device),
                 (_("Bus type:"),    self._dev.bus),
+                (_("Cache mode:"),  self.get_config_disk_cache(label=True)),
             ]
             title = _("Storage")
 
@@ -1089,6 +1101,13 @@ class vmmAddHardware(gobject.GObject):
 
     def validate_page_storage(self):
         bus, device = self.get_config_disk_target()
+        cache = self.get_config_disk_cache()
+
+        # Make sure default pool is running
+        if self.is_default_storage():
+            ret = uihelpers.check_default_pool_active(self.topwin, self.conn)
+            if not ret:
+                return False
 
         readonly = False
         if device == virtinst.VirtualDisk.DEVICE_CDROM:
@@ -1133,7 +1152,8 @@ class vmmAddHardware(gobject.GObject):
                                         sparse = sparse,
                                         readOnly = readonly,
                                         device = device,
-                                        bus = bus)
+                                        bus = bus,
+                                        driverCache = cache)
 
             if (disk.type == virtinst.VirtualDisk.TYPE_FILE and
                 not self.vm.is_hvm() and
@@ -1209,7 +1229,8 @@ class vmmAddHardware(gobject.GObject):
         else:
             _type = virtinst.VirtualGraphics.TYPE_SDL
 
-        self._dev = virtinst.VirtualGraphics(type=_type)
+        self._dev = virtinst.VirtualGraphics(type=_type,
+                                             conn=self.vm.get_connection().vmm)
         try:
             self._dev.port   = self.get_config_vnc_port()
             self._dev.passwd = self.get_config_vnc_password()
@@ -1221,7 +1242,8 @@ class vmmAddHardware(gobject.GObject):
     def validate_page_sound(self):
         smodel = self.get_config_sound_model()
         try:
-            self._dev = virtinst.VirtualAudio(model=smodel)
+            self._dev = virtinst.VirtualAudio(conn=self.conn.vmm,
+                                              model=smodel)
         except Exception, e:
             return self.err.val_err(_("Sound device parameter error"), str(e))
 
@@ -1229,7 +1251,7 @@ class vmmAddHardware(gobject.GObject):
         ignore, nodedev_name = self.get_config_host_device_info()
 
         if nodedev_name == None:
-            return self.err.val_err(_("Physical Device Requried"),
+            return self.err.val_err(_("Physical Device Required"),
                                     _("A device must be selected."))
 
         try:

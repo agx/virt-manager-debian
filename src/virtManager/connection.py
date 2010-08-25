@@ -127,6 +127,7 @@ class vmmConnection(gobject.GObject):
         self._nodedev_capable = None
 
         self._xml_flags = {}
+        self._support_dict = {}
 
         # Physical network interfaces: name -> virtinst.NodeDevice
         self.nodedevs = {}
@@ -459,6 +460,8 @@ class vmmConnection(gobject.GObject):
             hv = "QEMU"
             if active and self.is_kvm_supported():
                 hv += "/KVM"
+        elif scheme in ('esx', 'gsx'):
+            hv = scheme.upper()
         else:
             hv = scheme.capitalize()
 
@@ -529,6 +532,15 @@ class vmmConnection(gobject.GObject):
             return inact, act
 
         return self._get_flags_helper(vm, key, check_func)
+
+    def get_dom_managedsave_supported(self, vm):
+        key = virtinst.support.SUPPORT_DOMAIN_MANAGED_SAVE
+        if key not in self._support_dict:
+            val = virtinst.support.check_domain_support(vm, key)
+            logging.debug("Connection managed save support: %s" % val)
+            self._support_dict[key] = val
+
+        return self._support_dict[key]
 
     def get_interface_flags(self, iface):
         key = "interface"
@@ -987,32 +999,22 @@ class vmmConnection(gobject.GObject):
 
             if not open_error:
                 self.state = self.STATE_ACTIVE
-            else:
-                self.state = self.STATE_DISCONNECTED
+                continue
 
-                if self.uri.find("+ssh://") > 0:
-                    hint = "\nMaybe you need to install ssh-askpass " + \
-                           "in order to authenticate."
-                else:
-                    hint = ""
+            self.state = self.STATE_DISCONNECTED
+            (_type, value, stacktrace) = open_error
 
-                (_type, value, stacktrace) = open_error
+            if (_type == libvirt.libvirtError and
+                value.get_error_code() == libvirt.VIR_ERR_AUTH_FAILED and
+                "GSSAPI Error" in value.get_error_message() and
+                "No credentials cache found" in value.get_error_message()):
+                if self._acquire_tgt():
+                    done = False
+                    continue
 
-                if (type(_type) == libvirt.libvirtError and
-                    value.get_error_code() == libvirt.VIR_ERR_AUTH_FAILED and
-                    "GSSAPI Error" in value.get_error_message() and
-                    "No credentials cache found" in value.get_error_message()):
-                    if self._acquire_tgt():
-                        done = False
-                        continue
+            tb = "".join(traceback.format_exception(_type, value, stacktrace))
 
-                tb = "".join(traceback.format_exception(_type, value,
-                                                        stacktrace))
-
-                # Detailed error message, in English so it can be Googled.
-                self.connectError = (("Unable to open connection to hypervisor"
-                                      " URI '%s':\n%s\n%s"
-                                      % (str(self.uri), value, tb + hint)))
+            self.connectError = "%s\n\n%s" % (str(value), str(tb))
 
         # We want to kill off this thread asap, so schedule a gobject
         # idle even to inform the UI of result
@@ -1581,6 +1583,8 @@ class vmmConnection(gobject.GObject):
                 pcentCpuTime = 0.0
 
         pcentMem = mem * 100.0 / self.host_memory_size()
+        if pcentMem > 100.0:
+            pcentMem = 100.0
 
         newStats = {
             "timestamp": now,
