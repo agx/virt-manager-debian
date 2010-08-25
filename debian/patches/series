@@ -1,6 +1,1 @@
 0001-use-usr-share-gconf-for-schema-data.patch
-0002-console-Don-t-throw-traceback-if-we-can-t-read-error.patch
-0003-Update-french-translation.patch
-0004-create-Skip-post-install-restart-if-user-destroys-VM.patch
-0005-Add-conn-info-to-virtinst.VirtualGraphics.patch
-0006-Fix-error-launching-create-wizard-on-qemu-session.patch
