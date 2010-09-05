@@ -3,6 +3,8 @@ Date: Sat, 4 Sep 2010 17:14:32 +0000
 Subject: [PATCH] l10n: Updates to French (fr) translation
 
 Transmitted-via: Transifex (translate.fedoraproject.org)
+
+Origin: upstream, http://hg.fedorahosted.org/hg/virt-manager/rev/e336400fbb88
 ---
  po/fr.po |  163 ++++++++++++++++++++++++++------------------------------------
  1 files changed, 69 insertions(+), 94 deletions(-)
