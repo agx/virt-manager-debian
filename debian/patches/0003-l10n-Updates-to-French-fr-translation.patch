@@ -1,8 +1,10 @@
-From: =?UTF-8?q?Laurent=20L=C3=A9onard?= <laurent@open-minds.org>
-Date: Wed, 12 May 2010 05:37:48 +0200
-Subject: [PATCH] Update french translation.
+From: trash <trash@fedoraproject.org>
+Date: Wed, 12 May 2010 03:20:23 +0000
+Subject: [PATCH] l10n: Updates to French (fr) translation
 
-Origin: upstream, http://hg.fedoraproject.org/hg/virt-manager/rev/1f78c4ea0692
+Transmitted-via: Transifex (translate.fedoraproject.org)
+
+Origin: upstream, http://hg.fedorahosted.org/hg/virt-manager/rev/1f78c4ea0692
 ---
  po/fr.po |  424 +++++++++++++++++++++++++++-----------------------------------
  1 files changed, 186 insertions(+), 238 deletions(-)
