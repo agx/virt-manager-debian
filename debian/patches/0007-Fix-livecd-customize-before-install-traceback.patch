@@ -1,0 +1,26 @@
+From: Cole Robinson <crobinso@redhat.com>
+Date: Thu, 6 May 2010 13:54:16 -0400
+Subject: [PATCH] Fix livecd 'customize before install' traceback
+
+Origin: upstream, http://hg.fedorahosted.org/hg/virt-manager/rev/f2d3931243fe
+---
+ src/virtManager/domain.py |    5 ++++-
+ 1 files changed, 4 insertions(+), 1 deletions(-)
+
+diff --git a/src/virtManager/domain.py b/src/virtManager/domain.py
+index 2d287f6..18fb49d 100644
+--- a/src/virtManager/domain.py
++++ b/src/virtManager/domain.py
+@@ -1996,7 +1996,10 @@ class vmmDomainVirtinst(vmmDomainBase):
+         return libvirt.VIR_DOMAIN_SHUTOFF
+ 
+     def get_xml(self):
+-        return self._backend.get_config_xml()
++        xml = self._backend.get_config_xml()
++        if not xml:
++            xml = self._backend.get_config_xml(install=False)
++        return xml
+     def _get_inactive_xml(self):
+         return self.get_xml()
+ 
+-- 

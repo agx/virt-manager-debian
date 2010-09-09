@@ -4,3 +4,4 @@
 0004-create-Skip-post-install-restart-if-user-destroys-VM.patch
 0005-Add-conn-info-to-virtinst.VirtualGraphics.patch
 0006-Fix-error-launching-create-wizard-on-qemu-session.patch
+0007-Fix-livecd-customize-before-install-traceback.patch
