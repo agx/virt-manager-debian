@@ -3,6 +3,7 @@ Date: Thu, 6 May 2010 13:54:16 -0400
 Subject: [PATCH] Fix livecd 'customize before install' traceback
 
 Origin: upstream, http://hg.fedorahosted.org/hg/virt-manager/rev/f2d3931243fe
+Bug-Debian: http://bugs.debian.org/591808
 ---
  src/virtManager/domain.py |    5 ++++-
  1 files changed, 4 insertions(+), 1 deletions(-)
