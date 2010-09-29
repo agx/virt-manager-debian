@@ -1,3 +1,4 @@
 0001-use-usr-share-gconf-for-schema-data.patch
 0002-l10n-Updates-to-French-fr-translation.patch
 0003-l10n-Updates-to-French-fr-translation.patch
+0004-Add-AM_MAINTAINER_MODE-and-drop-m4-include.patch
