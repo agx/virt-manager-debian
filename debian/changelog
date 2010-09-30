@@ -1,3 +1,17 @@
+virt-manager (0.8.4-8) unstable; urgency=low
+
+  [ Laurent Léonard ]
+  * [2254aba] Bump Standards-Version to 3.9.1
+  * [5c4e495] Update patch 
+        0003-Update-french-translation.patch.
+    Fix origin URL, yse author, date and description from the upstream patch.
+    Rename the file to match upstream patch description.
+  * [be93227] New patch
+         0007-Fix-livecd-customize-before-install-traceback.patch
+    Closes: #591808
+ 
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 30 Sep 2010 13:32:01 +0200
+
 virt-manager (0.8.4-7) unstable; urgency=low
 
   * [b234741] Recommend gnome-icon-theme for missing icons like system-
