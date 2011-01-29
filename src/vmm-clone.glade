@@ -1,4 +1,4 @@
-<?xml version="1.0"?>
+<?xml version="1.0" encoding="UTF-8"?>
 <glade-interface>
   <!-- interface-requires gtk+ 2.6 -->
   <!-- interface-naming-policy toplevel-contextual -->
@@ -6,13 +6,12 @@
     <property name="border_width">5</property>
     <property name="title" translatable="yes">Change MAC address</property>
     <property name="window_position">center-on-parent</property>
+    <property name="destroy_with_parent">True</property>
     <property name="type_hint">dialog</property>
-    <property name="has_separator">False</property>
     <signal name="delete_event" handler="on_vmm_change_mac_delete_event"/>
     <child internal-child="vbox">
       <widget class="GtkVBox" id="dialog-vbox1">
         <property name="visible">True</property>
-        <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child>
           <widget class="GtkAlignment" id="alignment4">
@@ -22,7 +21,6 @@
             <child>
               <widget class="GtkVBox" id="vbox8">
                 <property name="visible">True</property>
-                <property name="orientation">vertical</property>
                 <property name="spacing">12</property>
                 <child>
                   <widget class="GtkHBox" id="hbox4">
@@ -220,19 +218,17 @@
     <property name="border_width">5</property>
     <property name="title" translatable="yes">Change storage path</property>
     <property name="window_position">center-on-parent</property>
+    <property name="destroy_with_parent">True</property>
     <property name="type_hint">dialog</property>
-    <property name="has_separator">False</property>
     <signal name="delete_event" handler="on_vmm_change_storage_delete_event"/>
     <child internal-child="vbox">
       <widget class="GtkVBox" id="dialog-vbox2">
         <property name="visible">True</property>
-        <property name="orientation">vertical</property>
         <property name="spacing">2</property>
         <child>
           <widget class="GtkVBox" id="vbox2">
             <property name="visible">True</property>
             <property name="border_width">6</property>
-            <property name="orientation">vertical</property>
             <property name="spacing">12</property>
             <child>
               <widget class="GtkTable" id="table4">
@@ -507,7 +503,6 @@
     <child>
       <widget class="GtkVBox" id="vbox1">
         <property name="visible">True</property>
-        <property name="orientation">vertical</property>
         <child>
           <widget class="GtkViewport" id="clone-header">
             <property name="visible">True</property>
@@ -560,17 +555,14 @@
           <widget class="GtkVBox" id="vbox4">
             <property name="visible">True</property>
             <property name="border_width">12</property>
-            <property name="orientation">vertical</property>
             <property name="spacing">12</property>
             <child>
               <widget class="GtkVBox" id="vbox3">
                 <property name="visible">True</property>
-                <property name="orientation">vertical</property>
                 <property name="spacing">18</property>
                 <child>
                   <widget class="GtkVBox" id="vbox5">
                     <property name="visible">True</property>
-                    <property name="orientation">vertical</property>
                     <property name="spacing">12</property>
                     <child>
                       <widget class="GtkHBox" id="hbox1">
@@ -617,7 +609,6 @@
                             <child>
                               <widget class="GtkVBox" id="vbox6">
                                 <property name="visible">True</property>
-                                <property name="orientation">vertical</property>
                                 <child>
                                   <widget class="GtkLabel" id="clone-no-net">
                                     <property name="visible">True</property>
@@ -631,7 +622,6 @@
                                 <child>
                                   <widget class="GtkVBox" id="clone-network-box">
                                     <property name="visible">True</property>
-                                    <property name="orientation">vertical</property>
                                     <property name="spacing">6</property>
                                     <child>
                                       <placeholder/>
@@ -668,7 +658,6 @@
                             <child>
                               <widget class="GtkVBox" id="vbox77">
                                 <property name="visible">True</property>
-                                <property name="orientation">vertical</property>
                                 <child>
                                   <widget class="GtkLabel" id="clone-no-storage-pass">
                                     <property name="visible">True</property>
@@ -694,7 +683,6 @@
                                         <child>
                                           <widget class="GtkVBox" id="vbox7">
                                             <property name="visible">True</property>
-                                            <property name="orientation">vertical</property>
                                             <child>
                                               <widget class="GtkHBox" id="hbox6">
                                                 <property name="visible">True</property>
@@ -705,7 +693,6 @@
                                                     <child>
                                                       <widget class="GtkVBox" id="clone-storage-box">
                                                         <property name="visible">True</property>
-                                                        <property name="orientation">vertical</property>
                                                         <property name="spacing">12</property>
                                                         <child>
                                                           <placeholder/>
@@ -801,7 +788,7 @@
                               <widget class="GtkEntry" id="clone-new-name">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
-                                <property name="invisible_char">&#x25CF;</property>
+                                <property name="invisible_char">●</property>
                               </widget>
                               <packing>
                                 <property name="left_attach">1</property>

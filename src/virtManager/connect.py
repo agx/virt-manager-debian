@@ -19,13 +19,13 @@
 #
 
 import gobject
-import gtk.glade
+import gtk
 import virtinst
 import logging
 import dbus
 import socket
 
-from virtManager.error import vmmErrorDialog
+from virtManager.baseclass import vmmGObjectUI
 
 HV_XEN = 0
 HV_QEMU = 1
@@ -46,25 +46,18 @@ def default_conn_user(conn):
         return "root"
     return current_user()
 
-class vmmConnect(gobject.GObject):
+class vmmConnect(vmmGObjectUI):
     __gsignals__ = {
         "completed": (gobject.SIGNAL_RUN_FIRST,
-                      gobject.TYPE_NONE, (str,object,object)),
+                      gobject.TYPE_NONE, (str, object, object)),
         "cancelled": (gobject.SIGNAL_RUN_FIRST,
                       gobject.TYPE_NONE, ())
         }
 
-    def __init__(self, config, engine):
-        self.__gobject_init__()
-        self.window = gtk.glade.XML(
-                        config.get_glade_dir() + "/vmm-open-connection.glade",
-                        "vmm-open-connection", domain="virt-manager")
-        self.err = vmmErrorDialog(self.window.get_widget("vmm-open-connection"),
-                                  0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
-                                  _("Unexpected Error"),
-                                  _("An unexpected error occurred"))
-        self.engine = engine
-        self.window.get_widget("vmm-open-connection").hide()
+    def __init__(self):
+        vmmGObjectUI.__init__(self,
+                              "vmm-open-connection.glade",
+                              "vmm-open-connection")
 
         self.window.signal_autoconnect({
             "on_hypervisor_changed": self.hypervisor_changed,
@@ -104,18 +97,17 @@ class vmmConnect(gobject.GObject):
 
         self.reset_state()
 
-    def cancel(self,ignore1=None,ignore2=None):
+    def cancel(self, ignore1=None, ignore2=None):
         self.close()
         self.emit("cancelled")
         return 1
 
     def close(self):
-        self.window.get_widget("vmm-open-connection").hide()
+        self.topwin.hide()
         self.stop_browse()
 
     def show(self):
-        win = self.window.get_widget("vmm-open-connection")
-        win.present()
+        self.topwin.present()
         self.reset_state()
 
     def set_initial_state(self):
@@ -160,6 +152,7 @@ class vmmConnect(gobject.GObject):
             self.window.get_widget("hypervisor").set_active(1)
 
     def add_service(self, interface, protocol, name, type, domain, flags):
+        ignore = flags
         try:
             # Async service resolving
             res = self.server.ServiceResolverNew(interface, protocol, name,
@@ -175,6 +168,12 @@ class vmmConnect(gobject.GObject):
             logging.exception(e)
 
     def remove_service(self, interface, protocol, name, type, domain, flags):
+        ignore = domain
+        ignore = protocol
+        ignore = flags
+        ignore = interface
+        ignore = type
+
         try:
             model = self.window.get_widget("hostname").get_model()
             name = str(name)
@@ -186,6 +185,15 @@ class vmmConnect(gobject.GObject):
 
     def add_conn_to_list(self, interface, protocol, name, type, domain,
                          host, aprotocol, address, port, text, flags):
+        ignore = domain
+        ignore = protocol
+        ignore = flags
+        ignore = interface
+        ignore = type
+        ignore = text
+        ignore = aprotocol
+        ignore = port
+
         try:
             model = self.window.get_widget("hostname").get_model()
             for row in model:
@@ -244,16 +252,16 @@ class vmmConnect(gobject.GObject):
 
         self.window.get_widget("hostname").child.set_text(entry)
 
-    def hostname_changed(self, src):
+    def hostname_changed(self, src_ignore):
         self.populate_uri()
 
-    def hypervisor_changed(self, src):
+    def hypervisor_changed(self, src_ignore):
         self.populate_uri()
 
-    def username_changed(self, src):
+    def username_changed(self, src_ignore):
         self.populate_uri()
 
-    def connect_remote_toggled(self, src):
+    def connect_remote_toggled(self, src_ignore):
         is_remote = self.is_remote()
         self.window.get_widget("hostname").set_sensitive(is_remote)
         self.window.get_widget("connection").set_sensitive(is_remote)
@@ -267,7 +275,7 @@ class vmmConnect(gobject.GObject):
         self.populate_default_user()
         self.populate_uri()
 
-    def connection_changed(self, src):
+    def connection_changed(self, src_ignore):
         self.populate_default_user()
         self.populate_uri()
 
@@ -394,4 +402,4 @@ class vmmConnect(gobject.GObject):
         return host
 
 
-gobject.type_register(vmmConnect)
+vmmGObjectUI.type_register(vmmConnect)

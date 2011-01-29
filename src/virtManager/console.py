@@ -1,6 +1,8 @@
+# -*- coding: utf-8 -*-
 #
 # Copyright (C) 2006-2008 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
+# Copyright (C) 2010 Marc-André Lureau <marcandre.lureau@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -18,28 +20,31 @@
 # MA 02110-1301 USA.
 #
 
-import gobject
 import gtk
-import gtk.glade
+import gobject
 
 import libvirt
-import dbus
+
 import gtkvnc
 
+try:
+    import SpiceClientGtk as spice
+except:
+    spice = None
+
 import os
-import sys
 import signal
 import socket
 import logging
-import traceback
 
 from virtManager import util
+from virtManager.baseclass import vmmGObjectUI
 from virtManager.error import vmmErrorDialog
 
 # Console pages
 PAGE_UNAVAILABLE = 0
 PAGE_AUTHENTICATE = 1
-PAGE_VNCVIEWER = 2
+PAGE_VIEWER = 2
 
 def has_property(obj, setting):
     try:
@@ -48,20 +53,430 @@ def has_property(obj, setting):
         return False
     return True
 
-class vmmConsolePages(gobject.GObject):
-    def __init__(self, config, vm, engine, window):
-        self.__gobject_init__()
 
+class Tunnel(object):
+    def __init__(self):
+        self.outfd = None
+        self.errfd = None
+        self.pid = None
+
+    def open(self, connhost, connuser, connport, gaddr, gport, gsocket):
+        if self.outfd is not None:
+            return -1
+
+        # Build SSH cmd
+        argv = ["ssh", "ssh"]
+        if connport:
+            argv += ["-p", str(connport)]
+
+        if connuser:
+            argv += ['-l', connuser]
+
+        argv += [connhost]
+
+        # Build 'nc' command run on the remote host
+        #
+        # This ugly thing is a shell script to detect availability of
+        # the -q option for 'nc': debian and suse based distros need this
+        # flag to ensure the remote nc will exit on EOF, so it will go away
+        # when we close the VNC tunnel. If it doesn't go away, subsequent
+        # VNC connection attempts will hang.
+        #
+        # Fedora's 'nc' doesn't have this option, and apparently defaults
+        # to the desired behavior.
+        #
+        if gsocket:
+            nc_params = "-U %s" % gsocket
+        else:
+            nc_params = "%s %s" % (gaddr, gport)
+
+        nc_cmd = (
+            """nc -q 2>&1 | grep -q "requires an argument";"""
+            """if [ $? -eq 0 ] ; then"""
+            """   CMD="nc -q 0 %(nc_params)s";"""
+            """else"""
+            """   CMD="nc %(nc_params)s";"""
+            """fi;"""
+            """eval "$CMD";""" %
+            {'nc_params': nc_params})
+
+        argv.append("sh -c")
+        argv.append("'%s'" % nc_cmd)
+
+        argv_str = reduce(lambda x, y: x + " " + y, argv[1:])
+        logging.debug("Creating SSH tunnel: %s" % argv_str)
+
+        fds      = socket.socketpair()
+        errorfds = socket.socketpair()
+
+        pid = os.fork()
+        if pid == 0:
+            fds[0].close()
+            errorfds[0].close()
+
+            os.close(0)
+            os.close(1)
+            os.close(2)
+            os.dup(fds[1].fileno())
+            os.dup(fds[1].fileno())
+            os.dup(errorfds[1].fileno())
+            os.execlp(*argv)
+            os._exit(1)
+        else:
+            fds[1].close()
+            errorfds[1].close()
+
+        logging.debug("Tunnel PID=%d OUTFD=%d ERRFD=%d" %
+                      (pid, fds[0].fileno(), errorfds[0].fileno()))
+        errorfds[0].setblocking(0)
+
+        self.outfd = fds[0]
+        self.errfd = errorfds[0]
+        self.pid = pid
+
+        fd = fds[0].fileno()
+        if fd < 0:
+            raise SystemError("can't open a new tunnel: fd=%d" % fd)
+        return fd
+
+    def close(self):
+        if self.outfd is None:
+            return
+
+        logging.debug("Shutting down tunnel PID=%d OUTFD=%d ERRFD=%d" %
+                      (self.pid, self.outfd.fileno(),
+                       self.errfd.fileno()))
+        self.outfd.close()
+        self.outfd = None
+        self.errfd.close()
+        self.errfd = None
+
+        os.kill(self.pid, signal.SIGKILL)
+        self.pid = None
+
+    def get_err_output(self):
+        errout = ""
+        while True:
+            try:
+                new = self.errfd.recv(1024)
+            except:
+                break
+
+            if not new:
+                break
+
+            errout += new
+
+        return errout
+
+
+class Tunnels(object):
+    def __init__(self, connhost, connuser, connport, gaddr, gport, gsocket):
+        self.connhost = connhost
+        self.connuser = connuser
+        self.connport = connport
+
+        self.gaddr = gaddr
+        self.gport = gport
+        self.gsocket = gsocket
+        self._tunnels = []
+
+    def open_new(self):
+        t = Tunnel()
+        fd = t.open(self.connhost, self.connuser, self.connport,
+                    self.gaddr, self.gport, self.gsocket)
+        self._tunnels.append(t)
+        return fd
+
+    def close_all(self):
+        for l in self._tunnels:
+            l.close()
+
+    def get_err_output(self):
+        errout = ""
+        for l in self._tunnels:
+            errout += l.get_err_output()
+        return errout
+
+
+class Viewer(object):
+    def __init__(self, console, config):
+        self.console = console
         self.config = config
-        self.vm = vm
-        self.engine = engine
-        self.window = window
+        self.display = None
 
-        self.topwin = self.window.get_widget("vmm-details")
-        self.err = vmmErrorDialog(self.topwin,
-                                  0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
-                                  _("Unexpected Error"),
-                                  _("An unexpected error occurred"))
+    def get_widget(self):
+        return self.display
+
+    def get_pixbuf(self):
+        return self.display.get_pixbuf()
+
+    def get_grab_keys_from_config(self):
+        keys = []
+        grab_keys = self.config.get_keys_combination(True)
+        if grab_keys is not None:
+            # If somebody edited this in GConf it would fail so
+            # we encapsulate this into try/except block
+            try:
+                keys = map(int, grab_keys.split(','))
+            except:
+                logging.debug("Error in grab_keys configuration in GConf")
+
+        return keys
+
+    def get_grab_keys(self):
+        keystr = None
+        try:
+            keys = self.display.get_grab_keys()
+            for k in keys:
+                if keystr is None:
+                    keystr = gtk.gdk.keyval_name(k)
+                else:
+                    keystr = keystr + "+" + gtk.gdk.keyval_name(k)
+        except:
+            pass
+
+        return keystr
+
+    def send_keys(self, keys):
+        return self.display.send_keys(keys)
+
+    def set_grab_keys(self):
+        try:
+            keys = self.get_grab_keys_from_config()
+            if keys:
+                self.display.set_grab_keys(keys)
+        except Exception, e:
+            logging.debug("Error when getting the grab keys combination: %s" %
+                          str(e))
+
+    def open_host(self, host, user, port, socketpath, password=None):
+        raise NotImplementedError()
+
+class VNCViewer(Viewer):
+    def __init__(self, console, config):
+        Viewer.__init__(self, console, config)
+        self.display = gtkvnc.Display()
+        self.sockfd = None
+
+    def init_widget(self):
+        # Set default grab key combination if found and supported
+        if self.config.vnc_grab_keys_supported():
+            self.set_grab_keys()
+
+        self.display.realize()
+
+        # Make sure viewer doesn't force resize itself
+        self.display.set_force_size(False)
+
+        self.console.refresh_scaling()
+
+        self.display.set_keyboard_grab(False)
+        self.display.set_pointer_grab(True)
+
+        self.display.connect("vnc-pointer-grab", self.console.pointer_grabbed)
+        self.display.connect("vnc-pointer-ungrab", self.console.pointer_ungrabbed)
+        self.display.connect("vnc-auth-credential", self._auth_credential)
+        self.display.connect("vnc-initialized",
+                             lambda src: self.console.connected())
+        self.display.connect("vnc-disconnected",
+                             lambda src: self.console.disconnected())
+        self.display.connect("vnc-desktop-resize", self.console.desktop_resize)
+        self.display.connect("focus-in-event", self.console.viewer_focus_changed)
+        self.display.connect("focus-out-event", self.console.viewer_focus_changed)
+
+        self.display.show()
+
+    def _auth_credential(self, src_ignore, credList):
+        for i in range(len(credList)):
+            if credList[i] not in [gtkvnc.CREDENTIAL_PASSWORD,
+                                   gtkvnc.CREDENTIAL_USERNAME,
+                                   gtkvnc.CREDENTIAL_CLIENTNAME]:
+                self.console.err.show_err(summary=_("Unable to provide requested credentials to the VNC server"),
+                                          details=_("The credential type %s is not supported") % (str(credList[i])),
+                                          title=_("Unable to authenticate"),
+                                          async=True)
+                self.console.viewerRetriesScheduled = 10 # schedule_retry will error out
+                self.close()
+                self.console.activate_unavailable_page(_("Unsupported console authentication type"))
+                return
+
+        withUsername = False
+        withPassword = False
+        for i in range(len(credList)):
+            logging.debug("Got credential request %s", str(credList[i]))
+            if credList[i] == gtkvnc.CREDENTIAL_PASSWORD:
+                withPassword = True
+            elif credList[i] == gtkvnc.CREDENTIAL_USERNAME:
+                withUsername = True
+            elif credList[i] == gtkvnc.CREDENTIAL_CLIENTNAME:
+                self.display.set_credential(credList[i], "libvirt-vnc")
+
+        if withUsername or withPassword:
+            self.console.activate_auth_page(withPassword, withUsername)
+
+    def get_scaling(self):
+        return self.display.get_scaling()
+
+    def set_scaling(self, scaling):
+        return self.display.set_scaling(scaling)
+
+    def close(self):
+        self.display.close()
+        if not self.sockfd:
+            return
+
+        self.sockfd.close()
+        self.sockfd = None
+
+    def is_open(self):
+        return self.display.is_open()
+
+    def open_host(self, host, user, port, socketpath, password=None):
+        ignore = password
+        ignore = user
+
+        if not socketpath:
+            self.display.open_host(host, port)
+            return
+
+        try:
+            sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+            sock.connect(socketpath)
+            self.sockfd = sock
+        except Exception, e:
+            raise RuntimeError(_("Error opening socket path '%s': %s") %
+                               (socketpath, e))
+
+        fd = self.sockfd.fileno()
+        if fd < 0:
+            raise RuntimeError((_("Error opening socket path '%s'") %
+                                socketpath) + " fd=%s" % fd)
+        self.open_fd(fd)
+
+    def open_fd(self, fd):
+        self.display.open_fd(fd)
+
+    def get_grab_keys(self):
+        keystr = None
+        if self.config.vnc_grab_keys_supported():
+            keystr = super(VNCViewer, self).get_grab_keys()
+
+        # If grab keys are set to None then preserve old behaviour since
+        # the GTK-VNC - we're using older version of GTK-VNC
+        if keystr is None:
+            keystr = "Control_L+Alt_L"
+        return keystr
+
+    def set_credential_username(self, cred):
+        self.display.set_credential(gtkvnc.CREDENTIAL_USERNAME, cred)
+
+    def set_credential_password(self, cred):
+        self.display.set_credential(gtkvnc.CREDENTIAL_PASSWORD, cred)
+
+
+class SpiceViewer(Viewer):
+    def __init__(self, console, config):
+        Viewer.__init__(self, console, config)
+        self.spice_session = None
+        self.display = None
+        self.audio = None
+
+    def _init_widget(self):
+        self.set_grab_keys()
+        self.console.refresh_scaling()
+
+        self.display.realize()
+        self.display.connect("mouse-grab", lambda src, g: g and self.console.pointer_grabbed(src))
+        self.display.connect("mouse-grab", lambda src, g: g or self.console.pointer_ungrabbed(src))
+        self.display.show()
+
+    def close(self):
+        if self.spice_session is not None:
+            self.spice_session.disconnect()
+        self.spice_session = None
+        self.audio = None
+        self.display = None
+
+    def is_open(self):
+        return self.spice_session != None
+
+    def _main_channel_event_cb(self, channel, event):
+        if event == spice.CHANNEL_CLOSED:
+            self.console.disconnected()
+
+    def _channel_open_fd_request(self, channel, tls_ignore):
+        if not self.console.tunnels:
+            raise SystemError("Got fd request with no configured tunnel!")
+
+        fd = self.console.tunnels.open_new()
+        channel.open_fd(fd)
+
+    def _channel_new_cb(self, session, channel):
+        gobject.GObject.connect(channel, "open-fd",
+                                self._channel_open_fd_request)
+
+        if type(channel) == spice.MainChannel:
+            channel.connect_after("channel-event", self._main_channel_event_cb)
+            return
+
+        if type(channel) == spice.DisplayChannel:
+            channel_id = channel.get_property("channel-id")
+            self.display = spice.Display(self.spice_session, channel_id)
+            self.console.window.get_widget("console-vnc-viewport").add(self.display)
+            self._init_widget()
+            self.console.connected()
+            return
+
+        if (type(channel) in [spice.PlaybackChannel, spice.RecordChannel] and
+            not self.audio):
+            self.audio = spice.Audio(self.spice_session)
+            return
+
+    def open_host(self, host, user, port, socketpath, password=None):
+        ignore = socketpath
+
+        uri = "spice://"
+        uri += (user and str(user) or "")
+        uri += str(host) + "?port=" + str(port)
+        logging.debug("spice uri: %s" % uri)
+
+        self.spice_session = spice.Session()
+        self.spice_session.set_property("uri", uri)
+        if password:
+            self.spice_session.set_property("password", password)
+        gobject.GObject.connect(self.spice_session, "channel-new",
+                                self._channel_new_cb)
+        self.spice_session.connect()
+
+    def open_fd(self, fd, password=None):
+        self.spice_session = spice.Session()
+        if password:
+            self.spice_session.set_property("password", password)
+        gobject.GObject.connect(self.spice_session, "channel-new",
+                                self._channel_new_cb)
+        self.spice_session.open_fd(fd)
+
+    def set_credential_password(self, cred):
+        self.spice_session.set_property("password", cred)
+
+    def get_scaling(self):
+        return self.display.get_property("resize-guest")
+
+    def set_scaling(self, scaling):
+        self.display.set_property("resize-guest", scaling)
+
+
+class vmmConsolePages(vmmGObjectUI):
+    def __init__(self, vm, window):
+        vmmGObjectUI.__init__(self, None, None)
+
+        self.vm = vm
+
+        self.windowname = "vmm-details"
+        self.window = window
+        self.topwin = self.window.get_widget(self.windowname)
+        self.err = vmmErrorDialog(self.topwin)
 
         self.title = vm.get_name() + " " + self.topwin.get_title()
         self.topwin.set_title(self.title)
@@ -76,40 +491,18 @@ class vmmConsolePages(gobject.GObject):
 
         # Initialize display widget
         self.scale_type = self.vm.get_console_scaling()
-        self.vncTunnel = None
-        self.vncViewerRetriesScheduled = 0
-        self.vncViewerRetryDelay = 125
-        self.vnc_connected = False
-
-        self.vncViewer = gtkvnc.Display()
-        self.window.get_widget("console-vnc-viewport").add(self.vncViewer)
-
-        # Set default grab key combination if found and supported
-        if self.config.grab_keys_supported():
-            try:
-                grab_keys = self.config.get_keys_combination(True)
-                if grab_keys is not None:
-                    # If somebody edited this in GConf it would fail so
-                    # we encapsulate this into try/except block
-                    try:
-                        keys = map(int, grab_keys.split(','))
-                        self.vncViewer.set_grab_keys( keys )
-                    except:
-                        logging.debug("Error in grab_keys configuration in GConf")
-            except Exception, e:
-                logging.debug("Error when getting the grab keys combination: %s" % str(e))
-
-        self.init_vnc()
+        self.tunnels = None
+        self.viewerRetriesScheduled = 0
+        self.viewerRetryDelay = 125
+        self.viewer = None
+        self.viewer_connected = False
+        self.viewer_connecting = False
 
         finish_img = gtk.image_new_from_stock(gtk.STOCK_YES,
                                               gtk.ICON_SIZE_BUTTON)
         self.window.get_widget("console-auth-login").set_image(finish_img)
 
-        self.notifyID = None
-        self.notifyInterface = None
-        self.init_dbus()
-
-        # Make VNC widget background always be black
+        # Make viewer widget background always be black
         black = gtk.gdk.Color(0, 0, 0)
         self.window.get_widget("console-vnc-viewport").modify_bg(
                                                         gtk.STATE_NORMAL,
@@ -117,7 +510,12 @@ class vmmConsolePages(gobject.GObject):
 
         # Signals are added by vmmDetails. Don't use signal_autoconnect here
         # or it changes will be overwritten
+        # Set console scaling
+        self.vm.on_console_scaling_changed(self.refresh_scaling)
 
+        scroll = self.window.get_widget("console-vnc-scroll")
+        scroll.connect("size-allocate", self.scroll_size_allocate)
+        self.config.on_console_accels_changed(self.set_enable_accel)
 
     def is_visible(self):
         if self.topwin.flags() & gtk.VISIBLE:
@@ -128,114 +526,25 @@ class vmmConsolePages(gobject.GObject):
     # Initialization helpers #
     ##########################
 
-    def init_dbus(self):
-        try:
-            bus = dbus.SessionBus()
-            notifyObject = bus.get_object("org.freedesktop.Notifications",
-                                          "/org/freedesktop/Notifications")
-            self.notifyInterface = dbus.Interface(notifyObject,
-                                                  "org.freedesktop.Notifications")
-            self.notifyInterface.connect_to_signal("ActionInvoked",
-                                                   self.notify_action)
-            self.notifyInterface.connect_to_signal("NotificationClosed",
-                                                   self.notify_closed)
-        except Exception, e:
-            logging.error("Cannot initialize notification system" + str(e))
+    def viewer_focus_changed(self, ignore1=None, ignore2=None):
+        has_focus = self.viewer and self.viewer.get_widget() and \
+            self.viewer.get_widget().get_property("has-focus")
+        force_accel = self.config.get_console_accels()
 
+        if force_accel:
+            self._enable_modifiers()
+        elif has_focus and self.viewer_connected:
+            self._disable_modifiers()
+        else:
+            self._enable_modifiers()
 
-    def init_vnc(self):
-        self.vncViewer.realize()
-
-        # Make sure viewer doesn't force resize itself
-        self.vncViewer.set_force_size(False)
-
-        # Set VNC console scaling
-        self.vm.on_console_scaling_changed(self.refresh_scaling)
-        self.refresh_scaling()
-
-        self.set_keyboard_grab()
-        self.config.on_console_keygrab_changed(self.set_keyboard_grab)
-        self.vncViewer.set_pointer_grab(True)
-
-        scroll = self.window.get_widget("console-vnc-scroll")
-        scroll.connect("size-allocate", self.scroll_size_allocate)
-
-        self.vncViewer.connect("vnc-pointer-grab", self.notify_grabbed)
-        self.vncViewer.connect("vnc-pointer-ungrab", self.notify_ungrabbed)
-        self.vncViewer.connect("vnc-auth-credential", self._vnc_auth_credential)
-        self.vncViewer.connect("vnc-initialized", self._vnc_initialized)
-        self.vncViewer.connect("vnc-disconnected", self._vnc_disconnected)
-        self.vncViewer.connect("vnc-keyboard-grab", self.keyboard_grabbed)
-        self.vncViewer.connect("vnc-keyboard-ungrab", self.keyboard_ungrabbed)
-        self.vncViewer.connect("vnc-desktop-resize", self.desktop_resize)
-        self.vncViewer.show()
-
-    #############
-    # Listeners #
-    #############
-
-    def keyboard_grabbed(self, src):
-        self._disable_modifiers()
-    def keyboard_ungrabbed(self, src=None):
-        self._enable_modifiers()
-
-    def notify_grabbed(self, src):
-        keystr = None
-        if self.config.grab_keys_supported():
-            try:
-                keys = src.get_grab_keys()
-                for k in keys:
-                    if keystr is None:
-                        keystr = gtk.gdk.keyval_name(k)
-                    else:
-                        keystr = keystr + "+" + gtk.gdk.keyval_name(k)
-            except:
-                pass
-
-        # If grab keys are set to None then preserve old behaviour since
-        # the GTK-VNC - we're using older version of GTK-VNC
-        if keystr is None:
-            keystr = "Control_L+Alt_L"
-
+    def pointer_grabbed(self, src_ignore):
+        keystr = self.viewer.get_grab_keys()
         self.topwin.set_title(_("Press %s to release pointer.") % keystr +
                               " " + self.title)
 
-        if (not self.config.show_console_grab_notify() or
-            not self.notifyInterface):
-            return
-
-        try:
-            if self.notifyID is not None:
-                self.notifyInterface.CloseNotification(self.notifyID)
-                self.notifyID = None
-
-            (x, y) = self.topwin.window.get_origin()
-            self.notifyID = self.notifyInterface.Notify(self.topwin.get_title(),
-                                                        0,
-                                                        '',
-                                                        _("Pointer grabbed"),
-                                                        _("The mouse pointer has been restricted to the virtual console window. To release the pointer, press the key pair") + " " + keystr,
-                                                        ["dismiss", _("Do not show this notification in the future.")],
-                                                        {"desktop-entry": "virt-manager",
-                                                        "x": x+200, "y": y},
-                                                        8 * 1000)
-        except Exception, e:
-            logging.error("Cannot popup notification " + str(e))
-
-    def notify_ungrabbed(self, src):
+    def pointer_ungrabbed(self, src_ignore):
         self.topwin.set_title(self.title)
-
-    def notify_closed(self, i, reason=None):
-        if self.notifyID is not None and self.notifyID == i:
-            self.notifyID = None
-
-    def notify_action(self, i, action):
-        if self.notifyID is None or self.notifyID != i:
-            return
-
-        if action == "dismiss":
-            self.config.set_console_grab_notify(False)
-
 
     def _disable_modifiers(self):
         if self.gtk_settings_accel is not None:
@@ -249,9 +558,9 @@ class vmmConsolePages(gobject.GObject):
         settings.set_property('gtk-menu-bar-accel', None)
 
         if has_property(settings, "gtk-enable-mnemonics"):
-            self.gtk_settings_mnemonic = settings.get_property("gtk-enable-mnemonics")
+            self.gtk_settings_mnemonic = settings.get_property(
+                                                        "gtk-enable-mnemonics")
             settings.set_property("gtk-enable-mnemonics", False)
-
 
     def _enable_modifiers(self):
         if self.gtk_settings_accel is None:
@@ -268,17 +577,20 @@ class vmmConsolePages(gobject.GObject):
         for g in self.accel_groups:
             self.topwin.add_accel_group(g)
 
-    def set_keyboard_grab(self, ignore=None, ignore1=None,
-                          ignore2=None, ignore3=None):
-        grab = self.config.get_console_keygrab() == 2
-        self.vncViewer.set_keyboard_grab(grab)
+    def set_enable_accel(self, ignore=None, ignore1=None,
+                         ignore2=None, ignore3=None):
+        # Make sure modifiers are up to date
+        self.viewer_focus_changed()
 
-    def refresh_scaling(self,ignore1=None, ignore2=None, ignore3=None,
+    def refresh_scaling(self, ignore1=None, ignore2=None, ignore3=None,
                         ignore4=None):
         self.scale_type = self.vm.get_console_scaling()
-        self.window.get_widget("details-menu-view-scale-always").set_active(self.scale_type == self.config.CONSOLE_SCALE_ALWAYS)
-        self.window.get_widget("details-menu-view-scale-never").set_active(self.scale_type == self.config.CONSOLE_SCALE_NEVER)
-        self.window.get_widget("details-menu-view-scale-fullscreen").set_active(self.scale_type == self.config.CONSOLE_SCALE_FULLSCREEN)
+        self.window.get_widget("details-menu-view-scale-always").set_active(
+            self.scale_type == self.config.CONSOLE_SCALE_ALWAYS)
+        self.window.get_widget("details-menu-view-scale-never").set_active(
+            self.scale_type == self.config.CONSOLE_SCALE_NEVER)
+        self.window.get_widget("details-menu-view-scale-fullscreen").set_active(
+            self.scale_type == self.config.CONSOLE_SCALE_FULLSCREEN)
 
         self.update_scaling()
 
@@ -297,19 +609,22 @@ class vmmConsolePages(gobject.GObject):
         self.update_scaling()
 
     def update_scaling(self):
-        curscale = self.vncViewer.get_scaling()
+        if not self.viewer:
+            return
+
+        curscale = self.viewer.get_scaling()
         fs = self.window.get_widget("control-fullscreen").get_active()
         vnc_scroll = self.window.get_widget("console-vnc-scroll")
 
         if (self.scale_type == self.config.CONSOLE_SCALE_NEVER
             and curscale == True):
-            self.vncViewer.set_scaling(False)
+            self.viewer.set_scaling(False)
         elif (self.scale_type == self.config.CONSOLE_SCALE_ALWAYS
               and curscale == False):
-            self.vncViewer.set_scaling(True)
+            self.viewer.set_scaling(True)
         elif (self.scale_type == self.config.CONSOLE_SCALE_FULLSCREEN
               and curscale != fs):
-            self.vncViewer.set_scaling(fs)
+            self.viewer.set_scaling(fs)
 
         # Refresh viewer size
         vnc_scroll.queue_resize()
@@ -325,17 +640,8 @@ class vmmConsolePages(gobject.GObject):
 
         if do_fullscreen:
             self.topwin.fullscreen()
-
-            if self.config.get_console_keygrab() == 1:
-                gtk.gdk.keyboard_grab(self.vncViewer.window, False, 0L)
-                self._disable_modifiers()
-
             self.window.get_widget("toolbar-box").hide()
         else:
-            if self.config.get_console_keygrab() == 1:
-                self._enable_modifiers()
-                gtk.gdk.keyboard_ungrab(0L)
-
             self.topwin.unfullscreen()
 
             if self.window.get_widget("details-menu-view-toolbar").get_active():
@@ -343,7 +649,7 @@ class vmmConsolePages(gobject.GObject):
 
         self.update_scaling()
 
-    def size_to_vm(self, src):
+    def size_to_vm(self, src_ignore):
         # Resize the console to best fit the VM resolution
         if not self.desktop_resolution:
             return
@@ -387,7 +693,7 @@ class vmmConsolePages(gobject.GObject):
             keys = ["Print"]
 
         if keys != None:
-            self.vncViewer.send_keys(keys)
+            self.viewer.send_keys(keys)
 
 
     ##########################
@@ -402,25 +708,39 @@ class vmmConsolePages(gobject.GObject):
             if status == libvirt.VIR_DOMAIN_CRASHED:
                 self.activate_unavailable_page(_("Guest has crashed"))
 
-    def update_widget_states(self, vm, status):
+    def close_viewer(self):
+        viewport = self.window.get_widget("console-vnc-viewport")
+        if self.viewer is None:
+            return
+
+        v = self.viewer # close_viewer() can be reentered
+        self.viewer = None
+        w = v.get_widget()
+
+        if w and w in viewport.get_children():
+            viewport.remove(w)
+
+        v.close()
+        self.viewer_connected = False
+
+    def update_widget_states(self, vm, status_ignore):
         runable = vm.is_runable()
         pages   = self.window.get_widget("console-pages")
         page    = pages.get_current_page()
 
         if runable:
             if page != PAGE_UNAVAILABLE:
-                self.vncViewer.close()
                 pages.set_current_page(PAGE_UNAVAILABLE)
 
             self.view_vm_status()
             return
 
-        elif page in [PAGE_UNAVAILABLE, PAGE_VNCVIEWER]:
-            if self.vncViewer.is_open():
+        elif page in [PAGE_UNAVAILABLE, PAGE_VIEWER]:
+            if self.viewer and self.viewer.is_open():
                 self.activate_viewer_page()
             else:
-                self.vncViewerRetriesScheduled = 0
-                self.vncViewerRetryDelay = 125
+                self.viewerRetriesScheduled = 0
+                self.viewerRetryDelay = 125
                 self.try_login()
 
         return
@@ -430,6 +750,7 @@ class vmmConsolePages(gobject.GObject):
     ###################
 
     def activate_unavailable_page(self, msg):
+        self.close_viewer()
         self.window.get_widget("console-pages").set_current_page(PAGE_UNAVAILABLE)
         self.window.get_widget("details-menu-vm-screenshot").set_sensitive(False)
         self.window.get_widget("console-unavailable").set_label("<b>" + msg + "</b>")
@@ -471,24 +792,23 @@ class vmmConsolePages(gobject.GObject):
 
 
     def activate_viewer_page(self):
-        self.window.get_widget("console-pages").set_current_page(PAGE_VNCVIEWER)
+        self.window.get_widget("console-pages").set_current_page(PAGE_VIEWER)
         self.window.get_widget("details-menu-vm-screenshot").set_sensitive(True)
-        self.vncViewer.grab_focus()
+        if self.viewer and self.viewer.get_widget():
+            self.viewer.get_widget().grab_focus()
 
-
-    ########################
-    # VNC Specific methods #
-    ########################
-
-    def _vnc_disconnected(self, src):
+    def disconnected(self):
         errout = ""
-        if self.vncTunnel is not None:
-            errout = self.get_tunnel_err_output()
-            self.close_tunnel()
+        if self.tunnels is not None:
+            errout = self.tunnels.get_err_output()
+            self.tunnels.close_all()
+            self.tunnels = None
 
-        self.vnc_connected = False
-        logging.debug("VNC disconnected")
-        self.keyboard_ungrabbed()
+        self.close_viewer()
+        logging.debug("Viewer disconnected")
+
+        # Make sure modifiers are set correctly
+        self.viewer_focus_changed()
 
         if (self.skip_connect_attempt() or
             self.guest_not_avail()):
@@ -496,7 +816,7 @@ class vmmConsolePages(gobject.GObject):
             self.view_vm_status()
             return
 
-        error = _("Error: VNC connection to hypervisor host got refused "
+        error = _("Error: viewer connection to hypervisor host got refused "
                   "or disconnected!")
         if errout:
             logging.debug("Error output from closed console: %s" % errout)
@@ -504,134 +824,49 @@ class vmmConsolePages(gobject.GObject):
 
         self.activate_unavailable_page(error)
 
-    def _vnc_initialized(self, src):
-        self.vnc_connected = True
-        logging.debug("VNC initialized")
+    def connected(self):
+        self.viewer_connected = True
+        logging.debug("Viewer connected")
         self.activate_viewer_page()
 
         # Had a succesfull connect, so reset counters now
-        self.vncViewerRetriesScheduled = 0
-        self.vncViewerRetryDelay = 125
+        self.viewerRetriesScheduled = 0
+        self.viewerRetryDelay = 125
+
+        # Make sure modifiers are set correctly
+        self.viewer_focus_changed()
 
     def schedule_retry(self):
-        if self.vncViewerRetriesScheduled >= 10:
+        if self.viewerRetriesScheduled >= 10:
             logging.error("Too many connection failures, not retrying again")
             return
 
-        util.safe_timeout_add(self.vncViewerRetryDelay, self.try_login)
+        util.safe_timeout_add(self.viewerRetryDelay, self.try_login)
 
-        if self.vncViewerRetryDelay < 2000:
-            self.vncViewerRetryDelay = self.vncViewerRetryDelay * 2
-
-    def open_tunnel(self, server, vncaddr, vncport, username, sshport):
-        if self.vncTunnel is not None:
-            return -1
-
-        # Build SSH cmd
-        argv = ["ssh", "ssh"]
-        if sshport:
-            argv += ["-p", str(sshport)]
-
-        if username:
-            argv += ['-l', username]
-
-        argv += [ server ]
-
-        # Build 'nc' command run on the remote host
-        #
-        # This ugly thing is a shell script to detect availability of
-        # the -q option for 'nc': debian and suse based distros need this
-        # flag to ensure the remote nc will exit on EOF, so it will go away
-        # when we close the VNC tunnel. If it doesn't go away, subsequent
-        # VNC connection attempts will hang.
-        #
-        # Fedora's 'nc' doesn't have this option, and apparently defaults
-        # to the desired behavior.
-        #
-        nc_params = "%s %s" % (vncaddr, str(vncport))
-        nc_cmd = (
-            """nc -q 2>&1 | grep -q "requires an argument";"""
-            """if [ $? -eq 0 ] ; then"""
-            """   CMD="nc -q 0 %(nc_params)s";"""
-            """else"""
-            """   CMD="nc %(nc_params)s";"""
-            """fi;"""
-            """eval "$CMD";""" %
-            {'nc_params': nc_params})
-
-        argv.append("sh -c")
-        argv.append("'%s'" % nc_cmd)
-
-        argv_str = reduce(lambda x, y: x + " " + y, argv[1:])
-        logging.debug("Creating SSH tunnel: %s" % argv_str)
-
-        fds      = socket.socketpair()
-        errorfds = socket.socketpair()
-
-        pid = os.fork()
-        if pid == 0:
-            fds[0].close()
-            errorfds[0].close()
-
-            os.close(0)
-            os.close(1)
-            os.close(2)
-            os.dup(fds[1].fileno())
-            os.dup(fds[1].fileno())
-            os.dup(errorfds[1].fileno())
-            os.execlp(*argv)
-            os._exit(1)
-        else:
-            fds[1].close()
-            errorfds[1].close()
-
-        logging.debug("Tunnel PID=%d OUTFD=%d ERRFD=%d" %
-                      (pid, fds[0].fileno(), errorfds[0].fileno()))
-        errorfds[0].setblocking(0)
-        self.vncTunnel = [fds[0], errorfds[0], pid]
-
-        return fds[0].fileno()
-
-    def close_tunnel(self):
-        if self.vncTunnel is None:
-            return
-
-        logging.debug("Shutting down tunnel PID=%d OUTFD=%d ERRFD=%d" %
-                      (self.vncTunnel[2], self.vncTunnel[0].fileno(),
-                       self.vncTunnel[1].fileno()))
-        self.vncTunnel[0].close()
-        self.vncTunnel[1].close()
-
-        os.kill(self.vncTunnel[2], signal.SIGKILL)
-        self.vncTunnel = None
-
-    def get_tunnel_err_output(self):
-        errfd = self.vncTunnel[1]
-        errout = ""
-        while True:
-            try:
-                new = errfd.recv(1024)
-            except:
-                break
-
-            if not new:
-                break
-
-            errout += new
-
-        return errout
+        if self.viewerRetryDelay < 2000:
+            self.viewerRetryDelay = self.viewerRetryDelay * 2
 
     def skip_connect_attempt(self):
-        return (self.vnc_connected or
+        return (self.viewer or
                 not self.is_visible())
 
     def guest_not_avail(self):
         return (not self.vm.get_handle() or
-                self.vm.status() in [ libvirt.VIR_DOMAIN_SHUTOFF,
-                                      libvirt.VIR_DOMAIN_CRASHED ] or
+                self.vm.status() in [libvirt.VIR_DOMAIN_SHUTOFF,
+                                     libvirt.VIR_DOMAIN_CRASHED] or
                 self.vm.get_id() < 0)
 
-    def try_login(self, src=None):
+    def try_login(self, src_ignore=None):
+        if self.viewer_connecting:
+            return
+
+        try:
+            self.viewer_connecting = True
+            self._try_login()
+        finally:
+            self.viewer_connecting = False
+
+    def _try_login(self):
         if self.skip_connect_attempt():
             # Don't try and login for these cases
             return
@@ -643,28 +878,34 @@ class vmmConsolePages(gobject.GObject):
             return
 
         try:
-            (protocol, connhost,
-             vncport, trans, username,
-             connport, vncuri) = self.vm.get_graphics_console()
+            (protocol, transport,
+             connhost, connuser, connport,
+             gaddr, gport, gsocket) = self.vm.get_graphics_console()
         except Exception, e:
             # We can fail here if VM is destroyed: xen is a bit racy
             # and can't handle domain lookups that soon after
-            logging.debug("Getting graphics console failed: %s" % str(e))
+            logging.exception("Getting graphics console failed: %s" % str(e))
             return
 
         if protocol is None:
-            logging.debug("No graphics configured in guest")
+            logging.debug("No graphics configured for guest")
             self.activate_unavailable_page(
                             _("Graphical console not configured for guest"))
             return
 
-        if protocol != "vnc":
-            logging.debug("Not a VNC console, disabling")
-            self.activate_unavailable_page(
-                            _("Graphical console not supported for guest"))
+        if protocol not in self.config.embeddable_graphics():
+            logging.debug("Don't know how to show graphics type '%s'"
+                          "disabling console page" % protocol)
+
+            msg = (_("Cannot display graphical console type '%s'")
+                     % protocol)
+            if protocol == "spice":
+                msg += ":\n %s" % self.config.get_spice_error()
+
+            self.activate_unavailable_page(msg)
             return
 
-        if vncport == -1:
+        if gport == -1:
             self.activate_unavailable_page(
                             _("Graphical console is not yet active for guest"))
             self.schedule_retry()
@@ -672,74 +913,56 @@ class vmmConsolePages(gobject.GObject):
 
         self.activate_unavailable_page(
                 _("Connecting to graphical console for guest"))
-        logging.debug("Starting connect process for %s: %s %s" %
-                      (vncuri, connhost, str(vncport)))
 
+        logging.debug("Starting connect process for "
+                      "proto=%s trans=%s connhost=%s connuser=%s "
+                      "connport=%s gaddr=%s gport=%s gsocket=%s" %
+                      (protocol, transport, connhost, connuser, connport,
+                       gaddr, gport, gsocket))
         try:
-            if trans in ("ssh", "ext"):
-                if self.vncTunnel:
+            if protocol == "vnc":
+                self.viewer = VNCViewer(self, self.config)
+                self.window.get_widget("console-vnc-viewport").add(
+                                                    self.viewer.get_widget())
+                self.viewer.init_widget()
+            elif protocol == "spice":
+                self.viewer = SpiceViewer(self, self.config)
+
+            self.set_enable_accel()
+
+            if transport in ("ssh", "ext"):
+                if self.tunnels:
                     # Tunnel already open, no need to continue
                     return
 
-                fd = self.open_tunnel(connhost, "127.0.0.1", vncport,
-                                      username, connport)
+                self.tunnels = Tunnels(connhost, connuser, connport,
+                                       gaddr, gport, gsocket)
+                fd = self.tunnels.open_new()
                 if fd >= 0:
-                    self.vncViewer.open_fd(fd)
+                    self.viewer.open_fd(fd)
 
             else:
-                self.vncViewer.open_host(connhost, str(vncport))
+                self.viewer.open_host(connhost, connuser,
+                                      str(gport), gsocket)
 
-        except:
-            (typ, value, stacktrace) = sys.exc_info ()
-            details = \
-                    "Unable to start virtual machine '%s'" % \
-                    (str(typ) + " " + str(value) + "\n" + \
-                     traceback.format_exc (stacktrace))
-            logging.error(details)
+        except Exception, e:
+            logging.exception("Error connection to graphical console")
+            self.activate_unavailable_page(
+                    _("Error connecting to graphical console") + ":\n%s" % e)
 
-    def set_credentials(self, src=None):
+    def set_credentials(self, src_ignore=None):
         passwd = self.window.get_widget("console-auth-password")
         if passwd.flags() & gtk.VISIBLE:
-            self.vncViewer.set_credential(gtkvnc.CREDENTIAL_PASSWORD,
-                                          passwd.get_text())
+            self.viewer.set_credential_password(passwd.get_text())
         username = self.window.get_widget("console-auth-username")
         if username.flags() & gtk.VISIBLE:
-            self.vncViewer.set_credential(gtkvnc.CREDENTIAL_USERNAME,
-                                          username.get_text())
+            self.viewer.set_credential_username(username.get_text())
 
         if self.window.get_widget("console-auth-remember").get_active():
             self.config.set_console_password(self.vm, passwd.get_text(),
                                              username.get_text())
 
-    def _vnc_auth_credential(self, src, credList):
-        for i in range(len(credList)):
-            if credList[i] not in [gtkvnc.CREDENTIAL_PASSWORD,
-                                   gtkvnc.CREDENTIAL_USERNAME,
-                                   gtkvnc.CREDENTIAL_CLIENTNAME]:
-                self.err.show_err(summary=_("Unable to provide requested credentials to the VNC server"),
-                                  details=_("The credential type %s is not supported") % (str(credList[i])),
-                                  title=_("Unable to authenticate"),
-                                  async=True)
-                self.vncViewerRetriesScheduled = 10
-                self.vncViewer.close()
-                self.activate_unavailable_page(_("Unsupported console authentication type"))
-                return
-
-        withUsername = False
-        withPassword = False
-        for i in range(len(credList)):
-            logging.debug("Got credential request %s", str(credList[i]))
-            if credList[i] == gtkvnc.CREDENTIAL_PASSWORD:
-                withPassword = True
-            elif credList[i] == gtkvnc.CREDENTIAL_USERNAME:
-                withUsername = True
-            elif credList[i] == gtkvnc.CREDENTIAL_CLIENTNAME:
-                self.vncViewer.set_credential(credList[i], "libvirt-vnc")
-
-        if withUsername or withPassword:
-            self.activate_auth_page(withPassword, withUsername)
-
-    def desktop_resize(self, src, w, h):
+    def desktop_resize(self, src_ignore, w, h):
         self.desktop_resolution = (w, h)
         self.window.get_widget("console-vnc-scroll").queue_resize()
 
@@ -753,7 +976,7 @@ class vmmConsolePages(gobject.GObject):
         signal_holder = []
 
         def restore_scroll(src):
-            is_scale = self.vncViewer.get_scaling()
+            is_scale = self.viewer.get_scaling()
 
             if is_scale:
                 w_policy = gtk.POLICY_NEVER
@@ -789,49 +1012,49 @@ class vmmConsolePages(gobject.GObject):
 
         widget.queue_resize()
 
-    def scroll_size_allocate(self, src, req):
-        if not self.desktop_resolution:
+    def scroll_size_allocate(self, src_ignore, req):
+        if not self.viewer or not self.desktop_resolution:
             return
 
         scroll = self.window.get_widget("console-vnc-scroll")
-        is_scale = self.vncViewer.get_scaling()
+        is_scale = self.viewer.get_scaling()
 
         dx = 0
         dy = 0
         align_ratio = float(req.width) / float(req.height)
 
-        vnc_w, vnc_h = self.desktop_resolution
-        vnc_ratio = float(vnc_w) / float(vnc_h)
+        desktop_w, desktop_h = self.desktop_resolution
+        desktop_ratio = float(desktop_w) / float(desktop_h)
 
         if not is_scale:
             # Scaling disabled is easy, just force the VNC widget size. Since
             # we are inside a scrollwindow, it shouldn't cause issues.
             scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-            self.vncViewer.set_size_request(vnc_w, vnc_h)
+            self.viewer.get_widget().set_size_request(desktop_w, desktop_h)
             return
 
         # Make sure we never show scrollbars when scaling
         scroll.set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)
 
         # Make sure there is no hard size requirement so we can scale down
-        self.vncViewer.set_size_request(-1, -1)
+        self.viewer.get_widget().set_size_request(-1, -1)
 
         # Make sure desktop aspect ratio is maintained
-        if align_ratio > vnc_ratio:
-            vnc_w = int(req.height * vnc_ratio)
-            vnc_h = req.height
-            dx = (req.width - vnc_w) / 2
+        if align_ratio > desktop_ratio:
+            desktop_w = int(req.height * desktop_ratio)
+            desktop_h = req.height
+            dx = (req.width - desktop_w) / 2
 
         else:
-            vnc_w = req.width
-            vnc_h = int(req.width / vnc_ratio)
-            dy = (req.height - vnc_h) / 2
+            desktop_w = req.width
+            desktop_h = int(req.width / desktop_ratio)
+            dy = (req.height - desktop_h) / 2
 
-        vnc_alloc = gtk.gdk.Rectangle(x=dx,
-                                      y=dy,
-                                      width=vnc_w,
-                                      height=vnc_h)
+        viewer_alloc = gtk.gdk.Rectangle(x=dx,
+                                         y=dy,
+                                         width=desktop_w,
+                                         height=desktop_h)
 
-        self.vncViewer.size_allocate(vnc_alloc)
+        self.viewer.get_widget().size_allocate(viewer_alloc)
 
-gobject.type_register(vmmConsolePages)
+vmmGObjectUI.type_register(vmmConsolePages)

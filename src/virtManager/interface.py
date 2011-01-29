@@ -18,8 +18,6 @@
 # MA 02110-1301 USA.
 #
 
-import gobject
-
 import virtinst
 from virtinst import Interface
 
@@ -27,10 +25,10 @@ from virtManager import util
 from virtManager.libvirtobject import vmmLibvirtObject
 
 class vmmInterface(vmmLibvirtObject):
-    __gsignals__ = { }
+    __gsignals__ = {}
 
-    def __init__(self, config, connection, interface, name, active):
-        vmmLibvirtObject.__init__(self, config, connection)
+    def __init__(self, connection, interface, name, active):
+        vmmLibvirtObject.__init__(self, connection)
 
         self.interface = interface  # Libvirt virInterface object
         self.name = name            # String name
@@ -52,8 +50,17 @@ class vmmInterface(vmmLibvirtObject):
     def _define(self, xml):
         return self.get_connection().define_interface(xml)
 
-    def xpath(self, path):
-        return virtinst.util.get_xml_path(self.get_xml(), path)
+    def xpath(self, *args, **kwargs):
+        # Must use this function for ALL XML parsing
+        ret = virtinst.util.get_xml_path(self.get_xml(), *args, **kwargs)
+        if ret:
+            return ret
+        if not self.is_active():
+            return ret
+
+        # The running config did not have the info requested
+        return virtinst.util.get_xml_path(self.get_xml(inactive=True),
+                                          *args, **kwargs)
 
     def set_active(self, state):
         self.active = state
@@ -84,7 +91,7 @@ class vmmInterface(vmmLibvirtObject):
         return typ == "bridge"
 
     def get_type(self):
-        return virtinst.util.get_xml_path(self.get_xml(), "/interface/@type")
+        return self.xpath("/interface/@type")
 
     def get_pretty_type(self):
         itype = self.get_type()
@@ -133,7 +140,7 @@ class vmmInterface(vmmLibvirtObject):
 
             return ret
 
-        ret = virtinst.util.get_xml_path(self.get_xml(), func=node_func)
+        ret = self.xpath(func=node_func)
 
         if not ret:
             return []
@@ -185,7 +192,7 @@ class vmmInterface(vmmLibvirtObject):
 
             return ret
 
-        ret = virtinst.util.get_xml_path(self.get_xml(), func=addr_func)
+        ret = self.xpath(func=addr_func)
 
         return [dhcp, autoconf, ret]
 
@@ -200,9 +207,24 @@ class vmmInterface(vmmLibvirtObject):
 
             return ret
 
-        ret = virtinst.util.get_xml_path(self.get_xml(), func=protocol)
+        ret = self.xpath(func=protocol)
         if ret:
             ret = "  %s\n" % ret
         return ret
 
-gobject.type_register(vmmInterface)
+    def _redefine(self, xml_func, *args):
+        """
+        Helper function for altering a redefining VM xml
+
+        @param xml_func: Function to alter the running XML. Takes the
+                         original XML as its first argument.
+        @param args: Extra arguments to pass to xml_func
+        """
+        origxml = self._xml_to_redefine()
+        # Sanitize origxml to be similar to what we will get back
+        origxml = util.xml_parse_wrapper(origxml, lambda d, c: d.serialize())
+
+        newxml = xml_func(origxml, *args)
+        self._redefine_xml(newxml)
+
+vmmLibvirtObject.type_register(vmmInterface)

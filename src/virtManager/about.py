@@ -19,26 +19,24 @@
 #
 
 import gtk
-import gtk.glade
+
+from virtManager.baseclass import vmmGObjectUI
 
 def on_email(about, mail):
+    ignore = about
     if hasattr(gtk, "show_uri"):
         gtk.show_uri(None, "mailto:%s" % mail, gtk.get_current_event_time())
-
 gtk.about_dialog_set_email_hook(on_email)
 
 def on_url(about, link):
+    ignore = about
     if hasattr(gtk, "show_uri"):
         gtk.show_uri(None, link, gtk.get_current_event_time())
-
 gtk.about_dialog_set_url_hook(on_url)
 
-
-class vmmAbout:
-    def __init__(self, config):
-        self.window = gtk.glade.XML(config.get_glade_dir() + "/vmm-about.glade", "vmm-about", domain="virt-manager")
-        self.window.get_widget("vmm-about").hide()
-        self.config = config
+class vmmAbout(vmmGObjectUI):
+    def __init__(self):
+        vmmGObjectUI.__init__(self, "vmm-about.glade", "vmm-about")
 
         self.window.signal_autoconnect({
             "on_vmm_about_delete_event": self.close,
@@ -46,10 +44,11 @@ class vmmAbout:
             })
 
     def show(self):
-        dialog = self.window.get_widget("vmm-about")
-        dialog.set_version(self.config.get_appversion())
-        dialog.present()
+        self.topwin.set_version(self.config.get_appversion())
+        self.topwin.present()
 
-    def close(self,ignore1=None,ignore2=None):
-        self.window.get_widget("vmm-about").hide()
+    def close(self, ignore1=None, ignore2=None):
+        self.topwin.hide()
         return 1
+
+vmmGObjectUI.type_register(vmmAbout)

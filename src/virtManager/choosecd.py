@@ -17,39 +17,25 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 #
-import gtk.glade
 import gobject
-
-import virtinst
 
 import virtManager.uihelpers as uihelpers
 import virtManager.util as util
+from virtManager.baseclass import vmmGObjectUI
 from virtManager.mediadev import MEDIA_FLOPPY
 from virtManager.storagebrowse import vmmStorageBrowser
-from virtManager.error import vmmErrorDialog
 
-class vmmChooseCD(gobject.GObject):
+class vmmChooseCD(vmmGObjectUI):
     __gsignals__ = {
         "cdrom-chosen": (gobject.SIGNAL_RUN_FIRST,
                          gobject.TYPE_NONE,
-                         (str, str, str)), # type, source, target
+                         # dev, new path
+                         (gobject.TYPE_PYOBJECT, str)),
     }
 
-    IS_FLOPPY = 1
-    IS_CDROM  = 2
+    def __init__(self, dev_id_info, connection, media_type):
+        vmmGObjectUI.__init__(self, "vmm-choose-cd.glade", "vmm-choose-cd")
 
-    def __init__(self, config, dev_id_info, connection, media_type):
-        self.__gobject_init__()
-        self.window = gtk.glade.XML(config.get_glade_dir() + "/vmm-choose-cd.glade", "vmm-choose-cd", domain="virt-manager")
-        self.topwin = self.window.get_widget("vmm-choose-cd")
-        self.topwin.hide()
-
-        self.err = vmmErrorDialog(self.topwin,
-                                  0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
-                                  _("Unexpected Error"),
-                                  _("An unexpected error occurred"))
-
-        self.config = config
         self.dev_id_info = dev_id_info
         self.conn = connection
         self.storage_browser = None
@@ -69,17 +55,16 @@ class vmmChooseCD(gobject.GObject):
         self.initialize_opt_media()
         self.reset_state()
 
-    def close(self,ignore1=None,ignore2=None):
-        self.window.get_widget("vmm-choose-cd").hide()
+    def close(self, ignore1=None, ignore2=None):
+        self.topwin.hide()
         return 1
 
-    def cancel(self,ignore1=None,ignore2=None):
-        self.window.get_widget("vmm-choose-cd").hide()
+    def cancel(self, ignore1=None, ignore2=None):
+        self.topwin.hide()
 
     def show(self):
-        win = self.window.get_widget("vmm-choose-cd")
         self.reset_state()
-        win.show()
+        self.topwin.show()
 
     def reset_state(self):
         cd_path = self.window.get_widget("cd-path")
@@ -90,7 +75,7 @@ class vmmChooseCD(gobject.GObject):
         else:
             self.window.get_widget("iso-image").set_active(True)
 
-    def ok(self,ignore1=None, ignore2=None):
+    def ok(self, ignore1=None, ignore2=None):
         path = None
 
         if self.window.get_widget("iso-image").get_active():
@@ -107,18 +92,13 @@ class vmmChooseCD(gobject.GObject):
                                     _("A media path must be specified."))
 
         try:
-            dev=virtinst.VirtualDisk.DEVICE_CDROM
-            disk = virtinst.VirtualDisk(path=path,
-                                        device=dev,
-                                        readOnly=True,
-                                        conn=self.conn.vmm)
+            self.dev_id_info.path = path
         except Exception, e:
             return self.err.val_err(_("Invalid Media Path"), str(e))
 
-        uihelpers.check_path_search_for_qemu(self.topwin, self.config,
-                                             self.conn, path)
+        uihelpers.check_path_search_for_qemu(self.topwin, self.conn, path)
 
-        self.emit("cdrom-chosen", self.dev_id_info, disk.path, disk.type)
+        self.emit("cdrom-chosen", self.dev_id_info, path)
         self.cancel()
 
     def media_toggled(self, ignore1=None, ignore2=None):
@@ -158,16 +138,16 @@ class vmmChooseCD(gobject.GObject):
                                                             _("Floppy D_rive"))
             self.window.get_widget("iso-image").set_label(_("Floppy _Image"))
 
-    def set_storage_path(self, src, path):
+    def set_storage_path(self, src_ignore, path):
         self.window.get_widget("iso-path").set_text(path)
 
     def _browse_file(self):
         if self.storage_browser == None:
-            self.storage_browser = vmmStorageBrowser(self.config, self.conn)
+            self.storage_browser = vmmStorageBrowser(self.conn)
             self.storage_browser.connect("storage-browse-finish",
                                          self.set_storage_path)
 
         self.storage_browser.set_browse_reason(self.config.CONFIG_DIR_MEDIA)
         self.storage_browser.show(self.conn)
 
-gobject.type_register(vmmChooseCD)
+vmmGObjectUI.type_register(vmmChooseCD)

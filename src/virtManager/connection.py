@@ -22,7 +22,8 @@ import gobject
 import gtk
 
 import logging
-import os, sys
+import os
+import sys
 import traceback
 import re
 import threading
@@ -40,8 +41,9 @@ from virtManager.storagepool import vmmStoragePool
 from virtManager.interface import vmmInterface
 from virtManager.netdev import vmmNetDevice
 from virtManager.mediadev import vmmMediaDevice
+from virtManager.baseclass import vmmGObject
 
-class vmmConnection(gobject.GObject):
+class vmmConnection(vmmGObject):
     __gsignals__ = {
         "vm-added": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
                      [str, str]),
@@ -100,15 +102,10 @@ class vmmConnection(gobject.GObject):
     STATE_ACTIVE = 2
     STATE_INACTIVE = 3
 
-    def __init__(self, config, uri, readOnly=None, engine=None):
-        self.__gobject_init__()
-
-        self.config = config
-        self.engine = engine
+    def __init__(self, uri, readOnly=False):
+        vmmGObject.__init__(self)
 
         self.connectThread = None
-        self.connectThreadEvent = threading.Event()
-        self.connectThreadEvent.set()
         self.connectError = None
         self.uri = uri
         if self.uri is None or self.uri.lower() == "xen":
@@ -162,11 +159,6 @@ class vmmConnection(gobject.GObject):
     #################
     # Init routines #
     #################
-
-    def get_hal_helper(self):
-        if self.engine:
-            return self.engine.get_hal_helper()
-        return None
 
     def _set_hal_remove_sig(self, hal_helper):
         if not self.hal_helper_remove_sig:
@@ -263,30 +255,24 @@ class vmmConnection(gobject.GObject):
     def get_uri(self):
         return self.uri
 
-    def _invalidate_caps(self):
+    def invalidate_caps(self):
         self._caps_xml = None
         self._caps = None
 
     def _check_caps(self):
-        self._caps_xml = self.vmm.getCapabilities()
-        self._caps = virtinst.CapabilitiesParser.parse(self._caps_xml)
+        if not (self._caps_xml or self._caps):
+            self._caps_xml = self.vmm.getCapabilities()
+            self._caps = virtinst.CapabilitiesParser.parse(self._caps_xml)
 
     def get_capabilities_xml(self):
-        xml = None
-        while xml == None:
+        if not self._caps_xml:
             self._check_caps()
-            xml = self._caps_xml
-
-        return xml
+        return self._caps_xml
 
     def get_capabilities(self):
-        # Make sure we aren't returning None
-        caps = None
-        while caps == None:
+        if not self._caps:
             self._check_caps()
-            caps = self._caps
-
-        return caps
+        return self._caps
 
     def get_max_vcpus(self, _type=None):
         return virtinst.util.get_max_vcpus(self.vmm, _type)
@@ -298,15 +284,15 @@ class vmmConnection(gobject.GObject):
         if self.vmm is None:
             return ""
         mem = self.host_memory_size()
-        if mem > (10*1024*1024):
-            return "%2.2f GB" % (mem/(1024.0*1024.0))
+        if mem > (10 * 1024 * 1024):
+            return "%2.2f GB" % (mem / (1024.0 * 1024.0))
         else:
-            return "%2.0f MB" % (mem/1024.0)
+            return "%2.0f MB" % (mem / 1024.0)
 
     def host_memory_size(self):
         if self.vmm is None:
             return 0
-        return self.hostinfo[1]*1024
+        return self.hostinfo[1] * 1024
 
     def host_architecture(self):
         if self.vmm is None:
@@ -366,6 +352,7 @@ class vmmConnection(gobject.GObject):
         return hostname
 
     def get_hostname(self, resolveLocal=False):
+        ignore = resolveLocal
         try:
             return self.get_qualified_hostname()
         except:
@@ -412,6 +399,10 @@ class vmmConnection(gobject.GObject):
             return True
         return False
 
+    def is_session_uri(self):
+        path = virtinst.util.uri_split(self.uri)[3]
+        return path == "/session"
+
     # Connection capabilities debug helpers
     def is_kvm_supported(self):
         return self.get_capabilities().is_kvm_available()
@@ -427,7 +418,7 @@ class vmmConnection(gobject.GObject):
 
     # Connection pretty print routines
 
-    def _get_pretty_desc(self, active, shorthost):
+    def _get_pretty_desc(self, active, shorthost, show_trans):
         def match_whole_string(orig, reg):
             match = re.match(reg, orig)
             if not match:
@@ -438,14 +429,19 @@ class vmmConnection(gobject.GObject):
         def is_ip_addr(orig):
             return match_whole_string(orig, "[0-9.]+")
 
-        (scheme, ignore, hostname,
+        (scheme, username, hostname,
          path, ignore, ignore) = virtinst.util.uri_split(self.uri)
 
         hv = ""
         rest = ""
-        scheme = scheme.split("+")[0]
+        transport = ""
+        port = ""
+        if scheme.count("+"):
+            transport = scheme.split("+")[1]
+            scheme = scheme.split("+")[0]
 
         if hostname.count(":"):
+            port = hostname.split(":")[1]
             hostname = hostname.split(":")[0]
 
         if hostname:
@@ -465,6 +461,14 @@ class vmmConnection(gobject.GObject):
         else:
             hv = scheme.capitalize()
 
+        if show_trans:
+            if transport:
+                hv += "+" + transport
+            if username:
+                hostname = username + "@" + hostname
+            if port:
+                hostname += ":" + port
+
         if path and path != "/system" and path != "/":
             if path == "/session":
                 hv += " Usermode"
@@ -473,11 +477,11 @@ class vmmConnection(gobject.GObject):
 
         return "%s (%s)" % (rest, hv)
 
-    def get_pretty_desc_inactive(self, shorthost=True):
-        return self._get_pretty_desc(False, shorthost)
+    def get_pretty_desc_inactive(self, shorthost=True, transport=False):
+        return self._get_pretty_desc(False, shorthost, transport)
 
-    def get_pretty_desc_active(self, shorthost=True):
-        return self._get_pretty_desc(True, shorthost)
+    def get_pretty_desc_active(self, shorthost=True, transport=False):
+        return self._get_pretty_desc(True, shorthost, transport)
 
 
     #######################
@@ -493,6 +497,7 @@ class vmmConnection(gobject.GObject):
         return self._nodedev_capable
 
     def _get_flags_helper(self, obj, key, check_func):
+        ignore = obj
         flags_dict = self._xml_flags.get(key)
 
         if flags_dict == None:
@@ -552,10 +557,6 @@ class vmmConnection(gobject.GObject):
             if virtinst.support.check_interface_support(iface,
                             virtinst.support.SUPPORT_INTERFACE_XML_INACTIVE):
                 inact = libvirt.VIR_INTERFACE_XML_INACTIVE
-
-                # XXX: We intentionally use 'inactive' XML even for active
-                # interfaces, since active XML doesn't show much info
-                act = inact
             else:
                 logging.debug("Interface XML inactive flag not supported.")
 
@@ -788,7 +789,7 @@ class vmmConnection(gobject.GObject):
 
     def _netdev_added(self, ignore, netdev):
         name = netdev.get_name()
-        if self.netdevs.has_key(name):
+        if name in self.netdevs:
             return
 
         self.netdevs[name] = netdev
@@ -796,13 +797,13 @@ class vmmConnection(gobject.GObject):
     # Optical HAL listener
     def _optical_added(self, ignore, dev):
         key = dev.get_key()
-        if self.mediadevs.has_key(key):
+        if key in self.mediadevs:
             return
 
         self._add_mediadev(key, dev)
 
     def _nodedev_mediadev_added(self, ignore1, ignore2, name):
-        if self.mediadevs.has_key(name):
+        if name in self.mediadevs:
             return
 
         vobj = self.get_nodedev(name)
@@ -813,7 +814,7 @@ class vmmConnection(gobject.GObject):
         self._add_mediadev(name, mediadev)
 
     def _nodedev_mediadev_removed(self, ignore1, ignore2, name):
-        if not self.mediadevs.has_key(name):
+        if name not in self.mediadevs:
             return
 
         self._remove_mediadev(name)
@@ -839,18 +840,40 @@ class vmmConnection(gobject.GObject):
         self.record = []
         self._change_state(self.STATE_DISCONNECTED)
 
-    def open(self):
+    def _open_dev_conn(self, uri):
+        """
+        Allow using virtinsts connection hacking to fake capabilities
+        and other reproducible/testable behavior
+        """
+        try:
+            import virtinst.cli as cli
+            if not cli._is_virtinst_test_uri(uri):
+                return
+        except:
+            return
+
+        try:
+            return cli._open_test_uri(uri)
+        except:
+            logging.exception("Trouble opening test URI")
+        return
+
+    def open(self, sync=False):
         if self.state != self.STATE_DISCONNECTED:
             return
 
+        self.connectError = None
         self._change_state(self.STATE_CONNECTING)
 
-        logging.debug("Scheduling background open thread for " + self.uri)
-        self.connectThreadEvent.clear()
-        self.connectThread = threading.Thread(target = self._open_thread,
-                                              name = "Connect %s" % self.uri)
-        self.connectThread.setDaemon(True)
-        self.connectThread.start()
+        if sync:
+            logging.debug("Opening connection synchronously: %s" % self.uri)
+            self._open_thread()
+        else:
+            logging.debug("Scheduling background open thread for " + self.uri)
+            self.connectThread = threading.Thread(target=self._open_thread,
+                                                  name="Connect %s" % self.uri)
+            self.connectThread.setDaemon(True)
+            self.connectThread.start()
 
     def _do_creds_polkit(self, action):
         if os.getuid() == 0:
@@ -894,6 +917,14 @@ class vmmConnection(gobject.GObject):
         box.set_row_spacings(6)
         box.set_col_spacings(12)
 
+        def _on_ent_activate(ent):
+            idx = entry.index(ent)
+
+            if idx < len(entry) - 1:
+                entry[idx + 1].grab_focus()
+            else:
+                dialog.response(gtk.RESPONSE_OK)
+
         row = 0
         for cred in creds:
             if (cred[0] == libvirt.VIR_CRED_AUTHNAME or
@@ -912,10 +943,11 @@ class vmmConnection(gobject.GObject):
             ent = gtk.Entry()
             if cred[0] == libvirt.VIR_CRED_PASSPHRASE:
                 ent.set_visibility(False)
+            ent.connect("activate", _on_ent_activate)
             entry.append(ent)
 
-            box.attach(label[row], 0, 1, row, row+1, gtk.FILL, 0, 0, 0)
-            box.attach(entry[row], 1, 2, row, row+1, gtk.FILL, 0, 0, 0)
+            box.attach(label[row], 0, 1, row, row + 1, gtk.FILL, 0, 0, 0)
+            box.attach(entry[row], 1, 2, row, row + 1, gtk.FILL, 0, 0, 0)
             row = row + 1
 
         vbox = dialog.get_child()
@@ -937,6 +969,7 @@ class vmmConnection(gobject.GObject):
             return -1
 
     def _do_creds(self, creds, cbdata):
+        ignore = cbdata
         try:
             if (len(creds) == 1 and
                 creds[0][0] == libvirt.VIR_CRED_EXTERNAL and
@@ -970,6 +1003,12 @@ class vmmConnection(gobject.GObject):
     def _try_open(self):
         try:
             flags = 0
+
+            tmp = self._open_dev_conn(self.uri)
+            if tmp:
+                self.vmm = tmp
+                return
+
             if self.readOnly:
                 logging.info("Caller requested read only connection")
                 flags = libvirt.VIR_CONNECT_RO
@@ -1025,27 +1064,24 @@ class vmmConnection(gobject.GObject):
     def _open_notify(self):
         logging.debug("Notifying open result")
 
-        try:
-            util.safe_idle_add(util.idle_emit, self, "state-changed")
+        util.safe_idle_add(util.idle_emit, self, "state-changed")
 
-            if self.state == self.STATE_ACTIVE:
-                caps = self.get_capabilities_xml()
-                logging.debug("%s capabilities:\n%s" %
-                              (self.get_uri(), caps))
+        if self.state == self.STATE_ACTIVE:
+            caps = self.get_capabilities_xml()
+            logging.debug("%s capabilities:\n%s" %
+                          (self.get_uri(), caps))
 
-                self.tick()
-                # If VMs disappeared since the last time we connected to
-                # this uri, remove their gconf entries so we don't pollute
-                # the database
-                self.config.reconcile_vm_entries(self.get_uri(),
-                                                 self.vms.keys())
+            self.tick()
+            # If VMs disappeared since the last time we connected to
+            # this uri, remove their gconf entries so we don't pollute
+            # the database
+            self.config.reconcile_vm_entries(self.get_uri(),
+                                             self.vms.keys())
 
-            if self.state == self.STATE_DISCONNECTED:
-                util.safe_idle_add(util.idle_emit, self, "connect-error",
-                                   self.connectError)
-                self.connectError = None
-        finally:
-            self.connectThreadEvent.set()
+        if self.state == self.STATE_DISCONNECTED:
+            util.safe_idle_add(util.idle_emit, self, "connect-error",
+                               self.connectError)
+            self.connectError = None
 
 
     #######################
@@ -1089,10 +1125,9 @@ class vmmConnection(gobject.GObject):
             try:
                 net = self.vmm.networkLookupByName(name)
                 uuid = util.uuidstr(net.UUID())
-                if not origNets.has_key(uuid):
+                if uuid not in origNets:
                     # Brand new network
-                    currentNets[uuid] = vmmNetwork(self.config, self, net,
-                                                   uuid, True)
+                    currentNets[uuid] = vmmNetwork(self, net, uuid, True)
                     newNets.append(uuid)
                     startNets.append(uuid)
                 else:
@@ -1110,9 +1145,8 @@ class vmmConnection(gobject.GObject):
             try:
                 net = self.vmm.networkLookupByName(name)
                 uuid = util.uuidstr(net.UUID())
-                if not origNets.has_key(uuid):
-                    currentNets[uuid] = vmmNetwork(self.config, self, net,
-                                                 uuid, False)
+                if uuid not in origNets:
+                    currentNets[uuid] = vmmNetwork(self, net, uuid, False)
                     newNets.append(uuid)
                 else:
                     currentNets[uuid] = origNets[uuid]
@@ -1144,7 +1178,7 @@ class vmmConnection(gobject.GObject):
             else:
                 # Try to create the default storage pool
                 try:
-                    util.build_default_pool(self.vmm)
+                    util.build_default_pool(self)
                 except Exception, e:
                     logging.debug("Building default pool failed: %s" % str(e))
 
@@ -1164,9 +1198,8 @@ class vmmConnection(gobject.GObject):
             try:
                 pool = self.vmm.storagePoolLookupByName(name)
                 uuid = util.uuidstr(pool.UUID())
-                if not origPools.has_key(uuid):
-                    currentPools[uuid] = vmmStoragePool(self.config, self,
-                                                        pool, uuid, True)
+                if uuid not in origPools:
+                    currentPools[uuid] = vmmStoragePool(self, pool, uuid, True)
                     newPools.append(uuid)
                     startPools.append(uuid)
                 else:
@@ -1182,9 +1215,8 @@ class vmmConnection(gobject.GObject):
             try:
                 pool = self.vmm.storagePoolLookupByName(name)
                 uuid = util.uuidstr(pool.UUID())
-                if not origPools.has_key(uuid):
-                    currentPools[uuid] = vmmStoragePool(self.config, self,
-                                                        pool, uuid, False)
+                if uuid not in origPools:
+                    currentPools[uuid] = vmmStoragePool(self, pool, uuid, False)
                     newPools.append(uuid)
                 else:
                     currentPools[uuid] = origPools[uuid]
@@ -1228,11 +1260,10 @@ class vmmConnection(gobject.GObject):
         def check_obj(name, is_active):
             key = name
 
-            if not orig.has_key(key):
+            if key not in orig:
                 obj = self.vmm.interfaceLookupByName(name)
                 # Object is brand new this tick period
-                current[key] = vmmInterface(self.config, self, obj, key,
-                                            is_active)
+                current[key] = vmmInterface(self, obj, key, is_active)
                 new.append(key)
 
                 if is_active:
@@ -1290,7 +1321,7 @@ class vmmConnection(gobject.GObject):
         def check_obj(name):
             key = name
 
-            if not orig.has_key(key):
+            if key not in orig:
                 obj = self.vmm.nodeDeviceLookupByName(name)
                 vdev = virtinst.NodeDeviceParser.parse(obj.XMLDesc(0))
 
@@ -1357,7 +1388,7 @@ class vmmConnection(gobject.GObject):
         # Filter out active domains which haven't changed
         if newActiveIDs != None:
             for _id in newActiveIDs:
-                if oldActiveIDs.has_key(_id):
+                if _id in oldActiveIDs:
                     # No change, copy across existing VM object
                     vm = oldActiveIDs[_id]
                     curUUIDs[vm.get_uuid()] = vm
@@ -1379,7 +1410,7 @@ class vmmConnection(gobject.GObject):
         # Filter out inactive domains which haven't changed
         if newInactiveNames != None:
             for name in newInactiveNames:
-                if oldInactiveNames.has_key(name):
+                if name in oldInactiveNames:
                     # No change, copy across existing VM object
                     vm = oldInactiveNames[name]
                     curUUIDs[vm.get_uuid()] = vm
@@ -1402,8 +1433,8 @@ class vmmConnection(gobject.GObject):
         # only new domains
         for uuid in maybeNewUUIDs.keys():
             rawvm = maybeNewUUIDs[uuid]
-            if not(self.vms.has_key(uuid)):
-                vm = vmmDomain(self.config, self, rawvm, uuid)
+            if uuid not in self.vms:
+                vm = vmmDomain(self, rawvm, uuid)
                 newUUIDs.append(uuid)
                 curUUIDs[uuid] = vm
             else:
@@ -1414,7 +1445,7 @@ class vmmConnection(gobject.GObject):
         # Finalize list of domains which went away altogether
         for uuid in self.vms.keys():
             vm = self.vms[uuid]
-            if not(curUUIDs.has_key(uuid)):
+            if uuid not in curUUIDs:
                 oldUUIDs[uuid] = vm
 
         return (startedUUIDs, newUUIDs, oldUUIDs, curUUIDs, activeUUIDs)
@@ -1425,7 +1456,6 @@ class vmmConnection(gobject.GObject):
             return
 
         self.hostinfo = self.vmm.getInfo()
-        self._invalidate_caps()
 
         # Poll for new virtual network objects
         (startNets, stopNets, newNets,
@@ -1570,8 +1600,12 @@ class vmmConnection(gobject.GObject):
         pcentCpuTime = 0
         if len(self.record) > 0:
             prevTimestamp = self.record[0]["timestamp"]
+            host_cpus = self.host_active_processor_count()
 
-            pcentCpuTime = (cpuTime) * 100.0 / ((now - prevTimestamp)*1000.0*1000.0*1000.0*self.host_active_processor_count())
+            pcentCpuTime = ((cpuTime) * 100.0 /
+                            ((now - prevTimestamp) *
+                             1000.0 * 1000.0 * 1000.0 * host_cpus))
+
             # Due to timing diffs between getting wall time & getting
             # the domain's time, its possible to go a tiny bit over
             # 100% utilization. This freaks out users of the data, so
@@ -1608,9 +1642,9 @@ class vmmConnection(gobject.GObject):
     def cpu_time_vector(self):
         vector = []
         stats = self.record
-        for i in range(self.config.get_stats_history_length()+1):
+        for i in range(self.config.get_stats_history_length() + 1):
             if i < len(stats):
-                vector.append(stats[i]["cpuTimePercent"]/100.0)
+                vector.append(stats[i]["cpuTimePercent"] / 100.0)
             else:
                 vector.append(0)
         return vector
@@ -1633,10 +1667,10 @@ class vmmConnection(gobject.GObject):
 
     def pretty_current_memory(self):
         mem = self.current_memory()
-        if mem > (10*1024*1024):
-            return "%2.2f GB" % (mem/(1024.0*1024.0))
+        if mem > (10 * 1024 * 1024):
+            return "%2.2f GB" % (mem / (1024.0 * 1024.0))
         else:
-            return "%2.0f MB" % (mem/1024.0)
+            return "%2.0f MB" % (mem / 1024.0)
 
     def current_memory_percentage(self):
         if len(self.record) == 0:
@@ -1646,9 +1680,9 @@ class vmmConnection(gobject.GObject):
     def current_memory_vector(self):
         vector = []
         stats = self.record
-        for i in range(self.config.get_stats_history_length()+1):
+        for i in range(self.config.get_stats_history_length() + 1):
             if i < len(stats):
-                vector.append(stats[i]["memoryPercent"]/100.0)
+                vector.append(stats[i]["memoryPercent"] / 100.0)
             else:
                 vector.append(0)
         return vector
@@ -1681,11 +1715,11 @@ class vmmConnection(gobject.GObject):
 
     def disk_io_vector_limit(self, dummy):
         """No point to accumulate unnormalized I/O for a conenction"""
-        return [ 0.0 ]
+        return [0.0]
 
     def network_traffic_vector_limit(self, dummy):
         """No point to accumulate unnormalized Rx/Tx for a conenction"""
-        return [ 0.0 ]
+        return [0.0]
 
 
     ####################################
@@ -1699,4 +1733,3 @@ class vmmConnection(gobject.GObject):
                                        self.config.get_iso_paths)
 
 gobject.type_register(vmmConnection)
-
