@@ -20,9 +20,7 @@
 
 import gobject
 import gtk
-import gtk.glade
 
-import sys
 import traceback
 import logging
 
@@ -30,7 +28,7 @@ from virtinst import Interface
 
 from virtManager import util
 from virtManager import uihelpers
-from virtManager.error import vmmErrorDialog
+from virtManager.baseclass import vmmGObjectUI
 from virtManager.asyncjob import vmmAsyncJob
 from virtManager.createmeter import vmmCreateMeter
 
@@ -60,31 +58,21 @@ IP_DHCP = 0
 IP_STATIC = 1
 IP_NONE = 2
 
-class vmmCreateInterface(gobject.GObject):
+class vmmCreateInterface(vmmGObjectUI):
     __gsignals__ = {
         "action-show-help": (gobject.SIGNAL_RUN_FIRST,
                              gobject.TYPE_NONE, [str]),
     }
 
-    def __init__(self, config, conn):
-        self.__gobject_init__()
-        self.window = gtk.glade.XML(config.get_glade_dir() + \
-                                    "/vmm-create-interface.glade",
-                                    "vmm-create-interface",
-                                    domain="virt-manager")
-        self.config = config
+    def __init__(self, conn):
+        vmmGObjectUI.__init__(self,
+                              "vmm-create-interface.glade",
+                              "vmm-create-interface")
         self.conn = conn
         self.interface = None
 
-        self.topwin = self.window.get_widget("vmm-create-interface")
-        self.err = vmmErrorDialog(self.topwin,
-                                  0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
-                                  _("Unexpected Error"),
-                                  _("An unexpected error occurred"))
-
         # Bridge configuration dialog
-        self.bridge_config_win = gtk.glade.XML(self.config.get_glade_dir() + \
-                                               "/vmm-create-interface.glade",
+        self.bridge_config_win = gtk.glade.XML(self.gladefile,
                                                "bridge-config",
                                                domain="virt-manager")
         self.bridge_config = self.bridge_config_win.get_widget(
@@ -95,8 +83,7 @@ class vmmCreateInterface(gobject.GObject):
         })
 
         # Bond configuration dialog
-        self.bond_config_win = gtk.glade.XML(self.config.get_glade_dir() + \
-                                             "/vmm-create-interface.glade",
+        self.bond_config_win = gtk.glade.XML(self.gladefile,
                                              "bond-config",
                                              domain="virt-manager")
         self.bond_config = self.bond_config_win.get_widget("bond-config")
@@ -107,8 +94,7 @@ class vmmCreateInterface(gobject.GObject):
             "on_bond_monitor_mode_changed": self.bond_monitor_mode_changed,
         })
 
-        self.ip_config_win = gtk.glade.XML(self.config.get_glade_dir() + \
-                                           "/vmm-create-interface.glade",
+        self.ip_config_win = gtk.glade.XML(self.gladefile,
                                            "ip-config",
                                            domain="virt-manager")
         self.ip_config = self.ip_config_win.get_widget("ip-config")
@@ -161,10 +147,12 @@ class vmmCreateInterface(gobject.GObject):
         self.ip_config.show_all()
 
     def close(self, ignore1=None, ignore2=None):
+        self.ip_config.hide()
+        self.bridge_config.hide()
+        self.bond_config.hide()
         self.topwin.hide()
 
         return 1
-
 
     ###########################
     # Initialization routines #
@@ -382,8 +370,8 @@ class vmmCreateInterface(gobject.GObject):
         self.window.get_widget("interface-name-entry").hide()
         self.window.get_widget("interface-name-label").hide()
 
-        if itype in [ Interface.Interface.INTERFACE_TYPE_BRIDGE,
-                      Interface.Interface.INTERFACE_TYPE_BOND ]:
+        if itype in [Interface.Interface.INTERFACE_TYPE_BRIDGE,
+                     Interface.Interface.INTERFACE_TYPE_BOND]:
             widget = "interface-name-entry"
         else:
             widget = "interface-name-label"
@@ -406,10 +394,6 @@ class vmmCreateInterface(gobject.GObject):
             self.window.get_widget("%s-box" % value).set_property("visible",
                                                                   do_show)
 
-        show_ip = (itype != Interface.Interface.INTERFACE_TYPE_VLAN)
-        self.window.get_widget("ip-label").set_property("visible", show_ip)
-        self.window.get_widget("ip-box").set_property("visible", show_ip)
-
         if itype == Interface.Interface.INTERFACE_TYPE_BRIDGE:
             self.update_bridge_desc()
 
@@ -431,9 +415,10 @@ class vmmCreateInterface(gobject.GObject):
         copy_combo = self.ip_config_win.get_widget("ip-copy-interface-combo")
         copy_model = copy_combo.get_model()
 
-        # Only select 'copy from' option if using bridge/bond
+        # Only select 'copy from' option if using bridge/bond/vlan
         enable_copy = (itype in [Interface.Interface.INTERFACE_TYPE_BRIDGE,
-                                 Interface.Interface.INTERFACE_TYPE_BOND])
+                                 Interface.Interface.INTERFACE_TYPE_BOND,
+                                 Interface.Interface.INTERFACE_TYPE_VLAN])
 
         # Set defaults if required
         copy_model.clear()
@@ -539,13 +524,13 @@ class vmmCreateInterface(gobject.GObject):
                 continue
 
             if itype == Interface.Interface.INTERFACE_TYPE_ETHERNET:
-                if row_dict.has_key(name):
+                if name in row_dict:
                     del(row_dict[name])
 
                 # We only want 'unconfigured' interfaces here
                 continue
 
-            if row_dict.has_key(name):
+            if name in row_dict:
                 # Interface was listed via nodedev APIs
                 row = row_dict[name]
                 row[INTERFACE_ROW_KEY] = key
@@ -655,8 +640,8 @@ class vmmCreateInterface(gobject.GObject):
         active = src.get_active()
         model = slave_list.get_model()
 
-        if itype in [ Interface.Interface.INTERFACE_TYPE_ETHERNET,
-                      Interface.Interface.INTERFACE_TYPE_VLAN ]:
+        if itype in [Interface.Interface.INTERFACE_TYPE_ETHERNET,
+                     Interface.Interface.INTERFACE_TYPE_VLAN]:
             # Deselect any selected rows
             for row in model:
                 if row == model[index]:
@@ -671,8 +656,8 @@ class vmmCreateInterface(gobject.GObject):
 
     def update_interface_name(self, ignore1=None, ignore2=None):
         itype = self.get_config_interface_type()
-        if itype not in [ Interface.Interface.INTERFACE_TYPE_VLAN,
-                          Interface.Interface.INTERFACE_TYPE_ETHERNET ]:
+        if itype not in [Interface.Interface.INTERFACE_TYPE_VLAN,
+                         Interface.Interface.INTERFACE_TYPE_ETHERNET]:
             # The rest have editable name fields, so don't overwrite
             return
 
@@ -889,7 +874,7 @@ class vmmCreateInterface(gobject.GObject):
         # Update page number
         page_lbl = ("<span color='#59B0E2'>%s</span>" %
                     _("Step %(current_page)d of %(max_page)d") %
-                    {'current_page': next_page, 'max_page': PAGE_DETAILS+1})
+                    {'current_page': next_page, 'max_page': PAGE_DETAILS + 1})
 
         self.window.get_widget("header-pagenum").set_markup(page_lbl)
 
@@ -1125,51 +1110,35 @@ class vmmCreateInterface(gobject.GObject):
         self.topwin.set_sensitive(False)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
 
-        progWin = vmmAsyncJob(self.config, self.do_install, [activate],
+        progWin = vmmAsyncJob(self.do_install, [activate],
                               title=_("Creating virtual interface"),
                               text=_("The virtual interface is now being "
                                      "created."))
-        progWin.run()
-        error, details = progWin.get_error()
-
-        if error != None:
-            self.err.show_err(error, details)
+        error, details = progWin.run()
 
         self.topwin.set_sensitive(True)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.TOP_LEFT_ARROW))
 
         if error:
-            return
+            error = _("Error creating interface: '%s'") % error
+            self.err.show_err(error, error + "\n" + details)
+        else:
+            # FIXME: Hmm, shouldn't we emit a signal here rather than do this?
+            self.conn.tick(noStatsUpdate=True)
+            self.close()
 
-        # FIXME: Hmm, shouldn't we emit a signal here rather than do this?
-        self.conn.tick(noStatsUpdate=True)
-        self.close()
-
-
-    def do_install(self, activate, asyncjob):
+    def do_install(self, asyncjob, activate):
         meter = vmmCreateMeter(asyncjob)
         error = None
         details = None
-        try:
-            self.interface.conn = util.dup_conn(self.config, self.conn)
 
-            self.interface.install(meter, create=activate)
-            logging.debug("Install completed")
-        except:
-            (_type, value, stacktrace) = sys.exc_info ()
+        self.interface.conn = util.dup_conn(self.conn).vmm
 
-            # Detailed error message, in English so it can be Googled.
-            details = ("Error creating interface: '%s'" %
-                       (str(_type) + " " + str(value) + "\n" +
-                       traceback.format_exc (stacktrace)))
-            error = (_("Error creating interface: '%s'") % str(value))
-
-        if error:
-            asyncjob.set_error(error, details)
-
+        self.interface.install(meter, create=activate)
+        logging.debug("Install completed")
 
     def show_help(self, ignore):
         # No help available yet.
         pass
 
-gobject.type_register(vmmCreateInterface)
+vmmGObjectUI.type_register(vmmCreateInterface)

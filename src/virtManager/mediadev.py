@@ -24,13 +24,14 @@ import logging
 import virtinst
 
 from virtManager import util
+from virtManager.baseclass import vmmGObject
 
 MEDIA_FLOPPY = "floppy"
 MEDIA_CDROM = "cdrom"
 
 MEDIA_TIMEOUT = 3
 
-class vmmMediaDevice(gobject.GObject):
+class vmmMediaDevice(vmmGObject):
     __gsignals__ = {
         "media-added"  : (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
                           []),
@@ -43,7 +44,7 @@ class vmmMediaDevice(gobject.GObject):
         if nodedev.device_type != "storage":
             return None
 
-        if nodedev.drive_type not in [ MEDIA_CDROM, MEDIA_FLOPPY]:
+        if nodedev.drive_type not in [MEDIA_CDROM, MEDIA_FLOPPY]:
             return None
 
         drvtype = nodedev.drive_type
@@ -61,8 +62,8 @@ class vmmMediaDevice(gobject.GObject):
         return obj
 
     def __init__(self, path, key, has_media, media_label, media_key,
-                 nodedev_obj = None, media_type = MEDIA_CDROM):
-        self.__gobject_init__()
+                 nodedev_obj=None, media_type=MEDIA_CDROM):
+        vmmGObject.__init__(self)
 
         self.path = path
         self.key = key
@@ -173,4 +174,4 @@ class vmmMediaDevice(gobject.GObject):
 
         return True
 
-gobject.type_register(vmmMediaDevice)
+vmmGObject.type_register(vmmMediaDevice)

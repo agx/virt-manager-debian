@@ -26,6 +26,7 @@ class vmmCreateMeter(progress.BaseMeter):
         # async job to call back to with progress info
         progress.BaseMeter.__init__(self)
         self.asyncjob = asyncjob
+        self.started = False
 
     def _do_start(self, now=None):
         if self.text is not None:
@@ -38,6 +39,7 @@ class vmmCreateMeter(progress.BaseMeter):
         else:
             out = "%3i%% %5sB" % (0, 0)
             self.asyncjob.set_pbar_fraction(0, out, text)
+        self.started = True
 
     def _do_update(self, amount_read, now=None):
         if self.text is not None:
@@ -50,7 +52,7 @@ class vmmCreateMeter(progress.BaseMeter):
             self.asyncjob.pulse_pbar(out, text)
         else:
             frac = self.re.fraction_read()
-            out = "%3i%% %5sB" % (frac*100, fread)
+            out = "%3i%% %5sB" % (frac * 100, fread)
             self.asyncjob.set_pbar_fraction(frac, out, text)
 
     def _do_end(self, amount_read, now=None):
@@ -65,3 +67,4 @@ class vmmCreateMeter(progress.BaseMeter):
         else:
             out = "%3i%% %5sB" % (100, fread)
             self.asyncjob.set_pbar_done(out, text)
+        self.started = False

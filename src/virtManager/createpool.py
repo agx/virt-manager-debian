@@ -18,15 +18,14 @@
 # MA 02110-1301 USA.
 #
 
-import gobject
-import gtk.glade
+import gtk
 
 import copy
 import traceback
 import logging
 
 from virtManager import util
-from virtManager.error import vmmErrorDialog
+from virtManager.baseclass import vmmGObjectUI
 from virtManager.asyncjob import vmmAsyncJob
 from virtManager.createmeter import vmmCreateMeter
 
@@ -35,24 +34,15 @@ from virtinst import Storage
 PAGE_NAME   = 0
 PAGE_FORMAT = 1
 
-class vmmCreatePool(gobject.GObject):
+class vmmCreatePool(vmmGObjectUI):
     __gsignals__ = {
     }
 
-    def __init__(self, config, conn):
-        self.__gobject_init__()
-        self.window = gtk.glade.XML(config.get_glade_dir() + \
-                                    "/vmm-create-pool.glade",
-                                    "vmm-create-pool", domain="virt-manager")
+    def __init__(self, conn):
+        vmmGObjectUI.__init__(self,
+                              "vmm-create-pool.glade",
+                              "vmm-create-pool")
         self.conn = conn
-        self.config = config
-
-        self.topwin = self.window.get_widget("vmm-create-pool")
-        self.err = vmmErrorDialog(self.topwin,
-                                  0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
-                                  _("Unexpected Error"),
-                                  _("An unexpected error occurred"))
-        self.topwin.hide()
 
         self._pool = None
         self._pool_class = Storage.StoragePool
@@ -352,7 +342,7 @@ class vmmCreatePool(gobject.GObject):
             return (False, False)
         if self._pool.type in [Storage.StoragePool.TYPE_DIR,
                                Storage.StoragePool.TYPE_FS,
-                               Storage.StoragePool.TYPE_NETFS ]:
+                               Storage.StoragePool.TYPE_NETFS]:
             # Building for these simply entails creating a directory
             return (True, False)
         elif self._pool.type in [Storage.StoragePool.TYPE_LOGICAL,
@@ -402,41 +392,37 @@ class vmmCreatePool(gobject.GObject):
         self.topwin.set_sensitive(False)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
 
-        progWin = vmmAsyncJob(self.config, self._async_pool_create, [],
+        progWin = vmmAsyncJob(self._async_pool_create, [],
                               title=_("Creating storage pool..."),
                               text=_("Creating the storage pool may take a "
                                      "while..."))
-        progWin.run()
-        error, details = progWin.get_error()
-
-        if error is not None:
-            self.err.show_err(error, details)
+        error, details = progWin.run()
 
         self.topwin.set_sensitive(True)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.TOP_LEFT_ARROW))
 
-        if not error:
+        if error:
+            error = _("Error creating pool: %s") % error
+            self.err.show_err(error, error + "\n" + details)
+        else:
             self.close()
 
-    def _async_pool_create(self, asyncjob):
+    def _async_pool_create(self, asyncjob, *args, **kwargs):
+        print args, kwargs
         newconn = None
-        try:
-            # Open a seperate connection to install on since this is async
-            newconn = util.dup_lib_conn(self.config, self._pool.conn)
-            meter = vmmCreateMeter(asyncjob)
-            self._pool.conn = newconn
 
-            logging.debug("Starting backround pool creation.")
-            build = self.window.get_widget("pool-build").get_active()
-            poolobj = self._pool.install(create=True, meter=meter, build=build)
-            poolobj.setAutostart(True)
-            logging.debug("Pool creating succeeded.")
-        except Exception, e:
-            error = _("Error creating pool: %s") % str(e)
-            details = "".join(traceback.format_exc())
-            asyncjob.set_error(error, details)
+        # Open a seperate connection to install on since this is async
+        newconn = util.dup_lib_conn(self._pool.conn)
+        meter = vmmCreateMeter(asyncjob)
+        self._pool.conn = newconn
 
-    def page_changed(self, notebook, page, page_number):
+        logging.debug("Starting backround pool creation.")
+        build = self.window.get_widget("pool-build").get_active()
+        poolobj = self._pool.install(create=True, meter=meter, build=build)
+        poolobj.setAutostart(True)
+        logging.debug("Pool creating succeeded.")
+
+    def page_changed(self, notebook_ignore, page_ignore, page_number):
         if page_number == PAGE_NAME:
             self.window.get_widget("pool-back").set_sensitive(False)
             self.window.get_widget("pool-finish").hide()
@@ -506,11 +492,12 @@ class vmmCreatePool(gobject.GObject):
                 return self.err.val_err(_("Pool Parameter Error"), str(e))
 
             buildval = self.window.get_widget("pool-build").get_active()
-            buildsen = self.window.get_widget("pool-build").get_property("sensitive")
+            buildsen = self.window.get_widget("pool-build").get_property(
+                                                                "sensitive")
             if buildsen and buildval:
-                ret =  self.err.yes_no(_("Building a pool of this type will "
-                                         "format the source device. Are you "
-                                         "sure you want to 'build' this pool?"))
+                ret = self.err.yes_no(_("Building a pool of this type will "
+                                        "format the source device. Are you "
+                                        "sure you want to 'build' this pool?"))
                 if not ret:
                     return ret
 
@@ -555,9 +542,8 @@ class vmmCreatePool(gobject.GObject):
         if foldermode:
             mode = gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER
 
-        return util.browse_local(self.topwin, dialog_name,
-                                 self.config, self.conn,
+        return util.browse_local(self.topwin, dialog_name, self.conn,
                                  dialog_type=mode,
                                  start_folder=startfolder)
 
-gobject.type_register(vmmCreatePool)
+vmmGObjectUI.type_register(vmmCreatePool)

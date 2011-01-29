@@ -20,22 +20,32 @@
 
 import gobject
 
-import time
 import difflib
 import logging
 
-from virtManager import util
+import libxml2
 
-class vmmLibvirtObject(gobject.GObject):
+from virtManager import util
+from virtManager.baseclass import vmmGObject
+
+def _sanitize_xml(xml):
+    xml = libxml2.parseDoc(xml).serialize()
+    # Strip starting <?...> line
+    if xml.startswith("<?"):
+        ignore, xml = xml.split("\n", 1)
+    if not xml.endswith("\n") and xml.count("\n"):
+        xml += "\n"
+    return xml
+
+class vmmLibvirtObject(vmmGObject):
     __gsignals__ = {
         "config-changed": (gobject.SIGNAL_RUN_FIRST,
                            gobject.TYPE_NONE,
                            []),
     }
 
-    def __init__(self, config, connection):
-        self.__gobject_init__()
-        self.config = config
+    def __init__(self, connection):
+        vmmGObject.__init__(self)
         self.connection = connection
 
         self._xml = None
@@ -52,9 +62,11 @@ class vmmLibvirtObject(gobject.GObject):
     # Functions that should probably be overridden in sub class #
     #############################################################
 
+    def get_name(self):
+        raise NotImplementedError()
+
     def _XMLDesc(self, flags):
-        ignore = flags
-        return
+        raise NotImplementedError()
 
     def _define(self, xml):
         ignore = xml
@@ -67,49 +79,21 @@ class vmmLibvirtObject(gobject.GObject):
     # Public XML API #
     ##################
 
-    def get_xml(self):
+    def get_xml(self, inactive=False, refresh_if_necc=True):
         """
         Get domain xml. If cached xml is invalid, update.
+
+        @param inactive: Return persistent XML, not the running config.
+                    No effect if domain is not running. Use this flag
+                    if the XML will be used for redefining a guest
+        @param refresh_if_necc: Check if XML is out of date, and if so,
+                    refresh it (default behavior). Skipping a refresh is
+                    useful to prevent updating xml in the tick loop when
+                    it's not that important (disk/net stats)
         """
-        return self._xml_fetch_helper(refresh_if_necc=True)
+        if inactive:
+            return self._XMLDesc(self._inactive_xml_flags)
 
-    def refresh_xml(self):
-        # Force an xml update. Signal 'config-changed' if domain xml has
-        # changed since last refresh
-
-        origxml = self._xml
-        self._xml = self._XMLDesc(self._active_xml_flags)
-        self._is_xml_valid = True
-
-        if origxml != self._xml:
-            # 'tick' to make sure we have the latest time
-            self.tick(time.time())
-            util.safe_idle_add(util.idle_emit, self, "config-changed")
-
-    ######################################
-    # Internal XML cache/update routines #
-    ######################################
-
-    def _get_xml_no_refresh(self):
-        """
-        Fetch XML, but don't force a refresh. Useful to prevent updating
-        xml in the tick loop when it's not that important (disk/net stats)
-        """
-        return self._xml_fetch_helper(refresh_if_necc=False)
-
-    def _get_xml_to_define(self):
-        if self.is_active():
-            return self._get_inactive_xml()
-        else:
-            self._invalidate_xml()
-            return self.get_xml()
-
-    def _invalidate_xml(self):
-        # Mark cached xml as invalid
-        self._is_xml_valid = False
-
-    def _xml_fetch_helper(self, refresh_if_necc):
-        # Helper to fetch xml with various options
         if self._xml is None:
             self.refresh_xml()
         elif refresh_if_necc and not self._is_xml_valid:
@@ -117,31 +101,37 @@ class vmmLibvirtObject(gobject.GObject):
 
         return self._xml
 
-    def _get_inactive_xml(self):
-        return self._XMLDesc(self._inactive_xml_flags)
+    def refresh_xml(self, forcesignal=False):
+        # Force an xml update. Signal 'config-changed' if domain xml has
+        # changed since last refresh
+
+        origxml = self._xml
+        self._invalidate_xml()
+        self._xml = self._XMLDesc(self._active_xml_flags)
+        self._is_xml_valid = True
+
+        if origxml != self._xml or forcesignal:
+            util.safe_idle_add(util.idle_emit, self, "config-changed")
+
+    ######################################
+    # Internal XML cache/update routines #
+    ######################################
+
+    def _invalidate_xml(self):
+        # Mark cached xml as invalid
+        self._is_xml_valid = False
 
     ##########################
     # Internal API functions #
     ##########################
 
-    def _redefine(self, xml_func, *args):
-        """
-        Helper function for altering a redefining VM xml
+    def _xml_to_redefine(self):
+        return _sanitize_xml(self.get_xml(inactive=True))
 
-        @param xml_func: Function to alter the running XML. Takes the
-                         original XML as its first argument.
-        @param args: Extra arguments to pass to xml_func
-        """
-        origxml = self._get_xml_to_define()
-        # Sanitize origxml to be similar to what we will get back
-        origxml = util.xml_parse_wrapper(origxml, lambda d, c: d.serialize())
-
-        newxml = xml_func(origxml, *args)
-
-        if origxml == newxml:
-            logging.debug("Redefinition request XML was no different,"
-                          " redefining anyways")
-        else:
+    def _redefine_helper(self, origxml, newxml):
+        origxml = _sanitize_xml(origxml)
+        newxml  = _sanitize_xml(newxml)
+        if origxml != newxml:
             diff = "".join(difflib.unified_diff(origxml.splitlines(1),
                                                 newxml.splitlines(1),
                                                 fromfile="Original XML",
@@ -149,9 +139,16 @@ class vmmLibvirtObject(gobject.GObject):
             logging.debug("Redefining '%s' with XML diff:\n%s",
                           self.get_name(), diff)
 
-        self._define(newxml)
+            self._define(newxml)
+        else:
+            logging.debug("Redefine requested, but XML didn't change!")
 
-        # Invalidate cached XML
-        self._invalidate_xml()
+        # Make sure we have latest XML
+        self.refresh_xml(forcesignal=True)
+        return
 
-gobject.type_register(vmmLibvirtObject)
+    def _redefine_xml(self, newxml):
+        origxml = self._xml_to_redefine()
+        return self._redefine_helper(origxml, newxml)
+
+vmmGObject.type_register(vmmLibvirtObject)

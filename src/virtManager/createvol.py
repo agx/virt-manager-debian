@@ -19,13 +19,13 @@
 #
 
 import gobject
-import gtk.glade
+import gtk
 
 import traceback
 import logging
 
 from virtManager import util
-from virtManager.error import vmmErrorDialog
+from virtManager.baseclass import vmmGObjectUI
 from virtManager.asyncjob import vmmAsyncJob
 from virtManager.createmeter import vmmCreateMeter
 
@@ -34,26 +34,15 @@ from virtinst import Storage
 DEFAULT_ALLOC = 0
 DEFAULT_CAP   = 1000
 
-class vmmCreateVolume(gobject.GObject):
+class vmmCreateVolume(vmmGObjectUI):
     __gsignals__ = {
         "vol-created": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE, [])
     }
 
-    def __init__(self, config, conn, parent_pool):
-        self.__gobject_init__()
-        self.window = gtk.glade.XML(config.get_glade_dir() + \
-                                    "/vmm-create-vol.glade",
-                                    "vmm-create-vol", domain="virt-manager")
+    def __init__(self, conn, parent_pool):
+        vmmGObjectUI.__init__(self, "vmm-create-vol.glade", "vmm-create-vol")
         self.conn = conn
         self.parent_pool = parent_pool
-        self.config = config
-
-        self.topwin = self.window.get_widget("vmm-create-vol")
-        self.err = vmmErrorDialog(self.topwin,
-                                  0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
-                                  _("Unexpected Error"),
-                                  _("An unexpected error occurred"))
-        self.topwin.hide()
 
         self.name_hint = None
         self.vol = None
@@ -198,8 +187,7 @@ class vmmCreateVolume(gobject.GObject):
         if cap < alloc:
             alloc_widget.set_value(cap)
 
-    def finish(self, src):
-        # validate input
+    def finish(self, src_ignore):
         try:
             if not self.validate():
                 return
@@ -214,39 +202,32 @@ class vmmCreateVolume(gobject.GObject):
         self.topwin.set_sensitive(False)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
 
-        progWin = vmmAsyncJob(self.config, self._async_vol_create, [],
-                              title=_("Creating storage volume..."),
-                              text=_("Creating the storage volume may take a "
-                                     "while..."))
-        progWin.run()
-        error, details = progWin.get_error()
-
-        if error is not None:
-            self.show_err(error, details)
+        progWin = vmmAsyncJob(self._async_vol_create, [],
+                              _("Creating storage volume..."),
+                              _("Creating the storage volume may take a "
+                                "while..."))
+        error, details = progWin.run()
 
         self.topwin.set_sensitive(True)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.TOP_LEFT_ARROW))
 
-        if not error:
+        if error:
+            error = _("Error creating vol: %s") % error
+            self.show_err(error, error + "\n" + details)
+        else:
             self.emit("vol-created")
             self.close()
 
     def _async_vol_create(self, asyncjob):
-        newconn = None
-        try:
-            newconn = util.dup_conn(self.config, self.conn)
+        newconn = util.dup_conn(self.conn).vmm
 
-            # Lookup different pool obj
-            newpool = newconn.storagePoolLookupByName(self.parent_pool.get_name())
-            self.vol.pool = newpool
+        # Lookup different pool obj
+        newpool = newconn.storagePoolLookupByName(self.parent_pool.get_name())
+        self.vol.pool = newpool
 
-            meter = vmmCreateMeter(asyncjob)
-            logging.debug("Starting backround vol creation.")
-            self.vol.install(meter=meter)
-        except Exception, e:
-            error = _("Error creating vol: %s") % str(e)
-            details = "".join(traceback.format_exc())
-            asyncjob.set_error(error, details)
+        meter = vmmCreateMeter(asyncjob)
+        logging.debug("Starting backround vol creation.")
+        self.vol.install(meter=meter)
 
     def validate(self):
         name = self.window.get_widget("vol-name").get_text()
@@ -282,4 +263,4 @@ class vmmCreateVolume(gobject.GObject):
 
         return ret
 
-gobject.type_register(vmmCreateVolume)
+vmmGObjectUI.type_register(vmmCreateVolume)

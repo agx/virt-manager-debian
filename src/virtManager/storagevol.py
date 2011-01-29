@@ -18,26 +18,24 @@
 # MA 02110-1301 USA.
 #
 
-import gobject
 import virtinst.util as util
 
-class vmmStorageVolume(gobject.GObject):
-    __gsignals__ = { }
+from virtManager.libvirtobject import vmmLibvirtObject
 
-    def __init__(self, config, connection, vol, name):
-        self.__gobject_init__()
-        self.config = config
-        self.connection = connection
-        self.vol = vol              # Libvirt storage volume object
+class vmmStorageVolume(vmmLibvirtObject):
+    __gsignals__ = {}
+
+    def __init__(self, connection, vol, name):
+        vmmLibvirtObject.__init__(self, connection)
+
+        self.vol = vol      # Libvirt storage volume object
         self.name = name
-        self._xml = None             # Cache xml rather than repeated lookups
-        self._update_xml()
 
-    def get_connection(self):
-        return self.connection
-
+    # Required class methods
     def get_name(self):
         return self.name
+    def _XMLDesc(self, flags):
+        return self.vol.XMLDesc(flags)
 
     def get_path(self):
         return self.vol.path()
@@ -50,21 +48,16 @@ class vmmStorageVolume(gobject.GObject):
         self.vol.delete(0)
         del(self.vol)
 
-    def get_xml(self):
-        if self._xml is None:
-            self._update_xml()
-        return self._xml
-
     def get_target_path(self):
-        return util.get_xml_path(self.get_xml(),"/volume/target/path")
+        return util.get_xml_path(self.get_xml(), "/volume/target/path")
 
     def get_format(self):
-        return util.get_xml_path(self.get_xml(),"/volume/target/format/@type")
+        return util.get_xml_path(self.get_xml(), "/volume/target/format/@type")
 
     def get_allocation(self):
-        return long(util.get_xml_path(self.get_xml(),"/volume/allocation"))
+        return long(util.get_xml_path(self.get_xml(), "/volume/allocation"))
     def get_capacity(self):
-        return long(util.get_xml_path(self.get_xml(),"/volume/capacity"))
+        return long(util.get_xml_path(self.get_xml(), "/volume/capacity"))
 
     def get_pretty_capacity(self):
         return self._prettyify(self.get_capacity())
@@ -72,15 +65,12 @@ class vmmStorageVolume(gobject.GObject):
         return self._prettyify(self.get_allocation())
 
     def get_type(self):
-        return util.get_xml_path(self.get_xml(),"/volume/format/@type")
-
-    def _update_xml(self):
-        self._xml = self.vol.XMLDesc(0)
+        return util.get_xml_path(self.get_xml(), "/volume/format/@type")
 
     def _prettyify(self, val):
-        if val > (1024*1024*1024):
-            return "%2.2f GB" % (val/(1024.0*1024.0*1024.0))
+        if val > (1024 * 1024 * 1024):
+            return "%2.2f GB" % (val / (1024.0 * 1024.0 * 1024.0))
         else:
-            return "%2.2f MB" % (val/(1024.0*1024.0))
+            return "%2.2f MB" % (val / (1024.0 * 1024.0))
 
-gobject.type_register(vmmStorageVolume)
+vmmLibvirtObject.type_register(vmmStorageVolume)

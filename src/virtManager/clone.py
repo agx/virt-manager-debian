@@ -23,9 +23,10 @@ import logging
 import os
 
 import gobject
-import gtk.glade
+import gtk
 
-from virtManager.error import vmmErrorDialog
+
+from virtManager.baseclass import vmmGObjectUI
 from virtManager.asyncjob import vmmAsyncJob
 from virtManager.createmeter import vmmCreateMeter
 from virtManager.storagebrowse import vmmStorageBrowser
@@ -53,6 +54,7 @@ STORAGE_INFO_DO_DEFAULT = 8
 STORAGE_INFO_DEFINFO = 9
 STORAGE_INFO_FAILINFO = 10
 STORAGE_INFO_COMBO = 11
+STORAGE_INFO_MANUAL_PATH = 12
 
 NETWORK_INFO_LABEL = 0
 NETWORK_INFO_ORIG_MAC = 1
@@ -62,24 +64,17 @@ NETWORK_INFO_NEW_MAC = 2
 # XXX: What to do for cleanup if clone fails?
 # XXX: Disable mouse scroll for combo boxes
 
-class vmmCloneVM(gobject.GObject):
+class vmmCloneVM(vmmGObjectUI):
     __gsignals__ = {
         "action-show-help": (gobject.SIGNAL_RUN_FIRST,
                              gobject.TYPE_NONE, [str]),
     }
 
-    def __init__(self, config, orig_vm):
-        self.__gobject_init__()
-        self.config = config
+    def __init__(self, orig_vm):
+        vmmGObjectUI.__init__(self, "vmm-clone.glade", "vmm-clone")
         self.orig_vm = orig_vm
 
-        self.window = gtk.glade.XML(self.config.get_glade_dir() + \
-                                    "/vmm-clone.glade",
-                                    "vmm-clone", domain="virt-manager")
-        self.topwin = self.window.get_widget("vmm-clone")
-
-        self.change_mac_window = gtk.glade.XML(self.config.get_glade_dir() + \
-                                               "/vmm-clone.glade",
+        self.change_mac_window = gtk.glade.XML(self.gladefile,
                                                "vmm-change-mac",
                                                domain="virt-manager")
         self.change_mac = self.change_mac_window.get_widget("vmm-change-mac")
@@ -89,8 +84,7 @@ class vmmCloneVM(gobject.GObject):
             "on_change_mac_ok_clicked" : self.change_mac_finish,
         })
 
-        self.change_storage_window = gtk.glade.XML(self.config.get_glade_dir()\
-                                                   + "/vmm-clone.glade",
+        self.change_storage_window = gtk.glade.XML(self.gladefile,
                                                    "vmm-change-storage",
                                                    domain="virt-manager")
         self.change_storage = self.change_storage_window.get_widget("vmm-change-storage")
@@ -102,12 +96,6 @@ class vmmCloneVM(gobject.GObject):
 
             "on_change_storage_browse_clicked" : self.change_storage_browse,
         })
-
-        self.err = vmmErrorDialog(self.topwin,
-                                  0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
-                                  _("Unexpected Error"),
-                                  _("An unexpected error occurred"))
-        self.topwin.hide()
 
         self.conn = self.orig_vm.connection
         self.clone_design = None
@@ -143,9 +131,9 @@ class vmmCloneVM(gobject.GObject):
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
-        self.topwin.hide()
         self.change_mac_close()
         self.change_storage_close()
+        self.topwin.hide()
         return 1
 
     def change_mac_close(self, ignore1=None, ignore2=None):
@@ -160,7 +148,6 @@ class vmmCloneVM(gobject.GObject):
     # First time setup
 
     def set_initial_state(self):
-
         blue = gtk.gdk.color_parse("#0072A8")
         self.window.get_widget("clone-header").modify_bg(gtk.STATE_NORMAL,
                                                          blue)
@@ -236,9 +223,9 @@ class vmmCloneVM(gobject.GObject):
             self.mac_list.append(origmac)
 
         for net in self.orig_vm.get_network_devices():
-            mac = net[2]
-            net_dev = net[3]
-            net_type = net[5]
+            mac = net.macaddr
+            net_dev = net.get_source()
+            net_type = net.type
 
             # Generate a new MAC
             obj = VirtualNetworkInterface(conn=self.conn.vmm,
@@ -267,7 +254,7 @@ class vmmCloneVM(gobject.GObject):
             else:
                 # 'bridge' or anything else
                 label = (net_type.capitalize() +
-                         net_dev and " %s" % net_dev or "")
+                         (net_dev and (" %s" % net_dev) or ""))
 
             build_net_row(label, mac, newmac)
 
@@ -286,14 +273,14 @@ class vmmCloneVM(gobject.GObject):
         storage_list = {}
 
         # We need to determine which disks fail (and why).
-        all_targets = map(lambda d: d[1], diskinfos)
+        all_targets = map(lambda d: d.target, diskinfos)
 
         for disk in diskinfos:
-            force_target = disk[1]
-            path = disk[3]
-            ro = disk[6]
-            shared = disk[7]
-            devtype = disk[4]
+            force_target = disk.target
+            path = disk.path
+            ro = disk.read_only
+            shared = disk.shareable
+            devtype = disk.device
 
             size = None
             clone_path = None
@@ -313,6 +300,7 @@ class vmmCloneVM(gobject.GObject):
             storage_row.insert(STORAGE_INFO_DEFINFO, definfo)
             storage_row.insert(STORAGE_INFO_FAILINFO, failinfo)
             storage_row.insert(STORAGE_INFO_COMBO, None)
+            storage_row.insert(STORAGE_INFO_MANUAL_PATH, False)
 
             skip_targets = all_targets[:]
             skip_targets.remove(force_target)
@@ -352,8 +340,7 @@ class vmmCloneVM(gobject.GObject):
 
             try:
                 # Generate disk path, make sure that works
-                clone_path = None
-                clone_path = CloneManager.generate_clone_disk_path(path, cd)
+                clone_path = self.generate_clone_path_name(path)
 
                 logging.debug("Original path: %s\nGenerated clone path: %s" %
                               (path, clone_path))
@@ -371,6 +358,36 @@ class vmmCloneVM(gobject.GObject):
             storage_add()
 
         return storage_list, all_targets
+
+    def generate_clone_path_name(self, origpath, newname=None):
+        cd = self.clone_design
+        if not newname:
+            newname = cd.clone_name
+        clone_path = CloneManager.generate_clone_disk_path(origpath, cd,
+                                                           newname=newname)
+        return clone_path
+
+    def set_paths_from_clone_name(self):
+        cd = self.clone_design
+        newname = self.window.get_widget("clone-new-name").get_text()
+
+        if not newname:
+            return
+        if cd.clone_name == newname:
+            return
+
+        for row in self.storage_list.values():
+            origpath = row[STORAGE_INFO_ORIG_PATH]
+            if row[STORAGE_INFO_MANUAL_PATH]:
+                continue
+            if not row[STORAGE_INFO_DO_CLONE]:
+                return
+            try:
+                newpath = self.generate_clone_path_name(origpath, newname)
+                row[STORAGE_INFO_NEW_PATH] = newpath
+            except Exception, e:
+                logging.debug("Generating new path from clone name failed: "
+                              + str(e))
 
     def build_storage_entry(self, disk, storage_box):
         origpath = disk[STORAGE_INFO_ORIG_PATH]
@@ -411,6 +428,7 @@ class vmmCloneVM(gobject.GObject):
         disk_name_box.pack_start(disk_name_label, True)
 
         def sep_func(model, it, combo):
+            ignore = combo
             return model[it][2]
 
         # [String, sensitive, is sep]
@@ -466,12 +484,15 @@ class vmmCloneVM(gobject.GObject):
         num_c = min(len(self.target_list), 3)
         if num_c:
             scroll = self.window.get_widget("clone-storage-scroll")
-            scroll.set_size_request(-1, 80*num_c)
+            scroll.set_size_request(-1, 80 * num_c)
         storage_box.show_all()
 
         no_storage = not bool(len(self.target_list))
-        self.window.get_widget("clone-storage-box").set_property("visible",not no_storage)
-        self.window.get_widget("clone-no-storage-pass").set_property("visible", no_storage)
+        self.window.get_widget("clone-storage-box").set_property("visible",
+                                                            not no_storage)
+        self.window.get_widget("clone-no-storage-pass").set_property(
+                                                            "visible",
+                                                            no_storage)
 
         skip_targets = []
         new_disks = []
@@ -502,16 +523,16 @@ class vmmCloneVM(gobject.GObject):
         ok_button.set_sensitive(clone)
         util.tooltip_wrapper(ok_button, tooltip)
 
-    def net_show_popup(self, widget, event):
+    def net_show_popup(self, widget_ignore, event):
         if event.button != 3:
             return
 
         self.netmenu.popup(None, None, None, 0, event.time)
 
     def net_change_mac(self, ignore, origmac):
-        row = self.net_list[origmac]
+        row      = self.net_list[origmac]
         orig_mac = row[NETWORK_INFO_ORIG_MAC]
-        new_mac =  row[NETWORK_INFO_NEW_MAC]
+        new_mac  = row[NETWORK_INFO_NEW_MAC]
         typ = row[NETWORK_INFO_LABEL]
 
         self.change_mac_window.get_widget("change-mac-orig").set_text(orig_mac)
@@ -520,7 +541,7 @@ class vmmCloneVM(gobject.GObject):
 
         self.change_mac.show_all()
 
-    def storage_show_popup(self, widget, event):
+    def storage_show_popup(self, widget_ignore, event):
         if event.button != 3:
             return
 
@@ -556,6 +577,10 @@ class vmmCloneVM(gobject.GObject):
         cs.get_widget("change-storage-browse").set_sensitive(do_clone)
 
     def storage_change_path(self, row):
+        # If storage paths are dependent on manually entered clone name,
+        # make sure they are up to date
+        self.set_paths_from_clone_name()
+
         orig = row[STORAGE_INFO_ORIG_PATH]
         new  = row[STORAGE_INFO_NEW_PATH]
         tgt  = row[STORAGE_INFO_TARGET]
@@ -636,6 +661,7 @@ class vmmCloneVM(gobject.GObject):
             self.clone_design.clone_devices = new_path
             self.populate_storage_lists()
             row[STORAGE_INFO_NEW_PATH] = new_path
+            row[STORAGE_INFO_MANUAL_PATH] = True
         except Exception, e:
             self.err.show_err(_("Error changing storage path: %s") % str(e),
                                 "".join(traceback.format_exc()))
@@ -650,6 +676,7 @@ class vmmCloneVM(gobject.GObject):
 
     # Listeners
     def validate(self):
+        self.set_paths_from_clone_name()
         name = self.window.get_widget("clone-new-name").get_text()
 
         # Make another clone_design
@@ -702,9 +729,7 @@ class vmmCloneVM(gobject.GObject):
         self.clone_design = cd
         return True
 
-    def finish(self, src):
-
-        # validate input
+    def finish(self, src_ignore):
         try:
             if not self.validate():
                 return
@@ -722,60 +747,48 @@ class vmmCloneVM(gobject.GObject):
         if self.clone_design.clone_devices:
             text = title + _(" and selected storage (this may take a while)")
 
-        progWin = vmmAsyncJob(self.config, self._async_clone, [],
-                              title=title, text=text)
-        progWin.run()
-        error, details = progWin.get_error()
+        progWin = vmmAsyncJob(self._async_clone, [], title, text)
+        error, details = progWin.run()
 
         self.topwin.set_sensitive(True)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.TOP_LEFT_ARROW))
 
         if error is not None:
-            self.err.show_err(error, details)
+            error = (_("Error creating virtual machine clone '%s': %s") %
+                      (self.clone_design.clone_name, error))
+            self.err.show_err(error, error + "\n" + details)
         else:
             self.close()
             self.conn.tick(noStatsUpdate=True)
 
     def _async_clone(self, asyncjob):
         newconn = None
-        error = None
-        details = None
 
         try:
-            try:
-                self.orig_vm.set_cloning(True)
+            self.orig_vm.set_cloning(True)
 
-                # Open a seperate connection to install on since this is async
-                logging.debug("Threading off connection to clone VM.")
-                newconn = util.dup_conn(self.config, self.conn)
-                meter = vmmCreateMeter(asyncjob)
+            # Open a seperate connection to install on since this is async
+            logging.debug("Threading off connection to clone VM.")
+            newconn = util.dup_conn(self.conn).vmm
+            meter = vmmCreateMeter(asyncjob)
 
-                self.clone_design.orig_connection = newconn
-                for d in self.clone_design.clone_virtual_disks:
-                    d.conn = newconn
+            self.clone_design.orig_connection = newconn
+            for d in self.clone_design.clone_virtual_disks:
+                d.conn = newconn
 
-                self.clone_design.setup()
-                CloneManager.start_duplicate(self.clone_design, meter)
-            finally:
-                self.orig_vm.set_cloning(False)
-
-        except Exception, e:
-            error = (_("Error creating virtual machine clone '%s': %s") %
-                      (self.clone_design.clone_name, str(e)))
-            details = "".join(traceback.format_exc())
-
-        if error:
-            asyncjob.set_error(error, details)
-        return
+            self.clone_design.setup()
+            CloneManager.start_duplicate(self.clone_design, meter)
+        finally:
+            self.orig_vm.set_cloning(False)
 
     def change_storage_browse(self, ignore):
 
         cs = self.change_storage_window
-        def callback(self, txt):
+        def callback(src_ignore, txt):
             cs.get_widget("change-storage-new").set_text(txt)
 
         if self.storage_browser == None:
-            self.storage_browser = vmmStorageBrowser(self.config, self.conn)
+            self.storage_browser = vmmStorageBrowser(self.conn)
             self.storage_browser.connect("storage-browse-finish", callback)
 
         self.storage_browser.show(self.conn)
@@ -784,7 +797,7 @@ class vmmCloneVM(gobject.GObject):
         # Nothing yet
         return
 
-gobject.type_register(vmmCloneVM)
+vmmGObjectUI.type_register(vmmCloneVM)
 
 def can_we_clone(conn, vol, path):
     """Is the passed path even clone-able"""
@@ -819,6 +832,7 @@ def can_we_clone(conn, vol, path):
 
 def do_we_default(conn, vol, path, ro, shared, devtype):
     """ Returns (do we clone by default?, info string if not)"""
+    ignore = conn
     info = ""
 
     def append_str(str1, str2, delim=", "):
