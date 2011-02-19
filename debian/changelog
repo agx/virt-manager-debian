@@ -1,3 +1,18 @@
+virt-manager (0.8.6-2) unstable; urgency=low
+
+  [ Laurent Léonard ]
+  * [e30d190] New patch 0003-manager-Don-t-always-launch-consoles-for-
+    running-dom.patch
+
+  [ Guido Günther ]
+  * [ff2e16b] Suggest hal since it's used by virt-manager for bridge
+    detection. (Closes: #612013)
+
+  [ Laurent Léonard ]
+  * [358e4a0] New patch 0004-l10n-Updates-to-French-fr-translation.patch
+
+ -- Laurent Léonard <laurent@open-minds.org>  Sat, 19 Feb 2011 17:37:33 +0100
+
 virt-manager (0.8.6-1) experimental; urgency=low
 
   [ Guido Günther ]
