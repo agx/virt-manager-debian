@@ -18,161 +18,151 @@
 # MA 02110-1301 USA.
 
 import gtk
-import gtk.glade
 
 import logging
 
 import virtManager.util as util
 
 def safe_set_text(self, text):
-    # pygtk < 2.10 doesn't support test property
+    # pygtk < 2.10 doesn't support text property
     if not util.safe_set_prop(self, "text", text):
         self.set_markup(text)
 
+def _launch_dialog(dialog, primary_text, secondary_text, title,
+                   sync=True):
+    safe_set_text(dialog, primary_text)
+    dialog.format_secondary_text(secondary_text or None)
+    dialog.set_title(title)
 
-class vmmErrorDialog (gtk.MessageDialog):
-    def __init__ (self, parent=None, flags=0, typ=gtk.MESSAGE_INFO,
-                  buttons=gtk.BUTTONS_NONE, message_format=None,
-                  message_details=None, default_title=_("Error")):
-        gtk.MessageDialog.__init__ (self,
-                                    parent, flags, typ, buttons,
-                                    message_format)
-
-        self.val_err_box = None
-
-        self.message_format = message_format
-        self.message_details = message_details
-        self.buffer = None
-        self.default_title = default_title
-        self.set_title(self.default_title)
-        self.connect("response", self.response_cb)
-        self.connect("delete-event", self.hide_on_delete)
-
-        if not message_details is None:
-            # Expander section with details.
-            expander = gtk.Expander (_("Details"))
-            self.buffer = gtk.TextBuffer ()
-            self.buffer.set_text (self.message_details)
-            sw = gtk.ScrolledWindow ()
-            sw.set_shadow_type (gtk.SHADOW_IN)
-            sw.set_size_request (400, 240)
-            sw.set_policy (gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-            details = gtk.TextView (self.buffer)
-            details.set_editable (False)
-            details.set_overwrite (False)
-            details.set_cursor_visible (False)
-            details.set_wrap_mode (gtk.WRAP_WORD)
-            sw.add (details)
-            details.show ()
-            expander.add (sw)
-            sw.show ()
-            self.vbox.pack_start (expander)
-            expander.show ()
-
-    def set_parent(self, parent):
-        self.set_transient_for(parent)
-
-    def response_cb(self, src, ignore):
-        src.hide()
-
-    def show_err(self, summary, details, title=None, async=True):
-        self.hide()
-
-        if title is None:
-            title = self.default_title
-        self.set_title(title)
-        safe_set_text(self, summary)
-        self.buffer.set_text(details)
-        logging.debug("Uncaught Error: %s : %s" % (summary, details))
-
-        if async:
-            self.show()
-        else:
-            self.run()
-
-    def _show_ok(self, dialog_type, text1, text2, title, async=True):
+    res = False
+    if sync:
+        res = dialog.run()
+        res = bool(res in [gtk.RESPONSE_YES, gtk.RESPONSE_OK])
+        dialog.destroy()
+    else:
         def response_destroy(src, ignore):
             src.destroy()
+        dialog.connect("response", response_destroy)
+        dialog.show()
 
-        if self.val_err_box:
-            self.val_err_box.destroy()
+    return res
 
-        self.val_err_box = gtk.MessageDialog(self.get_transient_for(),
-                                             gtk.DIALOG_DESTROY_WITH_PARENT,
-                                             dialog_type,
-                                             gtk.BUTTONS_OK, text1)
+class vmmErrorDialog (object):
+    def __init__(self, parent=None):
+        self._parent = parent
+        self._simple = None
 
-        self.val_err_box.set_title(title)
-        if text2 is not None:
-            self.val_err_box.format_secondary_text(text2)
+    def set_parent(self, parent):
+        self._parent = parent
+    def get_parent(self):
+        return self._parent
 
-        self.val_err_box.connect("response", response_destroy)
-        if async:
-            self.val_err_box.show()
-        else:
-            self.val_err_box.run()
+    def show_err(self, summary, details, title="",
+                 async=True, debug=True,
+                 dialog_type=gtk.MESSAGE_ERROR,
+                 buttons=gtk.BUTTONS_CLOSE,
+                 text2=None):
+        if debug:
+            logging.debug("dialog message: %s : %s" % (summary, details))
 
+        dialog = _errorDialog(parent=self.get_parent(),
+                              type=dialog_type, buttons=buttons)
+
+        return dialog.show_dialog(primary_text=summary,
+                                  secondary_text=text2,
+                                  details=details, title=title,
+                                  sync=not async)
+
+    ###################################
+    # Simple one shot message dialogs #
+    ###################################
+
+    def _simple_dialog(self, dialog_type, buttons, text1,
+                       text2, title, async=False):
+
+        dialog = gtk.MessageDialog(self.get_parent(),
+                                   gtk.DIALOG_DESTROY_WITH_PARENT,
+                                   type=dialog_type, buttons=buttons)
+        if self._simple:
+            self._simple.destroy()
+        self._simple = dialog
+
+        return _launch_dialog(self._simple,
+                              text1, text2 or "", title or "",
+                              sync=not async)
+
+    def val_err(self, text1, text2=None, title=_("Input Error"), async=True):
+        logging.debug("Validation Error: %s" % text1)
+        dtype = gtk.MESSAGE_ERROR
+        buttons = gtk.BUTTONS_OK
+        self._simple_dialog(dtype, buttons, text1, text2, title, async)
         return False
 
-    def val_err(self, text1, text2=None, title=None, async=True):
-        logging.debug("Validation Error: %s" % text1)
-        if title is None:
-            title = _("Input Error")
-        return self._show_ok(gtk.MESSAGE_ERROR, text1, text2, title, async)
+    def show_info(self, text1, text2=None, title="", async=True):
+        dtype = gtk.MESSAGE_INFO
+        buttons = gtk.BUTTONS_OK
+        self._simple_dialog(dtype, buttons, text1, text2, title, async)
+        return False
 
-    def show_info(self, text1, text2=None, title=None, async=True):
-        if title is None:
-            title = ""
-        return self._show_ok(gtk.MESSAGE_INFO, text1, text2, title, async)
+    def yes_no(self, text1, text2=None, title=None):
+        dtype = gtk.MESSAGE_WARNING
+        buttons = gtk.BUTTONS_YES_NO
+        return self._simple_dialog(dtype, buttons, text1, text2, title)
 
-    def _show_warning(self, buttons, text1, text2):
-        message_box = gtk.MessageDialog(self.get_transient_for(),
-                                        gtk.DIALOG_DESTROY_WITH_PARENT,
-                                        gtk.MESSAGE_WARNING,
-                                        buttons, text1)
-        if text2 != None:
-            message_box.format_secondary_text(text2)
-        if message_box.run() in [ gtk.RESPONSE_YES, gtk.RESPONSE_OK ]:
-            res = True
-        else:
-            res = False
-        message_box.destroy()
-        return res
+    def ok_cancel(self, text1, text2=None, title=None):
+        dtype = gtk.MESSAGE_WARNING
+        buttons = gtk.BUTTONS_OK_CANCEL
+        return self._simple_dialog(dtype, buttons, text1, text2, title)
 
-    def yes_no(self, text1, text2=None):
-        return self._show_warning(gtk.BUTTONS_YES_NO, text1, text2)
+    def ok(self, text1, text2=None, title=None):
+        dtype = gtk.MESSAGE_WARNING
+        buttons = gtk.BUTTONS_OK
+        return self._simple_dialog(dtype, buttons, text1, text2, title)
 
-    def ok_cancel(self, text1, text2=None):
-        return self._show_warning(gtk.BUTTONS_OK_CANCEL, text1, text2)
 
-    def ok(self, text1, text2=None):
-        return self._show_warning(gtk.BUTTONS_OK, text1, text2)
+    ##########################################
+    # One shot dialog with a checkbox prompt #
+    ##########################################
 
     def warn_chkbox(self, text1, text2=None, chktext=None, buttons=None):
-        chkbox = vmmCheckDialog(self.get_transient_for(),
-                                gtk.MESSAGE_WARNING, buttons)
-        return chkbox.show_chkbox(text1, text2, chktext)
+        dtype = gtk.MESSAGE_WARNING
+        buttons = buttons or gtk.BUTTONS_OK_CANCEL
+        chkbox = _errorDialog(parent=self.get_parent(),
+                              type=dtype,
+                              buttons=buttons)
+        return chkbox.show_dialog(primary_text=text1,
+                                  secondary_text=text2,
+                                  chktext=chktext)
 
     def err_chkbox(self, text1, text2=None, chktext=None, buttons=None):
-        chkbox = vmmCheckDialog(self.get_transient_for(),
-                                gtk.MESSAGE_ERROR, buttons)
-        return chkbox.show_chkbox(text1, text2, chktext)
+        dtype = gtk.MESSAGE_ERROR
+        buttons = buttons or gtk.BUTTONS_OK
+        chkbox = _errorDialog(parent=self.get_parent(),
+                              type=dtype,
+                              buttons=buttons)
+        return chkbox.show_dialog(primary_text=text1,
+                                  secondary_text=text2,
+                                  chktext=chktext)
 
-class vmmCheckDialog (gtk.MessageDialog):
-    def __init__ (self, parent=None, typ=gtk.MESSAGE_INFO,
-                  buttons=None):
-        if not buttons:
-            if typ == gtk.MESSAGE_WARNING:
-                buttons = gtk.BUTTONS_OK_CANCEL
-            else:
-                buttons = gtk.BUTTONS_OK
 
-        gtk.MessageDialog.__init__ (self, parent, 0, typ, buttons)
-
-        self.connect("response", self.response_cb)
-        self.connect("delete-event", self.hide_on_delete)
+class _errorDialog (gtk.MessageDialog):
+    """
+    Custom error dialog with optional check boxes or details drop down
+    """
+    def __init__(self, *args, **kwargs):
+        gtk.MessageDialog.__init__(self, *args, **kwargs)
         self.set_title("")
 
+        self.chk_vbox = None
+        self.chk_align = None
+        self.init_chkbox()
+
+        self.buffer = None
+        self.buf_expander = None
+        self.init_details()
+
+    def init_chkbox(self):
+        # Init check items
         self.chk_vbox = gtk.VBox(False, False)
         self.chk_vbox.set_spacing(0)
 
@@ -183,28 +173,51 @@ class vmmCheckDialog (gtk.MessageDialog):
         self.chk_align.show_all()
         self.vbox.pack_start(self.chk_align)
 
-    def response_cb(self, src, ignore):
-        src.hide()
+    def init_details(self):
+        # Init details buffer
+        self.buffer = gtk.TextBuffer()
+        self.buf_expander = gtk.Expander(_("Details"))
+        sw = gtk.ScrolledWindow()
+        sw.set_shadow_type(gtk.SHADOW_IN)
+        sw.set_size_request(400, 240)
+        sw.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
+        details = gtk.TextView(self.buffer)
+        details.set_editable(False)
+        details.set_overwrite(False)
+        details.set_cursor_visible(False)
+        details.set_wrap_mode(gtk.WRAP_WORD)
+        sw.add(details)
+        self.buf_expander.add(sw)
+        self.vbox.pack_start(self.buf_expander)
+        self.buf_expander.show_all()
 
-    def show_chkbox(self, text1, text2=None, chktext=None):
+    def show_dialog(self, primary_text, secondary_text="",
+                    title="", details="", chktext="",
+                    sync=True):
         chkbox = None
         res = None
 
+        # Hide starting widgets
         self.hide()
+        self.buf_expander.hide()
         for c in self.chk_vbox.get_children():
             self.chk_vbox.remove(c)
 
-        safe_set_text(self, text1)
-
-        if text2:
-            self.format_secondary_text(text2)
+        if details:
+            self.buffer.set_text(details)
+            title = title or ""
+            self.buf_expander.show()
 
         if chktext:
             chkbox = gtk.CheckButton(chktext)
             self.chk_vbox.add(chkbox)
             chkbox.show()
 
-        res = self.run() in [ gtk.RESPONSE_YES, gtk.RESPONSE_OK ]
+        res = _launch_dialog(self,
+                             primary_text, secondary_text or "",
+                             title,
+                             sync=sync)
+
         if chktext:
             res = [res, chkbox.get_active()]
 

@@ -49,7 +49,8 @@ Requires: scrollkeeper
 # For console widget
 Requires: gtk-vnc-python >= 0.3.8
 # For local authentication against PolicyKit
-%if 0%{?fedora} >= 11
+# Fedora 12 has no need for a client agent
+%if 0%{?fedora} == 11
 Requires: PolicyKit-authentication-agent
 %endif
 %if 0%{?fedora} >= 9 && 0%{?fedora} < 11
@@ -77,7 +78,7 @@ management API.
 %setup -q
 
 %build
-%configure
+%configure --without-tui
 make %{?_smp_mflags}
 
 
@@ -103,12 +104,14 @@ gconftool-2 --makefile-install-rule \
 
 update-desktop-database %{_datadir}/applications
 
-if which scrollkeeper-update>/dev/null 2>&1; then scrollkeeper-update -q -o %{_datadir}/omf/%{name}; fi
+# Revive when we update help docs
+#if which scrollkeeper-update>/dev/null 2>&1; then scrollkeeper-update -q -o %{_datadir}/omf/%{name}; fi
 
 %postun
 update-desktop-database %{_datadir}/applications
 
-if which scrollkeeper-update>/dev/null 2>&1; then scrollkeeper-update -q; fi
+# Revive when we update help docs
+#if which scrollkeeper-update>/dev/null 2>&1; then scrollkeeper-update -q; fi
 
 %preun
 if [ "$1" -eq 0 ]; then
@@ -128,7 +131,6 @@ fi
 
 %dir %{_datadir}/%{name}
 %{_datadir}/%{name}/*.glade
-
 %{_datadir}/%{name}/*.py*
 
 %dir %{_datadir}/%{name}/pixmaps/
@@ -138,19 +140,33 @@ fi
 %dir %{_datadir}/%{name}/pixmaps/hicolor/
 %dir %{_datadir}/%{name}/pixmaps/hicolor/*/
 %dir %{_datadir}/%{name}/pixmaps/hicolor/*/*/
-%dir %{_datadir}/%{name}/pixmaps/hicolor/*/*/*.png
+%{_datadir}/%{name}/pixmaps/hicolor/*/*/*.png
 
 %dir %{_datadir}/%{name}/virtManager/
-
 %{_datadir}/%{name}/virtManager/*.py*
 
-%{_datadir}/omf/%{name}/
-%{_datadir}/gnome/help/%{name}
+# Revive when we update help docs
+#%{_datadir}/omf/%{name}/
+#%{_datadir}/gnome/help/%{name}
 
 %{_datadir}/applications/%{name}.desktop
 %{_datadir}/dbus-1/services/%{name}.service
 
 %changelog
+* Fri Jan 14 2011 Cole Robinson <crobinso@redhat.com> - 0.8.6-1
+- SPICE support (requires spice-gtk) (Marc-André Lureau)
+- Option to configure CPU model
+- Option to configure CPU topology
+- Save and migration cancellation (Wen Congyang)
+- Save and migration progress reporting
+- Option to enable bios boot menu
+- Option to configure direct kernel/initrd boot
+
+* Tue Aug 24 2010 Cole Robinson <crobinso@redhat.com> - 0.8.5-1
+- Improved save/restore support
+- Option to view and change disk cache mode
+- Configurable VNC keygrab sequence (Michal Novotny)
+
 * Wed Mar 24 2010 Cole Robinson <crobinso@redhat.com> - 0.8.4-1
 - 'Import' install option, to create a VM around an existing OS image
 - Support multiple boot devices and boot order

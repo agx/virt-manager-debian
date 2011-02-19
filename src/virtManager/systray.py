@@ -20,14 +20,27 @@
 
 import gobject
 import gtk
-import gtk.glade
+
+from virtManager.baseclass import vmmGObject
+from virtManager.error import vmmErrorDialog
 
 try:
     import appindicator
 except:
     appindicator = None
 
-class vmmSystray(gobject.GObject):
+def build_image_menu_item(label):
+    hasfunc = hasattr(gtk.ImageMenuItem, "set_use_underline")
+    if hasfunc:
+        label.replace("_", "__")
+
+    menu_item = gtk.ImageMenuItem(label)
+    if hasfunc:
+        menu_item.set_use_underline(False)
+
+    return menu_item
+
+class vmmSystray(vmmGObject):
     __gsignals__ = {
         "action-toggle-manager": (gobject.SIGNAL_RUN_FIRST,
                                 gobject.TYPE_NONE, []),
@@ -48,18 +61,18 @@ class vmmSystray(gobject.GObject):
         "action-show-host": (gobject.SIGNAL_RUN_FIRST,
                               gobject.TYPE_NONE, [str]),
         "action-show-details": (gobject.SIGNAL_RUN_FIRST,
-                                gobject.TYPE_NONE, (str,str)),
+                                gobject.TYPE_NONE, (str, str)),
         "action-show-console": (gobject.SIGNAL_RUN_FIRST,
-                                gobject.TYPE_NONE, (str,str)),
+                                gobject.TYPE_NONE, (str, str)),
         "action-exit-app": (gobject.SIGNAL_RUN_FIRST,
                             gobject.TYPE_NONE, []),
     }
 
-    def __init__(self, config, engine):
-        self.__gobject_init__()
+    def __init__(self, engine):
+        vmmGObject.__init__(self)
 
-        self.config = config
-        self.engine = engine
+        self.topwin = None
+        self.err = vmmErrorDialog()
 
         self.conn_menuitems = {}
         self.conn_vm_menuitems = {}
@@ -68,14 +81,14 @@ class vmmSystray(gobject.GObject):
         self.systray_icon = None
         self.systray_indicator = False
 
+        engine.connect("connection-added", self.conn_added)
+        engine.connect("connection-removed", self.conn_removed)
+
         # Are we using Application Indicators?
         if appindicator is not None:
             self.systray_indicator = True
 
         self.init_systray_menu()
-
-        self.engine.connect("connection-added", self.conn_added)
-        self.engine.connect("connection-removed", self.conn_removed)
 
         self.config.on_view_system_tray_changed(self.show_systray)
         self.show_systray()
@@ -120,11 +133,11 @@ class vmmSystray(gobject.GObject):
             return
 
         if self.systray_indicator:
-            self.systray_icon = appindicator.Indicator ("virt-manager",
+            self.systray_icon = appindicator.Indicator("virt-manager",
                                 "virt-manager-icon",
                                 appindicator.CATEGORY_OTHER)
-            self.systray_icon.set_status (appindicator.STATUS_ACTIVE)
-            self.systray_icon.set_menu (self.systray_menu)
+            self.systray_icon.set_status(appindicator.STATUS_ACTIVE)
+            self.systray_icon.set_menu(self.systray_menu)
 
         else:
             iconfile = self.config.get_icon_dir() + "/virt-manager-icon.svg"
@@ -145,9 +158,9 @@ class vmmSystray(gobject.GObject):
         else:
             if self.systray_indicator:
                 if do_show:
-                    self.systray_icon.set_status (appindicator.STATUS_ACTIVE)
+                    self.systray_icon.set_status(appindicator.STATUS_ACTIVE)
                 else:
-                    self.systray_icon.set_status (appindicator.STATUS_PASSIVE)
+                    self.systray_icon.set_status(appindicator.STATUS_PASSIVE)
             else:
                 self.systray_icon.set_visible(do_show)
 
@@ -237,8 +250,8 @@ class vmmSystray(gobject.GObject):
         uuid = vm.get_uuid()
         uri = vm.get_connection().get_uri()
 
-        if self.conn_vm_menuitems.has_key(uri):
-            if self.conn_vm_menuitems[uri].has_key(uuid):
+        if uri in self.conn_vm_menuitems:
+            if uuid in self.conn_vm_menuitems[uri]:
                 return self.conn_vm_menuitems[uri][uuid]
         return None
 
@@ -250,10 +263,10 @@ class vmmSystray(gobject.GObject):
 
     # Listeners
 
-    def systray_activate(self, widget):
+    def systray_activate(self, widget_ignore):
         self.emit("action-toggle-manager")
 
-    def systray_popup(self, widget, button, event_time):
+    def systray_popup(self, widget_ignore, button, event_time):
         if button != 3:
             return
 
@@ -276,15 +289,15 @@ class vmmSystray(gobject.GObject):
             self.systray_menu.insert(self.conn_menuitems[uri], 0)
 
 
-    def conn_added(self, engine, conn):
+    def conn_added(self, engine_ignore, conn):
         conn.connect("vm-added", self.vm_added)
         conn.connect("vm-removed", self.vm_removed)
         conn.connect("state-changed", self.conn_state_changed)
 
-        if self.conn_menuitems.has_key(conn.get_uri()):
+        if conn.get_uri() in self.conn_menuitems:
             return
 
-        menu_item = gtk.MenuItem(conn.get_pretty_desc_inactive())
+        menu_item = gtk.MenuItem(conn.get_pretty_desc_inactive(), False)
         menu_item.show()
         vm_submenu = gtk.Menu()
         vm_submenu.show()
@@ -298,11 +311,8 @@ class vmmSystray(gobject.GObject):
         self.conn_state_changed(conn)
         self.populate_vm_list(conn)
 
-        if self.systray_indicator:
-            self.systray_icon.set_menu (self.systray_menu)
-
-    def conn_removed(self, engine, conn):
-        if not self.conn_menuitems.has_key(conn.get_uri()):
+    def conn_removed(self, engine_ignore, conn):
+        if conn.get_uri() in self.conn_menuitems:
             return
 
         menu_item = self.conn_menuitems[conn.get_uri()]
@@ -312,17 +322,11 @@ class vmmSystray(gobject.GObject):
 
         self.repopulate_menu_list()
 
-        if self.systray_indicator:
-            self.systray_icon.set_menu (self.systray_menu)
-
     def conn_state_changed(self, conn):
         # XXX: Even 'paused' conn?
         sensitive = conn.is_active()
         menu_item = self.conn_menuitems[conn.get_uri()]
         menu_item.set_sensitive(sensitive)
-
-        if self.systray_indicator:
-            self.systray_icon.set_menu (self.systray_menu)
 
     def populate_vm_list(self, conn):
         uri = conn.get_uri()
@@ -349,7 +353,7 @@ class vmmSystray(gobject.GObject):
         for i in range(0, len(vm_names)):
             name = vm_names[i]
             uuid = vm_mappings[name]
-            if self.conn_vm_menuitems[uri].has_key(uuid):
+            if uuid in self.conn_vm_menuitems[uri]:
                 vm_item = self.conn_vm_menuitems[uri][uuid]
                 vm_submenu.insert(vm_item, i)
 
@@ -360,11 +364,11 @@ class vmmSystray(gobject.GObject):
         vm.connect("status-changed", self.vm_state_changed)
 
         vm_mappings = self.conn_vm_menuitems[uri]
-        if vm_mappings.has_key(uuid):
+        if uuid in vm_mappings:
             return
 
         # Build VM list entry
-        menu_item = gtk.ImageMenuItem(vm.get_name())
+        menu_item = build_image_menu_item(vm.get_name())
         vm_mappings[uuid] = menu_item
         vm_action_menu, vm_action_dict = self.build_vm_menu(vm)
         menu_item.set_submenu(vm_action_menu)
@@ -377,15 +381,12 @@ class vmmSystray(gobject.GObject):
         self.vm_state_changed(vm)
         menu_item.show()
 
-        if self.systray_indicator:
-            self.systray_icon.set_menu (self.systray_menu)
-
-    def vm_removed(self, conn, uri, uuid):
+    def vm_removed(self, conn_ignore, uri, uuid):
         vm_mappings = self.conn_vm_menuitems[uri]
         if not vm_mappings:
             return
 
-        if vm_mappings.has_key(uuid):
+        if uuid in vm_mappings:
             conn_item = self.conn_menuitems[uri]
             vm_menu_item = vm_mappings[uuid]
             vm_menu = conn_item.get_submenu()
@@ -393,13 +394,10 @@ class vmmSystray(gobject.GObject):
             del(vm_mappings[uuid])
 
             if len(vm_menu.get_children()) == 0:
-                placeholder = gtk.MenuItem(_("No VMs available"))
+                placeholder = gtk.MenuItem(_("No virtual machines"))
                 placeholder.show()
                 placeholder.set_sensitive(False)
                 vm_menu.add(placeholder)
-
-            if self.systray_indicator:
-                self.systray_icon.set_menu (self.systray_menu)
 
     def vm_state_changed(self, vm, ignore=None, ignore2=None):
         menu_item = self._get_vm_menu_item(vm)
@@ -423,9 +421,6 @@ class vmmSystray(gobject.GObject):
         actions["pause"].set_property("visible", not is_paused)
         actions["resume"].set_property("visible", is_paused)
 
-        if self.systray_indicator:
-            self.systray_icon.set_menu (self.systray_menu)
-
     def run_vm_action(self, ignore, signal_name, uuid):
         uri = None
         for tmpuri, vm_mappings in self.conn_vm_menuitems.items():
@@ -441,4 +436,4 @@ class vmmSystray(gobject.GObject):
     def exit_app(self, ignore):
         self.emit("action-exit-app")
 
-gobject.type_register(vmmSystray)
+vmmGObject.type_register(vmmSystray)

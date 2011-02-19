@@ -20,8 +20,10 @@
 
 import logging
 import traceback
-import os, statvfs
+import os
+import statvfs
 
+import libvirt
 import gtk
 
 import virtinst
@@ -30,6 +32,7 @@ from virtinst import VirtualDisk
 
 from virtManager import util
 from virtManager.error import vmmErrorDialog
+from virtManager.config import running_config
 
 OPTICAL_DEV_PATH = 0
 OPTICAL_LABEL = 1
@@ -38,20 +41,11 @@ OPTICAL_DEV_KEY = 3
 OPTICAL_MEDIA_KEY = 4
 OPTICAL_IS_VALID = 5
 
-# What user we guess the qemu:///system starts the emulator as. Some distros
-# may use a nonroot user, so simply changing this will cause several UI
-# pieces to attempt to verify that permissions are correct. Eventually this
-# should be exposed via capabilities so we can determine this programmatically.
-QEMU_SYSTEM_EMULATOR_USER = "root"
-
 ##############################################################
 # Initialize an error object to use for validation functions #
 ##############################################################
 
-err_dial = vmmErrorDialog(None,
-                          0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
-                          _("Unexpected Error"),
-                          _("An unexpected error occurred"))
+err_dial = vmmErrorDialog()
 
 def set_error_parent(parent):
     global err_dial
@@ -63,23 +57,23 @@ def set_error_parent(parent):
 ############################################################
 
 def set_sparse_tooltip(widget):
-    sparse_str = _("Fully allocating storage will take longer now, "
+    sparse_str = _("Fully allocating storage may take longer now, "
                    "but the OS install phase will be quicker. \n\n"
                    "Skipping allocation can also cause space issues on "
                    "the host machine, if the maximum image size exceeds "
                    "available storage space.")
     util.tooltip_wrapper(widget, sparse_str)
 
-def host_disk_space(conn, config):
+def host_disk_space(conn):
     pool = util.get_default_pool(conn)
-    path = util.get_default_dir(conn, config)
+    path = util.get_default_dir(conn)
 
     avail = 0
     if pool:
         # FIXME: make sure not inactive?
         # FIXME: use a conn specific function after we send pool-added
         pool = virtinst.util.lookup_pool_by_path(conn.vmm, path)
-        if pool:
+        if pool and pool.info()[0] == libvirt.VIR_STORAGE_POOL_RUNNING:
             pool.refresh(0)
             avail = int(virtinst.util.get_xml_path(pool.XMLDesc(0),
                                                    "/pool/available"))
@@ -90,8 +84,12 @@ def host_disk_space(conn, config):
 
     return float(avail / 1024.0 / 1024.0 / 1024.0)
 
-def host_space_tick(conn, config, widget):
-    max_storage = host_disk_space(conn, config)
+def host_space_tick(conn, widget):
+    try:
+        max_storage = host_disk_space(conn)
+    except:
+        logging.exception("Error determining host disk space")
+        return 0
 
     def pretty_storage(size):
         return "%.1f Gb" % float(size)
@@ -102,6 +100,27 @@ def host_space_tick(conn, config, widget):
     widget.set_markup(hd_label)
 
     return 1
+
+def check_default_pool_active(topwin, conn):
+    default_pool = util.get_default_pool(conn)
+    if default_pool and not default_pool.is_active():
+        res = err_dial.yes_no(_("Default pool is not active."),
+                              _("Storage pool '%s' is not active. "
+                                "Would you like to start the pool "
+                                "now?") % default_pool.get_name())
+        if not res:
+            return False
+
+        # Try to start the pool
+        try:
+            default_pool.start()
+            logging.info("Started pool '%s'." % default_pool.get_name())
+        except Exception, e:
+            return topwin.err.show_err(_("Could not start storage_pool "
+                                         "'%s': %s") %
+                                         (default_pool.get_name(), str(e)),
+                                         "".join(traceback.format_exc()))
+    return True
 
 #####################################################
 # Hardware model list building (for details, addhw) #
@@ -130,14 +149,22 @@ def build_sound_combo(vm, combo, no_default=False):
     combo.add_attribute(text, 'text', 0)
     dev_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
 
+    disable_rhel = not vm.enable_unsupported_rhel_opts()
+    rhel6_soundmodels = ["ac97", "es1370"]
+
     for m in virtinst.VirtualAudio.MODELS:
         if m == virtinst.VirtualAudio.MODEL_DEFAULT and no_default:
             continue
+
+        if (disable_rhel and m not in rhel6_soundmodels):
+            continue
+
         dev_model.append([m])
     if len(dev_model) > 0:
         combo.set_active(0)
 
 def build_watchdogmodel_combo(vm, combo, no_default=False):
+    ignore = vm
     dev_model = gtk.ListStore(str)
     combo.set_model(dev_model)
     text = gtk.CellRendererText()
@@ -153,6 +180,7 @@ def build_watchdogmodel_combo(vm, combo, no_default=False):
         combo.set_active(0)
 
 def build_watchdogaction_combo(vm, combo, no_default=False):
+    ignore = vm
     dev_model = gtk.ListStore(str, str)
     combo.set_model(dev_model)
     text = gtk.CellRendererText()
@@ -185,15 +213,81 @@ def populate_netmodel_combo(vm, combo):
     # [xml value, label]
     model.append([None, _("Hypervisor default")])
     if vm.is_hvm():
-        mod_list = [ "rtl8139", "ne2k_pci", "pcnet" ]
+        mod_list = ["rtl8139", "ne2k_pci", "pcnet", "e1000"]
         if vm.get_hv_type() == "kvm":
-            mod_list.append("e1000")
             mod_list.append("virtio")
+        if vm.get_hv_type() == "xen":
+            mod_list.append("netfront")
         mod_list.sort()
 
         for m in mod_list:
             model.append([m, m])
 
+def build_cache_combo(vm, combo, no_default=False):
+    ignore = vm
+    dev_model = gtk.ListStore(str, str)
+    combo.set_model(dev_model)
+    text = gtk.CellRendererText()
+    combo.pack_start(text, True)
+    combo.add_attribute(text, 'text', 1)
+    dev_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
+
+    combo.set_active(-1)
+    for m in virtinst.VirtualDisk.cache_types:
+        dev_model.append([m, m])
+
+    if not no_default:
+        dev_model.append([None, "default"])
+    combo.set_active(0)
+
+def build_disk_bus_combo(vm, combo, no_default=False):
+    ignore = vm
+    dev_model = gtk.ListStore(str, str)
+    combo.set_model(dev_model)
+    text = gtk.CellRendererText()
+    combo.pack_start(text, True)
+    combo.add_attribute(text, 'text', 1)
+    dev_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
+
+    if not no_default:
+        dev_model.append([None, "default"])
+    combo.set_active(-1)
+
+def build_vnc_keymap_combo(vm, combo, no_default=False):
+    ignore = vm
+
+    model = gtk.ListStore(str, str)
+    combo.set_model(model)
+    text = gtk.CellRendererText()
+    combo.pack_start(text, True)
+    combo.add_attribute(text, 'text', 1)
+
+    if not no_default:
+        model.append([None, "default"])
+    else:
+        model.append([None, "Auto"])
+
+    model.append([virtinst.VirtualGraphics.KEYMAP_LOCAL,
+                  "Copy local keymap"])
+    for k in virtinst.VirtualGraphics.valid_keymaps():
+        model.append([k, k])
+
+    combo.set_active(-1)
+
+#####################################
+# Storage format list/combo helpers #
+#####################################
+
+def build_storage_format_combo(vm, combo):
+    ignore = vm
+    dev_model = gtk.ListStore(str)
+    combo.set_model(dev_model)
+    combo.set_text_column(0)
+
+    for m in ["raw", "qcow2", "vmdk"]:
+        dev_model.append([m])
+
+    combo.set_active(0)
 
 #######################################################################
 # Widgets for listing network device options (in create, addhardware) #
@@ -222,8 +316,8 @@ def pretty_network_desc(nettype, source=None, netobj=None):
 
 def init_network_list(net_list, bridge_box):
     # [ network type, source name, label, sensitive?, net is active,
-    #   manual bridge]
-    net_model = gtk.ListStore(str, str, str, bool, bool, bool)
+    #   manual bridge, net instance]
+    net_model = gtk.ListStore(str, str, str, bool, bool, bool, object)
     net_list.set_model(net_model)
 
     net_list.connect("changed", net_list_changed, bridge_box)
@@ -264,12 +358,11 @@ def populate_network_list(net_list, conn):
     bridge_dict = {}
     iface_dict = {}
 
-    def add_row(*args):
-        model.append(build_row(*args))
-
     def build_row(nettype, name, label, is_sensitive, is_running,
-                  manual_bridge=False):
-        return [nettype, name, label, is_sensitive, is_running, manual_bridge]
+                  manual_bridge=False, obj=None):
+        return [nettype, name, label,
+                is_sensitive, is_running, manual_bridge,
+                obj]
 
     def set_active(idx):
         net_list.set_active(idx)
@@ -284,7 +377,8 @@ def populate_network_list(net_list, conn):
     # For qemu:///session
     if conn.is_qemu_session():
         nettype = VirtualNetworkInterface.TYPE_USER
-        add_row(nettype, None, pretty_network_desc(nettype), True)
+        r = build_row(nettype, None, pretty_network_desc(nettype), True, True)
+        model.append(r)
         set_active(0)
         return
 
@@ -297,7 +391,7 @@ def populate_network_list(net_list, conn):
 
         label = pretty_network_desc(nettype, net.get_name(), net)
         if not net.is_active():
-            label +=  " (%s)" % _("Inactive")
+            label += " (%s)" % _("Inactive")
 
         hasNet = True
         # FIXME: Should we use 'default' even if it's inactive?
@@ -306,7 +400,7 @@ def populate_network_list(net_list, conn):
             netIdxLabel = label
 
         vnet_dict[label] = build_row(nettype, net.get_name(), label, True,
-                                     net.is_active())
+                                     net.is_active(), obj=net)
 
         # Build a list of vnet bridges, so we know not to list them
         # in the physical interface list
@@ -340,13 +434,13 @@ def populate_network_list(net_list, conn):
                 brlabel = _("(Empty bridge)")
         else:
             sensitive = False
-            brlabel = "(%s)" %  _("Not bridged")
+            brlabel = "(%s)" % _("Not bridged")
 
         label = _("Host device %s %s") % (br.get_name(), brlabel)
         if hasShared and not brIdxLabel:
             brIdxLabel = label
 
-        row = build_row(nettype, bridge_name, label, sensitive, True)
+        row = build_row(nettype, bridge_name, label, sensitive, True, obj=br)
 
         if sensitive:
             bridge_dict[label] = row
@@ -431,11 +525,12 @@ def validate_network(parent, conn, nettype, devname, macaddr, model=None):
         elif nettype == VirtualNetworkInterface.TYPE_USER:
             pass
 
-        net = VirtualNetworkInterface(type = nettype,
-                                      bridge = bridge,
-                                      network = netname,
-                                      macaddr = macaddr,
-                                      model = model)
+        net = VirtualNetworkInterface(conn=conn.vmm,
+                                      type=nettype,
+                                      bridge=bridge,
+                                      network=netname,
+                                      macaddr=macaddr,
+                                      model=model)
     except Exception, e:
         return err_dial.val_err(_("Error with network parameters."), str(e))
 
@@ -518,7 +613,7 @@ def mediadev_removed(ignore_helper, key, widget):
             del(model[idx])
 
             if idx > active and active != -1:
-                widget.set_active(active-1)
+                widget.set_active(active - 1)
             elif idx == active:
                 widget.set_active(-1)
 
@@ -592,9 +687,9 @@ def mediadev_set_default_selection(widget):
 # Build toolbar shutdown button menu (manager and details toolbar) #
 ####################################################################
 
-def build_shutdown_button_menu(config, widget, shutdown_cb, reboot_cb,
-                               destroy_cb):
-    icon_name = config.get_shutdown_icon_name()
+def build_shutdown_button_menu(widget, shutdown_cb, reboot_cb,
+                               destroy_cb, save_cb):
+    icon_name = running_config.get_shutdown_icon_name()
     widget.set_icon_name(icon_name)
     menu = gtk.Menu()
     widget.set_menu(menu)
@@ -602,6 +697,7 @@ def build_shutdown_button_menu(config, widget, shutdown_cb, reboot_cb,
     rebootimg = gtk.image_new_from_icon_name(icon_name, gtk.ICON_SIZE_MENU)
     shutdownimg = gtk.image_new_from_icon_name(icon_name, gtk.ICON_SIZE_MENU)
     destroyimg = gtk.image_new_from_icon_name(icon_name, gtk.ICON_SIZE_MENU)
+    saveimg = gtk.image_new_from_icon_name(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU)
 
     reboot = gtk.ImageMenuItem(_("_Reboot"))
     reboot.set_image(rebootimg)
@@ -621,18 +717,28 @@ def build_shutdown_button_menu(config, widget, shutdown_cb, reboot_cb,
     destroy.connect("activate", destroy_cb)
     menu.add(destroy)
 
+    sep = gtk.SeparatorMenuItem()
+    sep.show()
+    menu.add(sep)
+
+    save = gtk.ImageMenuItem(_("Sa_ve"))
+    save.set_image(saveimg)
+    save.show()
+    save.connect("activate", save_cb)
+    menu.add(save)
+
 #####################################
 # Path permissions checker for qemu #
 #####################################
-def check_path_search_for_qemu(parent, config, conn, path):
+def check_path_search_for_qemu(parent, conn, path):
     set_error_parent(parent)
 
     if conn.is_remote() or not conn.is_qemu_system():
         return
 
-    user = QEMU_SYSTEM_EMULATOR_USER
+    user = running_config.default_qemu_user
 
-    skip_paths = config.get_perms_fix_ignore()
+    skip_paths = running_config.get_perms_fix_ignore()
     broken_paths = VirtualDisk.check_path_search_for_user(conn.vmm, path, user)
     for p in broken_paths:
         if p in skip_paths:
@@ -650,7 +756,7 @@ def check_path_search_for_qemu(parent, config, conn, path):
                     buttons=gtk.BUTTONS_YES_NO)
 
     if chkres:
-        config.add_perms_fix_ignore(broken_paths)
+        running_config.add_perms_fix_ignore(broken_paths)
     if not resp:
         return
 
@@ -673,7 +779,7 @@ def check_path_search_for_qemu(parent, config, conn, path):
                          _("Don't ask about these directories again."))
 
     if chkres:
-        config.add_perms_fix_ignore(errors.keys())
+        running_config.add_perms_fix_ignore(errors.keys())
 
 ######################################
 # Interface startmode widget builder #
@@ -688,4 +794,3 @@ def build_startmode_combo(start_list):
     start_model.append(["none"])
     start_model.append(["onboot"])
     start_model.append(["hotplug"])
-

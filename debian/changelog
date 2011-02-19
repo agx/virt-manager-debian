@@ -1,3 +1,23 @@
+virt-manager (0.8.6-1) experimental; urgency=low
+
+  [ Guido Günther ]
+  * [6fbc153] Suggest gnome-keyring (Closes: #605685)
+  * [0f4af7d] Also suggest python-gnome-keyring
+
+  [ Laurent Léonard ]
+  * [3c3b839] New patch 0002-Use-IPy-from-python-ipy.patch (Closes:
+    #605967)
+  * [878fdfc] Remove its own version of IPy
+  * [1f554ec] Add python-ipy dependency
+  * [b3e7ca4] Imported Upstream version 0.8.6
+  * [e763c6e] Drop patches
+    - 0002-l10n-Updates-to-French-fr-translation.patch - fixed upstream
+    - 0003-l10n-Updates-to-French-fr-translation.patch - fixed upstream
+    - 0004-Add-AM_MAINTAINER_MODE-and-drop-m4-include.patch - fixed upstream
+  * [f213a57] Bump virtinst dependency version to 0.500.5
+
+ -- Laurent Léonard <laurent@open-minds.org>  Sun, 30 Jan 2011 15:25:40 +0100
+
 virt-manager (0.8.4-8) unstable; urgency=low
 
   [ Laurent Léonard ]
@@ -11,6 +31,35 @@ virt-manager (0.8.4-8) unstable; urgency=low
     Closes: #591808
  
  -- Guido Günther <agx@sigxcpu.org>  Thu, 30 Sep 2010 13:32:01 +0200
+
+virt-manager (0.8.5-1) experimental; urgency=low
+
+  [ Laurent Léonard ]
+  * [9e83cac] Imported Upstream version 0.8.5 (Closes: #591808, #579555)
+  * [cc1f7ce] Drop patches fixed upstream:
+        0002-console-Don-t-throw-traceback-if-we-can-t-read-error.patch
+           http://hg.fedorahosted.org/hg/virt-manager/rev/c206b12a8c7a
+        0003-Update-french-translation.patch 
+           http://hg.fedorahosted.org/hg/virt-manager/rev/1f78c4ea0692
+        0004-create-Skip-post-install-restart-if-user-destroys-VM.patch 
+           http://hg.fedorahosted.org/hg/virt-manager/rev/d8c0607c68dc
+        0005-Add-conn-info-to-virtinst.VirtualGraphics.patch
+           http://hg.fedorahosted.org/hg/virt-manager/rev/99cf13a133f3
+        0006-Fix-error-launching-create-wizard-on-qemu-session.patch 
+           http://hg.fedorahosted.org/hg/virt-manager/rev/ea94314da7d5
+  * [f6cc98d] Bump virtinst dependency version to 0.500.4
+  * [32e247c] Bump Standards-Version to 3.9.1
+  * [4d8c427] New patch 
+        0002-l10n-Updates-to-French-fr-translation.patch
+  * [66ebeaf] New patch
+        0003-l10n-Updates-to-French-fr-translation.patch
+
+  [ Guido Günther ]
+  * [0254e41] Drop icon symlinks, Fixed upstream.
+  * [9b15358] New patch 0004-Add-AM_MAINTAINER_MODE-and-drop-m4-
+    include.patch. Add AM_MAINTAINER_MODE and drop m4/ include
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 29 Sep 2010 16:27:50 +0200
 
 virt-manager (0.8.4-7) unstable; urgency=low
 

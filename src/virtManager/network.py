@@ -18,14 +18,12 @@
 # MA 02110-1301 USA.
 #
 
-import gobject
 import virtinst.util as util
 
 from virtManager.IPy import IP
+from virtManager.libvirtobject import vmmLibvirtObject
 
-class vmmNetwork(gobject.GObject):
-    __gsignals__ = { }
-
+class vmmNetwork(vmmLibvirtObject):
     @staticmethod
     def pretty_desc(forward, forwardDev):
         if forward or forwardDev:
@@ -49,14 +47,20 @@ class vmmNetwork(gobject.GObject):
 
         return desc
 
-    def __init__(self, config, connection, net, uuid, active):
-        self.__gobject_init__()
-        self.config = config
-        self.connection = connection
+    def __init__(self, connection, net, uuid, active):
+        vmmLibvirtObject.__init__(self, connection)
         self.net = net
         self.uuid = uuid
         self.active = active
-        self._xml = self.net.XMLDesc(0)
+
+    # Required class methods
+    def get_name(self):
+        return self.net.name()
+    def _XMLDesc(self, flags):
+        return self.net.XMLDesc(flags)
+    def _define(self, xml):
+        return self.get_connection().vmm.networkDefineXML(xml)
+
 
     def set_handle(self, net):
         self.net = net
@@ -64,22 +68,8 @@ class vmmNetwork(gobject.GObject):
     def set_active(self, state):
         self.active = state
 
-    def get_xml(self):
-        if not self._xml:
-            self._update_xml()
-        return self._xml
-
-    def _update_xml(self):
-        self._xml = self.net.XMLDesc(0)
-
     def is_active(self):
         return self.active
-
-    def get_connection(self):
-        return self.connection
-
-    def get_name(self):
-        return self.net.name()
 
     def get_label(self):
         return self.get_name()
@@ -119,7 +109,7 @@ class vmmNetwork(gobject.GObject):
         gateway = IP(addrStr)
 
         network = IP(gateway.int() & netmask.int())
-        return IP(str(network)+ "/" + netmaskStr)
+        return IP(str(network) + "/" + netmaskStr)
 
     def get_ipv4_forward(self):
         xml = self.get_xml()
@@ -140,9 +130,11 @@ class vmmNetwork(gobject.GObject):
         forward, forwardDev = self.get_ipv4_forward()
         return vmmNetwork.pretty_desc(forward, forwardDev)
 
-    def is_read_only(self):
-        if self.connection.is_read_only():
+    def can_pxe(self):
+        xml = self.get_xml()
+        forward = self.get_ipv4_forward()[0]
+        if forward and forward != "nat":
             return True
-        return False
+        return bool(util.get_xml_path(xml, "/network/ip/dhcp/bootp/@file"))
 
-gobject.type_register(vmmNetwork)
+vmmLibvirtObject.type_register(vmmNetwork)

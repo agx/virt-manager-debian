@@ -29,6 +29,14 @@ import dbus
 from virtManager.netdev import vmmNetDevice
 from virtManager.mediadev import vmmMediaDevice
 
+_hal_helper = None
+
+def get_hal_helper():
+    global _hal_helper
+    if not _hal_helper:
+        _hal_helper = vmmHalHelper()
+    return _hal_helper
+
 class vmmHalHelper(gobject.GObject):
     __gsignals__ = {
         "netdev-added": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
@@ -42,7 +50,7 @@ class vmmHalHelper(gobject.GObject):
     }
 
     def __init__(self):
-        self.__gobject_init__()
+        gobject.GObject.__init__(self)
 
         self.bus = None
         self.hal_iface = None
@@ -73,11 +81,11 @@ class vmmHalHelper(gobject.GObject):
             self.hal_iface.connect_to_signal("DeviceRemoved",
                                              self._device_removed)
         except Exception, e:
-            (_type, value, stacktrace) = sys.exc_info ()
+            (_type, value, stacktrace) = sys.exc_info()
             logging.error("Unable to connect to HAL to list network "
                           "devices: '%s'" +
                           str(_type) + " " + str(value) + "\n" +
-                          traceback.format_exc (stacktrace))
+                          traceback.format_exc(stacktrace))
             self.startup_error = str(e)
 
     def connect(self, name, callback, *args):
@@ -192,7 +200,7 @@ class vmmHalHelper(gobject.GObject):
         # If running a device in bridged mode, there's a reasonable
         # chance that the actual ethernet device has been renamed to
         # something else. ethN -> pethN
-        psysfspath = sysfspath[0:len(sysfspath)-len(name)] + "p" + name
+        psysfspath = sysfspath[0:len(sysfspath) - len(name)] + "p" + name
         if os.path.exists(psysfspath):
             logging.debug("Device %s named to p%s" % (name, name))
             name = "p" + name
@@ -220,7 +228,7 @@ class vmmHalHelper(gobject.GObject):
                     # If running a device in bridged mode, there's areasonable
                     # chance that the actual ethernet device has beenrenamed to
                     # something else. ethN -> pethN
-                    pvlanpath = (vlanpath[0:len(vlanpath)-len(vlanname)] +
+                    pvlanpath = (vlanpath[0:len(vlanpath) - len(vlanname)] +
                                  "p" + vlanname)
                     if os.path.exists(pvlanpath):
                         logging.debug("Device %s named to p%s" % (vlanname,
@@ -283,7 +291,7 @@ class vmmHalHelper(gobject.GObject):
 gobject.type_register(vmmHalHelper)
 
 
-def get_net_bridge_owner(name, sysfspath):
+def get_net_bridge_owner(name_ignore, sysfspath):
     # Now magic to determine if the device is part of a bridge
     brportpath = os.path.join(sysfspath, "brport")
 
@@ -294,13 +302,13 @@ def get_net_bridge_owner(name, sysfspath):
             (ignore, bridge) = os.path.split(dest)
             return bridge
     except:
-        (_type, value, stacktrace) = sys.exc_info ()
+        (_type, value, stacktrace) = sys.exc_info()
         logging.error("Unable to determine if device is shared:" +
                       str(_type) + " " + str(value) + "\n" +
-                      traceback.format_exc (stacktrace))
+                      traceback.format_exc(stacktrace))
     return None
 
-def get_net_mac_address(name, sysfspath):
+def get_net_mac_address(name_ignore, sysfspath):
     mac = None
     addrpath = sysfspath + "/address"
     if os.path.exists(addrpath):
@@ -323,7 +331,7 @@ def get_bonding_masters():
             masters = rline[:].split(' ')
     return masters
 
-def is_net_bonding_slave(name, sysfspath):
+def is_net_bonding_slave(name_ignore, sysfspath):
     masterpath = sysfspath + "/master"
     if os.path.exists(masterpath):
         return True

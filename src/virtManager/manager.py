@@ -20,16 +20,13 @@
 
 import gobject
 import gtk
-import gtk.glade
 
 import logging
-import traceback
 
 import virtManager.config as cfg
 import virtManager.uihelpers as uihelpers
 from virtManager.connection import vmmConnection
-from virtManager.asyncjob import vmmAsyncJob
-from virtManager.error import vmmErrorDialog
+from virtManager.baseclass import vmmGObjectUI
 from virtManager.delete import vmmDeleteDialog
 from virtManager.graphwidgets import CellRendererSparkline
 from virtManager import util as util
@@ -71,20 +68,20 @@ class "GtkTreeView" style "treeview-style"
 gtk.rc_parse_string(rcstring)
 
 
-class vmmManager(gobject.GObject):
+class vmmManager(vmmGObjectUI):
     __gsignals__ = {
-        "action-show-connect":(gobject.SIGNAL_RUN_FIRST,
-                                  gobject.TYPE_NONE, []),
+        "action-show-connect": (gobject.SIGNAL_RUN_FIRST,
+                                gobject.TYPE_NONE, []),
         "action-show-console": (gobject.SIGNAL_RUN_FIRST,
-                                gobject.TYPE_NONE, (str,str)),
+                                gobject.TYPE_NONE, (str, str)),
         "action-show-terminal": (gobject.SIGNAL_RUN_FIRST,
-                                gobject.TYPE_NONE, (str,str)),
+                                gobject.TYPE_NONE, (str, str)),
         "action-refresh-console": (gobject.SIGNAL_RUN_FIRST,
-                                   gobject.TYPE_NONE, (str,str)),
+                                   gobject.TYPE_NONE, (str, str)),
         "action-refresh-terminal": (gobject.SIGNAL_RUN_FIRST,
-                                    gobject.TYPE_NONE, (str,str)),
+                                    gobject.TYPE_NONE, (str, str)),
         "action-show-details": (gobject.SIGNAL_RUN_FIRST,
-                                gobject.TYPE_NONE, (str,str)),
+                                gobject.TYPE_NONE, (str, str)),
         "action-show-about": (gobject.SIGNAL_RUN_FIRST,
                               gobject.TYPE_NONE, []),
         "action-show-host": (gobject.SIGNAL_RUN_FIRST,
@@ -105,29 +102,22 @@ class vmmManager(gobject.GObject):
                                  gobject.TYPE_NONE, (str, str)),
         "action-destroy-domain": (gobject.SIGNAL_RUN_FIRST,
                                   gobject.TYPE_NONE, (str, str)),
+        "action-save-domain": (gobject.SIGNAL_RUN_FIRST,
+                               gobject.TYPE_NONE, (str, str)),
         "action-connect": (gobject.SIGNAL_RUN_FIRST,
                            gobject.TYPE_NONE, [str]),
         "action-show-help": (gobject.SIGNAL_RUN_FIRST,
                                gobject.TYPE_NONE, [str]),
         "action-migrate-domain": (gobject.SIGNAL_RUN_FIRST,
-                                  gobject.TYPE_NONE, (str,str)),
+                                  gobject.TYPE_NONE, (str, str)),
         "action-clone-domain": (gobject.SIGNAL_RUN_FIRST,
-                                gobject.TYPE_NONE, (str,str)),
+                                gobject.TYPE_NONE, (str, str)),
         "action-exit-app": (gobject.SIGNAL_RUN_FIRST,
-                            gobject.TYPE_NONE, []),}
+                            gobject.TYPE_NONE, []),
+    }
 
-    def __init__(self, config, engine):
-        self.__gobject_init__()
-        self.window = gtk.glade.XML((config.get_glade_dir() +
-                                     "/vmm-manager.glade"),
-                                     "vmm-manager", domain="virt-manager")
-        self.err = vmmErrorDialog(self.window.get_widget("vmm-manager"),
-                                  0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
-                                  _("Unexpected Error"),
-                                  _("An unexpected error occurred"))
-        self.topwin = self.window.get_widget("vmm-manager")
-
-        self.config = config
+    def __init__(self, engine):
+        vmmGObjectUI.__init__(self, "vmm-manager.glade", "vmm-manager")
         self.engine = engine
 
         self.delete_dialog = None
@@ -139,6 +129,7 @@ class vmmManager(gobject.GObject):
 
         w, h = self.config.get_manager_window_size()
         self.topwin.set_default_size(w or 550, h or 550)
+        self.prev_position = None
 
         self.init_vmlist()
         self.init_stats()
@@ -165,7 +156,6 @@ class vmmManager(gobject.GObject):
             "on_menu_file_add_connection_activate": self.new_connection,
             "on_menu_file_quit_activate": self.exit_app,
             "on_menu_file_close_activate": self.close,
-            "on_menu_restore_saved_activate": self.restore_saved,
             "on_vmm_close_clicked": self.close,
             "on_vm_open_clicked": self.open_vm_console,
             "on_vm_run_clicked": self.start_vm,
@@ -195,10 +185,8 @@ class vmmManager(gobject.GObject):
         # Initialize stat polling columns based on global polling
         # preferences (we want signal handlers for this)
         for typ, init_val in \
-            [ (cfg.STATS_DISK,
-               self.config.get_stats_enable_disk_poll()),
-              (cfg.STATS_NETWORK,
-               self.config.get_stats_enable_net_poll())]:
+            [(cfg.STATS_DISK, self.config.get_stats_enable_disk_poll()),
+             (cfg.STATS_NETWORK, self.config.get_stats_enable_net_poll())]:
             self.enable_polling(None, None, init_val, typ)
 
         self.engine.connect("connection-added", self._add_connection)
@@ -218,24 +206,27 @@ class vmmManager(gobject.GObject):
     ##################
 
     def show(self):
-        if self.is_visible():
-            self.topwin.present()
-            return
+        vis = self.is_visible()
         self.topwin.present()
+        if vis:
+            return
 
+        if self.prev_position:
+            self.topwin.move(*self.prev_position)
+            self.prev_position = None
         self.engine.increment_window_counter()
 
-    def close(self, src=None, src2=None):
-        if self.is_visible():
-            win = self.window.get_widget("vmm-manager")
-            win.hide()
-            self.engine.decrement_window_counter()
-            return 1
+    def close(self, src_ignore=None, src2_ignore=None):
+        if not self.is_visible():
+            return
+
+        self.prev_position = self.topwin.get_position()
+        self.topwin.hide()
+        self.engine.decrement_window_counter()
+        return 1
 
     def is_visible(self):
-        if self.window.get_widget("vmm-manager").flags() & gtk.VISIBLE:
-            return 1
-        return 0
+        return bool(self.topwin.flags() & gtk.VISIBLE)
 
     def set_startup_error(self, msg):
         self.window.get_widget("vm-notebook").set_current_page(1)
@@ -271,11 +262,11 @@ class vmmManager(gobject.GObject):
         self.window.get_widget("vm-new").set_icon_name("vm_new")
         self.window.get_widget("vm-open").set_icon_name("icon_console")
         uihelpers.build_shutdown_button_menu(
-                                   self.config,
                                    self.window.get_widget("vm-shutdown"),
                                    self.poweroff_vm,
                                    self.reboot_vm,
-                                   self.destroy_vm)
+                                   self.destroy_vm,
+                                   self.save_vm)
 
         tool = self.window.get_widget("vm-toolbar")
         util.safe_set_prop(tool, "icon-size", gtk.ICON_SIZE_LARGE_TOOLBAR)
@@ -296,122 +287,67 @@ class vmmManager(gobject.GObject):
         destroy_icon        = build_icon(icon_name)
         run_icon            = build_stock(gtk.STOCK_MEDIA_PLAY)
         pause_icon          = build_stock(gtk.STOCK_MEDIA_PAUSE)
+        save_icon           = build_stock(gtk.STOCK_SAVE)
         resume_icon         = build_stock(gtk.STOCK_MEDIA_PAUSE)
         delete_icon         = build_stock(gtk.STOCK_DELETE)
 
-        self.vmmenu_items["run"] = gtk.ImageMenuItem(_("_Run"))
-        self.vmmenu_items["run"].set_image(run_icon)
-        self.vmmenu_items["run"].show()
-        self.vmmenu_items["run"].connect("activate", self.start_vm)
-        self.vmmenu.add(self.vmmenu_items["run"])
+        def add_to_menu(menu, items, idx, text, icon, cb):
+            item = gtk.ImageMenuItem(text)
+            if icon:
+                item.set_image(icon)
+            item.show()
+            if cb:
+                item.connect("activate", cb)
+            menu.add(item)
+            items[idx] = item
 
-        self.vmmenu_items["pause"] = gtk.ImageMenuItem(_("_Pause"))
-        self.vmmenu_items["pause"].set_image(pause_icon)
-        self.vmmenu_items["pause"].set_sensitive(False)
-        self.vmmenu_items["pause"].show()
-        self.vmmenu_items["pause"].connect("activate", self.pause_vm)
-        self.vmmenu.add(self.vmmenu_items["pause"])
+        def add_vm_menu(idx, text, icon, cb):
+            add_to_menu(self.vmmenu, self.vmmenu_items, idx, text, icon, cb)
+        def add_shutdown_menu(idx, text, icon, cb):
+            add_to_menu(self.vmmenushutdown, self.vmmenushutdown_items,
+                        idx, text, icon, cb)
+        def add_conn_menu(idx, text, icon, cb):
+            add_to_menu(self.connmenu, self.connmenu_items,
+                        idx, text, icon, cb)
+        def add_sep(menu, items, idx):
+            sep = gtk.SeparatorMenuItem()
+            sep.show()
+            menu.add(sep)
+            items[idx] = sep
 
-        self.vmmenu_items["resume"] = gtk.ImageMenuItem(_("R_esume"))
-        self.vmmenu_items["resume"].set_image(resume_icon)
-        self.vmmenu_items["resume"].show()
-        self.vmmenu_items["resume"].connect("activate", self.resume_vm)
-        self.vmmenu.add(self.vmmenu_items["resume"])
+        # Build VM context menu
+        add_vm_menu("run", _("_Run"), run_icon, self.start_vm)
+        add_vm_menu("pause", _("_Pause"), pause_icon, self.pause_vm)
+        add_vm_menu("resume", _("R_esume"), resume_icon, self.resume_vm)
 
-
-        self.vmmenu_items["shutdown"] = gtk.ImageMenuItem(_("_Shut Down"))
-        self.vmmenu_items["shutdown"].set_image(shutdownmenu_icon)
+        add_vm_menu("shutdown", _("_Shut Down"), shutdownmenu_icon, None)
         self.vmmenu_items["shutdown"].set_submenu(self.vmmenushutdown)
-        self.vmmenu_items["shutdown"].show()
-        self.vmmenu.add(self.vmmenu_items["shutdown"])
+        add_shutdown_menu("reboot", _("_Reboot"), reboot_icon, self.reboot_vm)
+        add_shutdown_menu("poweroff", _("_Shut Down"), shutdown_icon,
+                          self.poweroff_vm)
+        add_shutdown_menu("forcepoweroff", _("_Force Off"), destroy_icon,
+                          self.destroy_vm)
+        add_sep(self.vmmenushutdown, self.vmmenushutdown_items, "sep")
+        add_shutdown_menu("save", _("Sa_ve"), save_icon, self.save_vm)
 
-        self.vmmenushutdown_items["reboot"] = gtk.ImageMenuItem(_("_Reboot"))
-        self.vmmenushutdown_items["reboot"].set_image(reboot_icon)
-        self.vmmenushutdown_items["reboot"].show()
-        self.vmmenushutdown_items["reboot"].connect("activate", self.reboot_vm)
-        self.vmmenushutdown.add(self.vmmenushutdown_items["reboot"])
+        add_sep(self.vmmenu, self.vmmenu_items, "hsep1")
+        add_vm_menu("clone", _("_Clone..."), None, self.open_clone_window)
+        add_vm_menu("migrate", _("_Migrate..."), None, self.migrate_vm)
+        add_vm_menu("delete", _("_Delete"), delete_icon, self.do_delete)
 
-        self.vmmenushutdown_items["poweroff"] = gtk.ImageMenuItem(_("_Shut Down"))
-        self.vmmenushutdown_items["poweroff"].set_image(shutdown_icon)
-        self.vmmenushutdown_items["poweroff"].show()
-        self.vmmenushutdown_items["poweroff"].connect("activate",
-                                                      self.poweroff_vm)
-        self.vmmenushutdown.add(self.vmmenushutdown_items["poweroff"])
-
-        self.vmmenushutdown_items["forcepoweroff"] = gtk.ImageMenuItem(_("_Force Off"))
-        self.vmmenushutdown_items["forcepoweroff"].set_image(destroy_icon)
-        self.vmmenushutdown_items["forcepoweroff"].show()
-        self.vmmenushutdown_items["forcepoweroff"].connect("activate",
-                                                           self.destroy_vm)
-        self.vmmenushutdown.add(self.vmmenushutdown_items["forcepoweroff"])
-
-        self.vmmenu_items["hsep1"] = gtk.SeparatorMenuItem()
-        self.vmmenu_items["hsep1"].show()
-        self.vmmenu.add(self.vmmenu_items["hsep1"])
-
-        self.vmmenu_items["clone"] = gtk.ImageMenuItem(_("_Clone"))
-        self.vmmenu_items["clone"].show()
-        self.vmmenu_items["clone"].connect("activate", self.open_clone_window)
-        self.vmmenu.add(self.vmmenu_items["clone"])
-
-        self.vmmenu_items["migrate"] = gtk.ImageMenuItem(_("_Migrate..."))
-        self.vmmenu_items["migrate"].show()
-        self.vmmenu_items["migrate"].connect("activate", self.migrate_vm)
-        self.vmmenu.add(self.vmmenu_items["migrate"])
-
-        self.vmmenu_items["delete"] = gtk.ImageMenuItem(_("_Delete"))
-        self.vmmenu_items["delete"].set_image(delete_icon)
-        self.vmmenu_items["delete"].show()
-        self.vmmenu_items["delete"].connect("activate", self.do_delete)
-        self.vmmenu.add(self.vmmenu_items["delete"])
-
-        self.vmmenu_items["hsep2"] = gtk.SeparatorMenuItem()
-        self.vmmenu_items["hsep2"].show()
-        self.vmmenu.add(self.vmmenu_items["hsep2"])
-
-        self.vmmenu_items["open"] = gtk.ImageMenuItem(gtk.STOCK_OPEN)
-        self.vmmenu_items["open"].connect("activate", self.open_vm_console)
-        self.vmmenu_items["open"].show()
-        self.vmmenu.add(self.vmmenu_items["open"])
-
+        add_sep(self.vmmenu, self.vmmenu_items, "hsep2")
+        add_vm_menu("open", gtk.STOCK_OPEN, None, self.open_vm_console)
         self.vmmenu.show()
 
-        self.connmenu_items["create"] = gtk.ImageMenuItem(gtk.STOCK_NEW)
-        self.connmenu_items["create"].show()
-        self.connmenu_items["create"].connect("activate", self.new_vm)
-        self.connmenu.add(self.connmenu_items["create"])
-
-        self.connmenu_items["connect"] = gtk.ImageMenuItem(gtk.STOCK_CONNECT)
-        self.connmenu_items["connect"].show()
-        self.connmenu_items["connect"].connect("activate",
-                                               self.open_connection)
-        self.connmenu.add(self.connmenu_items["connect"])
-
-        self.connmenu_items["disconnect"] = gtk.ImageMenuItem(gtk.STOCK_DISCONNECT)
-        self.connmenu_items["disconnect"].show()
-        self.connmenu_items["disconnect"].connect("activate",
-                                                  self.close_connection)
-        self.connmenu.add(self.connmenu_items["disconnect"])
-
-        self.connmenu_items["hsep1"] = gtk.SeparatorMenuItem()
-        self.connmenu_items["hsep1"].show()
-        self.connmenu.add(self.connmenu_items["hsep1"])
-
-        self.connmenu_items["delete"] = gtk.ImageMenuItem(gtk.STOCK_DELETE)
-        self.connmenu_items["delete"].show()
-        self.connmenu_items["delete"].connect("activate",
-                                              self.do_delete)
-        self.connmenu.add(self.connmenu_items["delete"])
-
-        self.connmenu_items["hsep2"] = gtk.SeparatorMenuItem()
-        self.connmenu_items["hsep2"].show()
-        self.connmenu.add(self.connmenu_items["hsep2"])
-
-        self.connmenu_items["details"] = gtk.ImageMenuItem(_("_Details"))
-        self.connmenu_items["details"].connect("activate", self.show_host)
-        self.connmenu_items["details"].show()
-        self.connmenu.add(self.connmenu_items["details"])
-
+        # Build connection context menu
+        add_conn_menu("create", gtk.STOCK_NEW, None, self.new_vm)
+        add_conn_menu("connect", gtk.STOCK_CONNECT, None, self.open_connection)
+        add_conn_menu("disconnect", gtk.STOCK_DISCONNECT, None,
+                      self.close_connection)
+        add_sep(self.connmenu, self.connmenu_items, "hsep1")
+        add_conn_menu("delete", gtk.STOCK_DELETE, None, self.do_delete)
+        add_sep(self.connmenu, self.connmenu_items, "hsep2")
+        add_conn_menu("details", _("_Details"), None, self.show_host)
         self.connmenu.show()
 
     def init_vmlist(self):
@@ -546,11 +482,21 @@ class vmmManager(gobject.GObject):
             return None
         return vm.get_uuid()
 
-    def current_connection_uri(self):
+    def current_connection_uri(self, default_selection=False):
+        vmlist = self.window.get_widget("vm-list")
+        model = vmlist.get_model()
+
         conn = self.current_connection()
-        if conn is None:
-            return None
-        return conn.get_uri()
+        if conn is None and default_selection:
+            # Nothing selected, use first connection row
+            for row in model:
+                if row[ROW_IS_CONN]:
+                    conn = row[ROW_HANDLE]
+                    break
+
+        if conn:
+            return conn.get_uri()
+        return None
 
     ####################
     # Action listeners #
@@ -563,28 +509,29 @@ class vmmManager(gobject.GObject):
 
         self.config.set_manager_window_size(event.width, event.height)
 
-    def exit_app(self, src=None, src2=None):
+    def exit_app(self, src_ignore=None, src2_ignore=None):
         self.emit("action-exit-app")
 
-    def new_connection(self, src=None):
+    def new_connection(self, src_ignore=None):
         self.emit("action-show-connect")
 
-    def new_vm(self, ignore=None):
+    def new_vm(self, src_ignore=None):
         self.emit("action-show-create", self.current_connection_uri())
 
-    def show_about(self, src):
+    def show_about(self, src_ignore):
         self.emit("action-show-about")
 
-    def show_help(self, src):
+    def show_help(self, src_ignore):
         self.emit("action-show-help", None)
 
-    def show_preferences(self, src):
+    def show_preferences(self, src_ignore):
         self.emit("action-show-preferences")
 
-    def show_host(self, src):
-        self.emit("action-show-host", self.current_connection_uri())
+    def show_host(self, src_ignore):
+        uri = self.current_connection_uri(default_selection=True)
+        self.emit("action-show-host", uri)
 
-    def open_vm_console(self,ignore,ignore2=None,ignore3=None):
+    def open_vm_console(self, ignore, ignore2=None, ignore3=None):
         if self.current_vmuuid():
             self.emit("action-show-console",
                       self.current_connection_uri(), self.current_vmuuid())
@@ -597,7 +544,7 @@ class vmmManager(gobject.GObject):
             self.emit("action-clone-domain", self.current_connection_uri(),
                       self.current_vmuuid())
 
-    def show_vm_details(self,ignore):
+    def show_vm_details(self, ignore):
         conn = self.current_connection()
         if conn is None:
             return
@@ -606,42 +553,7 @@ class vmmManager(gobject.GObject):
             self.emit("action-show-host", conn.get_uri())
         else:
             self.emit("action-show-console",
-                      conn.get_uri(), self.vm.get_uuid())
-
-    def restore_saved(self, src=None):
-        conn = self.current_connection()
-        if conn.is_remote():
-            self.err.val_err(_("Restoring virtual machines over remote "
-                               "connections is not yet supported"))
-            return
-
-        path = util.browse_local(self.window.get_widget("vmm-manager"),
-                                 _("Restore Virtual Machine"),
-                                 self.config, conn,
-                                 browse_reason=self.config.CONFIG_DIR_RESTORE)
-
-        if not path:
-            return
-
-        progWin = vmmAsyncJob(self.config, self.restore_saved_callback,
-                              [path], _("Restoring Virtual Machine"))
-        progWin.run()
-        error, details = progWin.get_error()
-
-        if error is not None:
-            self.err.show_err(error, details,
-                              title=_("Error restoring domain"))
-
-    def restore_saved_callback(self, file_to_load, asyncjob):
-        try:
-            newconn = util.dup_conn(self.config, self.current_connection(),
-                                    return_conn_class=True)
-            newconn.restore(file_to_load)
-        except Exception, e:
-            err = (_("Error restoring domain '%s': %s") %
-                                  (file_to_load, str(e)))
-            details = "".join(traceback.format_exc())
-            asyncjob.set_error(err, details)
+                      conn.get_uri(), vm.get_uuid())
 
     def do_delete(self, ignore=None):
         conn = self.current_connection()
@@ -666,7 +578,7 @@ class vmmManager(gobject.GObject):
             return
 
         if not self.delete_dialog:
-            self.delete_dialog = vmmDeleteDialog(self.config, vm)
+            self.delete_dialog = vmmDeleteDialog(vm)
         else:
             self.delete_dialog.set_vm(vm)
 
@@ -719,6 +631,12 @@ class vmmManager(gobject.GObject):
             self.emit("action-destroy-domain",
                       vm.get_connection().get_uri(), vm.get_uuid())
 
+    def save_vm(self, ignore):
+        vm = self.current_vm()
+        if vm is not None:
+            self.emit("action-save-domain",
+                      vm.get_connection().get_uri(), vm.get_uuid())
+
     def pause_vm(self, ignore):
         vm = self.current_vm()
         if vm is not None:
@@ -742,7 +660,7 @@ class vmmManager(gobject.GObject):
         if conn.get_state() != vmmConnection.STATE_DISCONNECTED:
             conn.close()
 
-    def open_connection(self, ignore = None):
+    def open_connection(self, ignore=None):
         conn = self.current_connection()
         if conn.get_state() == vmmConnection.STATE_DISCONNECTED:
             conn.open()
@@ -750,21 +668,22 @@ class vmmManager(gobject.GObject):
 
     def _connect_error(self, conn, details):
         if conn.get_driver() == "xen" and not conn.is_remote():
-            self.err.show_err(_("Unable to open a connection to the Xen hypervisor/daemon.\n\n" +
-                              "Verify that:\n" +
-                              " - A Xen host kernel was booted\n" +
-                              " - The Xen service has been started\n"),
-                              details,
-                              title=_("Virtual Machine Manager Connection Failure"))
+            self.err.show_err(
+            _("Unable to open a connection to the Xen hypervisor/daemon.\n\n" +
+              "Verify that:\n" +
+              " - A Xen host kernel was booted\n" +
+              " - The Xen service has been started\n"),
+              details,
+              title=_("Virtual Machine Manager Connection Failure"))
         else:
-            self.err.show_err(_("Unable to open a connection to the libvirt "
-                                "management daemon.\n\n" +
-                                "Libvirt URI is: %s\n\n" % conn.get_uri() +
-                                "Verify that:\n" +
-                                " - The 'libvirtd' daemon has been started\n"),
-                              details,
-                              title=_("Virtual Machine Manager Connection "
-                                      "Failure"))
+            self.err.show_err(
+            _("Unable to open a connection to the libvirt "
+              "management daemon.\n\n" +
+              "Libvirt URI is: %s\n\n" % conn.get_uri() +
+              "Verify that:\n" +
+              " - The 'libvirtd' daemon has been started\n"),
+              details,
+              title=_("Virtual Machine Manager Connection Failure"))
 
 
     ####################################
@@ -774,7 +693,7 @@ class vmmManager(gobject.GObject):
     def vm_row_key(self, vm):
         return vm.get_uuid() + ":" + vm.get_connection().get_uri()
 
-    def vm_added(self, connection, uri, vmuuid):
+    def vm_added(self, connection, uri_ignore, vmuuid):
         vm = connection.get_vm(vmuuid)
         vm.connect("status-changed", self.vm_status_changed)
         vm.connect("resources-sampled", self.vm_resources_sampled)
@@ -784,7 +703,7 @@ class vmmManager(gobject.GObject):
 
         self._append_vm(model, vm, connection)
 
-    def vm_removed(self, connection, uri, vmuuid):
+    def vm_removed(self, connection, uri_ignore, vmuuid):
         vmlist = self.window.get_widget("vm-list")
         model = vmlist.get_model()
 
@@ -799,15 +718,16 @@ class vmmManager(gobject.GObject):
     def vm_started(self, connection, uri, vmuuid):
         vm = connection.get_vm(vmuuid)
         logging.debug("VM %s started" % vm.get_name())
-        if self.config.get_console_popup() == 2 and not vm.is_management_domain():
-            # user has requested consoles on all vms
-            gtype = vm.get_graphics_console()[0]
-            if gtype == "vnc":
-                self.emit("action-show-console", uri, vmuuid)
-            elif not connection.is_remote():
-                self.emit("action-show-terminal", uri, vmuuid)
-        else:
+        if (self.config.get_console_popup() != 2 or
+            vm.is_management_domain()):
             self.emit("action-refresh-console", uri, vmuuid)
+
+        # user has requested consoles on all vms
+        gtype = vm.get_graphics_console()[0]
+        if gtype in self.config.embeddable_graphics():
+            self.emit("action-show-console", uri, vmuuid)
+        elif not connection.is_remote():
+            self.emit("action-show-terminal", uri, vmuuid)
 
     def _build_conn_hint(self, conn):
         hint = conn.get_uri()
@@ -817,13 +737,13 @@ class vmmManager(gobject.GObject):
 
     def _build_conn_markup(self, conn, row):
         if conn.state == conn.STATE_DISCONNECTED:
-            markup = ("<span font_desc='9'>%s - "
-                      "Not Connected</span>" % row[ROW_NAME])
+            text = str(row[ROW_NAME]) + " - " + _("Not Connected")
         elif conn.state == conn.STATE_CONNECTING:
-            markup = ("<span font_desc='9'>%s - "
-                      "Connecting...</span>" % row[ROW_NAME])
+            text = str(row[ROW_NAME]) + " - " + _("Connecting...")
         else:
-            markup = ("<span font_desc='9'>%s</span>" % row[ROW_NAME])
+            text = str(row[ROW_NAME])
+
+        markup = "<span size='smaller'>%s</span>" % text
         return markup
 
     def _build_conn_color(self, conn):
@@ -836,14 +756,15 @@ class vmmManager(gobject.GObject):
         return color
 
     def _build_vm_markup(self, vm, row):
-        markup = ("<span font_desc='10'>%s</span>\n"
-                  "<span font_desc='8'>%s</span>" %
-                  (row[ROW_NAME], row[ROW_STATUS]))
-        return markup
+        ignore = vm
+        domtext     = ("<span size='smaller' weight='bold'>%s</span>" %
+                       row[ROW_NAME])
+        statetext   = "<span size='smaller'>%s</span>" % row[ROW_STATUS]
+        return domtext + "\n" + statetext
 
     def _append_vm(self, model, vm, conn):
         row_key = self.vm_row_key(vm)
-        if self.rows.has_key(row_key):
+        if row_key in self.rows:
             return
 
         parent = self.rows[conn.get_uri()].iter
@@ -874,7 +795,7 @@ class vmmManager(gobject.GObject):
         row.insert(ROW_HANDLE, conn)
         row.insert(ROW_NAME, conn.get_pretty_desc_inactive(False))
         row.insert(ROW_MARKUP, self._build_conn_markup(conn, row))
-        row.insert(ROW_STATUS, ("<span font_desc='9'>%s</span>" %
+        row.insert(ROW_STATUS, ("<span size='smaller'>%s</span>" %
                                 conn.get_state_text()))
         row.insert(ROW_STATUS_ICON, None)
         row.insert(ROW_KEY, conn.get_uri())
@@ -891,11 +812,11 @@ class vmmManager(gobject.GObject):
         self.rows[conn.get_uri()] = model[path]
         return _iter
 
-    def _add_connection(self, engine, conn):
+    def _add_connection(self, engine_ignore, conn):
         # Make sure error page isn't showing
         self.window.get_widget("vm-notebook").set_current_page(0)
 
-        if self.rows.has_key(conn.get_uri()):
+        if conn.get_uri() in self.rows:
             return
 
         conn.connect("vm-added", self.vm_added)
@@ -910,7 +831,25 @@ class vmmManager(gobject.GObject):
         row = self._append_connection(vmlist.get_model(), conn)
         vmlist.get_selection().select_iter(row)
 
-    def _remove_connection(self, engine, conn):
+        # Try to make sure that 2 row descriptions don't collide
+        connrows = []
+        descs = []
+        for row in self.rows.values():
+            if row[ROW_IS_CONN]:
+                connrows.append(row)
+        for row in connrows:
+            descs.append(row[ROW_NAME])
+
+        for row in connrows:
+            conn = row[ROW_HANDLE]
+            name = row[ROW_NAME]
+            if descs.count(name) <= 1:
+                continue
+
+            newname = conn.get_pretty_desc_inactive(False, True)
+            self.conn_refresh_resources(conn, newname)
+
+    def _remove_connection(self, engine_ignore, conn):
         model = self.window.get_widget("vm-list").get_model()
         parent = self.rows[conn.get_uri()].iter
         if parent is not None:
@@ -927,7 +866,7 @@ class vmmManager(gobject.GObject):
     # State/UI updating methods #
     #############################
 
-    def vm_status_changed(self, vm, status, ignore):
+    def vm_status_changed(self, vm, status_ignore, oldstatus_ignore):
         parent = self.rows[vm.get_connection().get_uri()].iter
 
         vmlist = self.window.get_widget("vm-list")
@@ -950,7 +889,7 @@ class vmmManager(gobject.GObject):
         vmlist = self.window.get_widget("vm-list")
         model = vmlist.get_model()
 
-        if not self.rows.has_key(self.vm_row_key(vm)):
+        if self.vm_row_key(vm) not in self.rows:
             return
 
         row = self.rows[self.vm_row_key(vm)]
@@ -964,13 +903,16 @@ class vmmManager(gobject.GObject):
         self.conn_refresh_resources(conn)
         self.vm_selected()
 
-    def conn_refresh_resources(self, conn):
+    def conn_refresh_resources(self, conn, newname=None):
         vmlist = self.window.get_widget("vm-list")
         model = vmlist.get_model()
         row = self.rows[conn.get_uri()]
 
+        if newname:
+            row[ROW_NAME] = newname
         row[ROW_MARKUP] = self._build_conn_markup(conn, row)
-        row[ROW_STATUS] = "<span font_desc='9'>%s</span>" % conn.get_state_text()
+        row[ROW_STATUS] = ("<span size='smaller'>%s</span>" %
+                           conn.get_state_text())
         row[ROW_IS_CONN_CONNECTED] = conn.state != conn.STATE_DISCONNECTED
         row[ROW_HINT] = self._build_conn_hint(conn)
         row[ROW_COLOR] = self._build_conn_color(conn)
@@ -987,6 +929,15 @@ class vmmManager(gobject.GObject):
                     child = model.iter_children(parent)
         model.row_changed(row.path, row.iter)
 
+    def change_run_text(self, can_restore):
+        if can_restore:
+            text = _("_Restore")
+        else:
+            text = _("_Run")
+        strip_text = text.replace("_", "")
+
+        self.vmmenu_items["run"].get_child().set_label(text)
+        self.window.get_widget("vm-run").set_label(strip_text)
 
     def vm_selected(self, ignore=None):
         conn = self.current_connection()
@@ -994,7 +945,8 @@ class vmmManager(gobject.GObject):
 
         show_open = bool(vm)
         show_details = bool(vm)
-        host_details = bool(vm or conn)
+        host_details = bool(len(self.rows))
+
         delete = bool((vm and vm.is_runable()) or
                       (not vm and conn))
         show_run = bool(vm and vm.is_runable())
@@ -1004,7 +956,9 @@ class vmmManager(gobject.GObject):
         else:
             show_pause = bool(vm and vm.is_pauseable())
         show_shutdown = bool(vm and vm.is_stoppable())
-        restore = bool(conn and conn.get_state() == vmmConnection.STATE_ACTIVE)
+
+        if vm and vm.managedsave_supported:
+            self.change_run_text(vm.hasSavedImage())
 
         self.window.get_widget("vm-open").set_sensitive(show_open)
         self.window.get_widget("vm-run").set_sensitive(show_run)
@@ -1015,9 +969,8 @@ class vmmManager(gobject.GObject):
         self.window.get_widget("menu_edit_details").set_sensitive(show_details)
         self.window.get_widget("menu_host_details").set_sensitive(host_details)
         self.window.get_widget("menu_edit_delete").set_sensitive(delete)
-        self.window.get_widget("menu_file_restore_saved").set_sensitive(restore)
 
-    def popup_vm_menu_key(self, widget, event):
+    def popup_vm_menu_key(self, widget_ignore, event):
         if gtk.gdk.keyval_name(event.keyval) != "Menu":
             return False
 
@@ -1065,6 +1018,7 @@ class vmmManager(gobject.GObject):
             self.vmmenushutdown_items["poweroff"].set_sensitive(stop)
             self.vmmenushutdown_items["reboot"].set_sensitive(stop)
             self.vmmenushutdown_items["forcepoweroff"].set_sensitive(destroy)
+            self.vmmenushutdown_items["save"].set_sensitive(destroy)
             self.vmmenu.popup(None, None, None, 0, event.time)
         else:
             # Pop up connection menu
@@ -1105,8 +1059,11 @@ class vmmManager(gobject.GObject):
             widgn = "menu_view_stats_network"
         widget = self.window.get_widget(widgn)
 
+        disabled_text = _(" (disabled)")
         tool_text = ""
-        if conf_entry and (conf_entry == True or \
+        current_text = widget.get_label().strip(disabled_text)
+
+        if conf_entry and (conf_entry == True or
                            conf_entry.get_value().get_bool()):
             widget.set_sensitive(True)
         else:
@@ -1114,8 +1071,10 @@ class vmmManager(gobject.GObject):
                 widget.set_active(False)
             widget.set_sensitive(False)
             tool_text = _("Disabled in preferences dialog.")
+            current_text = current_text + disabled_text
 
         util.tooltip_wrapper(widget, tool_text)
+        widget.set_label(current_text)
 
     def toggle_network_traffic_visible_widget(self, *ignore):
         vmlist = self.window.get_widget("vm-list")
@@ -1141,22 +1100,22 @@ class vmmManager(gobject.GObject):
         }
         set_stats[stats_id](visible)
 
-    def cpu_usage_img(self,  column, cell, model, _iter, data):
+    def cpu_usage_img(self, column_ignore, cell, model, _iter, data):
         if model.get_value(_iter, ROW_HANDLE) is None:
             return
         data = model.get_value(_iter, ROW_HANDLE).cpu_time_vector_limit(40)
         cell.set_property('data_array', data)
 
-    def disk_io_img(self,  column, cell, model, _iter, data):
+    def disk_io_img(self, column_ignore, cell, model, _iter, data):
         if model.get_value(_iter, ROW_HANDLE) is None:
             return
         data = model.get_value(_iter, ROW_HANDLE).disk_io_vector_limit(40)
         cell.set_property('data_array', data)
 
-    def network_traffic_img(self,  column, cell, model, _iter, data):
+    def network_traffic_img(self, column_ignore, cell, model, _iter, data):
         if model.get_value(_iter, ROW_HANDLE) is None:
             return
         data = model.get_value(_iter, ROW_HANDLE).network_traffic_vector_limit(40)
         cell.set_property('data_array', data)
 
-gobject.type_register(vmmManager)
+vmmGObjectUI.type_register(vmmManager)

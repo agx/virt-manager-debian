@@ -6,7 +6,12 @@ cp src/virt-manager.py.in src/_virt-manager
 cd src || exit 1
 
 IGNOREFILES="IPy.py"
-FILES="virtManager/ _virt-manager"
+
+##################
+# pylint Section #
+##################
+
+PYLINT_FILES="virtManager/ _virt-manager"
 
 # Deliberately ignored warnings:
 # Don't print pylint config warning
@@ -15,16 +20,8 @@ NO_PYL_CONFIG=".*No config file found.*"
 # The gettext function is installed in the builtin namespace
 GETTEXT_VAR="Undefined variable '_'"
 
-# These all work fine and are legit, just false positives
-GOBJECT_VAR="has no '__gobject_init__' member"
-GOBJECT_INIT="__init__ method from base class 'GObject' is not called"
-EMIT_VAR="has no 'emit' member"
-ERROR_VBOX="Class 'vbox' has no 'pack_start' member"
-EXCEPTHOOK="no '__excepthook__' member"
-CONNECT_VAR="no 'connect' member"
-DISCONNECT_VAR="no 'disconnect' member"
-UNABLE_IMPORT="Unable to import 'gtk.gdk.*|Unable to import 'sparkline"
-MAX_RECURSION="maximum recursion depth"
+# Optional modules that may not be available
+UNABLE_IMPORT="Unable to import '(appindicator)"
 
 # os._exit is needed for forked processes.
 OS_EXIT="protected member _exit of a client class"
@@ -34,8 +31,12 @@ OS_EXIT="protected member _exit of a client class"
 BTYPE_LIST="(vmmConnect.add_service|vmmConnect.remove_service|vmmConnect.add_conn_to_list)"
 BUILTIN_TYPE="${BTYPE_LIST}.*Redefining built-in 'type'"
 
-# Bogus 'unable to import' warnings
+# Types can't be inferred errors
+INFER_LIST="(MenuItem|StatusIcon|.*storagePoolLookupByName)"
+INFER_ERRORS="Instance of '${INFER_LIST}.*not be inferred"
 
+# Hacks for testing
+TEST_HACKS="protected member (_is_virtinst_test_uri|_open_test_uri)"
 
 DMSG=""
 addmsg() {
@@ -47,7 +48,7 @@ addchecker() {
 }
 
 addmsg_support() {
-    out=`pylint --list-msgs`
+    out=`pylint --list-msgs 2>&1`
     if `echo $out | grep -q $1` ; then
         addmsg "$1"
     fi
@@ -58,9 +59,7 @@ addmsg "C0103"      # C0103: Name doesn't match some style regex
 addmsg "C0111"      # C0111: No docstring
 addmsg "C0301"      # C0301: Line too long
 addmsg "C0302"      # C0302: Too many lines in module
-addmsg "C0324"      # C0324: *Comma not followed by a space*
 addmsg "R0201"      # R0201: Method could be a function
-addmsg "W0105"      # W0105: String statement has no effect
 addmsg "W0141"      # W0141: Complaining about 'map' and 'filter'
 addmsg "W0142"      # W0142: *Used * or ** magic*
 addmsg "W0403"      # W0403: Relative imports
@@ -70,10 +69,7 @@ addmsg "W0703"      # W0703: Catch 'Exception'
 addmsg "W0704"      # W0704: Exception doesn't do anything
 
 # Potentially useful messages, disabled for now
-addmsg "C0322"      # C0322: *Operator not preceded by a space*
-addmsg "C0323"      # C0323: *Operator not followed by a space*
 addmsg "W0511"      # W0511: FIXME and XXX: messages
-addmsg "W0613"      # W0613: Unused arguments
 addmsg_support "W6501"      # W6501: Using string formatters in logging message
                             #        (see help message for info)
 
@@ -88,25 +84,20 @@ SHOW_REPORT="n"
 AWK=awk
 [ `uname -s` = 'SunOS' ] && AWK=nawk
 
-pylint --ignore=IPy.py $FILES \
+echo "Running pylint"
+pylint --ignore=$IGNOREFILES $PYLINT_FILES \
   --reports=$SHOW_REPORT \
   --output-format=colorized \
-  --dummy-variables-rgx="dummy|ignore*" \
-  --disable-msg=${DMSG}\
-  --disable-checker=${DCHECKERS} 2>&1 | \
+  --dummy-variables-rgx="dummy|ignore.*|.*_ignore" \
+  --disable=${DMSG}\
+  --disable=${DCHECKERS} 2>&1 | \
   egrep -ve "$NO_PYL_CONFIG" \
-        -ve "$GOBJECT_VAR" \
-        -ve "$GOBJECT_INIT" \
-        -ve "$EMIT_VAR" \
-        -ve "$CONNECT_VAR" \
-        -ve "$DISCONNECT_VAR" \
         -ve "$GETTEXT_VAR" \
         -ve "$OS_EXIT" \
         -ve "$BUILTIN_TYPE" \
-        -ve "$ERROR_VBOX" \
-        -ve "$UNABLE_IMPORT" \
-        -ve "$MAX_RECURSION" \
-        -ve "$EXCEPTHOOK" | \
+        -ve "$INFER_ERRORS" \
+        -ve "$TEST_HACKS" \
+        -ve "$UNABLE_IMPORT" | \
 $AWK '\
 # Strip out any "*** Module name" lines if we dont list any errors for them
 BEGIN { found=0; cur_line="" }
@@ -126,6 +117,32 @@ BEGIN { found=0; cur_line="" }
         print $0
     }
 }'
+
+################
+# pep8 section #
+################
+
+SKIP_PEP8=""
+skip_pep8() {
+    if [ ! -z ${SKIP_PEP8} ] ; then
+        SKIP_PEP8="${SKIP_PEP8},"
+    fi
+    SKIP_PEP8="${SKIP_PEP8}$1"
+}
+
+skip_pep8 "E203"            # Space before : in dictionary defs
+skip_pep8 "E221"            # Multiple spaces before operator (warns
+                            # about column aligning assigments
+skip_pep8 "E241"            # Space after , column alignment nono
+skip_pep8 "E261"            # 2 spaces before inline comment?
+skip_pep8 "E301"            # 1 blank line between methods
+skip_pep8 "E302"            # 2 blank lines between function defs
+skip_pep8 "E303"            # Too many blank lines
+skip_pep8 "E501"            # Line too long
+
+echo "Running pep8"
+pep8 -r --exclude=$IGNOREFILES --ignore $SKIP_PEP8 \
+    virt-manager.py.in virtManager/*.py
 
 cd - > /dev/null
 rm src/_virt-manager

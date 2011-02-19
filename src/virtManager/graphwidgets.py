@@ -16,7 +16,7 @@
 #
 
 import gobject
-import gtk.glade
+import gtk
 import cairo
 
 # For debugging
@@ -78,7 +78,7 @@ def draw_fill(cairo_ct, cell_area, points, taper=False):
     if not len(points):
         return
 
-    last_point = _line_helper(cairo_ct, cell_area, points, for_fill = True)
+    last_point = _line_helper(cairo_ct, cell_area, points, for_fill=True)
     if not last_point:
         # Nothing to draw
         #return
@@ -134,6 +134,10 @@ class CellRendererSparkline(gtk.CellRenderer):
         # flags             : flags that affect rendering
         # flags = gtk.CELL_RENDERER_SELECTED, gtk.CELL_RENDERER_PRELIT,
         #         gtk.CELL_RENDERER_INSENSITIVE or gtk.CELL_RENDERER_SORTED
+        ignore = widget
+        ignore = expose_area
+        ignore = background_area
+        ignore = flags
 
         # Indent of the gray border around the graph
         BORDER_PADDING = 2
@@ -235,6 +239,8 @@ class CellRendererSparkline(gtk.CellRenderer):
         return
 
     def do_get_size(self, widget, cell_area=None):
+        ignore = widget
+
         FIXED_WIDTH = len(self.data_array)
         FIXED_HEIGHT = 15
         xpad = self.get_property("xpad")
@@ -313,6 +319,7 @@ class Sparkline(gtk.DrawingArea):
         # event     : GdkEvent
         # cell_area : GdkRectangle: area normally rendered by cell
         # window            : gtk.gdk.Window (not plain window)
+        ignore = event
 
         # cell_area : GdkRectangle: area normally rendered by cell
         cell_area = widget.allocation

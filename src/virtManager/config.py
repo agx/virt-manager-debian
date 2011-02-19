@@ -17,13 +17,21 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 #
-import gconf
 import os
+import logging
 
-import gtk.gdk
+import gtk
+import gconf
+
 import libvirt
 import virtinst
-import logging
+
+_spice_error = None
+try:
+    import SpiceClientGtk
+    ignore = SpiceClientGtk
+except Exception, _spice_error:
+    logging.debug("Error importing spice: %s" % _spice_error)
 
 from virtManager.keyring import vmmKeyring
 from virtManager.secret import vmmSecret
@@ -46,7 +54,9 @@ DEFAULT_XEN_SAVE_DIR = "/var/lib/xen/dump"
 DEFAULT_VIRT_IMAGE_DIR = "/var/lib/libvirt/images"
 DEFAULT_VIRT_SAVE_DIR = "/var/lib/libvirt"
 
-class vmmConfig:
+running_config = None
+
+class vmmConfig(object):
 
     # GConf directory names for saving last used paths
     CONFIG_DIR_IMAGE = "image"
@@ -85,16 +95,25 @@ class vmmConfig:
         self.appversion = appversion
         self.conf_dir = gconf_dir
         self.conf = gconf.client_get_default()
-        self.conf.add_dir (gconf_dir,
-                           gconf.CLIENT_PRELOAD_NONE)
+        self.conf.add_dir(gconf_dir,
+                          gconf.CLIENT_PRELOAD_NONE)
 
         self.glade_dir = glade_dir
         self.icon_dir = icon_dir
         self.data_dir = data_dir
+
         # We don't create it straight away, since we don't want
         # to block the app pending user authorizaation to access
         # the keyring
         self.keyring = None
+
+        self.default_qemu_user = "root"
+
+        # Use this key to disable certain features not supported on RHEL
+        self.enable_unsupported_rhel_opts = True
+        self.preferred_distros = []
+        self.hv_packages = []
+        self.libvirt_packages = []
 
         self.status_icons = {
             libvirt.VIR_DOMAIN_BLOCKED: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_running.png", 18, 18),
@@ -147,6 +166,15 @@ class vmmConfig:
 
     def get_data_dir(self):
         return self.data_dir
+
+    def get_spice_error(self):
+        return _spice_error and str(_spice_error) or None
+
+    def embeddable_graphics(self):
+        ret = ["vnc"]
+        if not bool(self.get_spice_error()):
+            ret.append("spice")
+        return ret
 
     # Per-VM/Connection/Connection Host Option dealings
     def _perconn_helper(self, uri, pref_func, func_type, value=None):
@@ -288,6 +316,45 @@ class vmmConfig:
         self.conf.notify_add(self.conf_dir + "/vmlist-fields/network_traffic",
                              cb)
 
+    # Check whether we have GTK-VNC that supports configurable grab keys
+    # installed on the system
+    def vnc_grab_keys_supported(self):
+        try:
+            import gtkvnc
+            return hasattr(gtkvnc.Display, "set_grab_keys")
+        except:
+            return False
+
+    # Keys preferences
+    def get_keys_combination(self, syms=False):
+        val = self.conf.get_string(self.conf_dir + "/keys/grab-keys")
+        if syms == True:
+            return val
+
+        # If val is None we return it
+        if val is None:
+            return None
+
+        # We convert keysyms to names
+        keystr = None
+        for k in val.split(','):
+            try:
+                key = int(k)
+            except:
+                key = None
+
+            if key is not None:
+                if keystr is None:
+                    keystr = gtk.gdk.keyval_name(key)
+                else:
+                    keystr = keystr + "+" + gtk.gdk.keyval_name(key)
+
+        return keystr
+
+    def set_keys_combination(self, val):
+        # Val have to be a list of integers
+        val = ','.join(map(str, val))
+        self.conf.set_string(self.conf_dir + "/keys/grab-keys", val)
 
     # Confirmation preferences
     def get_confirm_forcepoweroff(self):
@@ -386,15 +453,16 @@ class vmmConfig:
     def set_console_popup(self, pref):
         self.conf.set_int(self.conf_dir + "/console/popup", pref)
 
-    def on_console_keygrab_changed(self, callback):
-        self.conf.notify_add(self.conf_dir + "/console/keygrab", callback)
-    def get_console_keygrab(self):
-        console_pref = self.conf.get_int(self.conf_dir + "/console/keygrab")
+    def on_console_accels_changed(self, callback):
+        self.conf.notify_add(self.conf_dir + "/console/enable-accels", callback)
+    def get_console_accels(self):
+        console_pref = self.conf.get_bool(self.conf_dir +
+                                          "/console/enable-accels")
         if console_pref == None:
-            console_pref = 0
+            console_pref = False
         return console_pref
-    def set_console_keygrab(self, pref):
-        self.conf.set_int(self.conf_dir + "/console/keygrab", pref)
+    def set_console_accels(self, pref):
+        self.conf.set_bool(self.conf_dir + "/console/enable-accels", pref)
 
     def on_console_scaling_changed(self, callback):
         self.conf.notify_add(self.conf_dir + "/console/scaling", callback)
@@ -405,13 +473,6 @@ class vmmConfig:
         return ret
     def set_console_scaling(self, pref):
         self.conf.set_int(self.conf_dir + "/console/scaling", pref)
-
-    # VNC console pointer grab notification
-    def show_console_grab_notify(self):
-        return self.conf.get_bool(self.conf_dir + "/console/grab-notify")
-    def set_console_grab_notify(self, state):
-        self.conf.set_bool(self.conf_dir + "/console/grab-notify", state)
-
 
     # Show VM details toolbar
     def get_details_show_toolbar(self):
@@ -456,10 +517,10 @@ class vmmConfig:
 
         if urls.count(url) == 0 and len(url) > 0 and not url.isspace():
             # The url isn't already in the list, so add it
-            urls.insert(0,url)
+            urls.insert(0, url)
             length = self.get_url_list_length()
             if len(urls) > length:
-                del urls[len(urls) -1]
+                del urls[len(urls) - 1]
             self.conf.set_list(gconf_path, gconf.VALUE_STRING, urls)
 
     def add_media_url(self, url):
@@ -672,7 +733,9 @@ class vmmConfig:
         # one if the attributes match - which they will since UUID
         # is our unique key
 
-        secret = vmmSecret(self.get_secret_name(vm), password, { "uuid" : vm.get_uuid(), "hvuri": vm.get_connection().get_uri() })
+        secret = vmmSecret(self.get_secret_name(vm), password,
+                           {"uuid" : vm.get_uuid(),
+                            "hvuri": vm.get_connection().get_uri()})
         _id = self.keyring.add_secret(secret)
         if _id != None:
             self.conf.set_int(self.conf_dir + "/console/passwords/" + vm.get_uuid(), _id)

@@ -22,30 +22,38 @@ import gobject
 import virtinst
 import virtinst.util as util
 
+from virtManager.libvirtobject import vmmLibvirtObject
 from virtManager.storagevol import vmmStorageVolume
 
-class vmmStoragePool(gobject.GObject):
-    __gsignals__ = { }
+class vmmStoragePool(vmmLibvirtObject):
+    __gsignals__ = {
+        "refreshed": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE, []),
+    }
 
-    def __init__(self, config, connection, pool, uuid, active):
-        self.__gobject_init__()
-        self.config = config
-        self.connection = connection
+    def __init__(self, connection, pool, uuid, active):
+        vmmLibvirtObject.__init__(self, connection)
+
         self.pool = pool            # Libvirt pool object
         self.uuid = uuid            # String UUID
         self.active = active        # bool indicating if it is running
 
         self._volumes = {}          # UUID->vmmStorageVolume mapping of the
                                     # pools associated volumes
-        self._xml = None            # xml cache
 
         self.refresh()
-        self._update_xml()
-        self.update_volumes()
+
+    # Required class methods
+    def get_name(self):
+        return self.pool.name()
+    def _XMLDesc(self, flags):
+        return self.pool.XMLDesc(flags)
+    def _define(self, xml):
+        return self.get_connection().vmm.storagePoolDefineXML(xml, 0)
+
 
     def set_active(self, state):
         self.active = state
-        self._update_xml()
+        self.refresh_xml()
 
     def is_active(self):
         return self.active
@@ -54,22 +62,16 @@ class vmmStoragePool(gobject.GObject):
         typ = self.get_type()
         return (typ in [virtinst.Storage.StoragePool.TYPE_LOGICAL])
 
-    def get_connection(self):
-        return self.connection
-
-    def get_name(self):
-        return self.pool.name()
-
     def get_uuid(self):
         return self.uuid
 
     def start(self):
         self.pool.create(0)
-        self._update_xml()
+        self.refresh_xml()
 
     def stop(self):
         self.pool.destroy()
-        self._update_xml()
+        self.refresh_xml()
 
     def delete(self, nodelete=True):
         if nodelete:
@@ -77,14 +79,6 @@ class vmmStoragePool(gobject.GObject):
         else:
             self.pool.delete(0)
         del(self.pool)
-
-    def _update_xml(self):
-        self._xml = self.pool.XMLDesc(0)
-
-    def get_xml(self):
-        if self._xml is None:
-            self._update_xml()
-        return self._xml
 
     def set_autostart(self, value):
         self.pool.setAutostart(value)
@@ -120,9 +114,13 @@ class vmmStoragePool(gobject.GObject):
         return self._volumes[uuid]
 
     def refresh(self):
-        if self.active:
-            self.pool.refresh(0)
-            self._update_xml()
+        if not self.active:
+            return
+
+        self.pool.refresh(0)
+        self.refresh_xml()
+        self.update_volumes()
+        self.emit("refreshed")
 
     def update_volumes(self):
         if not self.is_active():
@@ -133,20 +131,19 @@ class vmmStoragePool(gobject.GObject):
         new_vol_list = {}
 
         for volname in vols:
-            if self._volumes.has_key(volname):
+            if volname in self._volumes:
                 new_vol_list[volname] = self._volumes[volname]
             else:
-                new_vol_list[volname] = vmmStorageVolume(self.config,
-                                                         self.connection,
-                                                         self.pool.storageVolLookupByName(volname),
-                                                         volname)
+                new_vol_list[volname] = vmmStorageVolume(self.connection,
+                                    self.pool.storageVolLookupByName(volname),
+                                    volname)
         self._volumes = new_vol_list
 
 
     def _prettyify(self, val):
-        if val > (1024*1024*1024):
-            return "%2.2f GB" % (val/(1024.0*1024.0*1024.0))
+        if val > (1024 * 1024 * 1024):
+            return "%2.2f GB" % (val / (1024.0 * 1024.0 * 1024.0))
         else:
-            return "%2.2f MB" % (val/(1024.0*1024.0))
+            return "%2.2f MB" % (val / (1024.0 * 1024.0))
 
-gobject.type_register(vmmStoragePool)
+vmmLibvirtObject.type_register(vmmStoragePool)

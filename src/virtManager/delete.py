@@ -18,17 +18,17 @@
 # MA 02110-1301 USA.
 #
 
-import gobject
-import gtk.glade
+import gtk
 
-import os, stat
+import os
+import stat
 import traceback
 import logging
 
 import virtinst
 
 from virtManager import util
-from virtManager.error import vmmErrorDialog
+from virtManager.baseclass import vmmGObjectUI
 from virtManager.asyncjob import vmmAsyncJob
 from virtManager.createmeter import vmmCreateMeter
 
@@ -41,26 +41,14 @@ STORAGE_ROW_ICON = 5
 STORAGE_ROW_ICON_SIZE = 6
 STORAGE_ROW_TOOLTIP = 7
 
-class vmmDeleteDialog(gobject.GObject):
+class vmmDeleteDialog(vmmGObjectUI):
     __gsignals__ = {
-        #"vol-created": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE, [])
     }
 
-    def __init__(self, config, vm):
-        self.__gobject_init__()
-        self.window = gtk.glade.XML(config.get_glade_dir() + \
-                                    "/vmm-delete.glade",
-                                    "vmm-delete", domain="virt-manager")
-        self.config = config
+    def __init__(self, vm):
+        vmmGObjectUI.__init__(self, "vmm-delete.glade", "vmm-delete")
         self.vm = vm
         self.conn = vm.connection
-
-        self.topwin = self.window.get_widget("vmm-delete")
-        self.err = vmmErrorDialog(self.topwin,
-                                  0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
-                                  _("Unexpected Error"),
-                                  _("An unexpected error occurred"))
-        self.topwin.hide()
 
         self.window.signal_autoconnect({
             "on_vmm_delete_delete_event" : self.close,
@@ -132,7 +120,7 @@ class vmmDeleteDialog(gobject.GObject):
                     paths.append(row[STORAGE_ROW_PATH])
         return paths
 
-    def finish(self, src):
+    def finish(self, src_ignore):
         devs = self.get_paths_to_delete()
 
         self.topwin.set_sensitive(False)
@@ -143,10 +131,9 @@ class vmmDeleteDialog(gobject.GObject):
         if devs:
             text = title + _(" and selected storage (this may take a while)")
 
-        progWin = vmmAsyncJob(self.config, self._async_delete, [devs],
+        progWin = vmmAsyncJob(self._async_delete, [devs],
                               title=title, text=text)
-        progWin.run()
-        error, details = progWin.get_error()
+        error, details = progWin.run()
 
         self.topwin.set_sensitive(True)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.TOP_LEFT_ARROW))
@@ -158,22 +145,20 @@ class vmmDeleteDialog(gobject.GObject):
         self.conn.tick(noStatsUpdate=True)
 
 
-    def _async_delete(self, paths, asyncjob):
+    def _async_delete(self, asyncjob, paths):
         newconn = None
         storage_errors = []
-        error = None
-        details = None
 
         try:
             # Open a seperate connection to install on since this is async
             logging.debug("Threading off connection to delete vol.")
-            newconn = util.dup_conn(self.config, self.conn)
+            newconn = util.dup_conn(self.conn).vmm
             meter = vmmCreateMeter(asyncjob)
 
             for path in paths:
                 try:
                     logging.debug("Deleting path: %s" % path)
-                    meter.start(text = _("Deleting path '%s'") % path)
+                    meter.start(text=_("Deleting path '%s'") % path)
                     self._async_delete_path(newconn, path, meter)
                 except Exception, e:
                     storage_errors.append((str(e),
@@ -232,10 +217,10 @@ def populate_storage_list(storage_list, vm, conn):
     for disk in vm.get_disk_devices():
         vol = None
 
-        target = disk[1]
-        path = disk[3]
-        ro = disk[6]
-        shared = disk[7]
+        target = disk.target
+        path = disk.path
+        ro = disk.read_only
+        shared = disk.shareable
 
         # There are a few pieces here
         # 1) Can we even delete the storage? If not, make the checkbox
@@ -385,4 +370,4 @@ def do_we_default(conn, vm_name, vol, path, ro, shared):
 
     return (not info, info)
 
-gobject.type_register(vmmDeleteDialog)
+vmmGObjectUI.type_register(vmmDeleteDialog)

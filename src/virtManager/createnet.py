@@ -20,8 +20,6 @@
 
 import gobject
 import gtk
-import gtk.gdk
-import gtk.glade
 import logging
 import re
 import traceback
@@ -29,7 +27,7 @@ import traceback
 import virtManager.util as util
 from virtManager.IPy import IP
 from virtManager.network import vmmNetwork
-from virtManager.error import vmmErrorDialog
+from virtManager.baseclass import vmmGObjectUI
 
 PAGE_INTRO = 0
 PAGE_NAME = 1
@@ -39,22 +37,15 @@ PAGE_FORWARDING = 4
 PAGE_SUMMARY = 5
 
 
-class vmmCreateNetwork(gobject.GObject):
+class vmmCreateNetwork(vmmGObjectUI):
     __gsignals__ = {
         "action-show-help": (gobject.SIGNAL_RUN_FIRST,
                                 gobject.TYPE_NONE, [str]),
         }
-    def __init__(self, config, conn):
-        self.__gobject_init__()
-        self.config = config
+    def __init__(self, conn):
+        vmmGObjectUI.__init__(self, "vmm-create-net.glade", "vmm-create-net")
         self.conn = conn
-        self.window = gtk.glade.XML(config.get_glade_dir() + "/vmm-create-net.glade", "vmm-create-net", domain="virt-manager")
-        self.topwin = self.window.get_widget("vmm-create-net")
-        self.err = vmmErrorDialog(self.topwin,
-                                  0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
-                                  _("Unexpected Error"),
-                                  _("An unexpected error occurred"))
-        self.topwin.hide()
+
         self.window.signal_autoconnect({
             "on_create_pages_switch_page" : self.page_changed,
             "on_create_cancel_clicked" : self.close,
@@ -90,9 +81,9 @@ class vmmCreateNetwork(gobject.GObject):
         notebook.set_show_tabs(False)
 
         black = gtk.gdk.color_parse("#000")
-        for num in range(PAGE_SUMMARY+1):
+        for num in range(PAGE_SUMMARY + 1):
             name = "page" + str(num) + "-title"
-            self.window.get_widget(name).modify_bg(gtk.STATE_NORMAL,black)
+            self.window.get_widget(name).modify_bg(gtk.STATE_NORMAL, black)
 
         fw_list = self.window.get_widget("net-forward")
         # [ label, dev name ]
@@ -160,6 +151,8 @@ class vmmCreateNetwork(gobject.GObject):
         red = gtk.gdk.color_parse("#ffc0c0")
         black = gtk.gdk.color_parse("#000000")
         src.modify_text(gtk.STATE_NORMAL, black)
+
+        # No IP specified or invalid IP
         if ip is None or ip.version() != 4:
             src.modify_base(gtk.STATE_NORMAL, red)
             self.window.get_widget("net-info-netmask").set_text("")
@@ -167,26 +160,32 @@ class vmmCreateNetwork(gobject.GObject):
             self.window.get_widget("net-info-gateway").set_text("")
             self.window.get_widget("net-info-size").set_text("")
             self.window.get_widget("net-info-type").set_text("")
+            return
+
+        # We've got a valid IP
+        if ip.len() < 16 or ip.iptype() != "PRIVATE":
+            src.modify_base(gtk.STATE_NORMAL, red)
         else:
-            if ip.len() < 16 or ip.iptype() != "PRIVATE":
-                src.modify_base(gtk.STATE_NORMAL, red)
-            else:
-                src.modify_base(gtk.STATE_NORMAL, green)
-            self.window.get_widget("net-info-netmask").set_text(str(ip.netmask()))
-            self.window.get_widget("net-info-broadcast").set_text(str(ip.broadcast()))
-            if ip.len() <= 1:
-                self.window.get_widget("net-info-gateway").set_text("")
-            else:
-                self.window.get_widget("net-info-gateway").set_text(str(ip[1]))
-            self.window.get_widget("net-info-size").set_text(_("%d addresses") % (ip.len()))
-            if ip.iptype() == "PUBLIC":
-                self.window.get_widget("net-info-type").set_text(_("Public"))
-            elif ip.iptype() == "PRIVATE":
-                self.window.get_widget("net-info-type").set_text(_("Private"))
-            elif ip.iptype() == "RESERVED":
-                self.window.get_widget("net-info-type").set_text(_("Reserved"))
-            else:
-                self.window.get_widget("net-info-type").set_text(_("Other"))
+            src.modify_base(gtk.STATE_NORMAL, green)
+        self.window.get_widget("net-info-netmask").set_text(str(ip.netmask()))
+        self.window.get_widget("net-info-broadcast").set_text(
+                                                        str(ip.broadcast()))
+
+        if ip.len() <= 1:
+            self.window.get_widget("net-info-gateway").set_text("")
+        else:
+            self.window.get_widget("net-info-gateway").set_text(str(ip[1]))
+        self.window.get_widget("net-info-size").set_text(_("%d addresses") %
+                                                         (ip.len()))
+
+        if ip.iptype() == "PUBLIC":
+            self.window.get_widget("net-info-type").set_text(_("Public"))
+        elif ip.iptype() == "PRIVATE":
+            self.window.get_widget("net-info-type").set_text(_("Private"))
+        elif ip.iptype() == "RESERVED":
+            self.window.get_widget("net-info-type").set_text(_("Reserved"))
+        else:
+            self.window.get_widget("net-info-type").set_text(_("Other"))
 
     def change_dhcp_enable(self, src):
         val = src.get_active()
@@ -213,7 +212,7 @@ class vmmCreateNetwork(gobject.GObject):
             green = gtk.gdk.color_parse("#c0ffc0")
             src.modify_base(gtk.STATE_NORMAL, green)
 
-    def change_forward_type(self, src):
+    def change_forward_type(self, src_ignore):
         skip_fwd = self.window.get_widget("net-forward-none").get_active()
 
         self.window.get_widget("net-forward-mode").set_sensitive(not skip_fwd)
@@ -256,7 +255,7 @@ class vmmCreateNetwork(gobject.GObject):
     def get_config_dhcp_enable(self):
         return self.window.get_widget("net-dhcp-enable").get_active()
 
-    def page_changed(self, notebook, page, page_number):
+    def page_changed(self, notebook_ignore, page_ignore, page_number):
         # would you like some spaghetti with your salad, sir?
 
         if page_number == PAGE_INTRO:
@@ -269,7 +268,7 @@ class vmmCreateNetwork(gobject.GObject):
         elif page_number == PAGE_DHCP:
             ip = self.get_config_ip4()
             start = int(ip.len() / 2)
-            end = ip.len()-2
+            end = ip.len() - 2
             if self.window.get_widget("net-dhcp-start").get_text() == "":
                 self.window.get_widget("net-dhcp-start").set_text(str(ip[start]))
             if self.window.get_widget("net-dhcp-end").get_text() == "":
@@ -289,14 +288,17 @@ class vmmCreateNetwork(gobject.GObject):
                 end = self.get_config_dhcp_end()
                 self.window.get_widget("summary-dhcp-start").set_text(str(start))
                 self.window.get_widget("summary-dhcp-end").set_text(str(end))
-                self.window.get_widget("label-dhcp-start").set_text( _("Start address:") )
+                self.window.get_widget("label-dhcp-start").set_text(
+                                                        _("Start address:"))
                 self.window.get_widget("label-dhcp-start").show()
                 self.window.get_widget("label-dhcp-end").show()
                 self.window.get_widget("summary-dhcp-start").show()
                 self.window.get_widget("summary-dhcp-end").show()
             else:
-                self.window.get_widget("label-dhcp-start").set_text( _("Status:") )
-                self.window.get_widget("summary-dhcp-start").set_text( _("Disabled") )
+                self.window.get_widget("label-dhcp-start").set_text(
+                                                                _("Status:"))
+                self.window.get_widget("summary-dhcp-start").set_text(
+                                                                _("Disabled"))
                 self.window.get_widget("label-dhcp-end").hide()
                 self.window.get_widget("summary-dhcp-end").hide()
 
@@ -309,7 +311,7 @@ class vmmCreateNetwork(gobject.GObject):
             self.window.get_widget("create-finish").show()
             self.window.get_widget("create-finish").grab_focus()
 
-    def close(self, ignore1=None,ignore2=None):
+    def close(self, ignore1=None, ignore2=None):
         self.topwin.hide()
         return 1
 
@@ -389,18 +391,19 @@ class vmmCreateNetwork(gobject.GObject):
             ip = self.get_config_ip4()
             start = self.get_config_dhcp_start()
             end = self.get_config_dhcp_end()
+            enabled = self.window.get_widget("net-dhcp-enable").get_active()
 
-            if start is None:
+            if enabled and start is None:
                 return self.err.val_err(_("Invalid DHCP Address"), \
                                         _("The DHCP start address could not be understood"))
-            if end is None:
+            if enabled and end is None:
                 return self.err.val_err(_("Invalid DHCP Address"), \
                                         _("The DHCP end address could not be understood"))
 
-            if not ip.overlaps(start):
+            if enabled and not ip.overlaps(start):
                 return self.err.val_err(_("Invalid DHCP Address"), \
                                         _("The DHCP start address is not with the network %s") % (str(ip)))
-            if not ip.overlaps(end):
+            if enabled and not ip.overlaps(end):
                 return self.err.val_err(_("Invalid DHCP Address"), \
                                         _("The DHCP end address is not with the network %s") % (str(ip)))
         elif page_num == PAGE_FORWARDING:
@@ -414,7 +417,7 @@ class vmmCreateNetwork(gobject.GObject):
         self.window.get_widget("create-back").set_sensitive(True)
         return True
 
-    def show_help(self, src):
+    def show_help(self, src_ignore):
         # help to show depends on the notebook page, yahoo
         page = self.window.get_widget("create-pages").get_current_page()
         if page == PAGE_INTRO:
@@ -430,3 +433,4 @@ class vmmCreateNetwork(gobject.GObject):
         elif page == PAGE_SUMMARY:
             self.emit("action-show-help", "virt-manager-create-net-sumary")
 
+vmmGObjectUI.type_register(vmmCreateNetwork)

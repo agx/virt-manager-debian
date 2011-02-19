@@ -64,22 +64,24 @@ class vmmSerialConsole(gtk.HBox):
 
         self.connect("realize", self.handle_realize)
         self.connect("unrealize", self.handle_unrealize)
+        self.vm.connect("config-changed", self.update_tty_path)
         self.vm.connect("status-changed", self.vm_status_changed)
+        self.update_tty_path(self.vm)
 
     def handle_realize(self, ignore=None):
         self.opentty()
 
-    def handle_unrealize(self, src=None, ignore=None):
+    def handle_unrealize(self, src_ignore=None, ignore=None):
         self.closetty()
 
-    def vm_status_changed(self, src, status, ignore):
-        if status in [ libvirt.VIR_DOMAIN_RUNNING ]:
+    def vm_status_changed(self, src_ignore, oldstatus_ignore, status):
+        if status in [libvirt.VIR_DOMAIN_RUNNING]:
             self.opentty()
         else:
             self.closetty()
 
-    def get_tty_path(self):
-        serials = self.vm.get_serial_devs()
+    def update_tty_path(self, vm):
+        serials = vm.get_serial_devs()
         for s in serials:
             port = s[3]
             path = s[2]
@@ -87,25 +89,27 @@ class vmmSerialConsole(gtk.HBox):
                 if path != self.ttypath:
                     logging.debug("Serial console '%s' path changed to %s."
                                    % (self.target_port, path))
+                    self.ttypath = path
+                    return
 
-                return path
-
-        logging.debug("No serial devices found for serial console '%s'." %
+        logging.debug("No devices found for serial target port '%s'." %
                       self.target_port)
-        return None
+        self.ttypath = None
 
     def opentty(self):
         if self.ptyio != None:
             self.closetty()
 
-        self.ttypath = self.get_tty_path()
         ipty = self.ttypath
-
+        logging.debug("Opening serial tty path: %s" % self.ttypath)
         if ipty == None:
             return
+
         self.ptyio = pty.slave_open(ipty)
         fcntl.fcntl(self.ptyio, fcntl.F_SETFL, os.O_NONBLOCK)
-        self.ptysrc = gobject.io_add_watch(self.ptyio, gobject.IO_IN | gobject.IO_ERR | gobject.IO_HUP, self.display_data)
+        self.ptysrc = gobject.io_add_watch(self.ptyio,
+                            gobject.IO_IN | gobject.IO_ERR | gobject.IO_HUP,
+                            self.display_data)
 
         # Save term settings & set to raw mode
         self.ptytermios = termios.tcgetattr(self.ptyio)
@@ -126,11 +130,11 @@ class vmmSerialConsole(gtk.HBox):
         self.ptysrc = None
         self.ptytermios = None
 
-    def send_data(self, src, text, length):
+    def send_data(self, src_ignore, text, length_ignore):
         if self.ptyio != None:
             os.write(self.ptyio, text)
 
-    def display_data(self, src, cond):
+    def display_data(self, src_ignore, cond):
         if cond == gobject.IO_IN:
             data = os.read(self.ptyio, 1024)
             self.terminal.feed(data, len(data))
@@ -138,4 +142,3 @@ class vmmSerialConsole(gtk.HBox):
         else:
             self.closetty()
             return False
-

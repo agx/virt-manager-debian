@@ -20,9 +20,7 @@
 
 import gobject
 import gtk
-import gtk.glade
 
-import sys
 import time
 import traceback
 import threading
@@ -33,7 +31,7 @@ import virtinst
 import virtManager.uihelpers as uihelpers
 from virtManager import util
 from virtManager.mediadev import MEDIA_CDROM
-from virtManager.error import vmmErrorDialog
+from virtManager.baseclass import vmmGObjectUI
 from virtManager.asyncjob import vmmAsyncJob
 from virtManager.createmeter import vmmCreateMeter
 from virtManager.storagebrowse import vmmStorageBrowser
@@ -57,42 +55,37 @@ INSTALL_PAGE_PXE = 2
 INSTALL_PAGE_IMPORT = 3
 
 
-class vmmCreate(gobject.GObject):
+class vmmCreate(vmmGObjectUI):
     __gsignals__ = {
         "action-show-console": (gobject.SIGNAL_RUN_FIRST,
-                                gobject.TYPE_NONE, (str,str)),
+                                gobject.TYPE_NONE, (str, str)),
         "action-show-terminal": (gobject.SIGNAL_RUN_FIRST,
-                                 gobject.TYPE_NONE, (str,str)),
+                                 gobject.TYPE_NONE, (str, str)),
         "action-show-help": (gobject.SIGNAL_RUN_FIRST,
                              gobject.TYPE_NONE, [str]),
     }
 
-    def __init__(self, config, engine):
-        self.__gobject_init__()
-        self.window = gtk.glade.XML(config.get_glade_dir() + \
-                                    "/vmm-create.glade",
-                                    "vmm-create", domain="virt-manager")
-        self.config = config
+    def __init__(self, engine):
+        vmmGObjectUI.__init__(self, "vmm-create.glade", "vmm-create")
         self.engine = engine
 
         self.conn = None
         self.caps = None
         self.capsguest = None
         self.capsdomain = None
+
         self.guest = None
+        self.disk = None
+        self.nic = None
+
         self.storage_browser = None
         self.conn_signals = []
 
-        self.topwin = self.window.get_widget("vmm-create")
-        self.err = vmmErrorDialog(self.topwin,
-                                  0, gtk.MESSAGE_ERROR, gtk.BUTTONS_CLOSE,
-                                  _("Unexpected Error"),
-                                  _("An unexpected error occurred"))
-
         # Distro detection state variables
-        self.detectThread = None
         self.detectedDistro = None
-        self.detectThreadLock = threading.Lock()
+        self.detectThreadEvent = threading.Event()
+        self.detectThreadEvent.set()
+        self.mediaDetected = False
 
         # 'Guest' class from the previous failed install
         self.failed_guest = None
@@ -134,6 +127,7 @@ class vmmCreate(gobject.GObject):
             "on_config_storage_browse_clicked": self.browse_storage,
             "on_config_storage_select_toggled": self.toggle_storage_select,
 
+            "on_config_netdev_changed": self.netdev_changed,
             "on_config_set_macaddr_toggled": self.toggle_macaddr,
 
             "on_config_hv_changed": self.hv_changed,
@@ -234,14 +228,16 @@ class vmmCreate(gobject.GObject):
         iso_model = gtk.ListStore(str)
         iso_list.set_model(iso_model)
         iso_list.set_text_column(0)
-        self.window.get_widget("install-local-box").child.connect("activate", self.detect_media_os)
+        self.window.get_widget("install-local-box").child.connect("activate",
+                                                    self.detect_media_os)
 
         # Lists for the install urls
         media_url_list = self.window.get_widget("install-url-box")
         media_url_model = gtk.ListStore(str)
         media_url_list.set_model(media_url_model)
         media_url_list.set_text_column(0)
-        self.window.get_widget("install-url-box").child.connect("activate", self.detect_media_os)
+        self.window.get_widget("install-url-box").child.connect("activate",
+                                                    self.detect_media_os)
 
         ks_url_list = self.window.get_widget("install-ks-box")
         ks_url_model = gtk.ListStore(str)
@@ -296,6 +292,10 @@ class vmmCreate(gobject.GObject):
     def reset_state(self, urihint=None):
 
         self.failed_guest = None
+        self.guest = None
+        self.disk = None
+        self.nic = None
+
         self.window.get_widget("create-pages").set_current_page(PAGE_NAME)
         self.page_changed(None, None, PAGE_NAME)
         self.window.get_widget("startup-error-box").hide()
@@ -348,10 +348,11 @@ class vmmCreate(gobject.GObject):
 
         # Storage
         label_widget = self.window.get_widget("phys-hd-label")
+        label_widget.set_markup("")
         if not self.host_storage_timer:
             self.host_storage_timer = util.safe_timeout_add(3 * 1000,
                                                     uihelpers.host_space_tick,
-                                                    self.conn, self.config,
+                                                    self.conn,
                                                     label_widget)
         self.window.get_widget("enable-storage").set_active(True)
         self.window.get_widget("config-storage-create").set_active(True)
@@ -361,6 +362,13 @@ class vmmCreate(gobject.GObject):
 
         # Final page
         self.window.get_widget("summary-customize").set_active(False)
+        net_expander    = self.window.get_widget("config-advanced-expander")
+        net_warn_icon   = self.window.get_widget("config-netdev-warn-icon")
+        net_warn_box    = self.window.get_widget("config-netdev-warn-box")
+        net_expander.hide()
+        net_warn_icon.hide()
+        net_warn_box.hide()
+        net_expander.set_expanded(False)
 
 
     def set_conn_state(self):
@@ -377,13 +385,14 @@ class vmmCreate(gobject.GObject):
 
             if self.conn.is_qemu():
                 error += "\n\n"
-                error += _("This usually means that qemu or kvm is not\n"
-                           "installed on your machine. Please ensure they\n"
-                           "are installed as intended.")
+                error += _("This usually means that QEMU or KVM is not\n"
+                           "installed on your machine, or the KVM kernel "
+                           "modules are not loaded.")
             return self.startup_error(error)
 
         # A bit out of order, but populate arch + hv lists so we can
         # determine a default
+        self.conn.invalidate_caps()
         self.caps = self.conn.get_capabilities()
         self.change_caps()
         self.populate_hv()
@@ -485,11 +494,11 @@ class vmmCreate(gobject.GObject):
 
         # Memory
         memory = int(self.conn.host_memory_size())
-        mem_label = _("Up to %(maxmem)s available on the host") % {'maxmem': \
-                    self.pretty_memory(memory) }
+        mem_label = (_("Up to %(maxmem)s available on the host") %
+                     {'maxmem': self.pretty_memory(memory)})
         mem_label = ("<span size='small' color='#484848'>%s</span>" %
                      mem_label)
-        self.window.get_widget("config-mem").set_range(50, memory/1024)
+        self.window.get_widget("config-mem").set_range(50, memory / 1024)
         self.window.get_widget("phys-mem-label").set_markup(mem_label)
 
         # CPU
@@ -509,8 +518,8 @@ class vmmCreate(gobject.GObject):
         cmax = int(cmax)
         if cmax <= 0:
             cmax = 1
-        cpu_label = _("Up to %(numcpus)d available") % { 'numcpus': \
-                                                            int(phys_cpus)}
+        cpu_label = (_("Up to %(numcpus)d available") %
+                     {'numcpus': int(phys_cpus)})
         cpu_label = ("<span size='small' color='#484848'>%s</span>" %
                      cpu_label)
         self.window.get_widget("config-cpus").set_range(1, cmax)
@@ -531,25 +540,33 @@ class vmmCreate(gobject.GObject):
         util.tooltip_wrapper(storage_area, storage_tooltip)
 
         # Networking
-        net_expander = self.window.get_widget("config-advanced-expander")
-        net_expander.hide()
-        net_list = self.window.get_widget("config-netdev")
-        net_warn = self.window.get_widget("config-netdev-warn")
+        net_list        = self.window.get_widget("config-netdev")
+
         do_warn = uihelpers.populate_network_list(net_list, self.conn)
-
-        if self.conn.netdev_error or do_warn:
-            net_warn.show()
-            net_expander.set_expanded(True)
-
-            if self.conn.netdev_error:
-                util.tooltip_wrapper(net_warn, self.conn.netdev_error)
-        else:
-            net_warn.hide()
-            net_expander.set_expanded(False)
+        self.set_net_warn(self.conn.netdev_error or do_warn,
+                          self.conn.netdev_error, True)
 
         newmac = uihelpers.generate_macaddr(self.conn)
         self.window.get_widget("config-set-macaddr").set_active(bool(newmac))
         self.window.get_widget("config-macaddr").set_text(newmac)
+
+    def set_net_warn(self, show_warn, msg, do_tooltip):
+        net_warn_icon   = self.window.get_widget("config-netdev-warn-icon")
+        net_warn_box    = self.window.get_widget("config-netdev-warn-box")
+        net_warn_label  = self.window.get_widget("config-netdev-warn-label")
+        net_expander    = self.window.get_widget("config-advanced-expander")
+
+        if show_warn:
+            net_expander.set_expanded(True)
+
+        if do_tooltip:
+            net_warn_icon.set_property("visible", show_warn)
+            if msg:
+                util.tooltip_wrapper(net_warn_icon, show_warn and msg or "")
+        else:
+            net_warn_box.set_property("visible", show_warn)
+            markup = show_warn and ("<small>%s</small>" % msg) or ""
+            net_warn_label.set_markup(markup)
 
     def populate_hv(self):
         hv_list = self.window.get_widget("config-hv")
@@ -564,6 +581,7 @@ class vmmCreate(gobject.GObject):
             for dom in guest.domains:
                 domtype = dom.hypervisor_type
                 label = util.pretty_hv(gtype, domtype)
+                sensitive = True
 
                 # Don't add multiple rows for each arch
                 for m in model:
@@ -581,10 +599,11 @@ class vmmCreate(gobject.GObject):
                 if gtype == "xen":
                     if (instmethod == INSTALL_PAGE_PXE or
                         instmethod == INSTALL_PAGE_ISO):
+                        sensitive = False
                         tooltip = _("Only URL or import installs are supported "
                                     "for paravirt.")
 
-                model.append([label, gtype, domtype, not bool(tooltip)])
+                model.append([label, gtype, domtype, sensitive])
 
         hv_info = self.window.get_widget("config-hv-info")
         if tooltip:
@@ -613,7 +632,7 @@ class vmmCreate(gobject.GObject):
 
         arch_list.set_active(default)
 
-    def populate_conn_list(self, urihint = None):
+    def populate_conn_list(self, urihint=None):
         conn_list = self.window.get_widget("create-conn")
         model = conn_list.get_model()
         model.clear()
@@ -670,7 +689,9 @@ class vmmCreate(gobject.GObject):
             model.append([OS_GENERIC, _("Generic")])
             return
 
-        variants = virtinst.FullVirtGuest.list_os_variants(_type)
+        preferred = self.config.preferred_distros
+        variants = virtinst.FullVirtGuest.list_os_variants(_type,
+                                                           preferred)
         for variant in variants:
             model.append([variant,
                           virtinst.FullVirtGuest.get_os_variant_label(_type,
@@ -696,8 +717,8 @@ class vmmCreate(gobject.GObject):
          newdom) = virtinst.CapabilitiesParser.guest_lookup(
                                                         conn=self.conn.vmm,
                                                         caps=self.caps,
-                                                        os_type = gtype,
-                                                        type = dtype,
+                                                        os_type=gtype,
+                                                        type=dtype,
                                                         accelerated=True,
                                                         arch=arch)
 
@@ -759,6 +780,11 @@ class vmmCreate(gobject.GObject):
     # get_* methods
     def get_config_name(self):
         return self.window.get_widget("create-vm-name").get_text()
+
+    def is_install_page(self):
+        notebook = self.window.get_widget("create-pages")
+        curpage = notebook.get_current_page()
+        return curpage == PAGE_INSTALL
 
     def get_config_install_page(self):
         if self.window.get_widget("method-local").get_active():
@@ -830,10 +856,12 @@ class vmmCreate(gobject.GObject):
             if len(self.failed_guest.disks) > 0:
                 return self.failed_guest.disks[0].path
 
-        return util.get_default_path(self.conn, self.config, name)
+        return util.get_default_path(self.conn, name)
 
     def is_default_storage(self):
-        return self.window.get_widget("config-storage-create").get_active()
+        usedef = self.window.get_widget("config-storage-create").get_active()
+        isimport = (self.get_config_install_page() == INSTALL_PAGE_IMPORT)
+        return usedef and not isimport
 
     def get_storage_info(self):
         path = None
@@ -893,6 +921,27 @@ class vmmCreate(gobject.GObject):
 
         self.set_conn(conn)
 
+    def netdev_changed(self, ignore):
+        self.check_network_selection()
+
+    def check_network_selection(self):
+        src = self.window.get_widget("config-netdev")
+        idx = src.get_active()
+        show_pxe_warn = True
+
+        if not idx < 0:
+            row = src.get_model()[idx]
+            ntype = row[0]
+            obj = row[6]
+
+            show_pxe_warn = (
+                (ntype == virtinst.VirtualNetworkInterface.TYPE_USER or
+                 (ntype == virtinst.VirtualNetworkInterface.TYPE_VIRTUAL and
+                  not obj.can_pxe())))
+
+        self.set_net_warn(show_pxe_warn,
+                          _("Network selection does not support PXE"), False)
+
     def hv_changed(self, src):
         idx = src.get_active()
         if idx < 0:
@@ -916,14 +965,21 @@ class vmmCreate(gobject.GObject):
     def url_box_changed(self, ignore):
         # If the url_entry has focus, don't fire detect_media_os, it means
         # the user is probably typing
-        if self.window.get_widget("install-url-box").child.flags() & gtk.HAS_FOCUS:
+        self.mediaDetected = False
+        if (self.window.get_widget("install-url-box").child.flags() &
+            gtk.HAS_FOCUS):
             return
         self.detect_media_os()
 
-    def detect_media_os(self, ignore1=None):
-        curpage = self.window.get_widget("create-pages").get_current_page()
-        if self.is_detect_active() and curpage == PAGE_INSTALL:
-            self.detect_os_distro()
+    def should_detect_media(self):
+        return (self.is_detect_active() and not self.mediaDetected)
+
+    def detect_media_os(self, ignore1=None, forward=False):
+        if not self.should_detect_media():
+            return
+        if not self.is_install_page():
+            return
+        self.start_detect_thread(forward=forward)
 
     def toggle_detect_os(self, src):
         dodetect = src.get_active()
@@ -933,6 +989,7 @@ class vmmCreate(gobject.GObject):
             self.window.get_widget("install-os-version-label").show()
             self.window.get_widget("install-os-type").hide()
             self.window.get_widget("install-os-version").hide()
+            self.mediaDetected = False
             self.detect_media_os() # Run detection
         else:
             self.window.get_widget("install-os-type-label").hide()
@@ -1031,19 +1088,29 @@ class vmmCreate(gobject.GObject):
 
         instnotebook.set_current_page(instpage)
 
-    def back(self, src):
-        notebook = self.window.get_widget("create-pages")
-        curpage = notebook.get_current_page()
-
-        if curpage == PAGE_INSTALL:
-            self.reset_guest_type()
-
-        notebook.set_current_page(curpage - 1)
-
-    def forward(self, ignore):
+    def back(self, src_ignore):
         notebook = self.window.get_widget("create-pages")
         curpage = notebook.get_current_page()
         is_import = (self.get_config_install_page() == INSTALL_PAGE_IMPORT)
+        next_page = curpage - 1
+
+        if curpage == PAGE_INSTALL:
+            self.reset_guest_type()
+        elif curpage == PAGE_FINISH and is_import:
+            # Skip over storage page
+            next_page -= 1
+
+        notebook.set_current_page(next_page)
+
+    def forward(self, src_ignore=None):
+        notebook = self.window.get_widget("create-pages")
+        curpage = notebook.get_current_page()
+        is_import = (self.get_config_install_page() == INSTALL_PAGE_IMPORT)
+
+        if curpage == PAGE_INSTALL and self.should_detect_media():
+            # Make sure we have detected the OS before validating the page
+            self.detect_media_os(forward=True)
+            return
 
         if self.validate(notebook.get_current_page()) != True:
             return
@@ -1066,7 +1133,7 @@ class vmmCreate(gobject.GObject):
         # Update page number
         page_lbl = ("<span color='#59B0E2'>%s</span>" %
                     _("Step %(current_page)d of %(max_page)d") %
-                    {'current_page': pagenum+1, 'max_page': PAGE_FINISH+1})
+                    {'current_page': pagenum + 1, 'max_page': PAGE_FINISH + 1})
 
         self.window.get_widget("config-pagenum").set_markup(page_lbl)
 
@@ -1078,27 +1145,35 @@ class vmmCreate(gobject.GObject):
         if pagenum == PAGE_INSTALL:
             self.detect_media_os()
 
-        if pagenum == PAGE_FINISH:
-            # This is hidden in reset_state, so that it doesn't distort
-            # the size of the wizard if it is expanded by default due to
-            # error
-            self.window.get_widget("config-advanced-expander").show()
-
-            self.window.get_widget("create-forward").hide()
-            self.window.get_widget("create-finish").show()
-            self.window.get_widget("create-finish").grab_focus()
-            self.populate_summary()
-
-            # Repopulate the HV list, so we can make install method relevant
-            # changes
-            self.populate_hv()
-        else:
+        if pagenum != PAGE_FINISH:
             self.window.get_widget("create-forward").show()
             self.window.get_widget("create-finish").hide()
+            return
+
+        # PAGE_FINISH
+        # This is hidden in reset_state, so that it doesn't distort
+        # the size of the wizard if it is expanded by default due to
+        # error
+        self.window.get_widget("config-advanced-expander").show()
+
+        self.window.get_widget("create-forward").hide()
+        self.window.get_widget("create-finish").show()
+        self.window.get_widget("create-finish").grab_focus()
+        self.populate_summary()
+
+        # Repopulate the HV list, so we can make install method relevant
+        # changes
+        self.populate_hv()
+
+        # Make sure the networking selection takes into account
+        # the install method, so we can warn if trying to PXE boot with
+        # insufficient network option
+        self.check_network_selection()
+
 
     def build_guest(self, installer, name):
         guest = installer.guest_from_installer()
-        guest.name = self.get_config_name()
+        guest.name = name
 
         # Generate UUID
         try:
@@ -1110,7 +1185,9 @@ class vmmCreate(gobject.GObject):
 
         # Set up graphics device
         try:
-            guest._graphics_dev = virtinst.VirtualGraphics(type=virtinst.VirtualGraphics.TYPE_VNC)
+            guest.add_device(virtinst.VirtualGraphics(
+                                        type=virtinst.VirtualGraphics.TYPE_VNC,
+                                        conn=guest.conn))
             guest.add_device(virtinst.VirtualVideoDevice(conn=guest.conn))
         except Exception, e:
             self.err.show_err(_("Error setting up graphics device:") + str(e),
@@ -1121,7 +1198,7 @@ class vmmCreate(gobject.GObject):
         guest.sound_devs = []
         try:
             if self.get_config_sound():
-                guest.sound_devs.append(virtinst.VirtualAudio())
+                guest.sound_devs.append(virtinst.VirtualAudio(conn=guest.conn))
         except Exception, e:
             self.err.show_err(_("Error setting up sound device:") + str(e),
                               "".join(traceback.format_exc()))
@@ -1138,28 +1215,8 @@ class vmmCreate(gobject.GObject):
             elif pagenum == PAGE_MEM:
                 return self.validate_mem_page()
             elif pagenum == PAGE_STORAGE:
-                # If the user selects 'no storage' and they used cd/iso install
-                # media, we want to go back and change the installer to
-                # LiveCDInstaller, which means re-validate everything
-                if not self.validate_name_page():
-                    return False
-                elif not self.validate_install_page():
-                    return False
-                elif not self.validate_mem_page():
-                    return False
                 return self.validate_storage_page(revalidate=False)
-
             elif pagenum == PAGE_FINISH:
-                # Since we allow the user to change to change HV type + arch
-                # on the last page, we need to revalidate everything
-                if not self.validate_name_page():
-                    return False
-                elif not self.validate_install_page():
-                    return False
-                elif not self.validate_mem_page():
-                    return False
-                elif not self.validate_storage_page():
-                    return False
                 return self.validate_final_page()
 
         except Exception, e:
@@ -1191,12 +1248,7 @@ class vmmCreate(gobject.GObject):
 
 
         if instmethod == INSTALL_PAGE_ISO:
-            if self.window.get_widget("enable-storage").get_active():
-                instclass = virtinst.DistroInstaller
-            else:
-                # CD/ISO install and no disks implies LiveCD
-                instclass = virtinst.LiveCDInstaller
-
+            instclass = virtinst.DistroInstaller
             media = self.get_config_local_media()
 
             if not media:
@@ -1279,7 +1331,7 @@ class vmmCreate(gobject.GObject):
                 path = None
 
             if path:
-                uihelpers.check_path_search_for_qemu(self.topwin, self.config,
+                uihelpers.check_path_search_for_qemu(self.topwin,
                                                      self.conn, path)
 
 
@@ -1311,12 +1363,25 @@ class vmmCreate(gobject.GObject):
 
     def validate_storage_page(self, revalidate=True):
         use_storage = self.window.get_widget("enable-storage").get_active()
+        instcd = self.get_config_install_page() == INSTALL_PAGE_ISO
 
-        self.guest.disks = []
+        # CD/ISO install and no disks implies LiveCD
+        if instcd:
+            self.guest.installer.livecd = not use_storage
+
+        if self.disk and self.disk in self.guest.get_devices("disk"):
+            self.guest.remove_device(self.disk)
+        self.disk = None
 
         # Validate storage
         if not use_storage:
             return True
+
+        # Make sure default pool is running
+        if self.is_default_storage():
+            ret = uihelpers.check_default_pool_active(self.topwin, self.conn)
+            if not ret:
+                return False
 
         try:
             # This can error out
@@ -1325,7 +1390,7 @@ class vmmCreate(gobject.GObject):
             if self.is_default_storage() and not revalidate:
                 # See if the ideal disk path (/default/pool/vmname.img)
                 # exists, and if unused, prompt the use for using it
-                ideal = util.get_ideal_path(self.conn, self.config,
+                ideal = util.get_ideal_path(self.conn,
                                             self.guest.name)
                 do_exist = False
                 ret = True
@@ -1351,12 +1416,11 @@ class vmmCreate(gobject.GObject):
             if not diskpath:
                 return self.verr(_("A storage path must be specified."))
 
-            disk = virtinst.VirtualDisk(conn = self.conn.vmm,
-                                        path = diskpath,
-                                        size = disksize,
-                                        sparse = sparse)
+            disk = virtinst.VirtualDisk(conn=self.conn.vmm,
+                                        path=diskpath,
+                                        size=disksize,
+                                        sparse=sparse)
 
-            self.guest.disks.append(disk)
         except Exception, e:
             return self.verr(_("Storage parameter error."), str(e))
 
@@ -1376,15 +1440,21 @@ class vmmCreate(gobject.GObject):
                 return False
 
         if not revalidate:
-            uihelpers.check_path_search_for_qemu(self.topwin, self.config,
+            uihelpers.check_path_search_for_qemu(self.topwin,
                                                  self.conn, disk.path)
+
+        self.disk = disk
+        self.guest.add_device(self.disk)
 
         return True
 
     def validate_final_page(self):
-        nettype, devname, macaddr = self.get_config_network_info()
+        # HV + Arch selection
+        self.guest.installer.type = self.capsdomain.hypervisor_type
+        self.guest.installer.os_type = self.capsguest.os_type
+        self.guest.installer.arch = self.capsguest.arch
 
-        self.guest.nics = []
+        nettype, devname, macaddr = self.get_config_network_info()
 
         if nettype is None:
             # No network device available
@@ -1399,22 +1469,24 @@ class vmmCreate(gobject.GObject):
                 return self.verr(_("Network device required for %s install.") %
                                  methname)
 
-        ret = uihelpers.validate_network(self.topwin,
+        nic = uihelpers.validate_network(self.topwin,
                                          self.conn, nettype, devname, macaddr)
-        if ret == False:
+        if nic == False:
             return False
 
-        if ret != None:
-            self.guest.nics.append(ret)
+        if self.nic and self.nic in self.guest.get_devices("interface"):
+            self.guest.remove_device(self.nic)
+        self.nic = nic
+        self.guest.add_device(self.nic)
 
         return True
 
 
     # Interesting methods
     def build_installer(self, instclass):
-        installer = instclass(conn = self.conn.vmm,
-                              type = self.capsdomain.hypervisor_type,
-                              os_type = self.capsguest.os_type)
+        installer = instclass(conn=self.conn.vmm,
+                              type=self.capsdomain.hypervisor_type,
+                              os_type=self.capsguest.os_type)
         installer.arch = self.capsguest.arch
 
         return installer
@@ -1425,17 +1497,16 @@ class vmmCreate(gobject.GObject):
         if not self.conn.is_xen() and not self.conn.is_test_conn():
             return
 
-        conntype = self.conn.get_driver()
         # FIXME: some things are dependent on domain type (vcpu max)
         if instmeth == INSTALL_PAGE_URL:
-            self.change_caps(gtype = "xen", dtype = conntype)
+            self.change_caps(gtype="xen")
         else:
-            self.change_caps(gtype = "hvm", dtype = conntype)
+            self.change_caps(gtype="hvm")
 
     def reset_guest_type(self):
         self.change_caps()
 
-    def finish(self, src):
+    def finish(self, src_ignore):
         # Validate the final page
         page = self.window.get_widget("create-pages").get_current_page()
         if self.validate(page) != True:
@@ -1463,27 +1534,28 @@ class vmmCreate(gobject.GObject):
         self.topwin.set_sensitive(False)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
 
-        if not self.get_config_customize():
-            self.start_install(guest)
-            return
+        def start_install():
+            if not self.get_config_customize():
+                self.start_install(guest)
+                return
 
-        # Customize will start the install when the dialog is closed
-        try:
             self.customize(guest)
+
+        self._check_start_error(start_install)
+
+    def _check_start_error(self, cb, *args, **kwargs):
+        try:
+            cb(*args, **kwargs)
         except Exception, e:
             self.topwin.set_sensitive(True)
             self.topwin.window.set_cursor(
                                     gtk.gdk.Cursor(gtk.gdk.TOP_LEFT_ARROW))
 
-            self.err.show_err(_("Error launching customize dialog: ") + str(e),
+            self.err.show_err(_("Error starting installation: ") + str(e),
                               "".join(traceback.format_exc()))
 
-
     def customize(self, guest):
-        guest.set_defaults()
-
-        virtinst_guest = vmmDomainVirtinst(self.config, self.conn, guest,
-                                           self.guest.uuid)
+        virtinst_guest = vmmDomainVirtinst(self.conn, guest, self.guest.uuid)
 
         if self.config_window:
             self.config_window.disconnect(self.config_window_signal)
@@ -1491,11 +1563,12 @@ class vmmCreate(gobject.GObject):
             del(self.config_window)
 
         def start_install_wrapper(ignore, guest):
-            if self.is_visible():
-                self.start_install(guest)
+            if not self.is_visible():
+                return
+            self._check_start_error(self.start_install, guest)
 
-        self.config_window = vmmDetails(self.config,
-                                        virtinst_guest,
+
+        self.config_window = vmmDetails(virtinst_guest,
                                         self.engine,
                                         self.topwin)
         self.config_window_signal = self.config_window.connect(
@@ -1505,23 +1578,21 @@ class vmmCreate(gobject.GObject):
         self.config_window.show()
 
     def start_install(self, guest):
-        progWin = vmmAsyncJob(self.config, self.do_install, [guest],
+        progWin = vmmAsyncJob(self.do_install, [guest],
                               title=_("Creating Virtual Machine"),
                               text=_("The virtual machine is now being "
                                      "created. Allocation of disk storage "
                                      "and retrieval of the installation "
                                      "images may take a few minutes to "
                                      "complete."))
-        progWin.run()
-        error, details = progWin.get_error()
-
-        if error != None:
-            self.err.show_err(error, details)
+        error, details = progWin.run()
 
         self.topwin.set_sensitive(True)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.TOP_LEFT_ARROW))
 
         if error:
+            error = (_("Unable to complete install: '%s'") % error)
+            self.err.show_err(error, error + "\n" + details)
             self.failed_guest = self.guest
             return
 
@@ -1530,7 +1601,7 @@ class vmmCreate(gobject.GObject):
         if self.config.get_console_popup() == 1:
             # user has requested console on new created vms only
             gtype = vm.get_graphics_console()[0]
-            if gtype == "vnc":
+            if gtype in self.config.embeddable_graphics():
                 self.emit("action-show-console", self.conn.get_uri(),
                           guest.uuid)
             else:
@@ -1539,51 +1610,33 @@ class vmmCreate(gobject.GObject):
         self.close()
 
 
-    def do_install(self, guest, asyncjob):
+    def do_install(self, asyncjob, guest):
         meter = vmmCreateMeter(asyncjob)
-        error = None
-        details = None
-        try:
-            logging.debug("Starting background install process")
 
-            guest.conn = util.dup_conn(self.config, self.conn)
-            for dev in guest.get_all_devices():
-                dev.conn = guest.conn
+        logging.debug("Starting background install process")
 
-            dom = guest.start_install(False, meter = meter)
-            if dom == None:
-                error = _("Guest installation failed to complete")
-                details = error
-                logging.error("Guest install did not return a domain")
-            else:
-                logging.debug("Install completed")
+        guest.conn = util.dup_conn(self.conn).vmm
+        for dev in guest.get_all_devices():
+            dev.conn = guest.conn
 
-            # Make sure we pick up the domain object
-            self.conn.tick(noStatsUpdate=True)
-            vm = self.conn.get_vm(guest.uuid)
+        guest.start_install(False, meter=meter)
+        logging.debug("Install completed")
 
-            if vm.is_shutoff():
-                # Domain is already shutdown, but no error was raised.
-                # Probably means guest had no 'install' phase, as in
-                # for live cds. Try to restart the domain.
-                vm.startup()
-            else:
-                # Register a status listener, which will restart the
-                # guest after the install has finished
-                util.connect_opt_out(vm, "status-changed",
-                                     self.check_install_status, guest)
+        # Make sure we pick up the domain object
+        self.conn.tick(noStatsUpdate=True)
+        vm = self.conn.get_vm(guest.uuid)
 
-        except:
-            (_type, value, stacktrace) = sys.exc_info ()
+        if vm.is_shutoff():
+            # Domain is already shutdown, but no error was raised.
+            # Probably means guest had no 'install' phase, as in
+            # for live cds. Try to restart the domain.
+            vm.startup()
+        else:
+            # Register a status listener, which will restart the
+            # guest after the install has finished
+            util.connect_opt_out(vm, "status-changed",
+                                 self.check_install_status, guest)
 
-            # Detailed error message, in English so it can be Googled.
-            details = ("Unable to complete install '%s'" %
-                       (str(_type) + " " + str(value) + "\n" +
-                       traceback.format_exc (stacktrace)))
-            error = (_("Unable to complete install: '%s'") % str(value))
-
-        if error:
-            asyncjob.set_error(error, details)
 
     def check_install_status(self, vm, ignore1, ignore2, virtinst_guest=None):
         if vm.is_crashed():
@@ -1603,9 +1656,15 @@ class vmmCreate(gobject.GObject):
                     # out handler, removing the virtinst_guest which
                     # will force one final restart.
                     virtinst_guest.continue_install()
+
                     util.connect_opt_out(vm, "status-changed",
                                          self.check_install_status, None)
                     return True
+
+            if vm.get_install_abort():
+                logging.debug("User manually shutdown VM, not restarting "
+                              "guest after install.")
+                return True
 
             logging.debug("Install should be completed, starting VM.")
             vm.startup()
@@ -1619,30 +1678,22 @@ class vmmCreate(gobject.GObject):
         return "%.1f Gb" % float(size)
 
     def pretty_memory(self, mem):
-        return "%d MB" % (mem/1024.0)
+        return "%d MB" % (mem / 1024.0)
 
     # Distro detection methods
 
-    # Clear global detection thread state
-    def _clear_detect_thread(self):
-        self.detectThreadLock.acquire()
-        self.detectThread = None
-        self.detectThreadLock.release()
-
     # Create and launch a detection thread (if no detection already running)
-    def detect_os_distro(self):
-        self.detectThreadLock.acquire()
-        if self.detectThread is not None:
+    def start_detect_thread(self, forward):
+        if not self.detectThreadEvent.isSet():
             # We are already checking (some) media, so let that continue
-            self.detectThreadLock.release()
             return
 
-        self.detectThread = threading.Thread(target=self.do_detect,
-                                             name="Detect OS")
-        self.detectThread.setDaemon(True)
-        self.detectThreadLock.release()
-
-        self.detectThread.start()
+        self.detectThreadEvent.clear()
+        detectThread = threading.Thread(target=self.do_detect,
+                                        args=(forward,),
+                                        name="Detect OS")
+        detectThread.setDaemon(True)
+        detectThread.start()
 
     def set_distro_labels(self, distro, ver):
         # Helper to set auto detect result labels
@@ -1660,30 +1711,25 @@ class vmmCreate(gobject.GObject):
 
         for idx in range(0, len(model)):
             row = model[idx]
-            if row[0] == value:
+            if value and row[0] == value:
                 break
 
             if idx == len(os_widget.get_model()) - 1:
                 idx = -1
 
         os_widget.set_active(idx)
+        if idx == -1:
+            os_widget.set_active(0)
 
         if idx >= 0:
             return row[1]
-        else:
-            return value
+        return _("Unknown")
 
     def set_distro_selection(self, distro, ver):
         # Wrapper to change OS Type/Variant values, and update the distro
         # detection labels
         if not self.is_detect_active():
             return
-
-        if not distro:
-            distro = _("Unknown")
-            ver = _("Unknown")
-        elif not ver:
-            ver = _("Unknown")
 
         dl = self.set_os_val(self.window.get_widget("install-os-type"),
                              distro)
@@ -1702,7 +1748,7 @@ class vmmCreate(gobject.GObject):
         self.window.get_widget("create-forward").set_sensitive(val)
 
     # The actual detection routine
-    def do_detect(self):
+    def do_detect(self, forward):
         try:
             media = self._safe_wrapper(self.get_config_detectable_media, ())
             if not media:
@@ -1734,9 +1780,12 @@ class vmmCreate(gobject.GObject):
 
             self._safe_wrapper(self.set_distro_selection, results)
         finally:
-            self._clear_detect_thread()
             self._safe_wrapper(self._set_forward_sensitive, (True,))
+            self.detectThreadEvent.set()
+            self.mediaDetected = True
             logging.debug("Leaving OS detection thread.")
+            if forward:
+                util.safe_idle_add(self.forward, ())
 
         return
 
@@ -1757,7 +1806,7 @@ class vmmCreate(gobject.GObject):
             reason = self.config.CONFIG_DIR_IMAGE
 
         if self.storage_browser == None:
-            self.storage_browser = vmmStorageBrowser(self.config, self.conn)
+            self.storage_browser = vmmStorageBrowser(self.conn)
 
         self.storage_browser.set_vm_name(self.get_config_name())
         self.storage_browser.set_finish_cb(callback)
@@ -1771,4 +1820,4 @@ class vmmCreate(gobject.GObject):
     def verr(self, msg, extra=None):
         return self.err.val_err(msg, extra)
 
-gobject.type_register(vmmCreate)
+vmmGObjectUI.type_register(vmmCreate)

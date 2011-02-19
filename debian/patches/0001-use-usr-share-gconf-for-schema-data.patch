@@ -8,7 +8,7 @@ Subject: [PATCH] use /usr/share/gconf for schema data
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/Makefile.am b/src/Makefile.am
-index 0818500..61ded33 100644
+index 501088a..6409a5a 100644
 --- a/src/Makefile.am
 +++ b/src/Makefile.am
 @@ -22,7 +22,7 @@ dbusdir = $(datadir)/dbus-1/services
@@ -21,10 +21,10 @@ index 0818500..61ded33 100644
  schema_DATA = $(PACKAGE).schemas
  
 diff --git a/src/Makefile.in b/src/Makefile.in
-index ee0dff1..d164c62 100644
+index f5c6579..dc0eb7a 100644
 --- a/src/Makefile.in
 +++ b/src/Makefile.in
-@@ -246,7 +246,7 @@ desktop_DATA = $(PACKAGE).desktop
+@@ -260,7 +260,7 @@ desktop_DATA = $(PACKAGE).desktop
  dbusdir = $(datadir)/dbus-1/services
  dbus_DATA_IN = $(PACKAGE).service.in
  dbus_DATA = $(PACKAGE).service
@@ -32,5 +32,5 @@ index ee0dff1..d164c62 100644
 +schemadir = $(datadir)/gconf/schemas
  schema_DATA_IN = $(PACKAGE).schemas.in
  schema_DATA = $(PACKAGE).schemas
- CLEANFILES = $(bin_SCRIPTS) $(desktop_DATA) $(dbus_DATA) $(python_DATA)  $(libexec_SCRIPTS) $(schema_DATA) $(PACKAGE).desktop.in
+ CLEANFILES = $(bin_SCRIPTS) $(desktop_DATA) $(dbus_DATA) $(python_DATA) $(libexec_SCRIPTS) $(schema_DATA) $(PACKAGE).desktop.in
 -- 

@@ -35,6 +35,11 @@ PRE_UNINSTALL = :
 POST_UNINSTALL = :
 build_triplet = @build@
 host_triplet = @host@
+@INSTALL_TUI_TRUE@am__append_1 = virtManagerTui
+@INSTALL_TUI_TRUE@am__append_2 = virt-manager-tui.in
+@INSTALL_TUI_TRUE@am__append_3 = virt-manager-tui
+@INSTALL_TUI_TRUE@am__append_4 = $(PACKAGE)-tui.py.in
+@INSTALL_TUI_TRUE@am__append_5 = $(PACKAGE)-tui.py
 subdir = src
 DIST_COMMON = $(srcdir)/Makefile.am $(srcdir)/Makefile.in
 ACLOCAL_M4 = $(top_srcdir)/aclocal.m4
@@ -88,7 +93,7 @@ AM_RECURSIVE_TARGETS = $(RECURSIVE_TARGETS:-recursive=) \
 	distdir
 ETAGS = etags
 CTAGS = ctags
-DIST_SUBDIRS = $(SUBDIRS)
+DIST_SUBDIRS = virtManager virtManagerTui
 DISTFILES = $(DIST_COMMON) $(DIST_SOURCES) $(TEXINFOS) $(EXTRA_DIST)
 am__relativize = \
   dir0=`pwd`; \
@@ -125,18 +130,23 @@ AWK = @AWK@
 CC = @CC@
 CCDEPMODE = @CCDEPMODE@
 CFLAGS = @CFLAGS@
+CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DATADIRNAME = @DATADIRNAME@
+DEFAULT_QEMU_USER = @DEFAULT_QEMU_USER@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
 ECHO_C = @ECHO_C@
 ECHO_N = @ECHO_N@
 ECHO_T = @ECHO_T@
+EGREP = @EGREP@
+ENABLE_UNSUPPORTED_RHEL_OPTS = @ENABLE_UNSUPPORTED_RHEL_OPTS@
 EXEEXT = @EXEEXT@
 GETTEXT_MACRO_VERSION = @GETTEXT_MACRO_VERSION@
 GMSGFMT = @GMSGFMT@
 GMSGFMT_015 = @GMSGFMT_015@
+GREP = @GREP@
 INSTALL = @INSTALL@
 INSTALL_DATA = @INSTALL_DATA@
 INSTALL_PROGRAM = @INSTALL_PROGRAM@
@@ -148,14 +158,17 @@ INTLTOOL_MERGE = @INTLTOOL_MERGE@
 INTLTOOL_PERL = @INTLTOOL_PERL@
 INTLTOOL_UPDATE = @INTLTOOL_UPDATE@
 INTL_MACOSX_LIBS = @INTL_MACOSX_LIBS@
+KVM_PACKAGES = @KVM_PACKAGES@
 LDFLAGS = @LDFLAGS@
 LIBICONV = @LIBICONV@
 LIBINTL = @LIBINTL@
 LIBOBJS = @LIBOBJS@
 LIBS = @LIBS@
+LIBVIRT_PACKAGES = @LIBVIRT_PACKAGES@
 LTLIBICONV = @LTLIBICONV@
 LTLIBINTL = @LTLIBINTL@
 LTLIBOBJS = @LTLIBOBJS@
+MAINT = @MAINT@
 MAKEINFO = @MAKEINFO@
 MKDIR_P = @MKDIR_P@
 MSGFMT = @MSGFMT@
@@ -167,10 +180,11 @@ PACKAGE_BUGREPORT = @PACKAGE_BUGREPORT@
 PACKAGE_NAME = @PACKAGE_NAME@
 PACKAGE_STRING = @PACKAGE_STRING@
 PACKAGE_TARNAME = @PACKAGE_TARNAME@
+PACKAGE_URL = @PACKAGE_URL@
 PACKAGE_VERSION = @PACKAGE_VERSION@
 PATH_SEPARATOR = @PATH_SEPARATOR@
 POSUB = @POSUB@
-SCROLLKEEPER_CONFIG = @SCROLLKEEPER_CONFIG@
+PREFERRED_DISTROS = @PREFERRED_DISTROS@
 SET_MAKE = @SET_MAKE@
 SHELL = @SHELL@
 STRIP = @STRIP@
@@ -230,12 +244,12 @@ target_alias = @target_alias@
 top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
-SUBDIRS = virtManager
-bin_SCRIPTS_IN = virt-manager.in
-bin_SCRIPTS = virt-manager
+SUBDIRS = virtManager $(am__append_1)
+bin_SCRIPTS_IN = virt-manager.in $(am__append_2)
+bin_SCRIPTS = virt-manager $(am__append_3)
 pythondir = $(pkgdatadir)
-python_DATA_IN = $(PACKAGE).py.in
-python_DATA = $(PACKAGE).py
+python_DATA_IN = $(PACKAGE).py.in $(am__append_4)
+python_DATA = $(PACKAGE).py $(am__append_5)
 libexec_DATA_IN = $(PACKAGE)-launch.in
 libexec_SCRIPTS = $(PACKAGE)-launch
 gladedir = $(pkgdatadir)
@@ -249,12 +263,12 @@ dbus_DATA = $(PACKAGE).service
 schemadir = $(sysconfdir)/gconf/schemas
 schema_DATA_IN = $(PACKAGE).schemas.in
 schema_DATA = $(PACKAGE).schemas
-CLEANFILES = $(bin_SCRIPTS) $(desktop_DATA) $(dbus_DATA) $(python_DATA)  $(libexec_SCRIPTS) $(schema_DATA) $(PACKAGE).desktop.in
+CLEANFILES = $(bin_SCRIPTS) $(desktop_DATA) $(dbus_DATA) $(python_DATA) $(libexec_SCRIPTS) $(schema_DATA) $(PACKAGE).desktop.in
 EXTRA_DIST = $(bin_SCRIPTS_IN) $(desktop_DATA_IN) $(dbus_DATA_IN) $(python_DATA_IN) $(glade_DATA) $(libexec_DATA_IN) $(schema_DATA_IN)
 all: all-recursive
 
 .SUFFIXES:
-$(srcdir)/Makefile.in:  $(srcdir)/Makefile.am  $(am__configure_deps)
+$(srcdir)/Makefile.in: @MAINTAINER_MODE_TRUE@ $(srcdir)/Makefile.am  $(am__configure_deps)
 	@for dep in $?; do \
 	  case '$(am__configure_deps)' in \
 	    *$$dep*) \
@@ -279,9 +293,9 @@ Makefile: $(srcdir)/Makefile.in $(top_builddir)/config.status
 $(top_builddir)/config.status: $(top_srcdir)/configure $(CONFIG_STATUS_DEPENDENCIES)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 
-$(top_srcdir)/configure:  $(am__configure_deps)
+$(top_srcdir)/configure: @MAINTAINER_MODE_TRUE@ $(am__configure_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
-$(ACLOCAL_M4):  $(am__aclocal_m4_deps)
+$(ACLOCAL_M4): @MAINTAINER_MODE_TRUE@ $(am__aclocal_m4_deps)
 	cd $(top_builddir) && $(MAKE) $(AM_MAKEFLAGS) am--refresh
 $(am__aclocal_m4_deps):
 install-binSCRIPTS: $(bin_SCRIPTS)
@@ -791,10 +805,19 @@ uninstall-am: uninstall-binSCRIPTS uninstall-dbusDATA \
 	  -e "s,::GETTEXTDIR::,$(datadir)/locale," \
 	  -e "s,::DATADIR::,$(datadir)," \
 	  -e "s,::PYARCHLIBDIR::,$(pkglibdir)," \
-	  -e "s,::VIRTINST_VERSION::,$(VIRTINST_VERSION)," < $< > $@
+	  -e "s,::VIRTINST_VERSION::,$(VIRTINST_VERSION)," \
+	  -e "s,::DEFAULT_QEMU_USER::,$(DEFAULT_QEMU_USER)," \
+	  -e "s,::ENABLE_UNSUPPORTED_RHEL_OPTS::,$(ENABLE_UNSUPPORTED_RHEL_OPTS)," \
+	  -e "s|::PREFERRED_DISTROS::|$(PREFERRED_DISTROS)|" \
+	  -e "s|::HV_PACKAGES::|$(KVM_PACKAGES)|" \
+	  -e "s|::LIBVIRT_PACKAGES::|$(LIBVIRT_PACKAGES)|" \
+	  < $< > $@
 
 $(PACKAGE): $(srcdir)/$(PACKAGE).in
 	sed -e "s,::PACKAGE::,$(PACKAGE)," -e "s,::PYTHONDIR::,$(pkgdatadir)," < $< > $@
+
+$(PACKAGE)-tui: $(srcdir)/$(PACKAGE)-tui.in
+	sed -e "s,::PACKAGE::,$(PACKAGE)-tui," -e "s,::PYTHONDIR::,$(pkgdatadir)," < $< > $@
 
 $(PACKAGE)-launch: $(srcdir)/$(PACKAGE)-launch.in
 	sed -e "s,::PACKAGE::,$(PACKAGE)," -e "s,::PYTHONDIR::,$(pkgdatadir)," < $< > $@
