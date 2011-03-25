@@ -1,3 +1,14 @@
+virt-manager (0.8.7-1) unstable; urgency=low
+
+  * [e1716e0] Imported Upstream version 0.8.7
+  * [b97d3a0] Drop patches
+    - 0003-manager-Don-t-always-launch-consoles-for-running-dom.patch - fixed
+      upstream
+    - 0004-l10n-Updates-to-French-fr-translation.patch - fixed upstream
+  * [c7e2a66] Bump virtinst dependency version to 0.500.6
+
+ -- Laurent Léonard <laurent@open-minds.org>  Fri, 25 Mar 2011 09:44:57 +0100
+
 virt-manager (0.8.6-2) unstable; urgency=low
 
   [ Laurent Léonard ]
