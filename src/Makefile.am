@@ -42,16 +42,18 @@ endif
 
 @INTLTOOL_DESKTOP_RULE@
 
-%.desktop.in: $(srcdir)/%.desktop.in.in
+%.desktop.in: $(srcdir)/%.desktop.in.in ${top_builddir}/config.status
 	sed -e "s,::PACKAGE::,$(PACKAGE)," -e "s,::ICONDIR::,$(pkgdatadir)/pixmaps," < $< > $@
 
-%.service: $(srcdir)/%.service.in
+%.service: $(srcdir)/%.service.in ${top_builddir}/config.status
 	sed -e "s,::PACKAGE::,$(PACKAGE)," -e "s,::PREFIX::,$(prefix)," < $< > $@
 
-%.schemas: $(srcdir)/%.schemas.in
-	sed -e "s,::PACKAGE::,$(PACKAGE)," < $< > $@
+%.schemas: $(srcdir)/%.schemas.in ${top_builddir}/config.status
+	sed -e "s|::DEFAULT_GRAPHICS::|$(DEFAULT_GRAPHICS)|g" \
+	    -e "s,::PACKAGE::,$(PACKAGE)," \
+	    < $< > $@
 
-%.py: $(srcdir)/%.py.in
+%.py: $(srcdir)/%.py.in ${top_builddir}/config.status
 	sed -e "s,::PACKAGE::,$(PACKAGE)," \
 	  -e "s,::VERSION::,$(VERSION)," \
 	  -e "s,::ASSETDIR::,$(pkgdatadir)," \
@@ -67,13 +69,13 @@ endif
 	  -e "s|::LIBVIRT_PACKAGES::|$(LIBVIRT_PACKAGES)|" \
 	  < $< > $@
 
-$(PACKAGE): $(srcdir)/$(PACKAGE).in
+$(PACKAGE): $(srcdir)/$(PACKAGE).in ${top_builddir}/config.status
 	sed -e "s,::PACKAGE::,$(PACKAGE)," -e "s,::PYTHONDIR::,$(pkgdatadir)," < $< > $@
 
-$(PACKAGE)-tui: $(srcdir)/$(PACKAGE)-tui.in
+$(PACKAGE)-tui: $(srcdir)/$(PACKAGE)-tui.in ${top_builddir}/config.status
 	sed -e "s,::PACKAGE::,$(PACKAGE)-tui," -e "s,::PYTHONDIR::,$(pkgdatadir)," < $< > $@
 
-$(PACKAGE)-launch: $(srcdir)/$(PACKAGE)-launch.in
+$(PACKAGE)-launch: $(srcdir)/$(PACKAGE)-launch.in ${top_builddir}/config.status
 	sed -e "s,::PACKAGE::,$(PACKAGE)," -e "s,::PYTHONDIR::,$(pkgdatadir)," < $< > $@
 
 

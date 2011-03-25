@@ -90,6 +90,9 @@ class vmmCreate(vmmGObjectUI):
         # 'Guest' class from the previous failed install
         self.failed_guest = None
 
+        # Whether there was an error at dialog startup
+        self.have_startup_error = False
+
         # Host space polling
         self.host_storage_timer = None
 
@@ -180,6 +183,7 @@ class vmmCreate(vmmGObjectUI):
 
     # State init methods
     def startup_error(self, error):
+        self.have_startup_error = True
         self.window.get_widget("startup-error-box").show()
         self.window.get_widget("install-box").hide()
         self.window.get_widget("create-forward").set_sensitive(False)
@@ -292,6 +296,7 @@ class vmmCreate(vmmGObjectUI):
     def reset_state(self, urihint=None):
 
         self.failed_guest = None
+        self.have_startup_error = False
         self.guest = None
         self.disk = None
         self.nic = None
@@ -370,6 +375,8 @@ class vmmCreate(vmmGObjectUI):
         net_warn_box.hide()
         net_expander.set_expanded(False)
 
+        # Make sure window is a sane size
+        self.topwin.resize(1, 1)
 
     def set_conn_state(self):
         # Update all state that has some dependency on the current connection
@@ -896,6 +903,9 @@ class vmmCreate(vmmGObjectUI):
             return self.config.get_remote_sound()
         return self.config.get_local_sound()
 
+    def get_config_graphics_type(self):
+        return self.config.get_graphics_type()
+
     def get_config_customize(self):
         return self.window.get_widget("summary-customize").get_active()
 
@@ -928,6 +938,7 @@ class vmmCreate(vmmGObjectUI):
         src = self.window.get_widget("config-netdev")
         idx = src.get_active()
         show_pxe_warn = True
+        pxe_install = (self.get_config_install_page() == INSTALL_PAGE_PXE)
 
         if not idx < 0:
             row = src.get_model()[idx]
@@ -939,7 +950,7 @@ class vmmCreate(vmmGObjectUI):
                  (ntype == virtinst.VirtualNetworkInterface.TYPE_VIRTUAL and
                   not obj.can_pxe())))
 
-        self.set_net_warn(show_pxe_warn,
+        self.set_net_warn(show_pxe_warn and pxe_install,
                           _("Network selection does not support PXE"), False)
 
     def hv_changed(self, src):
@@ -1107,6 +1118,9 @@ class vmmCreate(vmmGObjectUI):
         curpage = notebook.get_current_page()
         is_import = (self.get_config_install_page() == INSTALL_PAGE_IMPORT)
 
+        if self.have_startup_error:
+            return
+
         if curpage == PAGE_INSTALL and self.should_detect_media():
             # Make sure we have detected the OS before validating the page
             self.detect_media_os(forward=True)
@@ -1185,9 +1199,16 @@ class vmmCreate(vmmGObjectUI):
 
         # Set up graphics device
         try:
-            guest.add_device(virtinst.VirtualGraphics(
-                                        type=virtinst.VirtualGraphics.TYPE_VNC,
-                                        conn=guest.conn))
+            gtype = self.get_config_graphics_type()
+            if (gtype == virtinst.VirtualGraphics.TYPE_SPICE and not
+                virtinst.support.check_conn_support(guest.conn,
+                            virtinst.support.SUPPORT_CONN_HV_GRAPHICS_SPICE)):
+                logging.debug("Spice requested by HV doesn't support it. "
+                              "Using VNC graphics.")
+                gtype = virtinst.VirtualGraphics.TYPE_VNC
+
+            guest.add_device(virtinst.VirtualGraphics(type=gtype,
+                                                      conn=guest.conn))
             guest.add_device(virtinst.VirtualVideoDevice(conn=guest.conn))
         except Exception, e:
             self.err.show_err(_("Error setting up graphics device:") + str(e),
@@ -1406,9 +1427,9 @@ class vmmCreate(vmmGObjectUI):
 
                 if do_exist and not ret:
                     do_use = self.err.yes_no(
-                        _("The following path already exists, but is not\n"
+                        _("The following storage already exists, but is not\n"
                           "in use by any virtual machine:\n\n%s\n\n"
-                          "Would you like to use this path?") % ideal)
+                          "Would you like to reuse this storage?") % ideal)
 
                     if do_use:
                         diskpath = ideal

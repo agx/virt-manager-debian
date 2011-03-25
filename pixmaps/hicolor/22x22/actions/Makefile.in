@@ -83,6 +83,7 @@ CPP = @CPP@
 CPPFLAGS = @CPPFLAGS@
 CYGPATH_W = @CYGPATH_W@
 DATADIRNAME = @DATADIRNAME@
+DEFAULT_GRAPHICS = @DEFAULT_GRAPHICS@
 DEFAULT_QEMU_USER = @DEFAULT_QEMU_USER@
 DEFS = @DEFS@
 DEPDIR = @DEPDIR@
@@ -194,7 +195,7 @@ top_build_prefix = @top_build_prefix@
 top_builddir = @top_builddir@
 top_srcdir = @top_srcdir@
 pixmapdir = $(pkgdatadir)/pixmaps/hicolor/22x22/actions
-pixmap_DATA = $(wildcard *.png)
+pixmap_DATA = $(wildcard $(srcdir)/*.png)
 EXTRA_DIST = $(pixmap_DATA)
 all: all-am
 

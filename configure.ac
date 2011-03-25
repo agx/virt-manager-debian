@@ -1,7 +1,7 @@
 
-AC_INIT(virt-manager, 0.8.6)
+AC_INIT(virt-manager, 0.8.7)
 # Latest virtinst version required to run
-VIRTINST_VERSION="0.500.5"
+VIRTINST_VERSION="0.500.6"
 
 AC_CONFIG_SRCDIR(src/virt-manager.py.in)
 dnl Make automake keep quiet about wildcards & other GNUmake-isms
@@ -80,6 +80,14 @@ AC_ARG_WITH([preferred-distros],
     [PREFERRED_DISTROS=$withval],
     [PREFERRED_DISTROS=""])
 
+dnl Default graphics type (spice/vnc)
+AC_ARG_WITH([--with-default-graphics],
+    AC_HELP_STRING(
+        [--with-default-graphics],
+        [default graphics type for new guests in gconf(spice or vnc) @<:@default=vnc@:>@]),
+    [DEFAULT_GRAPHICS=$withval],
+    [DEFAULT_GRAPHICS="vnc"])
+
 dnl -----------------------
 dnl Variable substitution
 dnl -----------------------
@@ -89,6 +97,7 @@ AC_SUBST([ENABLE_UNSUPPORTED_RHEL_OPTS])
 AC_SUBST([PREFERRED_DISTROS])
 AC_SUBST([LIBVIRT_PACKAGES])
 AC_SUBST([KVM_PACKAGES])
+AC_SUBST([DEFAULT_GRAPHICS])
 AM_CONDITIONAL([INSTALL_TUI], [test "x$with_tui" = "xyes"])
 
 
@@ -142,6 +151,7 @@ AC_MSG_NOTICE([KVM packages:                    none])
 else
 AC_MSG_NOTICE([KVM packages:                    $KVM_PACKAGES])
 fi
+AC_MSG_NOTICE([Default graphics:                $DEFAULT_GRAPHICS])
 
 AC_MSG_NOTICE([])
 AC_MSG_NOTICE([])
