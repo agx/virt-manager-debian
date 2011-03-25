@@ -158,6 +158,10 @@ class vmmDomainBase(vmmLibvirtObject):
         self._stats_disk_supported = True
         self._stats_disk_skip = []
 
+    def change_name_backend(self, newbackend):
+        # Used for changing the domain object after a rename
+        self._backend = newbackend
+
     # Info accessors
     def get_name(self):
         raise NotImplementedError()
@@ -309,15 +313,27 @@ class vmmDomainBase(vmmLibvirtObject):
             cpu.cores = cores
             cpu.threads = threads
         return self._redefine_guest(change)
-    def define_cpu(self, model, vendor, from_host):
+    def define_cpu(self, model, vendor, from_host, featurelist):
         def change(guest):
             if from_host:
                 guest.cpu.copy_host_cpu()
-            else:
+            elif guest.cpu.model != model:
                 # Since we don't expose this in the UI, have host value trump
                 # caps value
                 guest.cpu.vendor = vendor
+
             guest.cpu.model = model or None
+
+            # Sync feature lists
+            origfeatures = guest.cpu.features
+            for f in origfeatures:
+                if f.name not in featurelist:
+                    guest.cpu.remove_feature(f)
+                else:
+                    featurelist.remove(f.name)
+            for f in featurelist:
+                guest.cpu.add_feature(f)
+
         return self._redefine_guest(change)
 
     def define_both_mem(self, memory, maxmem):
@@ -339,13 +355,16 @@ class vmmDomainBase(vmmLibvirtObject):
 
         return self._redefine_guest(change)
 
+    def define_name(self, newname):
+        raise NotImplementedError()
+
     def define_acpi(self, newvalue):
         def change(guest):
-            guest.features["acpi"] = bool(newvalue)
+            guest.features["acpi"] = newvalue
         return self._redefine_guest(change)
     def define_apic(self, newvalue):
         def change(guest):
-            guest.features["apic"] = bool(newvalue)
+            guest.features["apic"] = newvalue
         return self._redefine_guest(change)
 
     def define_clock(self, newvalue):
@@ -399,9 +418,27 @@ class vmmDomainBase(vmmLibvirtObject):
             editdev.bus = newval
         return self._redefine_device(change, devobj)
 
+    def define_network_source(self, devobj, newtype, newsource):
+        def change(editdev):
+            if not newtype:
+                return
+            editdev.source = None
+            editdev.type = newtype
+            editdev.source = newsource
+        return self._redefine_device(change, devobj)
     def define_network_model(self, devobj, newmodel):
         def change(editdev):
             editdev.model = newmodel
+        return self._redefine_device(change, devobj)
+
+    def define_virtualport(self, devobj, newtype, newmanagerid,
+                           newtypeid, newtypeidversion, newinstanceid):
+        def change(editdev):
+            editdev.virtualport.type = newtype or None
+            editdev.virtualport.managerid = newmanagerid or None
+            editdev.virtualport.typeid = newtypeid or None
+            editdev.virtualport.typeidversion = newtypeidversion or None
+            editdev.virtualport.instanceid = newinstanceid or None
         return self._redefine_device(change, devobj)
 
     def define_graphics_password(self, devobj, newval):
@@ -411,6 +448,10 @@ class vmmDomainBase(vmmLibvirtObject):
     def define_graphics_keymap(self, devobj, newval):
         def change(editdev):
             editdev.keymap = newval
+        return self._redefine_device(change, devobj)
+    def define_graphics_type(self, devobj, newval):
+        def change(editdev):
+            editdev.type = newval
         return self._redefine_device(change, devobj)
 
     def define_sound_model(self, devobj, newmodel):
@@ -503,16 +544,18 @@ class vmmDomainBase(vmmLibvirtObject):
         return self._get_guest().emulator
 
     def get_acpi(self):
-        return bool(self._get_guest().features["acpi"])
+        return self._get_guest().features["acpi"]
 
     def get_apic(self):
-        return bool(self._get_guest().features["apic"])
+        return self._get_guest().features["apic"]
 
     def get_clock(self):
         return self._get_guest().clock.offset
 
     def get_description(self):
-        return self._get_guest().description
+        # Always show the inactive <description>, let's us fake hotplug
+        # for a field that's strictly metadata
+        return self._get_guest(inactive=True).description
 
     def get_memory(self):
         return int(self._get_guest().memory * 1024)
@@ -991,6 +1034,29 @@ class vmmDomain(vmmDomainBase):
     def disk_write_rate(self):
         return self._get_record_helper("diskWrRate")
 
+    def define_name(self, newname):
+        # Do this, so that _guest_to_define has original inactive XML
+        self._invalidate_xml()
+
+        guest = self._get_guest_to_define()
+        if guest.name == newname:
+            return
+
+        if self.is_active():
+            raise RuntimeError(_("Cannot rename an active guest"))
+
+        logging.debug("Changing guest name to '%s'" % newname)
+        origxml = guest.get_xml_config()
+        guest.name = newname
+        newxml = guest.get_xml_config()
+
+        try:
+            self.get_connection().rename_vm(self, origxml, newxml)
+        finally:
+            self._invalidate_xml()
+
+        self.emit("config-changed")
+
     def _unregister_reboot_listener(self):
         if self.reboot_listener == None:
             return
@@ -1054,6 +1120,7 @@ class vmmDomain(vmmDomainBase):
 
     def delete(self):
         self._backend.undefine()
+        # XXX: If want to release domain here, fix connection polling
 
     def resume(self):
         if self.get_cloning():
@@ -1270,8 +1337,16 @@ class vmmDomain(vmmDomainBase):
         self.vcpu_max_count()
 
     def _update_status(self, status=None):
-        if status == None:
+        try:
             info = self.get_info()
+        except libvirt.libvirtError, e:
+            if (hasattr(libvirt, "VIR_ERR_NO_DOMAIN") and
+                e.get_error_code() == getattr(libvirt, "VIR_ERR_NO_DOMAIN")):
+                # Possibly a transient domain that was removed on shutdown
+                return
+            raise
+
+        if status == None:
             status = info[0]
         status = self._normalize_status(status)
 
@@ -1524,6 +1599,11 @@ class vmmDomainVirtinst(vmmDomainBase):
     def set_autostart(self, val):
         self._backend.autostart = bool(val)
         util.safe_idle_add(util.idle_emit, self, "config-changed")
+
+    def define_name(self, newname):
+        def change(guest):
+            guest.name = str(newname)
+        return self._redefine_guest(change)
 
     def attach_device(self, devobj):
         return

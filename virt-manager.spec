@@ -7,7 +7,7 @@
 %define _extra_release %{?dist:%{dist}}%{!?dist:%{?extra_release:%{extra_release}}}
 
 Name: virt-manager
-Version: 0.8.6
+Version: 0.8.7
 Release: 1%{_extra_release}
 Summary: Virtual Machine Manager
 
@@ -37,7 +37,7 @@ Requires: gnome-python2-gnomekeyring >= 2.15.4
 # Minimum we've tested with
 Requires: libxml2-python >= 2.6.23
 # Absolutely require this version or later
-Requires: python-virtinst >= 0.500.5
+Requires: python-virtinst >= 0.500.6
 # Required for loading the glade UI
 Requires: pygtk2-libglade
 # Required for our graphics which are currently SVG format
@@ -153,6 +153,15 @@ fi
 %{_datadir}/dbus-1/services/%{name}.service
 
 %changelog
+* Thu Mar 24 2011 Cole Robinson <crobinso@redhat.com> - 0.8.7-1
+- Allow renaming an offline VM
+- Spice password support (Marc-André Lureau)
+- Allow editting NIC <virtualport> settings (Gerhard Stenzel)
+- Allow enabling/disabling individual CPU features
+- Allow easily changing graphics type between VNC and SPICE for existing
+  VM
+- Allow easily changing network source device for existing VM
+
 * Fri Jan 14 2011 Cole Robinson <crobinso@redhat.com> - 0.8.6-1
 - SPICE support (requires spice-gtk) (Marc-André Lureau)
 - Option to configure CPU model

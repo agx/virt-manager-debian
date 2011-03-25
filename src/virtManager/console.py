@@ -404,6 +404,8 @@ class SpiceViewer(Viewer):
     def _main_channel_event_cb(self, channel, event):
         if event == spice.CHANNEL_CLOSED:
             self.console.disconnected()
+        elif event == spice.CHANNEL_ERROR_AUTH:
+            self.console.activate_auth_page()
 
     def _channel_open_fd_request(self, channel, tls_ignore):
         if not self.console.tunnels:
@@ -459,6 +461,11 @@ class SpiceViewer(Viewer):
 
     def set_credential_password(self, cred):
         self.spice_session.set_property("password", cred)
+        if self.console.tunnels:
+            fd = self.console.tunnels.open_new()
+            self.spice_session.open_fd(fd)
+        else:
+            self.spice_session.connect()
 
     def get_scaling(self):
         return self.display.get_property("resize-guest")
@@ -478,8 +485,9 @@ class vmmConsolePages(vmmGObjectUI):
         self.topwin = self.window.get_widget(self.windowname)
         self.err = vmmErrorDialog(self.topwin)
 
-        self.title = vm.get_name() + " " + self.topwin.get_title()
-        self.topwin.set_title(self.title)
+        self.pointer_is_grabbed = False
+        self.change_title()
+        self.vm.connect("config-changed", self.change_title)
 
         # State for disabling modifiers when keyboard is grabbed
         self.accel_groups = gtk.accel_groups_from_object(self.topwin)
@@ -526,6 +534,17 @@ class vmmConsolePages(vmmGObjectUI):
     # Initialization helpers #
     ##########################
 
+    def change_title(self, ignore1=None):
+        title = self.vm.get_name() + " " + _("Virtual Machine")
+
+        if self.pointer_is_grabbed and self.viewer:
+            keystr = self.viewer.get_grab_keys()
+            keymsg = _("Press %s to release pointer.") % keystr
+
+            title = keymsg + " " + title
+
+        self.topwin.set_title(title)
+
     def viewer_focus_changed(self, ignore1=None, ignore2=None):
         has_focus = self.viewer and self.viewer.get_widget() and \
             self.viewer.get_widget().get_property("has-focus")
@@ -539,12 +558,12 @@ class vmmConsolePages(vmmGObjectUI):
             self._enable_modifiers()
 
     def pointer_grabbed(self, src_ignore):
-        keystr = self.viewer.get_grab_keys()
-        self.topwin.set_title(_("Press %s to release pointer.") % keystr +
-                              " " + self.title)
+        self.pointer_is_grabbed = True
+        self.change_title()
 
     def pointer_ungrabbed(self, src_ignore):
-        self.topwin.set_title(self.title)
+        self.pointer_is_grabbed = False
+        self.change_title()
 
     def _disable_modifiers(self):
         if self.gtk_settings_accel is not None:
@@ -905,7 +924,7 @@ class vmmConsolePages(vmmGObjectUI):
             self.activate_unavailable_page(msg)
             return
 
-        if gport == -1:
+        if (gport == -1 and not gsocket):
             self.activate_unavailable_page(
                             _("Graphical console is not yet active for guest"))
             self.schedule_retry()

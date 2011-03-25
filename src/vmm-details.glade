@@ -673,7 +673,7 @@
                 <child>
                   <widget class="GtkLabel" id="label434">
                     <property name="visible">True</property>
-                    <property name="label" translatable="yes">Unavailable</property>
+                    <property name="label">Unavailable</property>
                   </widget>
                   <packing>
                     <property name="tab_fill">False</property>
@@ -832,7 +832,7 @@
                 <child>
                   <widget class="GtkLabel" id="label438">
                     <property name="visible">True</property>
-                    <property name="label" translatable="yes">Auth</property>
+                    <property name="label">Auth</property>
                   </widget>
                   <packing>
                     <property name="position">1</property>
@@ -864,7 +864,7 @@
                 <child>
                   <widget class="GtkLabel" id="label439">
                     <property name="visible">True</property>
-                    <property name="label" translatable="yes">VNC</property>
+                    <property name="label">Graphics</property>
                   </widget>
                   <packing>
                     <property name="position">2</property>
@@ -877,7 +877,7 @@
             <child>
               <widget class="GtkLabel" id="label420">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">Console</property>
+                <property name="label">Console</property>
               </widget>
               <packing>
                 <property name="tab_fill">False</property>
@@ -1008,7 +1008,9 @@
                                                   <widget class="GtkLabel" id="label43">
                                                     <property name="visible">True</property>
                                                     <property name="xalign">0</property>
-                                                    <property name="label" translatable="yes">Name:</property>
+                                                    <property name="label" translatable="yes">_Name:</property>
+                                                    <property name="use_underline">True</property>
+                                                    <property name="mnemonic_widget">overview-name</property>
                                                   </widget>
                                                   <packing>
                                                     <property name="x_options">GTK_FILL</property>
@@ -1066,20 +1068,6 @@
                                                   </packing>
                                                 </child>
                                                 <child>
-                                                  <widget class="GtkLabel" id="overview-name">
-                                                    <property name="visible">True</property>
-                                                    <property name="xalign">0</property>
-                                                    <property name="label">test-vm</property>
-                                                    <property name="selectable">True</property>
-                                                  </widget>
-                                                  <packing>
-                                                    <property name="left_attach">1</property>
-                                                    <property name="right_attach">2</property>
-                                                    <property name="x_options">GTK_FILL</property>
-                                                    <property name="y_options">GTK_FILL</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
                                                   <widget class="GtkLabel" id="label24">
                                                     <property name="visible">True</property>
                                                     <property name="xalign">0</property>
@@ -1125,6 +1113,18 @@
                                                     <property name="top_attach">4</property>
                                                     <property name="bottom_attach">5</property>
                                                     <property name="x_options">GTK_FILL</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <widget class="GtkEntry" id="overview-name">
+                                                    <property name="visible">True</property>
+                                                    <property name="can_focus">True</property>
+                                                    <property name="invisible_char">●</property>
+                                                    <signal name="changed" handler="on_overview_name_changed"/>
+                                                  </widget>
+                                                  <packing>
+                                                    <property name="left_attach">1</property>
+                                                    <property name="right_attach">2</property>
                                                   </packing>
                                                 </child>
                                               </widget>
@@ -1559,7 +1559,7 @@
                                               </packing>
                                             </child>
                                             <child>
-                                              <widget class="GtkLabel" id="label515">
+                                              <widget class="GtkLabel" id="security-type-label">
                                                 <property name="visible">True</property>
                                                 <property name="xalign">1</property>
                                                 <property name="yalign">0</property>
@@ -1608,7 +1608,7 @@
                             <child>
                               <widget class="GtkLabel" id="label10">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">over</property>
+                                <property name="label">over</property>
                               </widget>
                               <packing>
                                 <property name="tab_fill">False</property>
@@ -1797,7 +1797,7 @@ I/O:</property>
                             <child>
                               <widget class="GtkLabel" id="label7">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">stat</property>
+                                <property name="label">stat</property>
                               </widget>
                               <packing>
                                 <property name="position">1</property>
@@ -2032,8 +2032,9 @@ I/O:</property>
                                         <property name="left_padding">21</property>
                                         <property name="right_padding">12</property>
                                         <child>
-                                          <widget class="GtkHBox" id="hbox20">
+                                          <widget class="GtkVBox" id="vbox220">
                                             <property name="visible">True</property>
+                                            <property name="spacing">6</property>
                                             <child>
                                               <widget class="GtkTable" id="table15">
                                                 <property name="visible">True</property>
@@ -2135,10 +2136,62 @@ I/O:</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <widget class="GtkAlignment" id="alignment32">
+                                              <widget class="GtkExpander" id="cpu-features-expander">
                                                 <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
                                                 <child>
-                                                  <placeholder/>
+                                                  <widget class="GtkAlignment" id="alignment29">
+                                                    <property name="visible">True</property>
+                                                    <property name="left_padding">21</property>
+                                                    <child>
+                                                      <widget class="GtkHBox" id="hbox19">
+                                                        <property name="visible">True</property>
+                                                        <property name="spacing">6</property>
+                                                        <child>
+                                                          <widget class="GtkScrolledWindow" id="scrolledwindow4">
+                                                            <property name="height_request">150</property>
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="hscrollbar_policy">never</property>
+                                                            <property name="vscrollbar_policy">automatic</property>
+                                                            <property name="shadow_type">etched-in</property>
+                                                            <child>
+                                                            <widget class="GtkTreeView" id="cpu-features">
+                                                            <property name="visible">True</property>
+                                                            <property name="can_focus">True</property>
+                                                            <property name="headers_visible">False</property>
+                                                            </widget>
+                                                            </child>
+                                                          </widget>
+                                                          <packing>
+                                                            <property name="expand">False</property>
+                                                            <property name="position">0</property>
+                                                          </packing>
+                                                        </child>
+                                                        <child>
+                                                          <widget class="GtkAlignment" id="alignment32">
+                                                            <property name="visible">True</property>
+                                                            <child>
+                                                            <placeholder/>
+                                                            </child>
+                                                          </widget>
+                                                          <packing>
+                                                            <property name="position">1</property>
+                                                          </packing>
+                                                        </child>
+                                                      </widget>
+                                                    </child>
+                                                  </widget>
+                                                </child>
+                                                <child>
+                                                  <widget class="GtkLabel" id="label5">
+                                                    <property name="visible">True</property>
+                                                    <property name="label" translatable="yes">&lt;b&gt;CPU Features&lt;/b&gt;</property>
+                                                    <property name="use_markup">True</property>
+                                                  </widget>
+                                                  <packing>
+                                                    <property name="type">label_item</property>
+                                                  </packing>
                                                 </child>
                                               </widget>
                                               <packing>
@@ -2568,7 +2621,7 @@ I/O:</property>
                             <child>
                               <widget class="GtkLabel" id="label53">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">cpu</property>
+                                <property name="label">cpu</property>
                               </widget>
                               <packing>
                                 <property name="position">2</property>
@@ -2765,7 +2818,7 @@ I/O:</property>
                             <child>
                               <widget class="GtkLabel" id="label54">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">mem</property>
+                                <property name="label">mem</property>
                               </widget>
                               <packing>
                                 <property name="position">3</property>
@@ -3143,7 +3196,7 @@ I/O:</property>
                             <child>
                               <widget class="GtkLabel" id="boot-options-lbl">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">boot</property>
+                                <property name="label">boot</property>
                               </widget>
                               <packing>
                                 <property name="position">4</property>
@@ -3608,7 +3661,7 @@ I/O:</property>
                             <child>
                               <widget class="GtkLabel" id="label55">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">dsk</property>
+                                <property name="label">dsk</property>
                               </widget>
                               <packing>
                                 <property name="position">5</property>
@@ -3619,6 +3672,7 @@ I/O:</property>
                             <child>
                               <widget class="GtkVBox" id="vbox54">
                                 <property name="visible">True</property>
+                                <property name="spacing">12</property>
                                 <child>
                                   <widget class="GtkFrame" id="frame9">
                                     <property name="visible">True</property>
@@ -3641,25 +3695,12 @@ I/O:</property>
                                               <widget class="GtkLabel" id="label397">
                                                 <property name="visible">True</property>
                                                 <property name="xalign">1</property>
+                                                <property name="yalign">0</property>
                                                 <property name="label" translatable="yes">Source device:</property>
                                               </widget>
                                               <packing>
                                                 <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"></property>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <widget class="GtkLabel" id="network-source-device">
-                                                <property name="visible">True</property>
-                                                <property name="xalign">0</property>
-                                                <property name="label">label401</property>
-                                                <property name="selectable">True</property>
-                                              </widget>
-                                              <packing>
-                                                <property name="left_attach">1</property>
-                                                <property name="right_attach">2</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"></property>
+                                                <property name="y_options">GTK_FILL</property>
                                               </packing>
                                             </child>
                                             <child>
@@ -3740,6 +3781,77 @@ I/O:</property>
                                                 <property name="y_options"></property>
                                               </packing>
                                             </child>
+                                            <child>
+                                              <widget class="GtkVBox" id="network-source-box">
+                                                <property name="visible">True</property>
+                                                <child>
+                                                  <widget class="GtkHBox" id="hbox7">
+                                                    <property name="visible">True</property>
+                                                    <child>
+                                                      <widget class="GtkComboBox" id="network-source-combo">
+                                                        <property name="visible">True</property>
+                                                        <signal name="changed" handler="on_network_source_combo_changed"/>
+                                                      </widget>
+                                                      <packing>
+                                                        <property name="expand">False</property>
+                                                        <property name="position">0</property>
+                                                      </packing>
+                                                    </child>
+                                                    <child>
+                                                      <widget class="GtkLabel" id="network-source-label">
+                                                        <property name="visible">True</property>
+                                                        <property name="xalign">0</property>
+                                                        <property name="label">label401</property>
+                                                        <property name="selectable">True</property>
+                                                      </widget>
+                                                      <packing>
+                                                        <property name="expand">False</property>
+                                                        <property name="position">1</property>
+                                                      </packing>
+                                                    </child>
+                                                  </widget>
+                                                  <packing>
+                                                    <property name="position">0</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <widget class="GtkHBox" id="network-bridge-box">
+                                                    <property name="visible">True</property>
+                                                    <property name="spacing">6</property>
+                                                    <child>
+                                                      <widget class="GtkLabel" id="label34">
+                                                        <property name="visible">True</property>
+                                                        <property name="label" translatable="yes">_Bridge name:</property>
+                                                        <property name="use_underline">True</property>
+                                                      </widget>
+                                                      <packing>
+                                                        <property name="expand">False</property>
+                                                        <property name="position">0</property>
+                                                      </packing>
+                                                    </child>
+                                                    <child>
+                                                      <widget class="GtkEntry" id="network-bridge">
+                                                        <property name="visible">True</property>
+                                                        <property name="can_focus">True</property>
+                                                        <property name="invisible_char">●</property>
+                                                        <signal name="changed" handler="on_network_bridge_changed"/>
+                                                      </widget>
+                                                      <packing>
+                                                        <property name="expand">False</property>
+                                                        <property name="position">1</property>
+                                                      </packing>
+                                                    </child>
+                                                  </widget>
+                                                  <packing>
+                                                    <property name="position">1</property>
+                                                  </packing>
+                                                </child>
+                                              </widget>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="right_attach">2</property>
+                                              </packing>
+                                            </child>
                                           </widget>
                                         </child>
                                       </widget>
@@ -3761,6 +3873,200 @@ I/O:</property>
                                     <property name="position">0</property>
                                   </packing>
                                 </child>
+                                <child>
+                                  <widget class="GtkExpander" id="vport-expander">
+                                    <property name="can_focus">True</property>
+                                    <child>
+                                      <widget class="GtkHBox" id="hbox1124">
+                                        <property name="visible">True</property>
+                                        <property name="spacing">2</property>
+                                        <child>
+                                          <widget class="GtkTable" id="table10">
+                                            <property name="visible">True</property>
+                                            <property name="n_rows">5</property>
+                                            <property name="n_columns">2</property>
+                                            <property name="column_spacing">6</property>
+                                            <property name="row_spacing">3</property>
+                                            <child>
+                                              <widget class="GtkEntry" id="vport-instanceid">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <property name="width_chars">40</property>
+                                                <signal name="changed" handler="on_vport_instanceid_changed"/>
+                                              </widget>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="right_attach">2</property>
+                                                <property name="top_attach">4</property>
+                                                <property name="bottom_attach">5</property>
+                                                <property name="y_options"></property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkLabel" id="vport-instanceid-label">
+                                                <property name="visible">True</property>
+                                                <property name="xalign">1</property>
+                                                <property name="label" translatable="yes">Instance id:</property>
+                                                <property name="use_underline">True</property>
+                                              </widget>
+                                              <packing>
+                                                <property name="top_attach">4</property>
+                                                <property name="bottom_attach">5</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"></property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkEntry" id="vport-typeidversion">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <signal name="changed" handler="on_vport_typeidversion_changed"/>
+                                              </widget>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="right_attach">2</property>
+                                                <property name="top_attach">3</property>
+                                                <property name="bottom_attach">4</property>
+                                                <property name="y_options"></property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkLabel" id="vport-typeidversion-label">
+                                                <property name="visible">True</property>
+                                                <property name="xalign">1</property>
+                                                <property name="label" translatable="yes">Typeid version:</property>
+                                                <property name="use_underline">True</property>
+                                              </widget>
+                                              <packing>
+                                                <property name="top_attach">3</property>
+                                                <property name="bottom_attach">4</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"></property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkEntry" id="vport-typeid">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <signal name="changed" handler="on_vport_typeid_changed"/>
+                                              </widget>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="right_attach">2</property>
+                                                <property name="top_attach">2</property>
+                                                <property name="bottom_attach">3</property>
+                                                <property name="y_options"></property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkLabel" id="vport-typeid-label">
+                                                <property name="visible">True</property>
+                                                <property name="xalign">1</property>
+                                                <property name="label" translatable="yes">Typeid:</property>
+                                                <property name="use_underline">True</property>
+                                              </widget>
+                                              <packing>
+                                                <property name="top_attach">2</property>
+                                                <property name="bottom_attach">3</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"></property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkEntry" id="vport-managerid">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <signal name="changed" handler="on_vport_managerid_changed"/>
+                                              </widget>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="right_attach">2</property>
+                                                <property name="top_attach">1</property>
+                                                <property name="bottom_attach">2</property>
+                                                <property name="y_options"></property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkLabel" id="vport-managerid-label">
+                                                <property name="visible">True</property>
+                                                <property name="xalign">1</property>
+                                                <property name="label" translatable="yes">Managerid:</property>
+                                                <property name="use_underline">True</property>
+                                              </widget>
+                                              <packing>
+                                                <property name="top_attach">1</property>
+                                                <property name="bottom_attach">2</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"></property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkLabel" id="label33">
+                                                <property name="visible">True</property>
+                                                <property name="xalign">1</property>
+                                                <property name="yalign">0.47999998927116394</property>
+                                                <property name="label" translatable="yes">Type:</property>
+                                                <property name="use_markup">True</property>
+                                                <property name="use_underline">True</property>
+                                                <property name="mnemonic_widget">network-model-combo</property>
+                                              </widget>
+                                              <packing>
+                                                <property name="x_options">GTK_FILL</property>
+                                                <property name="y_options"></property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkEntry" id="vport-type">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <property name="invisible_char">●</property>
+                                                <signal name="changed" handler="on_vport_type_changed"/>
+                                              </widget>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="right_attach">2</property>
+                                                <property name="y_options"></property>
+                                              </packing>
+                                            </child>
+                                          </widget>
+                                          <packing>
+                                            <property name="expand">False</property>
+                                            <property name="position">0</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <widget class="GtkAlignment" id="alignment5">
+                                            <property name="visible">True</property>
+                                            <child>
+                                              <placeholder/>
+                                            </child>
+                                          </widget>
+                                          <packing>
+                                            <property name="position">1</property>
+                                          </packing>
+                                        </child>
+                                      </widget>
+                                    </child>
+                                    <child>
+                                      <widget class="GtkLabel" id="label6">
+                                        <property name="visible">True</property>
+                                        <property name="label" translatable="yes">Virtual port</property>
+                                        <property name="use_markup">True</property>
+                                      </widget>
+                                      <packing>
+                                        <property name="type">label_item</property>
+                                      </packing>
+                                    </child>
+                                  </widget>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="position">1</property>
+                                  </packing>
+                                </child>
                               </widget>
                               <packing>
                                 <property name="position">6</property>
@@ -3769,7 +4075,7 @@ I/O:</property>
                             <child>
                               <widget class="GtkLabel" id="label56">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">net</property>
+                                <property name="label">net</property>
                               </widget>
                               <packing>
                                 <property name="position">6</property>
@@ -3928,7 +4234,7 @@ I/O:</property>
                             <child>
                               <widget class="GtkLabel" id="label401">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">inp</property>
+                                <property name="label">inp</property>
                               </widget>
                               <packing>
                                 <property name="position">7</property>
@@ -4109,18 +4415,6 @@ I/O:</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <widget class="GtkLabel" id="gfx-type">
-                                                <property name="visible">True</property>
-                                                <property name="xalign">0</property>
-                                                <property name="label">label</property>
-                                              </widget>
-                                              <packing>
-                                                <property name="left_attach">1</property>
-                                                <property name="right_attach">2</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                              </packing>
-                                            </child>
-                                            <child>
                                               <widget class="GtkLabel" id="gfx-xauth">
                                                 <property name="visible">True</property>
                                                 <property name="xalign">0</property>
@@ -4200,6 +4494,37 @@ I/O:</property>
                                                 <property name="right_attach">2</property>
                                                 <property name="top_attach">5</property>
                                                 <property name="bottom_attach">6</property>
+                                                <property name="x_options">GTK_FILL</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <widget class="GtkHBox" id="gfx-type-box">
+                                                <property name="visible">True</property>
+                                                <child>
+                                                  <widget class="GtkComboBox" id="gfx-type-combo">
+                                                    <property name="visible">True</property>
+                                                    <signal name="changed" handler="on_gfx_type_combo_changed"/>
+                                                  </widget>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="position">0</property>
+                                                  </packing>
+                                                </child>
+                                                <child>
+                                                  <widget class="GtkLabel" id="gfx-type-label">
+                                                    <property name="visible">True</property>
+                                                    <property name="xalign">0</property>
+                                                    <property name="label">label</property>
+                                                  </widget>
+                                                  <packing>
+                                                    <property name="expand">False</property>
+                                                    <property name="position">1</property>
+                                                  </packing>
+                                                </child>
+                                              </widget>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="right_attach">2</property>
                                                 <property name="x_options">GTK_FILL</property>
                                               </packing>
                                             </child>
@@ -4331,7 +4656,7 @@ I/O:</property>
                             <child>
                               <widget class="GtkLabel" id="label440">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">snd</property>
+                                <property name="label">snd</property>
                               </widget>
                               <packing>
                                 <property name="position">9</property>
@@ -4441,7 +4766,7 @@ I/O:</property>
                             <child>
                               <widget class="GtkLabel" id="label501">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">chr</property>
+                                <property name="label">chr</property>
                               </widget>
                               <packing>
                                 <property name="position">10</property>
@@ -4458,7 +4783,7 @@ I/O:</property>
                                     <property name="label_xalign">0</property>
                                     <property name="shadow_type">none</property>
                                     <child>
-                                      <widget class="GtkAlignment" id="alignment5">
+                                      <widget class="GtkAlignment" id="alignment10">
                                         <property name="visible">True</property>
                                         <property name="top_padding">3</property>
                                         <property name="left_padding">12</property>
@@ -4518,7 +4843,7 @@ I/O:</property>
                               </packing>
                             </child>
                             <child>
-                              <widget class="GtkLabel" id="label6">
+                              <widget class="GtkLabel" id="label15">
                                 <property name="visible">True</property>
                                 <property name="label">phy</property>
                               </widget>
@@ -4537,7 +4862,7 @@ I/O:</property>
                                     <property name="label_xalign">0</property>
                                     <property name="shadow_type">none</property>
                                     <child>
-                                      <widget class="GtkAlignment" id="alignment10">
+                                      <widget class="GtkAlignment" id="alignment22">
                                         <property name="visible">True</property>
                                         <property name="top_padding">3</property>
                                         <property name="left_padding">12</property>
@@ -4617,7 +4942,7 @@ I/O:</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <widget class="GtkHBox" id="hbox7">
+                                              <widget class="GtkHBox" id="hbox12">
                                                 <property name="visible">True</property>
                                                 <property name="spacing">6</property>
                                                 <child>
@@ -4675,9 +5000,9 @@ I/O:</property>
                               </packing>
                             </child>
                             <child>
-                              <widget class="GtkLabel" id="label15">
+                              <widget class="GtkLabel" id="label25">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">vid</property>
+                                <property name="label">vid</property>
                               </widget>
                               <packing>
                                 <property name="position">12</property>
@@ -4694,7 +5019,7 @@ I/O:</property>
                                     <property name="label_xalign">0</property>
                                     <property name="shadow_type">none</property>
                                     <child>
-                                      <widget class="GtkAlignment" id="alignment22">
+                                      <widget class="GtkAlignment" id="alignment30">
                                         <property name="visible">True</property>
                                         <property name="top_padding">3</property>
                                         <property name="left_padding">12</property>
@@ -4734,7 +5059,7 @@ I/O:</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <widget class="GtkHBox" id="hbox12">
+                                              <widget class="GtkHBox" id="hbox13">
                                                 <property name="visible">True</property>
                                                 <property name="spacing">6</property>
                                                 <child>
@@ -4768,7 +5093,7 @@ I/O:</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <widget class="GtkHBox" id="hbox13">
+                                              <widget class="GtkHBox" id="hbox20">
                                                 <property name="visible">True</property>
                                                 <property name="spacing">6</property>
                                                 <child>
@@ -4824,7 +5149,7 @@ I/O:</property>
                               </packing>
                             </child>
                             <child>
-                              <widget class="GtkLabel" id="label25">
+                              <widget class="GtkLabel" id="label35">
                                 <property name="visible">True</property>
                                 <property name="label">wdog</property>
                               </widget>
@@ -4840,7 +5165,7 @@ I/O:</property>
                                 <property name="label_xalign">0</property>
                                 <property name="shadow_type">none</property>
                                 <child>
-                                  <widget class="GtkAlignment" id="alignment30">
+                                  <widget class="GtkAlignment" id="alignment34">
                                     <property name="visible">True</property>
                                     <property name="top_padding">3</property>
                                     <property name="left_padding">12</property>
@@ -4894,7 +5219,7 @@ I/O:</property>
                             <child>
                               <widget class="GtkLabel" id="label47">
                                 <property name="visible">True</property>
-                                <property name="label" translatable="yes">cntrl</property>
+                                <property name="label">cntrl</property>
                               </widget>
                               <packing>
                                 <property name="position">14</property>
@@ -4966,7 +5291,7 @@ I/O:</property>
             <child>
               <widget class="GtkLabel" id="label41">
                 <property name="visible">True</property>
-                <property name="label" translatable="yes">Details</property>
+                <property name="label">Details</property>
               </widget>
               <packing>
                 <property name="position">1</property>
