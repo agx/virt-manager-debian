@@ -1,6 +1,6 @@
 From: =?UTF-8?q?Laurent=20L=C3=A9onard?= <laurent@open-minds.org>
 Date: Tue, 7 Dec 2010 13:22:14 +0100
-Subject: [PATCH] Use IPy from python-ipy
+Subject: Use IPy from python-ipy
 
 Origin: vendor
 Bug-Debian: http://bugs.debian.org/605967
