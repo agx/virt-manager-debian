@@ -10,26 +10,26 @@ Bug-Debian: http://bugs.debian.org/605967
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/virtManager/createnet.py b/src/virtManager/createnet.py
-index 2311111..6024666 100644
+index 5bad52e..4b10472 100644
 --- a/src/virtManager/createnet.py
 +++ b/src/virtManager/createnet.py
-@@ -25,7 +25,7 @@ import re
- import traceback
+@@ -23,7 +23,7 @@ import re
  
- import virtManager.util as util
+ import gtk
+ 
 -from virtManager.IPy import IP
 +from IPy import IP
  from virtManager.network import vmmNetwork
  from virtManager.baseclass import vmmGObjectUI
  
 diff --git a/src/virtManager/network.py b/src/virtManager/network.py
-index c5339dd..068eb5f 100644
+index aa918b8..fad31c9 100644
 --- a/src/virtManager/network.py
 +++ b/src/virtManager/network.py
-@@ -20,7 +20,7 @@
+@@ -19,7 +19,7 @@
+ #
  
- import virtinst.util as util
- 
+ from virtManager import util
 -from virtManager.IPy import IP
 +from IPy import IP
  from virtManager.libvirtobject import vmmLibvirtObject
