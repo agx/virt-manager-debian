@@ -18,13 +18,11 @@
 # MA 02110-1301 USA.
 #
 
-import gobject
-import gtk
 import logging
 import re
-import traceback
 
-import virtManager.util as util
+import gtk
+
 from virtManager.IPy import IP
 from virtManager.network import vmmNetwork
 from virtManager.baseclass import vmmGObjectUI
@@ -38,10 +36,6 @@ PAGE_SUMMARY = 5
 
 
 class vmmCreateNetwork(vmmGObjectUI):
-    __gsignals__ = {
-        "action-show-help": (gobject.SIGNAL_RUN_FIRST,
-                                gobject.TYPE_NONE, [str]),
-        }
     def __init__(self, conn):
         vmmGObjectUI.__init__(self, "vmm-create-net.glade", "vmm-create-net")
         self.conn = conn
@@ -50,8 +44,8 @@ class vmmCreateNetwork(vmmGObjectUI):
             "on_create_pages_switch_page" : self.page_changed,
             "on_create_cancel_clicked" : self.close,
             "on_vmm_create_delete_event" : self.close,
-            "on_create_back_clicked" : self.back,
             "on_create_forward_clicked" : self.forward,
+            "on_create_back_clicked" : self.back,
             "on_create_finish_clicked" : self.finish,
 
             "on_net_name_activate": self.forward,
@@ -61,31 +55,45 @@ class vmmCreateNetwork(vmmGObjectUI):
             "on_net_dhcp_start_changed": self.change_dhcp_start,
             "on_net_dhcp_end_changed": self.change_dhcp_end,
             "on_create_help_clicked": self.show_help,
-            })
-        util.bind_escape_key_close(self)
+        })
+        self.bind_escape_key_close()
 
         # XXX: Help docs useless/out of date
-        self.window.get_widget("create-help").hide()
+        self.widget("create-help").hide()
         finish_img = gtk.image_new_from_stock(gtk.STOCK_QUIT,
                                               gtk.ICON_SIZE_BUTTON)
-        self.window.get_widget("create-finish").set_image(finish_img)
+        self.widget("create-finish").set_image(finish_img)
 
         self.set_initial_state()
 
-    def show(self):
+    def show(self, parent):
         self.reset_state()
+        self.topwin.set_transient_for(parent)
         self.topwin.present()
 
+    def is_visible(self):
+        if self.topwin.flags() & gtk.VISIBLE:
+            return 1
+        return 0
+
+    def close(self, ignore1=None, ignore2=None):
+        self.topwin.hide()
+        return 1
+
+    def _cleanup(self):
+        self.close()
+        self.conn = None
+
     def set_initial_state(self):
-        notebook = self.window.get_widget("create-pages")
+        notebook = self.widget("create-pages")
         notebook.set_show_tabs(False)
 
         black = gtk.gdk.color_parse("#000")
         for num in range(PAGE_SUMMARY + 1):
             name = "page" + str(num) + "-title"
-            self.window.get_widget(name).modify_bg(gtk.STATE_NORMAL, black)
+            self.widget(name).modify_bg(gtk.STATE_NORMAL, black)
 
-        fw_list = self.window.get_widget("net-forward")
+        fw_list = self.widget("net-forward")
         # [ label, dev name ]
         fw_model = gtk.ListStore(str, str)
         fw_list.set_model(fw_model)
@@ -99,7 +107,7 @@ class vmmCreateNetwork(vmmGObjectUI):
             fw_model.append([_("Physical device %s") % (net.get_name()),
                              net.get_name()])
 
-        mode_list = self.window.get_widget("net-forward-mode")
+        mode_list = self.widget("net-forward-mode")
         # [ label, mode ]
         mode_model = gtk.ListStore(str, str)
         mode_list.set_model(mode_model)
@@ -111,38 +119,32 @@ class vmmCreateNetwork(vmmGObjectUI):
         mode_model.append([_("Routed"), "route"])
 
     def reset_state(self):
-        notebook = self.window.get_widget("create-pages")
+        notebook = self.widget("create-pages")
         notebook.set_current_page(0)
-        # Hide the "finish" button until the appropriate time
-        self.window.get_widget("create-finish").hide()
-        self.window.get_widget("create-forward").show()
-        self.window.get_widget("create-forward").grab_focus()
-        self.window.get_widget("create-back").set_sensitive(False)
 
-        self.window.get_widget("net-name").set_text("")
-        self.window.get_widget("net-network").set_text("192.168.100.0/24")
-        self.window.get_widget("net-dhcp-enable").set_active(True)
-        self.window.get_widget("net-dhcp-start").set_text("")
-        self.window.get_widget("net-dhcp-end").set_text("")
-        self.window.get_widget("net-forward-none").set_active(True)
+        self.page_changed(None, None, 0)
 
-        self.window.get_widget("net-forward").set_active(0)
-        self.window.get_widget("net-forward-mode").set_active(0)
+        self.widget("net-name").set_text("")
+        self.widget("net-network").set_text("192.168.100.0/24")
+        self.widget("net-dhcp-enable").set_active(True)
+        self.widget("net-dhcp-start").set_text("")
+        self.widget("net-dhcp-end").set_text("")
+        self.widget("net-forward-none").set_active(True)
+
+        self.widget("net-forward").set_active(0)
+        self.widget("net-forward-mode").set_active(0)
 
 
     def forward(self, ignore=None):
-        notebook = self.window.get_widget("create-pages")
-        if(self.validate(notebook.get_current_page()) != True):
+        notebook = self.widget("create-pages")
+        if self.validate(notebook.get_current_page()) != True:
             return
 
-        self.window.get_widget("create-forward").grab_focus()
+        self.widget("create-forward").grab_focus()
         notebook.next_page()
 
     def back(self, ignore=None):
-        notebook = self.window.get_widget("create-pages")
-        # do this always, since there's no "leaving a notebook page" event.
-        self.window.get_widget("create-finish").hide()
-        self.window.get_widget("create-forward").show()
+        notebook = self.widget("create-pages")
         notebook.prev_page()
 
     def change_network(self, src):
@@ -155,11 +157,11 @@ class vmmCreateNetwork(vmmGObjectUI):
         # No IP specified or invalid IP
         if ip is None or ip.version() != 4:
             src.modify_base(gtk.STATE_NORMAL, red)
-            self.window.get_widget("net-info-netmask").set_text("")
-            self.window.get_widget("net-info-broadcast").set_text("")
-            self.window.get_widget("net-info-gateway").set_text("")
-            self.window.get_widget("net-info-size").set_text("")
-            self.window.get_widget("net-info-type").set_text("")
+            self.widget("net-info-netmask").set_text("")
+            self.widget("net-info-broadcast").set_text("")
+            self.widget("net-info-gateway").set_text("")
+            self.widget("net-info-size").set_text("")
+            self.widget("net-info-type").set_text("")
             return
 
         # We've got a valid IP
@@ -167,30 +169,29 @@ class vmmCreateNetwork(vmmGObjectUI):
             src.modify_base(gtk.STATE_NORMAL, red)
         else:
             src.modify_base(gtk.STATE_NORMAL, green)
-        self.window.get_widget("net-info-netmask").set_text(str(ip.netmask()))
-        self.window.get_widget("net-info-broadcast").set_text(
-                                                        str(ip.broadcast()))
+        self.widget("net-info-netmask").set_text(str(ip.netmask()))
+        self.widget("net-info-broadcast").set_text(str(ip.broadcast()))
 
         if ip.len() <= 1:
-            self.window.get_widget("net-info-gateway").set_text("")
+            self.widget("net-info-gateway").set_text("")
         else:
-            self.window.get_widget("net-info-gateway").set_text(str(ip[1]))
-        self.window.get_widget("net-info-size").set_text(_("%d addresses") %
+            self.widget("net-info-gateway").set_text(str(ip[1]))
+        self.widget("net-info-size").set_text(_("%d addresses") %
                                                          (ip.len()))
 
         if ip.iptype() == "PUBLIC":
-            self.window.get_widget("net-info-type").set_text(_("Public"))
+            self.widget("net-info-type").set_text(_("Public"))
         elif ip.iptype() == "PRIVATE":
-            self.window.get_widget("net-info-type").set_text(_("Private"))
+            self.widget("net-info-type").set_text(_("Private"))
         elif ip.iptype() == "RESERVED":
-            self.window.get_widget("net-info-type").set_text(_("Reserved"))
+            self.widget("net-info-type").set_text(_("Reserved"))
         else:
-            self.window.get_widget("net-info-type").set_text(_("Other"))
+            self.widget("net-info-type").set_text(_("Other"))
 
     def change_dhcp_enable(self, src):
         val = src.get_active()
-        self.window.get_widget("net-dhcp-start").set_sensitive(val)
-        self.window.get_widget("net-dhcp-end").set_sensitive(val)
+        self.widget("net-dhcp-start").set_sensitive(val)
+        self.widget("net-dhcp-end").set_sensitive(val)
 
     def change_dhcp_start(self, src):
         end = self.get_config_dhcp_start()
@@ -213,112 +214,108 @@ class vmmCreateNetwork(vmmGObjectUI):
             src.modify_base(gtk.STATE_NORMAL, green)
 
     def change_forward_type(self, src_ignore):
-        skip_fwd = self.window.get_widget("net-forward-none").get_active()
+        skip_fwd = self.widget("net-forward-none").get_active()
 
-        self.window.get_widget("net-forward-mode").set_sensitive(not skip_fwd)
-        self.window.get_widget("net-forward").set_sensitive(not skip_fwd)
+        self.widget("net-forward-mode").set_sensitive(not skip_fwd)
+        self.widget("net-forward").set_sensitive(not skip_fwd)
 
     def get_config_name(self):
-        return self.window.get_widget("net-name").get_text()
+        return self.widget("net-name").get_text()
 
     def get_config_ip4(self):
         try:
-            return IP(self.window.get_widget("net-network").get_text())
+            return IP(self.widget("net-network").get_text())
         except:
             return None
 
     def get_config_dhcp_start(self):
         try:
-            return IP(self.window.get_widget("net-dhcp-start").get_text())
+            return IP(self.widget("net-dhcp-start").get_text())
         except:
             return None
     def get_config_dhcp_end(self):
         try:
-            return IP(self.window.get_widget("net-dhcp-end").get_text())
+            return IP(self.widget("net-dhcp-end").get_text())
         except:
             return None
 
 
     def get_config_forwarding(self):
-        if self.window.get_widget("net-forward-none").get_active():
+        if self.widget("net-forward-none").get_active():
             return [None, None]
         else:
-            dev = self.window.get_widget("net-forward")
+            dev = self.widget("net-forward")
             model = dev.get_model()
             active = dev.get_active()
             name = model[active][1]
 
-            mode_w = self.window.get_widget("net-forward-mode")
+            mode_w = self.widget("net-forward-mode")
             mode = mode_w.get_model()[mode_w.get_active()][1]
             return [name, mode]
 
     def get_config_dhcp_enable(self):
-        return self.window.get_widget("net-dhcp-enable").get_active()
+        return self.widget("net-dhcp-enable").get_active()
 
-    def page_changed(self, notebook_ignore, page_ignore, page_number):
-        # would you like some spaghetti with your salad, sir?
+    def populate_summary(self):
+        dodhcp = self.get_config_dhcp_enable()
+        self.widget("summary-name").set_text(self.get_config_name())
+
+        ip = self.get_config_ip4()
+        self.widget("summary-ip4-network").set_text(str(ip))
+        self.widget("summary-ip4-gateway").set_text(str(ip[1]))
+        self.widget("summary-ip4-netmask").set_text(str(ip.netmask()))
+
+        self.widget("label-dhcp-end").set_property("visible", dodhcp)
+        self.widget("summary-dhcp-end").set_property("visible", dodhcp)
+        if dodhcp:
+            start = self.get_config_dhcp_start()
+            end = self.get_config_dhcp_end()
+            self.widget("summary-dhcp-start").set_text(str(start))
+            self.widget("summary-dhcp-end").set_text(str(end))
+            self.widget("label-dhcp-start").set_text(_("Start address:"))
+            self.widget("label-dhcp-end").show()
+            self.widget("summary-dhcp-end").show()
+        else:
+            self.widget("label-dhcp-start").set_text(_("Status:"))
+            self.widget("summary-dhcp-start").set_text(_("Disabled"))
+
+        forward_txt = ""
+        dev, mode = self.get_config_forwarding()
+        forward_txt = vmmNetwork.pretty_desc(mode, dev)
+        self.widget("summary-forwarding").set_text(forward_txt)
+
+    def populate_dhcp(self):
+        ip = self.get_config_ip4()
+        start = int(ip.len() / 2)
+        end = ip.len() - 2
+
+        if self.widget("net-dhcp-start").get_text() == "":
+            self.widget("net-dhcp-start").set_text(str(ip[start]))
+        if self.widget("net-dhcp-end").get_text() == "":
+            self.widget("net-dhcp-end").set_text(str(ip[end]))
+
+    def page_changed(self, ignore1, ignore2, page_number):
+        if page_number == PAGE_NAME:
+            name_widget = self.widget("net-name")
+            name_widget.grab_focus()
+        elif page_number == PAGE_DHCP:
+            self.populate_dhcp()
+        elif page_number == PAGE_SUMMARY:
+            self.populate_summary()
 
         if page_number == PAGE_INTRO:
-            self.window.get_widget("create-back").set_sensitive(False)
-        elif page_number == PAGE_NAME:
-            name_widget = self.window.get_widget("net-name")
-            name_widget.grab_focus()
-        elif page_number == PAGE_IPV4:
-            pass
-        elif page_number == PAGE_DHCP:
-            ip = self.get_config_ip4()
-            start = int(ip.len() / 2)
-            end = ip.len() - 2
-            if self.window.get_widget("net-dhcp-start").get_text() == "":
-                self.window.get_widget("net-dhcp-start").set_text(str(ip[start]))
-            if self.window.get_widget("net-dhcp-end").get_text() == "":
-                self.window.get_widget("net-dhcp-end").set_text(str(ip[end]))
-        elif page_number == PAGE_FORWARDING:
-            pass
-        elif page_number == PAGE_SUMMARY:
-            self.window.get_widget("summary-name").set_text(self.get_config_name())
+            self.widget("create-back").set_sensitive(False)
+        else:
+            self.widget("create-back").set_sensitive(True)
 
-            ip = self.get_config_ip4()
-            self.window.get_widget("summary-ip4-network").set_text(str(ip))
-            self.window.get_widget("summary-ip4-gateway").set_text(str(ip[1]))
-            self.window.get_widget("summary-ip4-netmask").set_text(str(ip.netmask()))
+        if page_number == PAGE_SUMMARY:
+            self.widget("create-forward").hide()
+            self.widget("create-finish").show()
+            self.widget("create-finish").grab_focus()
+        else:
+            self.widget("create-forward").show()
+            self.widget("create-finish").hide()
 
-            if self.get_config_dhcp_enable():
-                start = self.get_config_dhcp_start()
-                end = self.get_config_dhcp_end()
-                self.window.get_widget("summary-dhcp-start").set_text(str(start))
-                self.window.get_widget("summary-dhcp-end").set_text(str(end))
-                self.window.get_widget("label-dhcp-start").set_text(
-                                                        _("Start address:"))
-                self.window.get_widget("label-dhcp-start").show()
-                self.window.get_widget("label-dhcp-end").show()
-                self.window.get_widget("summary-dhcp-start").show()
-                self.window.get_widget("summary-dhcp-end").show()
-            else:
-                self.window.get_widget("label-dhcp-start").set_text(
-                                                                _("Status:"))
-                self.window.get_widget("summary-dhcp-start").set_text(
-                                                                _("Disabled"))
-                self.window.get_widget("label-dhcp-end").hide()
-                self.window.get_widget("summary-dhcp-end").hide()
-
-            forward_txt = ""
-            dev, mode = self.get_config_forwarding()
-            forward_txt = vmmNetwork.pretty_desc(mode, dev)
-
-            self.window.get_widget("summary-forwarding").set_text(forward_txt)
-            self.window.get_widget("create-forward").hide()
-            self.window.get_widget("create-finish").show()
-            self.window.get_widget("create-finish").grab_focus()
-
-    def close(self, ignore1=None, ignore2=None):
-        self.topwin.hide()
-        return 1
-
-    def is_visible(self):
-        if self.topwin.flags() & gtk.VISIBLE:
-            return 1
-        return 0
 
     def finish(self, ignore=None):
         name = self.get_config_name()
@@ -327,99 +324,120 @@ class vmmCreateNetwork(vmmGObjectUI):
         end = self.get_config_dhcp_end()
         dev, mode = self.get_config_forwarding()
 
-        xml = "<network>" + \
-              "  <name>%s</name>\n" % name
+        xml = "<network>\n"
+        xml += "  <name>%s</name>\n" % name
+
         if mode:
             if dev is not None:
                 xml += "  <forward mode='%s' dev='%s'/>\n" % (mode, dev)
             else:
                 xml += "  <forward mode='%s'/>\n" % mode
 
-        xml += "  <ip address='%s' netmask='%s'>\n" % (str(ip[1]), str(ip.netmask()))
+        xml += "  <ip address='%s' netmask='%s'>\n" % (str(ip[1]),
+                                                       str(ip.netmask()))
 
         if self.get_config_dhcp_enable():
             xml += "    <dhcp>\n"
-            xml += "      <range start='%s' end='%s'/>\n" % (str(start), str(end))
+            xml += "      <range start='%s' end='%s'/>\n" % (str(start),
+                                                             str(end))
             xml += "    </dhcp>\n"
 
         xml += "  </ip>\n"
         xml += "</network>\n"
 
-        logging.debug("About to create network " + xml)
+        logging.debug("Generated network XML:\n" + xml)
 
         try:
             self.conn.create_network(xml)
         except Exception, e:
-            self.err.show_err(_("Error creating virtual network: %s" % str(e)),
-                              "".join(traceback.format_exc()))
+            self.err.show_err(_("Error creating virtual network: %s" % str(e)))
             return
 
         self.conn.tick(noStatsUpdate=True)
         self.close()
 
+    def validate_name(self):
+        name = self.widget("net-name").get_text()
+        if len(name) > 50 or len(name) == 0:
+            return self.err.val_err(_("Invalid Network Name"),
+                        _("Network name must be non-blank and less than "
+                          "50 characters"))
+        if re.match("^[a-zA-Z0-9_]*$", name) == None:
+            return self.err.val_err(_("Invalid Network Name"),
+                        _("Network name may contain alphanumeric and '_' "
+                          "characters only"))
+        return True
+
+    def validate_ipv4(self):
+        ip = self.get_config_ip4()
+        if ip is None:
+            return self.err.val_err(_("Invalid Network Address"),
+                    _("The network address could not be understood"))
+
+        if ip.version() != 4:
+            return self.err.val_err(_("Invalid Network Address"),
+                    _("The network must be an IPv4 address"))
+
+        if ip.len() < 16:
+            return self.err.val_err(_("Invalid Network Address"),
+                    _("The network prefix must be at least /4 (16 addresses)"))
+
+        if ip.iptype() != "PRIVATE":
+            res = self.err.yes_no(_("Check Network Address"),
+                    _("The network should normally use a private IPv4 "
+                      "address. Use this non-private address anyway?"))
+            if not res:
+                return False
+
+        return True
+
+    def validate_dhcp(self):
+        ip = self.get_config_ip4()
+        start = self.get_config_dhcp_start()
+        end = self.get_config_dhcp_end()
+        enabled = self.widget("net-dhcp-enable").get_active()
+
+        if enabled and start is None:
+            return self.err.val_err(_("Invalid DHCP Address"),
+                        _("The DHCP start address could not be understood"))
+        if enabled and end is None:
+            return self.err.val_err(_("Invalid DHCP Address"),
+                        _("The DHCP end address could not be understood"))
+
+        if enabled and not ip.overlaps(start):
+            return self.err.val_err(_("Invalid DHCP Address"),
+                    (_("The DHCP start address is not with the network %s") %
+                     (str(ip))))
+        if enabled and not ip.overlaps(end):
+            return self.err.val_err(_("Invalid DHCP Address"),
+                    (_("The DHCP end address is not with the network %s") %
+                     (str(ip))))
+        return True
+
+    def validate_forwarding(self):
+        if not self.widget("net-forward-dev").get_active():
+            return True
+
+        dev = self.widget("net-forward")
+        if dev.get_active() == -1:
+            return self.err.val_err(_("Invalid forwarding mode"),
+                    _("Please select where the traffic should be forwarded"))
+        return True
+
     def validate(self, page_num):
         if page_num == PAGE_NAME:
-            name = self.window.get_widget("net-name").get_text()
-            if len(name) > 50 or len(name) == 0:
-                return self.err.val_err(_("Invalid Network Name"), \
-                                        _("Network name must be non-blank and less than 50 characters"))
-            if re.match("^[a-zA-Z0-9_]*$", name) == None:
-                return self.err.val_err(_("Invalid Network Name"), \
-                                        _("Network name may contain alphanumeric and '_' characters only"))
-
-
+            return self.validate_name()
         elif page_num == PAGE_IPV4:
-            ip = self.get_config_ip4()
-            if ip is None:
-                return self.err.val_err(_("Invalid Network Address"), \
-                                        _("The network address could not be understood"))
-
-            if ip.version() != 4:
-                return self.err.val_err(_("Invalid Network Address"), \
-                                        _("The network must be an IPv4 address"))
-
-            if ip.len() < 16:
-                return self.err.val_err(_("Invalid Network Address"), \
-                                        _("The network prefix must be at least /4 (16 addresses)"))
-
-            if ip.iptype() != "PRIVATE":
-                res = self.err.yes_no(_("Check Network Address"), \
-                                       _("The network should normally use a private IPv4 address. Use this non-private address anyway?"))
-                if not res:
-                    return False
+            return self.validate_ipv4()
         elif page_num == PAGE_DHCP:
-            ip = self.get_config_ip4()
-            start = self.get_config_dhcp_start()
-            end = self.get_config_dhcp_end()
-            enabled = self.window.get_widget("net-dhcp-enable").get_active()
-
-            if enabled and start is None:
-                return self.err.val_err(_("Invalid DHCP Address"), \
-                                        _("The DHCP start address could not be understood"))
-            if enabled and end is None:
-                return self.err.val_err(_("Invalid DHCP Address"), \
-                                        _("The DHCP end address could not be understood"))
-
-            if enabled and not ip.overlaps(start):
-                return self.err.val_err(_("Invalid DHCP Address"), \
-                                        _("The DHCP start address is not with the network %s") % (str(ip)))
-            if enabled and not ip.overlaps(end):
-                return self.err.val_err(_("Invalid DHCP Address"), \
-                                        _("The DHCP end address is not with the network %s") % (str(ip)))
+            return self.validate_dhcp()
         elif page_num == PAGE_FORWARDING:
-            if self.window.get_widget("net-forward-dev").get_active():
-                dev = self.window.get_widget("net-forward")
-                if dev.get_active() == -1:
-                    return self.err.val_err(_("Invalid forwarding mode"), \
-                                            _("Please select where the traffic should be forwarded"))
-
-        # do this always, since there's no "leaving a notebook page" event.
-        self.window.get_widget("create-back").set_sensitive(True)
+            return self.validate_forwarding()
         return True
 
     def show_help(self, src_ignore):
         # help to show depends on the notebook page, yahoo
-        page = self.window.get_widget("create-pages").get_current_page()
+        page = self.widget("create-pages").get_current_page()
         if page == PAGE_INTRO:
             self.emit("action-show-help", "virt-manager-create-net-intro")
         elif page == PAGE_NAME:
@@ -434,3 +452,4 @@ class vmmCreateNetwork(vmmGObjectUI):
             self.emit("action-show-help", "virt-manager-create-net-sumary")
 
 vmmGObjectUI.type_register(vmmCreateNetwork)
+vmmCreateNetwork.signal_new(vmmCreateNetwork, "action-show-help", [str])

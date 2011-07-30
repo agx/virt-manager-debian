@@ -16,29 +16,25 @@
 # MA  02110-1301, USA.  A copy of the GNU General Public License is
 # also available at http://www.gnu.org/copyleft/gpl.html.
 
-from snack import *
-import traceback
+from newt_syrup.menuscreen     import MenuScreen
 
-from menuscreen     import MenuScreen
-from configscreen   import ConfigScreen
 from adddomain      import AddDomain
 from startdomain    import StartDomain
 from stopdomain     import StopDomain
+from pausedomain    import PauseDomain
 from removedomain   import RemoveDomain
 from listdomains    import ListDomains
 from migratedomain  import MigrateDomain
 from createuser     import CreateUser
 
-import utils
-import logging
-
 ADD_DOMAIN     = 1
 START_DOMAIN   = 2
 STOP_DOMAIN    = 3
-REMOVE_DOMAIN  = 4
-LIST_DOMAINS   = 5
-MIGRATE_DOMAIN = 6
-CREATE_USER    = 7
+PAUSE_DOMAIN   = 4
+REMOVE_DOMAIN  = 5
+LIST_DOMAINS   = 6
+MIGRATE_DOMAIN = 7
+CREATE_USER    = 8
 
 class NodeMenuScreen(MenuScreen):
     def __init__(self):
@@ -48,19 +44,29 @@ class NodeMenuScreen(MenuScreen):
         return (("Add A Virtual Machine",     ADD_DOMAIN),
                 ("Start A Virtual Machine",  START_DOMAIN),
                 ("Stop A Virtual Machine",    STOP_DOMAIN),
+                ("Pause A Virtual Machine",   PAUSE_DOMAIN),
                 ("Remove A Virtual Machine",  REMOVE_DOMAIN),
                 ("List All Virtual Machines", LIST_DOMAINS),
                 ("Migrate Virtual Machine",   MIGRATE_DOMAIN),
                 ("Create A User",             CREATE_USER))
 
     def handle_selection(self, item):
-            if   item is ADD_DOMAIN:     AddDomain()
-            elif item is START_DOMAIN:   StartDomain()
-            elif item is STOP_DOMAIN:    StopDomain()
-            elif item is REMOVE_DOMAIN:  RemoveDomain()
-            elif item is LIST_DOMAINS:   ListDomains()
-            elif item is MIGRATE_DOMAIN: MigrateDomain()
-            elif item is CREATE_USER:    CreateUser()
+        if item is ADD_DOMAIN:
+            AddDomain()
+        elif item is START_DOMAIN:
+            StartDomain()
+        elif item is STOP_DOMAIN:
+            StopDomain()
+        elif item is PAUSE_DOMAIN:
+            PauseDomain()
+        elif item is REMOVE_DOMAIN:
+            RemoveDomain()
+        elif item is LIST_DOMAINS:
+            ListDomains()
+        elif item is MIGRATE_DOMAIN:
+            MigrateDomain()
+        elif item is CREATE_USER:
+            CreateUser()
 
 def NodeMenu():
     screen = NodeMenuScreen()

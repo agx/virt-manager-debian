@@ -18,8 +18,8 @@
 # MA  02110-1301, USA.  A copy of the GNU General Public License is
 # also available at http://www.gnu.org/copyleft/gpl.html.
 
-from snack import *
-from configscreen import *
+import snack
+from domainlistconfigscreen import DomainListConfigScreen
 
 class RemoveDomainConfigScreen(DomainListConfigScreen):
     LIST_PAGE     = 1
@@ -28,25 +28,35 @@ class RemoveDomainConfigScreen(DomainListConfigScreen):
 
     def __init__(self):
         DomainListConfigScreen.__init__(self, "Remove A Domain")
+        self.__confirm_remove = None
 
     def get_elements_for_page(self, screen, page):
-        if   page is self.LIST_PAGE:     return self.get_domain_list_page(screen)
-        elif page is self.CONFIRM_PAGE:  return self.get_confirm_page(screen)
-        elif page is self.REMOVE_PAGE: return self.get_remove_page(screen)
+        if   page is self.LIST_PAGE:
+            return self.get_domain_list_page(screen)
+        elif page is self.CONFIRM_PAGE:
+            return self.get_confirm_page(screen)
+        elif page is self.REMOVE_PAGE:
+            return self.get_remove_page(screen)
 
     def page_has_next(self, page):
-        if   page is self.LIST_PAGE:     return self.has_selectable_domains()
-        elif page is self.CONFIRM_PAGE:  return True
+        if   page is self.LIST_PAGE:
+            return self.has_selectable_domains()
+        elif page is self.CONFIRM_PAGE:
+            return True
         return False
 
     def page_has_back(self, page):
-        if   page is self.CONFIRM_PAGE:  return True
-        elif page is self.REMOVE_PAGE: return True
+        if   page is self.CONFIRM_PAGE:
+            return True
+        elif page is self.REMOVE_PAGE:
+            return True
         return False
 
     def get_back_page(self, page):
-        if   page is self.CONFIRM_PAGE:  return self.LIST_PAGE
-        elif page is self.REMOVE_PAGE: return self.LIST_PAGE
+        if   page is self.CONFIRM_PAGE:
+            return self.LIST_PAGE
+        elif page is self.REMOVE_PAGE:
+            return self.LIST_PAGE
 
     def validate_input(self, page, errors):
         if page is self.LIST_PAGE:
@@ -58,7 +68,7 @@ class RemoveDomainConfigScreen(DomainListConfigScreen):
             if self.__confirm_remove.value():
                 domain = self.get_selected_domain()
                 try:
-                    self.get_libvirt().undefine_domain(domain)
+                    domain.delete()
                     return True
                 except Exception, error:
                     errors.append("Failed to remove %s." % domain)
@@ -68,14 +78,16 @@ class RemoveDomainConfigScreen(DomainListConfigScreen):
         return False
 
     def get_confirm_page(self, screen):
-        self.__confirm_remove = Checkbox("Check here to confirm undefining %s." % self.get_selected_domain(), 0)
-        grid = Grid(1, 1)
+        ignore = screen
+        self.__confirm_remove = snack.Checkbox("Check here to confirm undefining %s." % self.get_selected_domain().get_name(), 0)
+        grid = snack.Grid(1, 1)
         grid.setField(self.__confirm_remove, 0, 0)
         return [grid]
 
     def get_remove_page(self, screen):
-        grid = Grid(1, 1)
-        grid.setField(Label("%s has been removed." % self.get_selected_domain()), 0, 0)
+        ignore = screen
+        grid = snack.Grid(1, 1)
+        grid.setField(snack.Label("%s has been removed." % self.get_selected_domain().get_name()), 0, 0)
         return [grid]
 
 def RemoveDomain():

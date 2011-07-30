@@ -18,7 +18,7 @@
 
 from virtinst import Storage
 
-ROOT_TARGET_PATH="/var/lib/libvirt/images/%s"
+ROOT_TARGET_PATH = "/var/lib/libvirt/images/%s"
 
 class PoolConfig:
     def __init__(self, libvirt):
@@ -30,6 +30,14 @@ class PoolConfig:
         self.__target_path = ""
         self.__source_path = ""
         self.__build_pool  = False
+
+        self.__needs_source_path = None
+        self.__needs_target_path = None
+        self.__pool = None
+        self.__needs_hostname = None
+        self.__needs_build_pool = None
+        self.__needs_format = None
+        self.__type = None
 
     def get_pool(self):
         return self.__pool
@@ -81,8 +89,8 @@ class PoolConfig:
                 self.__build_pool  = True
             # create pool
             pool_class = Storage.StoragePool.get_pool_class(self.__type)
-            self.__pool = pool_class(name = self.__name,
-                                     conn = self.__libvirt.get_connection())
+            self.__pool = pool_class(name=self.__name,
+                                     conn=self.__libvirt.get_connection())
             if self.__needs_format:
                 self.__format = self.__pool.formats[0]
         else:
@@ -120,8 +128,8 @@ class PoolConfig:
     def get_formats(self):
         return self.__pool.formats
 
-    def set_format(self, format):
-        self.__format = format
+    def set_format(self, fmt):
+        self.__format = fmt
 
     def get_format(self):
         return self.__format

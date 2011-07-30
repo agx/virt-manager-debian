@@ -2,6 +2,7 @@
 
 # pylint doesn't work well with a file named xxx.py.xxx
 cp src/virt-manager.py.in src/_virt-manager
+cp src/virt-manager-tui.py.in src/_virt-manager-tui
 
 cd src || exit 1
 
@@ -11,7 +12,7 @@ IGNOREFILES="IPy.py"
 # pylint Section #
 ##################
 
-PYLINT_FILES="virtManager/ _virt-manager"
+PYLINT_FILES="virtManager/ _virt-manager virtManagerTui/ _virt-manager-tui"
 
 # Deliberately ignored warnings:
 # Don't print pylint config warning
@@ -146,7 +147,8 @@ skip_pep8 "E501"            # Line too long
 
 echo "Running pep8"
 pep8 -r --exclude=$IGNOREFILES --ignore $SKIP_PEP8 \
-    virt-manager.py.in virtManager/*.py
+    $PYLINT_FILES
 
 cd - > /dev/null
 rm src/_virt-manager
+rm src/_virt-manager-tui

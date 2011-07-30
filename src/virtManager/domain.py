@@ -18,18 +18,19 @@
 # MA 02110-1301 USA.
 #
 
-import libvirt
 import logging
 import time
 import threading
 
-import gobject
-
+import libvirt
 import virtinst
-from virtManager import util
+from virtinst.VirtualCharDevice import VirtualCharSpicevmcDevice
 import virtinst.support as support
 
+from virtManager import util
 from virtManager.libvirtobject import vmmLibvirtObject
+
+from inspectiondata import vmmInspectionData
 
 def compare_device(origdev, newdev, idx):
     devprops = {
@@ -39,13 +40,17 @@ def compare_device(origdev, newdev, idx):
         "sound"     : ["model", "vmmindex"],
         "video"     : ["model_type", "vmmindex"],
         "watchdog"  : ["vmmindex"],
-        "hostdev"   : ["vendor", "product", "bus", "device",
-                       "type", "function", "domain", "slot", "managed"],
+        "hostdev"   : ["type", "managed", "vmmindex",
+                       "product", "vendor",
+                       "function", "domain", "slot"],
         "serial"    : ["char_type", "target_port"],
         "parallel"  : ["char_type", "target_port"],
         "console"   : ["char_type", "target_type", "target_port"],
         "graphics"  : ["type", "vmmindex"],
         "controller" : ["type", "index"],
+        "channel"   : ["char_type", "target_name"],
+        "filesystem" : ["target" , "vmmindex"],
+        "smartcard" : ["mode" , "vmmindex"],
     }
 
     if id(origdev) == id(newdev):
@@ -114,22 +119,13 @@ def start_job_progress_thread(vm, meter, progtext):
         t.daemon = True
         t.start()
 
-class vmmDomainBase(vmmLibvirtObject):
+class vmmDomain(vmmLibvirtObject):
     """
-    Base class for vmmDomain objects. Provides common set up and methods
-    for domain backends (libvirt virDomain, virtinst Guest)
+    Class wrapping virDomain libvirt objects. Is also extended to be
+    backed by a virtinst.Guest object for new VM 'customize before install'
     """
-    __gsignals__ = {
-        "status-changed": (gobject.SIGNAL_RUN_FIRST,
-                           gobject.TYPE_NONE,
-                           [int, int]),
-        "resources-sampled": (gobject.SIGNAL_RUN_FIRST,
-                              gobject.TYPE_NONE,
-                              []),
-        }
-
-    def __init__(self, connection, backend, uuid):
-        vmmLibvirtObject.__init__(self, connection)
+    def __init__(self, conn, backend, uuid):
+        vmmLibvirtObject.__init__(self, conn)
 
         self._backend = backend
         self.uuid = uuid
@@ -144,51 +140,113 @@ class vmmDomainBase(vmmLibvirtObject):
         }
 
         self._install_abort = False
+        self.reboot_listener = None
         self._startup_vcpus = None
+        self._is_management_domain = None
+        self._id = None
+        self._name = None
 
+        self._inactive_xml_flags = 0
+        self._active_xml_flags = 0
+
+        self.lastStatus = libvirt.VIR_DOMAIN_SHUTOFF
+
+        self._getvcpus_supported = None
+        self._getjobinfo_supported = None
         self.managedsave_supported = False
+        self.remote_console_supported = False
 
+        self._guest = None
         self._guest_to_define = None
 
-        self._network_traffic = None
+        self._enable_net_poll = False
         self._stats_net_supported = True
         self._stats_net_skip = []
 
-        self._disk_io = None
+        self._enable_disk_poll = False
         self._stats_disk_supported = True
         self._stats_disk_skip = []
+
+        self.inspection = vmmInspectionData()
+
+        if isinstance(self._backend, virtinst.Guest):
+            return
+
+        self._libvirt_init()
+
+    def _get_getvcpus_supported(self):
+        if self._getvcpus_supported is None:
+            self._getvcpus_supported = True
+            try:
+                self._backend.vcpus()
+            except libvirt.libvirtError, err:
+                if support.is_error_nosupport(err):
+                    self._getvcpus_supported = False
+        return self._getvcpus_supported
+    getvcpus_supported = property(_get_getvcpus_supported)
+
+    def _get_getjobinfo_supported(self):
+        if self._getjobinfo_supported is None:
+            self._getjobinfo_supported = support.check_domain_support(
+                                            self._backend,
+                                            support.SUPPORT_DOMAIN_JOB_INFO)
+        return self._getjobinfo_supported
+    getjobinfo_supported = property(_get_getjobinfo_supported)
+
+    def _libvirt_init(self):
+        """
+        Initialization to do if backed by a libvirt virDomain
+        """
+        self._reparse_xml()
+
+        self.managedsave_supported = self.conn.get_dom_managedsave_supported(self._backend)
+
+        self.remote_console_supported = support.check_domain_support(
+                                        self._backend,
+                                        support.SUPPORT_DOMAIN_CONSOLE_STREAM)
+
+        # Determine available XML flags (older libvirt versions will error
+        # out if passed SECURE_XML, INACTIVE_XML, etc)
+        (self._inactive_xml_flags,
+         self._active_xml_flags) = self.conn.get_dom_flags(self._backend)
+
+        self.toggle_sample_network_traffic()
+        self.toggle_sample_disk_io()
+
+        self.force_update_status()
+
+        # Hook up listeners that need to be cleaned up
+        self.add_gconf_handle(
+            self.config.on_stats_enable_net_poll_changed(
+                                        self.toggle_sample_network_traffic))
+        self.add_gconf_handle(
+            self.config.on_stats_enable_disk_poll_changed(
+                                        self.toggle_sample_disk_io))
+
+        self.connect("status-changed", self._update_start_vcpus)
+        self.connect("config-changed", self._reparse_xml)
+
+
+    ###########################
+    # Misc API getter methods #
+    ###########################
+
+    def get_name(self):
+        if self._name == None:
+            self._name = self._backend.name()
+        return self._name
+
+    def get_id(self):
+        if self._id == None:
+            self._id = self._backend.ID()
+        return self._id
+
+    def status(self):
+        return self.lastStatus
 
     def change_name_backend(self, newbackend):
         # Used for changing the domain object after a rename
         self._backend = newbackend
-
-    # Info accessors
-    def get_name(self):
-        raise NotImplementedError()
-    def get_id(self):
-        raise NotImplementedError()
-    def status(self):
-        raise NotImplementedError()
-
-    def get_memory_percentage(self):
-        raise NotImplementedError()
-    def maximum_memory_percentage(self):
-        raise NotImplementedError()
-    def cpu_time(self):
-        raise NotImplementedError()
-    def cpu_time_percentage(self):
-        raise NotImplementedError()
-    def network_rx_rate(self):
-        raise NotImplementedError()
-    def network_tx_rate(self):
-        raise NotImplementedError()
-    def disk_read_rate(self):
-        raise NotImplementedError()
-    def disk_write_rate(self):
-        raise NotImplementedError()
-
-    def get_autostart(self):
-        raise NotImplementedError()
 
     def get_cloning(self):
         return self.cloning
@@ -202,30 +260,36 @@ class vmmDomainBase(vmmLibvirtObject):
     def get_install_abort(self):
         return bool(self._install_abort)
 
-    # Device/XML hotplug API
-    def set_autostart(self, val):
-        raise NotImplementedError()
+    def rhel6_defaults(self):
+        return self.conn.rhel6_defaults(self.get_emulator())
 
-    def attach_device(self, devobj):
-        raise NotImplementedError()
-    def detach_device(self, devobj):
-        raise NotImplementedError()
+    def is_read_only(self):
+        if self.conn.is_read_only():
+            return True
+        if self.is_management_domain():
+            return True
+        return False
 
-    def hotplug_graphics_password(self, devobj, newval):
-        raise NotImplementedError()
-    def hotplug_storage_media(self, devobj, newpath):
-        raise NotImplementedError()
-    def hotplug_vcpus(self, vcpus):
-        raise NotImplementedError()
-    def hotplug_both_mem(self, memory, maxmem):
-        raise NotImplementedError()
+    def is_management_domain(self):
+        if self._is_management_domain == None:
+            self._is_management_domain = (self.get_id() == 0)
+        return self._is_management_domain
 
-    def _get_guest(self, inactive=False, refresh_if_necc=True):
-        raise NotImplementedError()
+    def get_id_pretty(self):
+        i = self.get_id()
+        if i < 0:
+            return "-"
+        return str(i)
+
+    #############################
+    # Internal XML handling API #
+    #############################
 
     def _invalidate_xml(self):
         vmmLibvirtObject._invalidate_xml(self)
         self._guest_to_define = None
+        self._name = None
+        self._id = None
 
     def _get_guest_to_define(self):
         if not self._guest_to_define:
@@ -261,7 +325,68 @@ class vmmDomainBase(vmmLibvirtObject):
         xml = guest.get_xml_config(install=False)
         self._redefine_xml(xml)
 
-    # virtinst.Guest XML persistent change Impls
+    def _get_domain_xml(self, inactive=False, refresh_if_necc=True):
+        return vmmLibvirtObject.get_xml(self,
+                                        inactive=inactive,
+                                        refresh_if_necc=refresh_if_necc)
+
+    def get_xml(self, inactive=False, refresh_if_necc=True):
+        guest = self._get_guest(inactive=inactive,
+                                refresh_if_necc=refresh_if_necc)
+        return guest.get_xml_config(install=False)
+
+    def _get_guest(self, inactive=False, refresh_if_necc=True):
+        xml = self._get_domain_xml(inactive, refresh_if_necc)
+
+        if inactive:
+            # If inactive XML requested, always return a fresh guest even
+            # the current Guest is inactive XML (like when the domain is
+            # stopped). Callers that request inactive are basically expecting
+            # a new copy.
+            return self._build_guest(xml)
+
+        return self._guest
+
+    def _build_guest(self, xml):
+        return virtinst.Guest(conn=self.conn.vmm,
+                              parsexml=xml,
+                              caps=self.conn.get_capabilities())
+
+    def _reparse_xml(self, ignore=None):
+        self._guest = self._build_guest(self._get_domain_xml())
+
+
+    ##############################
+    # Persistent XML change APIs #
+    ##############################
+
+    # Rename
+
+    def define_name(self, newname):
+        # Do this, so that _guest_to_define has original inactive XML
+        self._invalidate_xml()
+
+        guest = self._get_guest_to_define()
+        if guest.name == newname:
+            return
+
+        if self.is_active():
+            raise RuntimeError(_("Cannot rename an active guest"))
+
+        logging.debug("Changing guest name to '%s'" % newname)
+        origxml = guest.get_xml_config()
+        guest.name = newname
+        newxml = guest.get_xml_config()
+
+        try:
+            self.conn.rename_vm(self, origxml, newxml)
+        finally:
+            self._invalidate_xml()
+
+        self.emit("config-changed")
+
+    # Device Add/Remove
+
     def add_device(self, devobj):
         """
         Redefine guest with appended device XML 'devxml'
@@ -296,6 +421,8 @@ class vmmDomainBase(vmmLibvirtObject):
         self.redefine_cached()
         return ret
 
+    # CPU define methods
+
     def define_vcpus(self, vcpus, maxvcpus):
         def change(guest):
             guest.vcpus = int(vcpus)
@@ -324,23 +451,36 @@ class vmmDomainBase(vmmLibvirtObject):
 
             guest.cpu.model = model or None
 
-            # Sync feature lists
             origfeatures = guest.cpu.features
-            for f in origfeatures:
-                if f.name not in featurelist:
-                    guest.cpu.remove_feature(f)
-                else:
-                    featurelist.remove(f.name)
-            for f in featurelist:
-                guest.cpu.add_feature(f)
+            def set_feature(fname, fpol):
+                for f in origfeatures:
+                    if f.name != fname:
+                        continue
+                    if f.policy != fpol:
+                        if fpol == "default":
+                            guest.cpu.remove_feature(f)
+                        else:
+                            f.policy = fpol
+                    return
+
+                if fpol != "default":
+                    guest.cpu.add_feature(fname, fpol)
+
+            # Sync feature lists
+            for fname, fpol in featurelist:
+                set_feature(fname, fpol)
 
         return self._redefine_guest(change)
+
+    # Mem define methods
 
     def define_both_mem(self, memory, maxmem):
         def change(guest):
             guest.memory = int(int(memory) / 1024)
             guest.maxmemory = int(int(maxmem) / 1024)
         return self._redefine_guest(change)
+
+    # Security define methods
 
     def define_seclabel(self, model, t, label):
         def change(guest):
@@ -355,8 +495,7 @@ class vmmDomainBase(vmmLibvirtObject):
 
         return self._redefine_guest(change)
 
-    def define_name(self, newname):
-        raise NotImplementedError()
+    # Machine config define methods
 
     def define_acpi(self, newvalue):
         def change(guest):
@@ -377,6 +516,8 @@ class vmmDomainBase(vmmLibvirtObject):
             guest.description = newvalue or None
         return self._redefine_guest(change)
 
+    # Boot define methods
+
     def set_boot_device(self, boot_list):
         def change(guest):
             guest.installer.bootconfig.bootorder = boot_list
@@ -391,8 +532,13 @@ class vmmDomainBase(vmmLibvirtObject):
             guest.installer.bootconfig.initrd = initrd or None
             guest.installer.bootconfig.kernel_args = args or None
         return self._redefine_guest(change)
+    def set_boot_init(self, init):
+        def change(guest):
+            guest.installer.init = init
+        return self._redefine_guest(change)
 
-    # virtinst.VirtualDevice XML persistent change Impls
+    # Disk define methods
+
     def define_storage_media(self, devobj, newpath):
         def change(editdev):
             editdev.path = newpath
@@ -409,22 +555,40 @@ class vmmDomainBase(vmmLibvirtObject):
         def change(editdev):
             editdev.driver_cache = new_cache or None
         return self._redefine_device(change, devobj)
+    def define_disk_io(self, devobj, val):
+        def change(editdev):
+            editdev.driver_io = val or None
+        return self._redefine_device(change, devobj)
     def define_disk_driver_type(self, devobj, new_driver_type):
         def change(editdev):
             editdev.driver_type = new_driver_type or None
         return self._redefine_device(change, devobj)
     def define_disk_bus(self, devobj, newval):
         def change(editdev):
+            if editdev.bus != newval:
+                # Old <address> probably isn't applicable for new bus value
+                editdev.address.clear()
+                # XXX: Need to change target value as well?
+
             editdev.bus = newval
         return self._redefine_device(change, devobj)
+    def define_disk_serial(self, devobj, val):
+        def change(editdev):
+            if val != editdev.serial:
+                editdev.serial = val or None
+        return self._redefine_device(change, devobj)
 
-    def define_network_source(self, devobj, newtype, newsource):
+    # Network define methods
+
+    def define_network_source(self, devobj, newtype, newsource, newmode):
         def change(editdev):
             if not newtype:
                 return
             editdev.source = None
+
             editdev.type = newtype
             editdev.source = newsource
+            editdev.source_mode = newmode or None
         return self._redefine_device(change, devobj)
     def define_network_model(self, devobj, newmodel):
         def change(editdev):
@@ -441,6 +605,8 @@ class vmmDomainBase(vmmLibvirtObject):
             editdev.virtualport.instanceid = newinstanceid or None
         return self._redefine_device(change, devobj)
 
+    # Graphics define methods
+
     def define_graphics_password(self, devobj, newval):
         def change(editdev):
             editdev.passwd = newval or None
@@ -449,20 +615,56 @@ class vmmDomainBase(vmmLibvirtObject):
         def change(editdev):
             editdev.keymap = newval
         return self._redefine_device(change, devobj)
-    def define_graphics_type(self, devobj, newval):
+    def define_graphics_type(self, devobj, newval, apply_spice_defaults):
+        def handle_spice():
+            if not apply_spice_defaults:
+                return
+
+            guest = self._get_guest_to_define()
+            is_spice = (newval == virtinst.VirtualGraphics.TYPE_SPICE)
+
+            if is_spice:
+                guest.add_device(VirtualCharSpicevmcDevice(guest.conn))
+            else:
+                channels = guest.get_devices("channel")
+                channels = filter(lambda x:
+                            (x.char_type ==
+                             virtinst.VirtualCharDevice.CHAR_SPICEVMC),
+                           channels)
+                for dev in channels:
+                    guest.remove_device(dev)
+
         def change(editdev):
             editdev.type = newval
+            handle_spice()
+
         return self._redefine_device(change, devobj)
+
+    # Sound define methods
 
     def define_sound_model(self, devobj, newmodel):
         def change(editdev):
             editdev.model = newmodel
         return self._redefine_device(change, devobj)
 
+    # Vide define methods
+
     def define_video_model(self, devobj, newmodel):
         def change(editdev):
+            if newmodel == editdev.model_type:
+                return
+
             editdev.model_type = newmodel
+
+            # Clear out heads/ram values so they reset to default. If
+            # we ever allow editing these values in the UI we should
+            # drop this
+            editdev.vram = None
+            editdev.heads = None
+
         return self._redefine_device(change, devobj)
+
+    # Watchdog define methods
 
     def define_watchdog_model(self, devobj, newval):
         def change(editdev):
@@ -473,748 +675,18 @@ class vmmDomainBase(vmmLibvirtObject):
             editdev.action = newval
         return self._redefine_device(change, devobj)
 
-    ########################
-    # XML Parsing routines #
-    ########################
-    def get_uuid(self):
-        return self.uuid
+    # Smartcard define methods
 
-    def set_handle(self, vm):
-        self._backend = vm
-    def release_handle(self):
-        del(self._backend)
-        self._backend = None
-    def get_handle(self):
-        return self._backend
+    def define_smartcard_mode(self, devobj, newmodel):
+        def change(editdev):
+            editdev.mode = newmodel
+        return self._redefine_device(change, devobj)
 
-    def enable_unsupported_rhel_opts(self):
-        if not self.is_libexec_qemu():
-            return True
-        return self.config.enable_unsupported_rhel_opts
 
-    def is_libexec_qemu(self):
-        return bool(self.connection.is_qemu_system() and
-                    str(self.get_emulator()).startswith("/usr/libexec"))
+    ####################
+    # Hotplug routines #
+    ####################
 
-    def is_read_only(self):
-        if self.connection.is_read_only():
-            return True
-        if self.is_management_domain():
-            return True
-        return False
-
-    def is_management_domain(self):
-        if self.get_id() == 0:
-            return True
-        return False
-
-    def is_hvm(self):
-        if self.get_abi_type() == "hvm":
-            return True
-        return False
-
-    def is_active(self):
-        if self.get_id() == -1:
-            return False
-        else:
-            return True
-
-    def get_id_pretty(self):
-        i = self.get_id()
-        if i < 0:
-            return "-"
-        return str(i)
-
-    def hasSavedImage(self):
-        return False
-
-    def get_abi_type(self):
-        return self._get_guest().installer.os_type
-
-    def get_hv_type(self):
-        return self._get_guest().installer.type
-
-    def get_pretty_hv_type(self):
-        return util.pretty_hv(self.get_abi_type(), self.get_hv_type())
-
-    def get_arch(self):
-        return self._get_guest().installer.arch
-
-    def get_emulator(self):
-        return self._get_guest().emulator
-
-    def get_acpi(self):
-        return self._get_guest().features["acpi"]
-
-    def get_apic(self):
-        return self._get_guest().features["apic"]
-
-    def get_clock(self):
-        return self._get_guest().clock.offset
-
-    def get_description(self):
-        # Always show the inactive <description>, let's us fake hotplug
-        # for a field that's strictly metadata
-        return self._get_guest(inactive=True).description
-
-    def get_memory(self):
-        return int(self._get_guest().memory * 1024)
-
-    def maximum_memory(self):
-        return int(self._get_guest().maxmemory * 1024)
-
-    def vcpu_count(self):
-        return int(self._get_guest().vcpus)
-
-    def vcpu_max_count(self):
-        guest = self._get_guest()
-        has_xml_max = (guest.vcpus != guest.maxvcpus)
-        if has_xml_max or not self.is_active():
-            return guest.maxvcpus
-
-        if self._startup_vcpus == None:
-            self._startup_vcpus = int(self.vcpu_count())
-        return int(self._startup_vcpus)
-
-    def vcpu_pinning(self):
-        return self._get_guest().cpuset or ""
-
-    def get_cpu_config(self):
-        return self._get_guest().cpu
-
-    def get_boot_device(self):
-        return self._get_guest().installer.bootconfig.bootorder
-
-    def get_boot_menu(self):
-        guest = self._get_guest()
-        return bool(guest.installer.bootconfig.enable_bootmenu)
-
-    def get_boot_kernel_info(self):
-        guest = self._get_guest()
-        kernel = guest.installer.bootconfig.kernel
-        initrd = guest.installer.bootconfig.initrd
-        args = guest.installer.bootconfig.kernel_args
-
-        return (kernel, initrd, args)
-
-    def get_seclabel(self):
-        model = self._get_guest().seclabel.model
-        t     = self._get_guest().seclabel.type or "dynamic"
-        label = self._get_guest().seclabel.label or ""
-
-        return [model, t, label]
-
-    # Device listing
-
-    def get_serial_devs(self):
-        devs = self.get_char_devices()
-        devlist = []
-
-        serials  = filter(lambda x: x.virtual_device_type == "serial", devs)
-        consoles = filter(lambda x: x.virtual_device_type == "console", devs)
-
-        for dev in serials:
-            devlist.append(["Serial %s" % (dev.vmmindex + 1), dev.char_type,
-                            dev.source_path, dev.vmmindex])
-
-        for dev in consoles:
-            devlist.append(["Text Console %s" % (dev.vmmindex + 1),
-                            dev.char_type, dev.source_path, dev.vmmindex])
-
-        return devlist
-
-    def get_graphics_console(self):
-        gdevs = self.get_graphics_devices()
-        connhost = self.connection.get_uri_hostname()
-        transport, connuser = self.connection.get_transport()
-
-        gdev = gdevs and gdevs[0] or None
-        gtype = None
-        gport = None
-        gaddr = None
-        gsocket = None
-
-        if gdev:
-            gport = gdev.port
-            if gport != None:
-                gport = int(gport)
-            gtype = gdev.type
-            gaddr = "127.0.0.1"
-            gsocket = gdev.socket
-
-        if connhost == None:
-            # Force use of 127.0.0.1, because some (broken) systems don't
-            # reliably resolve 'localhost' into 127.0.0.1, either returning
-            # the public IP, or an IPv6 addr. Neither work since QEMU only
-            # listens on 127.0.0.1 for VNC.
-            connhost = "127.0.0.1"
-
-        # Parse URI port
-        connport = None
-        if connhost.count(":"):
-            connhost, connport = connhost.split(":", 1)
-
-        return [gtype, transport,
-                connhost, connuser, connport,
-                gaddr, gport, gsocket]
-
-
-    def _build_device_list(self, device_type,
-                           refresh_if_necc=True, inactive=False):
-        guest = self._get_guest(refresh_if_necc=refresh_if_necc,
-                                inactive=inactive)
-        devs = guest.get_devices(device_type)
-
-        count = 0
-        for dev in devs:
-            dev.vmmindex = count
-            count += 1
-
-        return devs
-
-    def get_network_devices(self, refresh_if_necc=True):
-        return self._build_device_list("interface", refresh_if_necc)
-    def get_video_devices(self):
-        return self._build_device_list("video")
-    def get_hostdev_devices(self):
-        return self._build_device_list("hostdev")
-    def get_watchdog_devices(self):
-        return self._build_device_list("watchdog")
-    def get_input_devices(self):
-        return self._build_device_list("input")
-    def get_graphics_devices(self):
-        return self._build_device_list("graphics")
-    def get_sound_devices(self):
-        return self._build_device_list("sound")
-    def get_controller_devices(self):
-        return self._build_device_list("controller")
-
-    def get_disk_devices(self, refresh_if_necc=True, inactive=False):
-        devs = self._build_device_list("disk", refresh_if_necc, inactive)
-
-        # Iterate through all disks and calculate what number they are
-        # HACK: We are making a variable in VirtualDisk to store the index
-        idx_mapping = {}
-        for dev in devs:
-            devtype = dev.device
-            bus = dev.bus
-            key = devtype + (bus or "")
-
-            if key not in idx_mapping:
-                idx_mapping[key] = 1
-
-            dev.disk_bus_index = idx_mapping[key]
-            idx_mapping[key] += 1
-
-        return devs
-
-    def get_char_devices(self):
-        devs = []
-        serials     = self._build_device_list("serial")
-        parallels   = self._build_device_list("parallel")
-        consoles    = self._build_device_list("console")
-
-        for devicelist in [serials, parallels, consoles]:
-            devs.extend(devicelist)
-
-        # Don't display <console> if it's just a duplicate of <serial>
-        if (len(consoles) > 0 and len(serials) > 0):
-            con = consoles[0]
-            ser = serials[0]
-
-            if (con.char_type == ser.char_type and
-                con.target_type is None or con.target_type == "serial"):
-                ser.virtmanager_console_dup = con
-                devs.remove(con)
-
-        return devs
-
-    # Stats accessors
-    def _normalize_status(self, status):
-        if status == libvirt.VIR_DOMAIN_NOSTATE:
-            return libvirt.VIR_DOMAIN_RUNNING
-        elif status == libvirt.VIR_DOMAIN_BLOCKED:
-            return libvirt.VIR_DOMAIN_RUNNING
-        return status
-
-    def _sample_mem_stats(self, info):
-        pcentCurrMem = info[2] * 100.0 / self.connection.host_memory_size()
-        pcentMaxMem = info[1] * 100.0 / self.connection.host_memory_size()
-
-        if pcentCurrMem > 100:
-            pcentCurrMem = 100.0
-        if pcentMaxMem > 100:
-            pcentMaxMem = 100.0
-
-        return pcentCurrMem, pcentMaxMem
-
-    def _sample_cpu_stats(self, info, now):
-        prevCpuTime = 0
-        prevTimestamp = 0
-        if len(self.record) > 0:
-            prevTimestamp = self.record[0]["timestamp"]
-            prevCpuTime = self.record[0]["cpuTimeAbs"]
-
-        cpuTime = 0
-        cpuTimeAbs = 0
-        pcentCpuTime = 0
-        if not (info[0] in [libvirt.VIR_DOMAIN_SHUTOFF,
-                            libvirt.VIR_DOMAIN_CRASHED]):
-            cpuTime = info[4] - prevCpuTime
-            cpuTimeAbs = info[4]
-
-            pcentCpuTime = (
-                (cpuTime) * 100.0 /
-                (((now - prevTimestamp) * 1000.0 * 1000.0 * 1000.0) *
-                 self.connection.host_active_processor_count()))
-
-            # Due to timing diffs between getting wall time & getting
-            # the domain's time, its possible to go a tiny bit over
-            # 100% utilization. This freaks out users of the data, so
-            # we hard limit it.
-            if pcentCpuTime > 100.0:
-                pcentCpuTime = 100.0
-            # Enforce >= 0 just in case
-            if pcentCpuTime < 0.0:
-                pcentCpuTime = 0.0
-
-        return cpuTime, cpuTimeAbs, pcentCpuTime
-
-    def _get_cur_rate(self, what):
-        if len(self.record) > 1:
-            ret = (float(self.record[0][what] -
-                         self.record[1][what]) /
-                   float(self.record[0]["timestamp"] -
-                         self.record[1]["timestamp"]))
-        else:
-            ret = 0.0
-        return max(ret, 0, 0) # avoid negative values at poweroff
-
-    def _set_max_rate(self, record, what):
-        if record[what] > self.maxRecord[what]:
-            self.maxRecord[what] = record[what]
-
-    def current_memory(self):
-        if self.get_id() == -1:
-            return 0
-        return self.get_memory()
-
-    def current_memory_percentage(self):
-        if self.get_id() == -1:
-            return 0
-        return self.get_memory_percentage()
-
-    def current_memory_pretty(self):
-        if self.get_id() == -1:
-            return "0 MB"
-        return self.get_memory_pretty()
-
-    def get_memory_pretty(self):
-        mem = self.get_memory()
-        if mem > (10 * 1024 * 1024):
-            return "%2.2f GB" % (mem / (1024.0 * 1024.0))
-        else:
-            return "%2.0f MB" % (mem / 1024.0)
-
-    def maximum_memory_pretty(self):
-        mem = self.maximum_memory()
-        if mem > (10 * 1024 * 1024):
-            return "%2.2f GB" % (mem / (1024.0 * 1024.0))
-        else:
-            return "%2.0f MB" % (mem / 1024.0)
-
-    def cpu_time_pretty(self):
-        return "%2.2f %%" % self.cpu_time_percentage()
-
-    def network_traffic_rate(self):
-        return self.network_tx_rate() + self.network_rx_rate()
-
-    def disk_io_rate(self):
-        return self.disk_read_rate() + self.disk_write_rate()
-
-    def _vector_helper(self, record_name):
-        vector = []
-        stats = self.record
-        for i in range(self.config.get_stats_history_length() + 1):
-            if i < len(stats):
-                vector.append(stats[i][record_name] / 100.0)
-            else:
-                vector.append(0)
-        return vector
-
-    def _in_out_vector_helper(self, name1, name2):
-        vector = []
-        stats = self.record
-        ceil = float(max(self.maxRecord[name1], self.maxRecord[name2]))
-        maxlen = self.config.get_stats_history_length()
-        for n in [name1, name2]:
-            for i in range(maxlen + 1):
-                if i < len(stats):
-                    vector.append(float(stats[i][n]) / ceil)
-                else:
-                    vector.append(0.0)
-        return vector
-
-    def in_out_vector_limit(self, data, limit):
-        l = len(data) / 2
-        end = [l, limit][l > limit]
-        if l > limit:
-            data = data[0:end] + data[l:l + end]
-        d = map(lambda x, y: (x + y) / 2, data[0:end], data[end:end * 2])
-        return d
-
-    def cpu_time_vector(self):
-        return self._vector_helper("cpuTimePercent")
-    def cpu_time_moving_avg_vector(self):
-        return self._vector_helper("cpuTimeMovingAvgPercent")
-    def current_memory_vector(self):
-        return self._vector_helper("currMemPercent")
-    def network_traffic_vector(self):
-        return self._in_out_vector_helper("netRxRate", "netTxRate")
-    def disk_io_vector(self):
-        return self._in_out_vector_helper("diskRdRate", "diskWrRate")
-
-    def cpu_time_vector_limit(self, limit):
-        cpudata = self.cpu_time_vector()
-        if len(cpudata) > limit:
-            cpudata = cpudata[0:limit]
-        return cpudata
-    def network_traffic_vector_limit(self, limit):
-        return self.in_out_vector_limit(self.network_traffic_vector(), limit)
-    def disk_io_vector_limit(self, limit):
-        return self.in_out_vector_limit(self.disk_io_vector(), limit)
-
-    def is_shutoff(self):
-        return self.status() == libvirt.VIR_DOMAIN_SHUTOFF
-
-    def is_crashed(self):
-        return self.status() == libvirt.VIR_DOMAIN_CRASHED
-
-    def is_stoppable(self):
-        return self.status() in [libvirt.VIR_DOMAIN_RUNNING,
-                                 libvirt.VIR_DOMAIN_PAUSED]
-
-    def is_destroyable(self):
-        return (self.is_stoppable() or
-                self.status() in [libvirt.VIR_DOMAIN_CRASHED])
-
-    def is_runable(self):
-        return self.status() in [libvirt.VIR_DOMAIN_SHUTOFF,
-                                 libvirt.VIR_DOMAIN_CRASHED]
-
-    def is_pauseable(self):
-        return self.status() in [libvirt.VIR_DOMAIN_RUNNING]
-
-    def is_unpauseable(self):
-        return self.status() in [libvirt.VIR_DOMAIN_PAUSED]
-
-    def is_paused(self):
-        return self.status() in [libvirt.VIR_DOMAIN_PAUSED]
-
-    def run_status(self):
-        if self.status() == libvirt.VIR_DOMAIN_RUNNING:
-            return _("Running")
-        elif self.status() == libvirt.VIR_DOMAIN_PAUSED:
-            return _("Paused")
-        elif self.status() == libvirt.VIR_DOMAIN_SHUTDOWN:
-            return _("Shutting Down")
-        elif self.status() == libvirt.VIR_DOMAIN_SHUTOFF:
-            return _("Shutoff")
-        elif self.status() == libvirt.VIR_DOMAIN_CRASHED:
-            return _("Crashed")
-
-    def run_status_icon(self):
-        return self.config.get_vm_status_icon(self.status())
-    def run_status_icon_large(self):
-        return self.config.get_vm_status_icon_large(self.status())
-
-
-    # GConf specific wranglings
-    def set_console_scaling(self, value):
-        self.config.set_pervm(self.connection.get_uri(), self.uuid,
-                              self.config.set_console_scaling, value)
-    def get_console_scaling(self):
-        return self.config.get_pervm(self.connection.get_uri(), self.uuid,
-                                     self.config.get_console_scaling)
-    def on_console_scaling_changed(self, cb):
-        self.config.listen_pervm(self.connection.get_uri(), self.uuid,
-                                 self.config.on_console_scaling_changed, cb)
-
-    def set_details_window_size(self, w, h):
-        self.config.set_pervm(self.connection.get_uri(), self.uuid,
-                              self.config.set_details_window_size, (w, h))
-    def get_details_window_size(self):
-        return self.config.get_pervm(self.connection.get_uri(), self.uuid,
-                                     self.config.get_details_window_size)
-
-
-
-########################
-# Libvirt domain class #
-########################
-
-class vmmDomain(vmmDomainBase):
-    """
-    Domain class backed by a libvirt virDomain
-    """
-
-    def __init__(self, connection, backend, uuid):
-        vmmDomainBase.__init__(self, connection, backend, uuid)
-
-        self.lastStatus = libvirt.VIR_DOMAIN_SHUTOFF
-
-        self.config.on_stats_enable_net_poll_changed(
-                                            self.toggle_sample_network_traffic)
-        self.config.on_stats_enable_disk_poll_changed(
-                                            self.toggle_sample_disk_io)
-
-        self.getvcpus_supported = support.check_domain_support(self._backend,
-                                            support.SUPPORT_DOMAIN_GETVCPUS)
-        self.managedsave_supported = self.connection.get_dom_managedsave_supported(self._backend)
-        self.getjobinfo_supported = support.check_domain_support(self._backend,
-                                            support.SUPPORT_DOMAIN_JOB_INFO)
-
-        self.toggle_sample_network_traffic()
-        self.toggle_sample_disk_io()
-
-        self.reboot_listener = None
-        self._guest = None
-        self._reparse_xml()
-
-        # Determine available XML flags (older libvirt versions will error
-        # out if passed SECURE_XML, INACTIVE_XML, etc)
-        (self._inactive_xml_flags,
-         self._active_xml_flags) = self.connection.get_dom_flags(
-                                                            self._backend)
-
-        # Hook up our own status listeners
-        self._update_status()
-        self.connect("status-changed", self._update_start_vcpus)
-        self.connect("config-changed", self._reparse_xml)
-
-    ##########################
-    # Internal virDomain API #
-    ##########################
-
-    def _define(self, newxml):
-        self.get_connection().define_domain(newxml)
-
-    def _XMLDesc(self, flags):
-        return self._backend.XMLDesc(flags)
-
-    def support_downtime(self):
-        return support.check_domain_support(self._backend,
-                        support.SUPPORT_DOMAIN_MIGRATE_DOWNTIME)
-
-    def get_info(self):
-        return self._backend.info()
-
-    def status(self):
-        return self.lastStatus
-
-    def _get_record_helper(self, record_name):
-        if len(self.record) == 0:
-            return 0
-        return self.record[0][record_name]
-
-    def get_memory_percentage(self):
-        return self._get_record_helper("currMemPercent")
-    def maximum_memory_percentage(self):
-        return self._get_record_helper("maxMemPercent")
-    def cpu_time(self):
-        return self._get_record_helper("cpuTime")
-    def cpu_time_percentage(self):
-        return self._get_record_helper("cpuTimePercent")
-    def network_rx_rate(self):
-        return self._get_record_helper("netRxRate")
-    def network_tx_rate(self):
-        return self._get_record_helper("netTxRate")
-    def disk_read_rate(self):
-        return self._get_record_helper("diskRdRate")
-    def disk_write_rate(self):
-        return self._get_record_helper("diskWrRate")
-
-    def define_name(self, newname):
-        # Do this, so that _guest_to_define has original inactive XML
-        self._invalidate_xml()
-
-        guest = self._get_guest_to_define()
-        if guest.name == newname:
-            return
-
-        if self.is_active():
-            raise RuntimeError(_("Cannot rename an active guest"))
-
-        logging.debug("Changing guest name to '%s'" % newname)
-        origxml = guest.get_xml_config()
-        guest.name = newname
-        newxml = guest.get_xml_config()
-
-        try:
-            self.get_connection().rename_vm(self, origxml, newxml)
-        finally:
-            self._invalidate_xml()
-
-        self.emit("config-changed")
-
-    def _unregister_reboot_listener(self):
-        if self.reboot_listener == None:
-            return
-
-        try:
-            self.disconnect(self.reboot_listener)
-            self.reboot_listener = None
-        except:
-            pass
-
-    def manual_reboot(self):
-        # Attempt a manual reboot via 'shutdown' followed by startup
-        def reboot_listener(vm, ignore1, ignore2, self):
-            if vm.is_crashed():
-                # Abandon reboot plans
-                self.reboot_listener = None
-                return True
-
-            if not vm.is_shutoff():
-                # Not shutoff, continue waiting
-                return
-
-            try:
-                logging.debug("Fake reboot detected shutdown. Restarting VM")
-                vm.startup()
-            except:
-                logging.exception("Fake reboot startup failed")
-
-            self.reboot_listener = None
-            return True
-
-        self._unregister_reboot_listener()
-
-        # Request a shutdown
-        self.shutdown()
-
-        self.reboot_listener = util.connect_opt_out(self, "status-changed",
-                                                    reboot_listener, self)
-
-    def shutdown(self):
-        self.set_install_abort(True)
-        self._unregister_reboot_listener()
-        self._backend.shutdown()
-        self._update_status()
-
-    def reboot(self):
-        self.set_install_abort(True)
-        self._backend.reboot(0)
-        self._update_status()
-
-    def startup(self):
-        if self.get_cloning():
-            raise RuntimeError(_("Cannot start guest while cloning "
-                                 "operation in progress"))
-        self._backend.create()
-        self._update_status()
-
-    def suspend(self):
-        self._backend.suspend()
-        self._update_status()
-
-    def delete(self):
-        self._backend.undefine()
-        # XXX: If want to release domain here, fix connection polling
-
-    def resume(self):
-        if self.get_cloning():
-            raise RuntimeError(_("Cannot resume guest while cloning "
-                                 "operation in progress"))
-
-        self._backend.resume()
-        self._update_status()
-
-    def hasSavedImage(self):
-        if not self.managedsave_supported:
-            return False
-        return self._backend.hasManagedSaveImage(0)
-
-    def save(self, filename=None, meter=None):
-        self.set_install_abort(True)
-
-        if meter:
-            start_job_progress_thread(self, meter, _("Saving domain to disk"))
-
-        if not self.managedsave_supported:
-            self._backend.save(filename)
-        else:
-            self._backend.managedSave(0)
-
-        self._update_status()
-
-    def destroy(self):
-        self.set_install_abort(True)
-        self._unregister_reboot_listener()
-        self._backend.destroy()
-        self._update_status()
-
-    def interfaceStats(self, device):
-        return self._backend.interfaceStats(device)
-
-    def blockStats(self, device):
-        return self._backend.blockStats(device)
-
-    def pin_vcpu(self, vcpu_num, pinlist):
-        self._backend.pinVcpu(vcpu_num, pinlist)
-
-    def vcpu_info(self):
-        if self.is_active() and self.getvcpus_supported:
-            return self._backend.vcpus()
-        return [[], []]
-
-    def get_autostart(self):
-        return self._backend.autostart()
-
-    def set_autostart(self, val):
-        if self.get_autostart() != val:
-            self._backend.setAutostart(val)
-
-    def job_info(self):
-        return self._backend.jobInfo()
-    def abort_job(self):
-        self._backend.abortJob()
-
-    def migrate_set_max_downtime(self, max_downtime, flag=0):
-        self._backend.migrateSetMaxDowntime(max_downtime, flag)
-
-    def migrate(self, destconn, interface=None, rate=0,
-                live=False, secure=False, meter=None):
-        self.set_install_abort(True)
-
-        newname = None
-
-        flags = 0
-        if self.status() == libvirt.VIR_DOMAIN_RUNNING and live:
-            flags |= libvirt.VIR_MIGRATE_LIVE
-
-        if secure:
-            flags |= libvirt.VIR_MIGRATE_PEER2PEER
-            flags |= libvirt.VIR_MIGRATE_TUNNELLED
-
-        newxml = self.get_xml(inactive=True)
-
-        logging.debug("Migrating: conn=%s flags=%s dname=%s uri=%s rate=%s" %
-                      (destconn.vmm, flags, newname, interface, rate))
-
-        if meter:
-            start_job_progress_thread(self, meter, _("Migrating domain"))
-
-        self._backend.migrate(destconn.vmm, flags, newname, interface, rate)
-        destconn.define_domain(newxml)
-
-    # Genertc backend APIs
-    def get_name(self):
-        return self._backend.name()
-    def get_id(self):
-        return self._backend.ID()
-
-    # Hotplug routines
     def attach_device(self, devobj):
         """
         Hotplug device to running guest
@@ -1281,47 +753,565 @@ class vmmDomain(vmmDomainBase):
         devobj.passwd = newval or None
         self.update_device(devobj)
 
-    ####################
-    # End internal API #
-    ####################
-
-    ###########################
-    # XML/Config Altering API #
-    ###########################
-
-    def _get_domain_xml(self, inactive=False, refresh_if_necc=True):
-        return vmmLibvirtObject.get_xml(self,
-                                        inactive=inactive,
-                                        refresh_if_necc=refresh_if_necc)
-
-    def get_xml(self, inactive=False, refresh_if_necc=True):
-        guest = self._get_guest(inactive=inactive,
-                                refresh_if_necc=refresh_if_necc)
-        return guest.get_xml_config(install=False)
-
-    def _get_guest(self, inactive=False, refresh_if_necc=True):
-        xml = self._get_domain_xml(inactive, refresh_if_necc)
-
-        if inactive:
-            # If inactive XML requested, always return a fresh guest even
-            # the current Guest is inactive XML (like when the domain is
-            # stopped). Callers that request inactive are basically expecting
-            # a new copy.
-            return self._build_guest(xml)
-
-        return self._guest
-
-    def _build_guest(self, xml):
-        return virtinst.Guest(connection=self.connection.vmm,
-                              parsexml=xml,
-                              caps=self.connection.get_capabilities())
-
-    def _reparse_xml(self, ignore=None):
-        self._guest = self._build_guest(self._get_domain_xml())
 
     ########################
-    # End XML Altering API #
+    # Libvirt API wrappers #
     ########################
+
+    def _define(self, newxml):
+        self.conn.define_domain(newxml)
+    def _XMLDesc(self, flags):
+        return self._backend.XMLDesc(flags)
+
+    def pin_vcpu(self, vcpu_num, pinlist):
+        self._backend.pinVcpu(vcpu_num, pinlist)
+    def vcpu_info(self):
+        if self.is_active() and self.getvcpus_supported:
+            return self._backend.vcpus()
+        return [[], []]
+
+    def get_autostart(self):
+        return self._backend.autostart()
+    def set_autostart(self, val):
+        if self.get_autostart() == val:
+            return
+        self._backend.setAutostart(val)
+
+    def job_info(self):
+        return self._backend.jobInfo()
+    def abort_job(self):
+        self._backend.abortJob()
+
+    def open_console(self, devname, stream, flags=0):
+        return self._backend.openConsole(devname, stream, flags)
+
+    ########################
+    # XML Parsing routines #
+    ########################
+
+    def is_container(self):
+        return self._get_guest().installer.is_container()
+    def is_xenpv(self):
+        return self._get_guest().installer.is_xenpv()
+    def is_hvm(self):
+        return self._get_guest().installer.is_hvm()
+
+    def get_uuid(self):
+        return self.uuid
+    def get_abi_type(self):
+        return self._get_guest().installer.os_type
+    def get_hv_type(self):
+        return self._get_guest().installer.type
+    def get_pretty_hv_type(self):
+        return util.pretty_hv(self.get_abi_type(), self.get_hv_type())
+    def get_arch(self):
+        return self._get_guest().installer.arch
+    def get_init(self):
+        return self._get_guest().installer.init
+    def get_emulator(self):
+        return self._get_guest().emulator
+    def get_acpi(self):
+        return self._get_guest().features["acpi"]
+    def get_apic(self):
+        return self._get_guest().features["apic"]
+    def get_clock(self):
+        return self._get_guest().clock.offset
+
+    def get_description(self):
+        # Always show the inactive <description>, let's us fake hotplug
+        # for a field that's strictly metadata
+        return self._get_guest(inactive=True).description
+
+    def get_memory(self):
+        return int(self._get_guest().memory * 1024)
+    def maximum_memory(self):
+        return int(self._get_guest().maxmemory * 1024)
+
+    def vcpu_count(self):
+        return int(self._get_guest().vcpus)
+    def vcpu_max_count(self):
+        guest = self._get_guest()
+        has_xml_max = (guest.vcpus != guest.maxvcpus)
+        if has_xml_max or not self.is_active():
+            return guest.maxvcpus
+
+        if self._startup_vcpus == None:
+            self._startup_vcpus = int(self.vcpu_count())
+        return int(self._startup_vcpus)
+
+    def vcpu_pinning(self):
+        return self._get_guest().cpuset or ""
+    def get_cpu_config(self):
+        return self._get_guest().cpu
+
+    def get_boot_device(self):
+        return self._get_guest().installer.bootconfig.bootorder
+    def get_boot_menu(self):
+        guest = self._get_guest()
+        return bool(guest.installer.bootconfig.enable_bootmenu)
+    def get_boot_kernel_info(self):
+        guest = self._get_guest()
+        kernel = guest.installer.bootconfig.kernel
+        initrd = guest.installer.bootconfig.initrd
+        args = guest.installer.bootconfig.kernel_args
+
+        return (kernel, initrd, args)
+
+    def get_seclabel(self):
+        model = self._get_guest().seclabel.model
+        t     = self._get_guest().seclabel.type or "dynamic"
+        label = self._get_guest().seclabel.label or ""
+
+        return [model, t, label]
+
+    # XML Device listing
+
+    def get_serial_devs(self):
+        devs = self.get_char_devices()
+        devlist = []
+
+        devlist += filter(lambda x: x.virtual_device_type == "serial", devs)
+        devlist += filter(lambda x: x.virtual_device_type == "console", devs)
+        return devlist
+
+    def get_graphics_console(self):
+        gdevs = self.get_graphics_devices()
+        connhost = self.conn.get_uri_hostname()
+        transport, connuser = self.conn.get_transport()
+
+        gdev = gdevs and gdevs[0] or None
+        gtype = None
+        gport = None
+        gaddr = None
+        gsocket = None
+
+        if gdev:
+            gport = gdev.port
+            if gport != None:
+                gport = int(gport)
+            gtype = gdev.type
+            gaddr = "127.0.0.1"
+            gsocket = gdev.socket
+
+        if connhost == None:
+            # Force use of 127.0.0.1, because some (broken) systems don't
+            # reliably resolve 'localhost' into 127.0.0.1, either returning
+            # the public IP, or an IPv6 addr. Neither work since QEMU only
+            # listens on 127.0.0.1 for VNC.
+            connhost = "127.0.0.1"
+
+        # Parse URI port
+        connport = None
+        if connhost.count(":"):
+            connhost, connport = connhost.split(":", 1)
+
+        return [gtype, transport,
+                connhost, connuser, connport,
+                gaddr, gport, gsocket]
+
+
+    def _build_device_list(self, device_type,
+                           refresh_if_necc=True, inactive=False):
+        guest = self._get_guest(refresh_if_necc=refresh_if_necc,
+                                inactive=inactive)
+        devs = guest.get_devices(device_type)
+
+        count = 0
+        for dev in devs:
+            dev.vmmindex = count
+            count += 1
+
+        return devs
+
+    def get_network_devices(self, refresh_if_necc=True):
+        return self._build_device_list("interface", refresh_if_necc)
+    def get_video_devices(self):
+        return self._build_device_list("video")
+    def get_hostdev_devices(self):
+        return self._build_device_list("hostdev")
+    def get_watchdog_devices(self):
+        return self._build_device_list("watchdog")
+    def get_input_devices(self):
+        return self._build_device_list("input")
+    def get_graphics_devices(self):
+        return self._build_device_list("graphics")
+    def get_sound_devices(self):
+        return self._build_device_list("sound")
+    def get_controller_devices(self):
+        return self._build_device_list("controller")
+    def get_filesystem_devices(self):
+        return self._build_device_list("filesystem")
+    def get_smartcard_devices(self):
+        return self._build_device_list("smartcard")
+
+    def get_disk_devices(self, refresh_if_necc=True, inactive=False):
+        devs = self._build_device_list("disk", refresh_if_necc, inactive)
+
+        # Iterate through all disks and calculate what number they are
+        # HACK: We are making a variable in VirtualDisk to store the index
+        idx_mapping = {}
+        for dev in devs:
+            devtype = dev.device
+            bus = dev.bus
+            key = devtype + (bus or "")
+
+            if key not in idx_mapping:
+                idx_mapping[key] = 1
+
+            dev.disk_bus_index = idx_mapping[key]
+            idx_mapping[key] += 1
+
+        return devs
+
+    def get_char_devices(self):
+        devs = []
+        serials     = self._build_device_list("serial")
+        parallels   = self._build_device_list("parallel")
+        consoles    = self._build_device_list("console")
+        channels    = self._build_device_list("channel")
+
+        for devicelist in [serials, parallels, consoles, channels]:
+            devs.extend(devicelist)
+
+        # Don't display <console> if it's just a duplicate of <serial>
+        if (len(consoles) > 0 and len(serials) > 0):
+            con = consoles[0]
+            ser = serials[0]
+
+            if (con.char_type == ser.char_type and
+                con.target_type is None or con.target_type == "serial"):
+                ser.virtmanager_console_dup = con
+                devs.remove(con)
+
+        return devs
+
+
+    ############################
+    # Domain lifecycle methods #
+    ############################
+
+    def _unregister_reboot_listener(self):
+        if self.reboot_listener == None:
+            return
+
+        try:
+            self.disconnect(self.reboot_listener)
+            self.reboot_listener = None
+        except:
+            pass
+
+    def manual_reboot(self):
+        """
+        Attempt a manual reboot by invoking 'shutdown', then listen
+        for a state change and restart the VM
+        """
+        def reboot_listener(vm, ignore1, ignore2, self):
+            if vm.is_crashed():
+                # Abandon reboot plans
+                self.reboot_listener = None
+                return True
+
+            if not vm.is_shutoff():
+                # Not shutoff, continue waiting
+                return
+
+            try:
+                logging.debug("Fake reboot detected shutdown. Restarting VM")
+                vm.startup()
+            except:
+                logging.exception("Fake reboot startup failed")
+
+            self.reboot_listener = None
+            return True
+
+        self._unregister_reboot_listener()
+
+        # Request a shutdown
+        self.shutdown()
+
+        self.reboot_listener = self.connect_opt_out("status-changed",
+                                                    reboot_listener, self)
+
+    def shutdown(self):
+        self.set_install_abort(True)
+        self._unregister_reboot_listener()
+        self._backend.shutdown()
+        self.force_update_status()
+
+    def reboot(self):
+        self.set_install_abort(True)
+        self._backend.reboot(0)
+        self.force_update_status()
+
+    def startup(self):
+        if self.get_cloning():
+            raise RuntimeError(_("Cannot start guest while cloning "
+                                 "operation in progress"))
+        self._backend.create()
+        self.force_update_status()
+
+    def suspend(self):
+        self._backend.suspend()
+        self.force_update_status()
+
+    def delete(self):
+        self._backend.undefine()
+
+    def resume(self):
+        if self.get_cloning():
+            raise RuntimeError(_("Cannot resume guest while cloning "
+                                 "operation in progress"))
+
+        self._backend.resume()
+        self.force_update_status()
+
+    def hasSavedImage(self):
+        if not self.managedsave_supported:
+            return False
+        return self._backend.hasManagedSaveImage(0)
+
+    def save(self, filename=None, meter=None):
+        self.set_install_abort(True)
+
+        if meter:
+            start_job_progress_thread(self, meter, _("Saving domain to disk"))
+
+        if not self.managedsave_supported:
+            self._backend.save(filename)
+        else:
+            self._backend.managedSave(0)
+
+        self.force_update_status()
+
+    def destroy(self):
+        self.set_install_abort(True)
+        self._unregister_reboot_listener()
+        self._backend.destroy()
+        self.force_update_status()
+
+    # Migrate methods
+
+    def support_downtime(self):
+        return support.check_domain_support(self._backend,
+                        support.SUPPORT_DOMAIN_MIGRATE_DOWNTIME)
+
+    def migrate_set_max_downtime(self, max_downtime, flag=0):
+        self._backend.migrateSetMaxDowntime(max_downtime, flag)
+
+    def migrate(self, destconn, interface=None, rate=0,
+                live=False, secure=False, meter=None):
+        self.set_install_abort(True)
+
+        newname = None
+
+        flags = 0
+        if self.status() == libvirt.VIR_DOMAIN_RUNNING and live:
+            flags |= libvirt.VIR_MIGRATE_LIVE
+
+        if secure:
+            flags |= libvirt.VIR_MIGRATE_PEER2PEER
+            flags |= libvirt.VIR_MIGRATE_TUNNELLED
+
+        newxml = self.get_xml(inactive=True)
+
+        logging.debug("Migrating: conn=%s flags=%s dname=%s uri=%s rate=%s" %
+                      (destconn.vmm, flags, newname, interface, rate))
+
+        if meter:
+            start_job_progress_thread(self, meter, _("Migrating domain"))
+
+        self._backend.migrate(destconn.vmm, flags, newname, interface, rate)
+        destconn.define_domain(newxml)
+
+
+    ###################
+    # Stats helpers ###
+    ###################
+
+    def _sample_mem_stats(self, info):
+        curmem = info[2]
+        if not self.is_active():
+            curmem = 0
+
+        pcentCurrMem = curmem * 100.0 / self.conn.host_memory_size()
+        pcentCurrMem = max(0.0, min(pcentCurrMem, 100.0))
+
+        return pcentCurrMem, curmem
+
+    def _sample_cpu_stats(self, info, now):
+        prevCpuTime = 0
+        prevTimestamp = 0
+        cpuTime = 0
+        cpuTimeAbs = 0
+        pcentHostCpu = 0
+        pcentGuestCpu = 0
+
+        if len(self.record) > 0:
+            prevTimestamp = self.record[0]["timestamp"]
+            prevCpuTime = self.record[0]["cpuTimeAbs"]
+
+        if not (info[0] in [libvirt.VIR_DOMAIN_SHUTOFF,
+                            libvirt.VIR_DOMAIN_CRASHED]):
+            cpuTime = info[4] - prevCpuTime
+            cpuTimeAbs = info[4]
+            hostcpus = self.conn.host_active_processor_count()
+            guestcpus = self.vcpu_count()
+
+            pcentbase = (((cpuTime) * 100.0) /
+                         ((now - prevTimestamp) * 1000.0 * 1000.0 * 1000.0))
+            pcentHostCpu = pcentbase / hostcpus
+            pcentGuestCpu = pcentbase / guestcpus
+
+        pcentHostCpu = max(0.0, min(100.0, pcentHostCpu))
+        pcentGuestCpu = max(0.0, min(100.0, pcentGuestCpu))
+
+        return cpuTime, cpuTimeAbs, pcentHostCpu, pcentGuestCpu
+
+    def _get_cur_rate(self, what):
+        if len(self.record) > 1:
+            ret = (float(self.record[0][what] -
+                         self.record[1][what]) /
+                   float(self.record[0]["timestamp"] -
+                         self.record[1]["timestamp"]))
+        else:
+            ret = 0.0
+        return max(ret, 0, 0) # avoid negative values at poweroff
+
+    def _set_max_rate(self, record, what):
+        if record[what] > self.maxRecord[what]:
+            self.maxRecord[what] = record[what]
+    def _get_max_rate(self, name1, name2):
+        return float(max(self.maxRecord[name1], self.maxRecord[name2]))
+
+    def _get_record_helper(self, record_name):
+        if len(self.record) == 0:
+            return 0
+        return self.record[0][record_name]
+
+    def _vector_helper(self, record_name):
+        vector = []
+        stats = self.record
+        for i in range(self.config.get_stats_history_length() + 1):
+            if i < len(stats):
+                vector.append(stats[i][record_name] / 100.0)
+            else:
+                vector.append(0)
+        return vector
+
+    def _in_out_vector_helper(self, name1, name2, ceil):
+        vector = []
+        stats = self.record
+        if ceil is None:
+            ceil = self._get_max_rate(name1, name2)
+        maxlen = self.config.get_stats_history_length()
+
+        for n in [name1, name2]:
+            for i in range(maxlen + 1):
+                if i < len(stats):
+                    vector.append(float(stats[i][n]) / ceil)
+                else:
+                    vector.append(0.0)
+        return vector
+
+    def in_out_vector_limit(self, data, limit):
+        l = len(data) / 2
+        end = min(l, limit)
+        if l > limit:
+            data = data[0:end] + data[l:l + end]
+
+        return map(lambda x, y: (x + y) / 2, data[0:end], data[end:end * 2])
+
+    def toggle_sample_network_traffic(self, ignore1=None, ignore2=None,
+                                      ignore3=None, ignore4=None):
+        self._enable_net_poll = self.config.get_stats_enable_net_poll()
+
+        if self._enable_net_poll and len(self.record) > 1:
+            # resample the current value before calculating the rate in
+            # self.tick() otherwise we'd get a huge spike when switching
+            # from 0 to bytes_transfered_so_far
+            rxBytes, txBytes = self._sample_network_traffic()
+            self.record[0]["netRxKB"] = rxBytes / 1024
+            self.record[0]["netTxKB"] = txBytes / 1024
+
+    def toggle_sample_disk_io(self, ignore1=None, ignore2=None,
+                              ignore3=None, ignore4=None):
+        self._enable_disk_poll = self.config.get_stats_enable_disk_poll()
+
+        if self._enable_disk_poll and len(self.record) > 1:
+            # resample the current value before calculating the rate in
+            # self.tick() otherwise we'd get a huge spike when switching
+            # from 0 to bytes_transfered_so_far
+            rdBytes, wrBytes = self._sample_disk_io()
+            self.record[0]["diskRdKB"] = rdBytes / 1024
+            self.record[0]["diskWrKB"] = wrBytes / 1024
+
+
+    ###################
+    # Stats accessors #
+    ###################
+
+    def stats_memory(self):
+        return self._get_record_helper("curmem")
+    def cpu_time(self):
+        return self._get_record_helper("cpuTime")
+    def host_cpu_time_percentage(self):
+        return self._get_record_helper("cpuHostPercent")
+    def guest_cpu_time_percentage(self):
+        return self._get_record_helper("cpuGuestPercent")
+    def network_rx_rate(self):
+        return self._get_record_helper("netRxRate")
+    def network_tx_rate(self):
+        return self._get_record_helper("netTxRate")
+    def disk_read_rate(self):
+        return self._get_record_helper("diskRdRate")
+    def disk_write_rate(self):
+        return self._get_record_helper("diskWrRate")
+
+    def get_memory_pretty(self):
+        return util.pretty_mem(self.get_memory())
+    def maximum_memory_pretty(self):
+        return util.pretty_mem(self.maximum_memory())
+
+    def network_traffic_rate(self):
+        return self.network_tx_rate() + self.network_rx_rate()
+    def network_traffic_max_rate(self):
+        return self._get_max_rate("netRxRate", "netTxRate")
+    def disk_io_rate(self):
+        return self.disk_read_rate() + self.disk_write_rate()
+    def disk_io_max_rate(self):
+        return self._get_max_rate("diskRdRate", "diskWrRate")
+
+    def host_cpu_time_vector(self):
+        return self._vector_helper("cpuHostPercent")
+    def guest_cpu_time_vector(self):
+        return self._vector_helper("cpuGuestPercent")
+    def stats_memory_vector(self):
+        return self._vector_helper("currMemPercent")
+    def network_traffic_vector(self, ceil=None):
+        return self._in_out_vector_helper("netRxRate", "netTxRate", ceil)
+    def disk_io_vector(self, ceil=None):
+        return self._in_out_vector_helper("diskRdRate", "diskWrRate", ceil)
+
+    def host_cpu_time_vector_limit(self, limit):
+        cpudata = self.host_cpu_time_vector()
+        if len(cpudata) > limit:
+            cpudata = cpudata[0:limit]
+        return cpudata
+    def guest_cpu_time_vector_limit(self, limit):
+        cpudata = self.guest_cpu_time_vector()
+        if len(cpudata) > limit:
+            cpudata = cpudata[0:limit]
+        return cpudata
+    def network_traffic_vector_limit(self, limit, ceil=None):
+        return self.in_out_vector_limit(self.network_traffic_vector(ceil),
+                                        limit)
+    def disk_io_vector_limit(self, limit, ceil=None):
+        return self.in_out_vector_limit(self.disk_io_vector(ceil), limit)
+
+
+    ###################
+    # Status helpers ##
+    ###################
 
     def _update_start_vcpus(self, ignore, oldstatus, status):
         ignore = status
@@ -1336,9 +1326,66 @@ class vmmDomain(vmmDomainBase):
         self._startup_vcpus = None
         self.vcpu_max_count()
 
-    def _update_status(self, status=None):
+    def run_status(self):
+        if self.status() == libvirt.VIR_DOMAIN_RUNNING:
+            return _("Running")
+        elif self.status() == libvirt.VIR_DOMAIN_PAUSED:
+            return _("Paused")
+        elif self.status() == libvirt.VIR_DOMAIN_SHUTDOWN:
+            return _("Shutting Down")
+        elif self.status() == libvirt.VIR_DOMAIN_SHUTOFF:
+            return _("Shutoff")
+        elif self.status() == libvirt.VIR_DOMAIN_CRASHED:
+            return _("Crashed")
+
+    def _normalize_status(self, status):
+        if status == libvirt.VIR_DOMAIN_NOSTATE:
+            return libvirt.VIR_DOMAIN_RUNNING
+        elif status == libvirt.VIR_DOMAIN_BLOCKED:
+            return libvirt.VIR_DOMAIN_RUNNING
+        return status
+
+    def is_active(self):
+        return not self.is_shutoff()
+    def is_shutoff(self):
+        return self.status() == libvirt.VIR_DOMAIN_SHUTOFF
+    def is_crashed(self):
+        return self.status() == libvirt.VIR_DOMAIN_CRASHED
+    def is_stoppable(self):
+        return self.status() in [libvirt.VIR_DOMAIN_RUNNING,
+                                 libvirt.VIR_DOMAIN_PAUSED]
+    def is_destroyable(self):
+        return (self.is_stoppable() or
+                self.status() in [libvirt.VIR_DOMAIN_CRASHED])
+    def is_runable(self):
+        return self.status() in [libvirt.VIR_DOMAIN_SHUTOFF,
+                                 libvirt.VIR_DOMAIN_CRASHED]
+    def is_pauseable(self):
+        return self.status() in [libvirt.VIR_DOMAIN_RUNNING]
+    def is_unpauseable(self):
+        return self.status() in [libvirt.VIR_DOMAIN_PAUSED]
+    def is_paused(self):
+        return self.status() in [libvirt.VIR_DOMAIN_PAUSED]
+
+    def run_status_icon_name(self):
+        status_icons = {
+            libvirt.VIR_DOMAIN_BLOCKED: "state_running",
+            libvirt.VIR_DOMAIN_CRASHED: "state_shutoff",
+            libvirt.VIR_DOMAIN_PAUSED: "state_paused",
+            libvirt.VIR_DOMAIN_RUNNING: "state_running",
+            libvirt.VIR_DOMAIN_SHUTDOWN: "state_shutoff",
+            libvirt.VIR_DOMAIN_SHUTOFF: "state_shutoff",
+            libvirt.VIR_DOMAIN_NOSTATE: "state_running",
+        }
+
+        return status_icons[self.status()]
+
+    def force_update_status(self):
+        """
+        Fetch current domain state and clear status cache
+        """
         try:
-            info = self.get_info()
+            info = self._backend.info()
         except libvirt.libvirtError, e:
             if (hasattr(libvirt, "VIR_ERR_NO_DOMAIN") and
                 e.get_error_code() == getattr(libvirt, "VIR_ERR_NO_DOMAIN")):
@@ -1346,60 +1393,64 @@ class vmmDomain(vmmDomainBase):
                 return
             raise
 
-        if status == None:
-            status = info[0]
+        self._update_status(info[0])
+
+    def _update_status(self, status):
+        """
+        Internal helper to change cached status to 'status' and signal
+        clients if we actually changed state
+        """
         status = self._normalize_status(status)
 
-        if status != self.lastStatus:
-            oldstatus = self.lastStatus
-            self.lastStatus = status
-
-            # Send 'config-changed' before a status-update, so users
-            # are operating with fresh XML
-            self.refresh_xml()
-
-            util.safe_idle_add(util.idle_emit, self, "status-changed",
-                               oldstatus, status)
-
-    ##################
-    # Stats handling #
-    ##################
-
-    def toggle_sample_network_traffic(self, ignore1=None, ignore2=None,
-                                      ignore3=None, ignore4=None):
-        if not self.config.get_stats_enable_net_poll():
-            self._network_traffic = lambda: (0, 0)
+        if status == self.lastStatus:
             return
 
-        if len(self.record) > 1:
-            # resample the current value before calculating the rate in
-            # self.tick() otherwise we'd get a huge spike when switching
-            # from 0 to bytes_transfered_so_far
-            rxBytes, txBytes = self._sample_network_traffic()
-            self.record[0]["netRxKB"] = rxBytes / 1024
-            self.record[0]["netTxKB"] = txBytes / 1024
-        self._network_traffic = self._sample_network_traffic
+        oldstatus = self.lastStatus
+        self.lastStatus = status
 
-    def toggle_sample_disk_io(self, ignore1=None, ignore2=None,
-                              ignore3=None, ignore4=None):
-        if not self.config.get_stats_enable_disk_poll():
-            self._disk_io = lambda: (0, 0)
-            return
+        # Send 'config-changed' before a status-update, so users
+        # are operating with fresh XML
+        self.refresh_xml()
 
-        if len(self.record) > 1:
-            # resample the current value before calculating the rate in
-            # self.tick() otherwise we'd get a huge spike when switching
-            # from 0 to bytes_transfered_so_far
-            rdBytes, wrBytes = self._sample_disk_io()
-            self.record[0]["diskRdKB"] = rdBytes / 1024
-            self.record[0]["diskWrKB"] = wrBytes / 1024
-        self._disk_io = self._sample_disk_io
+        self.idle_emit("status-changed", oldstatus, status)
 
+
+    #################
+    # GConf helpers #
+    #################
+
+    def set_console_scaling(self, value):
+        self.config.set_pervm(self.conn.get_uri(), self.uuid,
+                              self.config.set_console_scaling, value)
+    def get_console_scaling(self):
+        return self.config.get_pervm(self.conn.get_uri(), self.uuid,
+                                     self.config.get_console_scaling)
+    def on_console_scaling_changed(self, cb):
+        return self.config.listen_pervm(self.conn.get_uri(), self.uuid,
+                                        self.config.on_console_scaling_changed,
+                                        cb)
+
+    def set_details_window_size(self, w, h):
+        self.config.set_pervm(self.conn.get_uri(), self.uuid,
+                              self.config.set_details_window_size, (w, h))
+    def get_details_window_size(self):
+        return self.config.get_pervm(self.conn.get_uri(), self.uuid,
+                                     self.config.get_details_window_size)
+
+    def inspection_data_updated(self):
+        self.idle_emit("inspection-changed")
+
+
+    ###################
+    # Polling helpers #
+    ###################
 
     def _sample_network_traffic(self):
         rx = 0
         tx = 0
-        if not self._stats_net_supported or not self.is_active():
+        if (not self._stats_net_supported or not
+            not self._enable_net_poll or
+            not self.is_active()):
             return rx, tx
 
         for netdev in self.get_network_devices(refresh_if_necc=False):
@@ -1411,7 +1462,7 @@ class vmmDomain(vmmDomainBase):
                 continue
 
             try:
-                io = self.interfaceStats(dev)
+                io = self._backend.interfaceStats(dev)
                 if io:
                     rx += io[0]
                     tx += io[4]
@@ -1431,7 +1482,9 @@ class vmmDomain(vmmDomainBase):
     def _sample_disk_io(self):
         rd = 0
         wr = 0
-        if not self._stats_disk_supported or not self.is_active():
+        if (not self._stats_disk_supported or
+            not self._enable_disk_poll or
+            not self.is_active()):
             return rd, wr
 
         for disk in self.get_disk_devices(refresh_if_necc=False):
@@ -1443,7 +1496,7 @@ class vmmDomain(vmmDomainBase):
                 continue
 
             try:
-                io = self.blockStats(dev)
+                io = self._backend.blockStats(dev)
                 if io:
                     rd += io[1]
                     wr += io[3]
@@ -1460,14 +1513,17 @@ class vmmDomain(vmmDomainBase):
 
         return rd, wr
 
-    def tick(self, now):
-        if self.connection.get_state() != self.connection.STATE_ACTIVE:
+    def tick(self, now=None):
+        if self.conn.get_state() != self.conn.STATE_ACTIVE:
             return
 
-        # Invalidate cached xml
+        if now is None:
+            now = time.time()
+
+        # Invalidate cached values
         self._invalidate_xml()
 
-        info = self.get_info()
+        info = self._backend.info()
         expected = self.config.get_stats_history_length()
         current = len(self.record)
         if current > expected:
@@ -1477,46 +1533,29 @@ class vmmDomain(vmmDomainBase):
         # (ie MAX_LONG) so lets clamp it to the actual
         # physical RAM in machine which is the effective
         # real world limit
-        # XXX need to skip this for non-Xen
-        if self.get_id() == 0:
-            info[1] = self.connection.host_memory_size()
+        if (self.conn.is_xen() and
+            self.is_management_domain()):
+            info[1] = self.conn.host_memory_size()
 
-        cpuTime, cpuTimeAbs, pcentCpuTime = self._sample_cpu_stats(info, now)
-        pcentCurrMem, pcentMaxMem = self._sample_mem_stats(info)
-        rdBytes, wrBytes = self._disk_io()
-        rxBytes, txBytes = self._network_traffic()
+        (cpuTime, cpuTimeAbs,
+         pcentHostCpu, pcentGuestCpu) = self._sample_cpu_stats(info, now)
+        pcentCurrMem, curmem = self._sample_mem_stats(info)
+        rdBytes, wrBytes = self._sample_disk_io()
+        rxBytes, txBytes = self._sample_network_traffic()
 
         newStats = {
             "timestamp": now,
             "cpuTime": cpuTime,
             "cpuTimeAbs": cpuTimeAbs,
-            "cpuTimePercent": pcentCpuTime,
+            "cpuHostPercent": pcentHostCpu,
+            "cpuGuestPercent": pcentGuestCpu,
+            "curmem": curmem,
             "currMemPercent": pcentCurrMem,
-            "maxMemPercent": pcentMaxMem,
             "diskRdKB": rdBytes / 1024,
             "diskWrKB": wrBytes / 1024,
             "netRxKB": rxBytes / 1024,
             "netTxKB": txBytes / 1024,
         }
-
-        nSamples = 5
-        if nSamples > len(self.record):
-            nSamples = len(self.record)
-
-        if nSamples == 0:
-            avg = ["cpuTimeAbs"]
-            percent = 0
-        else:
-            startCpuTime = self.record[nSamples - 1]["cpuTimeAbs"]
-            startTimestamp = self.record[nSamples - 1]["timestamp"]
-
-            avg = ((newStats["cpuTimeAbs"] - startCpuTime) / nSamples)
-            percent = ((newStats["cpuTimeAbs"] - startCpuTime) * 100.0 /
-                       (((now - startTimestamp) * 1000.0 * 1000.0 * 1000.0) *
-                        self.connection.host_active_processor_count()))
-
-        newStats["cpuTimeMovingAvg"] = avg
-        newStats["cpuTimeMovingAvgPercent"] = percent
 
         for r in ["diskRd", "diskWr", "netRx", "netTx"]:
             newStats[r + "Rate"] = self._get_cur_rate(r + "KB")
@@ -1524,17 +1563,21 @@ class vmmDomain(vmmDomainBase):
 
         self.record.insert(0, newStats)
         self._update_status(info[0])
-        util.safe_idle_add(util.idle_emit, self, "resources-sampled")
+        self.idle_emit("resources-sampled")
 
 
-class vmmDomainVirtinst(vmmDomainBase):
+########################
+# Libvirt domain class #
+########################
+
+class vmmDomainVirtinst(vmmDomain):
     """
     Domain object backed by a virtinst Guest object.
 
     Used for launching a details window for customizing a VM before install.
     """
-    def __init__(self, connection, backend, uuid):
-        vmmDomainBase.__init__(self, connection, backend, uuid)
+    def __init__(self, conn, backend, uuid):
+        vmmDomain.__init__(self, conn, backend, uuid)
 
         self._orig_xml = None
 
@@ -1542,8 +1585,11 @@ class vmmDomainVirtinst(vmmDomainBase):
         return self._backend.name
     def get_id(self):
         return -1
-    def status(self):
-        return libvirt.VIR_DOMAIN_SHUTOFF
+    def hasSavedImage(self):
+        return False
+
+    def _XMLDesc(self, flags):
+        raise RuntimeError("Shouldn't be called")
 
     def get_xml(self, inactive=False, refresh_if_necc=True):
         ignore = inactive
@@ -1563,7 +1609,7 @@ class vmmDomainVirtinst(vmmDomainBase):
     def _define(self, newxml):
         ignore = newxml
         self._orig_xml = None
-        util.safe_idle_add(util.idle_emit, self, "config-changed")
+        self.idle_emit("config-changed")
 
     def _redefine_xml(self, newxml):
         # We need to cache origxml in order to have something to diff against
@@ -1576,52 +1622,18 @@ class vmmDomainVirtinst(vmmDomainBase):
 
     def get_autostart(self):
         return self._backend.autostart
-
-    # Stats stubs
-    def get_memory_percentage(self):
-        return 0
-    def maximum_memory_percentage(self):
-        return 0
-    def cpu_time(self):
-        return 0
-    def cpu_time_percentage(self):
-        return 0
-    def network_rx_rate(self):
-        return 0
-    def network_tx_rate(self):
-        return 0
-    def disk_read_rate(self):
-        return 0
-    def disk_write_rate(self):
-        return 0
-
-    # Device/XML hotplug implementations
     def set_autostart(self, val):
         self._backend.autostart = bool(val)
-        util.safe_idle_add(util.idle_emit, self, "config-changed")
+        self.idle_emit("config-changed")
 
     def define_name(self, newname):
         def change(guest):
             guest.name = str(newname)
         return self._redefine_guest(change)
 
-    def attach_device(self, devobj):
-        return
-    def detach_device(self, devobj):
-        return
-    def update_device(self, devobj, flags=1):
-        ignore = devobj
-        ignore = flags
-        return
-    def hotplug_graphics_password(self, devobj, newval):
-        return
-    def hotplug_storage_media(self, devobj, newpath):
-        return
-    def hotplug_vcpus(self, vcpus):
-        raise NotImplementedError()
-    def hotplug_both_mem(self, memory, maxmem):
-        raise NotImplementedError()
+vmmLibvirtObject.type_register(vmmDomain)
+vmmDomain.signal_new(vmmDomain, "status-changed", [int, int])
+vmmDomain.signal_new(vmmDomain, "resources-sampled", [])
+vmmDomain.signal_new(vmmDomain, "inspection-changed", [])
 
 vmmLibvirtObject.type_register(vmmDomainVirtinst)
-vmmLibvirtObject.type_register(vmmDomainBase)
-vmmLibvirtObject.type_register(vmmDomain)

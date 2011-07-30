@@ -18,8 +18,8 @@
 # MA  02110-1301, USA.  A copy of the GNU General Public License is
 # also available at http://www.gnu.org/copyleft/gpl.html.
 
-from snack import *
-from configscreen import *
+import snack
+from domainlistconfigscreen import DomainListConfigScreen
 
 class StopDomainConfigScreen(DomainListConfigScreen):
     LIST_PAGE    = 1
@@ -30,16 +30,18 @@ class StopDomainConfigScreen(DomainListConfigScreen):
 
     def get_elements_for_page(self, screen, page):
         if page is self.LIST_PAGE:
-            return self.get_domain_list_page(screen, defined = False)
+            return self.get_domain_list_page(screen, defined=False)
         elif page is self.STOP_PAGE:
             return self.get_stop_page(screen)
 
     def page_has_next(self, page):
-        if page is self.LIST_PAGE: return self.has_selectable_domains()
+        if page is self.LIST_PAGE:
+            return self.has_selectable_domains()
         return False
 
     def page_has_back(self, page):
-        if page is self.STOP_PAGE: return True
+        if page is self.STOP_PAGE:
+            return True
         return False
 
     def validate_input(self, page, errors):
@@ -47,18 +49,22 @@ class StopDomainConfigScreen(DomainListConfigScreen):
             if self.get_selected_domain() is not None:
                 domain = self.get_selected_domain()
                 try:
-                    self.get_libvirt().destroy_domain(domain)
-                    return True
+                    if domain.is_stoppable():
+                        domain.destroy()
+                        return True
+                    else:
+                        errors.append("%s is not in a stoppable state: state=%s" % (domain.get_name(), domain.run_status()))
                 except Exception, error:
-                    errors.append("There was an error stop the domain: %s" % domain)
+                    errors.append("There was an error stopping the domain: %s" % domain)
                     errors.append(str(error))
             else:
                 errors.append("You must first select a domain to stop.")
         return False
 
     def get_stop_page(self, screen):
-        grid = Grid(1, 1)
-        grid.setField(Label("%s was successfully stoped." % self.get_selected_domain()), 0, 0)
+        ignore = screen
+        grid = snack.Grid(1, 1)
+        grid.setField(snack.Label("%s was successfully stopped." % self.get_selected_domain().get_name()), 0, 0)
         return [grid]
 
 def StopDomain():

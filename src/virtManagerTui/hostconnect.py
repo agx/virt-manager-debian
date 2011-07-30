@@ -16,13 +16,11 @@
 # MA  02110-1301, USA.  A copy of the GNU General Public License is
 # also available at http://www.gnu.org/copyleft/gpl.html.
 
-from snack import *
-
-from configscreen import *
+from newt_syrup.configscreen import ConfigScreen
 
 class HostConnectConfigScreen(ConfigScreen):
     def __init__(self):
-        ConfigScree
+        ConfigScreen.__init__(self, "Host Connect")
 
 def HostConnect():
     screen = HostConnectConfigScreen()

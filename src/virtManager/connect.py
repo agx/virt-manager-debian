@@ -18,17 +18,19 @@
 # MA 02110-1301 USA.
 #
 
-import gobject
-import gtk
-import virtinst
 import logging
-import dbus
 import socket
+
+import gtk
+
+import virtinst
+import dbus
 
 from virtManager.baseclass import vmmGObjectUI
 
 HV_XEN = 0
 HV_QEMU = 1
+HV_LXC = 2
 
 CONN_SSH = 0
 CONN_TCP = 1
@@ -47,13 +49,6 @@ def default_conn_user(conn):
     return current_user()
 
 class vmmConnect(vmmGObjectUI):
-    __gsignals__ = {
-        "completed": (gobject.SIGNAL_RUN_FIRST,
-                      gobject.TYPE_NONE, (str, object, object)),
-        "cancelled": (gobject.SIGNAL_RUN_FIRST,
-                      gobject.TYPE_NONE, ())
-        }
-
     def __init__(self):
         vmmGObjectUI.__init__(self,
                               "vmm-open-connection.glade",
@@ -61,17 +56,18 @@ class vmmConnect(vmmGObjectUI):
 
         self.window.signal_autoconnect({
             "on_hypervisor_changed": self.hypervisor_changed,
-            "on_connection_changed": self.connection_changed,
+            "on_connection_changed": self.conn_changed,
             "on_hostname_combo_changed": self.hostname_combo_changed,
             "on_connect_remote_toggled": self.connect_remote_toggled,
             "on_username_entry_changed": self.username_changed,
 
             "on_cancel_clicked": self.cancel,
-            "on_connect_clicked": self.open_connection,
+            "on_connect_clicked": self.open_conn,
             "on_vmm_open_connection_delete_event": self.cancel,
             })
 
         self.browser = None
+        self.browser_sigs = []
         self.can_browse = False
 
         # Set this if we can't resolve 'hostname.local': means avahi
@@ -102,54 +98,55 @@ class vmmConnect(vmmGObjectUI):
         self.emit("cancelled")
         return 1
 
-    def close(self):
+    def close(self, ignore1=None, ignore2=None):
         self.topwin.hide()
         self.stop_browse()
 
-    def show(self):
-        self.topwin.present()
+    def show(self, parent):
         self.reset_state()
+        self.topwin.set_transient_for(parent)
+        self.topwin.present()
+
+    def _cleanup(self):
+        pass
 
     def set_initial_state(self):
         stock_img = gtk.image_new_from_stock(gtk.STOCK_CONNECT,
                                              gtk.ICON_SIZE_BUTTON)
-        self.window.get_widget("connect").set_image(stock_img)
-        self.window.get_widget("connect").grab_default()
+        self.widget("connect").set_image(stock_img)
+        self.widget("connect").grab_default()
 
         # Hostname combo box entry
         hostListModel = gtk.ListStore(str, str, str)
-        host = self.window.get_widget("hostname")
+        host = self.widget("hostname")
         host.set_model(hostListModel)
         host.set_text_column(2)
         hostListModel.set_sort_column_id(2, gtk.SORT_ASCENDING)
-        self.window.get_widget("hostname").child.connect("changed",
-                                                         self.hostname_changed)
+        self.widget("hostname").child.connect("changed", self.hostname_changed)
 
     def reset_state(self):
         self.set_default_hypervisor()
-        self.window.get_widget("connection").set_active(0)
-        self.window.get_widget("autoconnect").set_sensitive(True)
-        self.window.get_widget("autoconnect").set_active(True)
-        self.window.get_widget("hostname").get_model().clear()
-        self.window.get_widget("hostname").child.set_text("")
-        self.window.get_widget("connect-remote").set_active(False)
-        self.window.get_widget("username-entry").set_text("")
+        self.widget("connection").set_active(0)
+        self.widget("autoconnect").set_sensitive(True)
+        self.widget("autoconnect").set_active(True)
+        self.widget("hostname").get_model().clear()
+        self.widget("hostname").child.set_text("")
+        self.widget("connect-remote").set_active(False)
+        self.widget("username-entry").set_text("")
         self.stop_browse()
-        self.connect_remote_toggled(self.window.get_widget("connect-remote"))
+        self.connect_remote_toggled(self.widget("connect-remote"))
         self.populate_uri()
 
     def is_remote(self):
         # Whether user is requesting a remote connection
-        return self.window.get_widget("connect-remote").get_active()
+        return self.widget("connect-remote").get_active()
 
     def set_default_hypervisor(self):
         default = virtinst.util.default_connection()
-        if default is None:
-            self.window.get_widget("hypervisor").set_active(-1)
+        if not default or default.startswith("qemu"):
+            self.widget("hypervisor").set_active(1)
         elif default.startswith("xen"):
-            self.window.get_widget("hypervisor").set_active(0)
-        elif default.startswith("qemu"):
-            self.window.get_widget("hypervisor").set_active(1)
+            self.widget("hypervisor").set_active(0)
 
     def add_service(self, interface, protocol, name, type, domain, flags):
         ignore = flags
@@ -157,13 +154,11 @@ class vmmConnect(vmmGObjectUI):
             # Async service resolving
             res = self.server.ServiceResolverNew(interface, protocol, name,
                                                  type, domain, -1, 0)
-            resint = dbus.Interface(self.bus.get_object("org.freedesktop.Avahi",
-                                                        res),
+            resint = dbus.Interface(self.bus.get_object(
+                                    "org.freedesktop.Avahi", res),
                                     "org.freedesktop.Avahi.ServiceResolver")
-            resint.connect_to_signal("Found", self.add_conn_to_list)
-            # Synchronous service resolving
-            #self.server.ResolveService(interface, protocol, name, type,
-            #                           domain, -1, 0)
+            self.browser_sigs.append(
+                resint.connect_to_signal("Found", self.add_conn_to_list))
         except Exception, e:
             logging.exception(e)
 
@@ -175,7 +170,7 @@ class vmmConnect(vmmGObjectUI):
         ignore = type
 
         try:
-            model = self.window.get_widget("hostname").get_model()
+            model = self.widget("hostname").get_model()
             name = str(name)
             for row in model:
                 if row[0] == name:
@@ -195,7 +190,7 @@ class vmmConnect(vmmGObjectUI):
         ignore = port
 
         try:
-            model = self.window.get_widget("hostname").get_model()
+            model = self.widget("hostname").get_model()
             for row in model:
                 if row[2] == str(name):
                     # Already present in list
@@ -219,16 +214,20 @@ class vmmConnect(vmmGObjectUI):
                                               domain, flags)
 
         # Create browser interface for the new object
-        self.browser = dbus.Interface(self.bus.get_object("org.freedesktop.Avahi",
-                                                          bpath),
+        self.browser = dbus.Interface(self.bus.get_object(
+                                      "org.freedesktop.Avahi", bpath),
                                       "org.freedesktop.Avahi.ServiceBrowser")
 
-        self.browser.connect_to_signal("ItemNew", self.add_service)
-        self.browser.connect_to_signal("ItemRemove", self.remove_service)
+        self.browser_sigs.append(
+            self.browser.connect_to_signal("ItemNew", self.add_service))
+        self.browser_sigs.append(
+            self.browser.connect_to_signal("ItemRemove", self.remove_service))
 
     def stop_browse(self):
         if self.browser:
-            del(self.browser)
+            for sig in self.browser_sigs:
+                sig.remove()
+            self.browser_sigs = []
             self.browser = None
 
     def hostname_combo_changed(self, src):
@@ -250,7 +249,7 @@ class vmmConnect(vmmGObjectUI):
         if not entry:
             entry = ip
 
-        self.window.get_widget("hostname").child.set_text(entry)
+        self.widget("hostname").child.set_text(entry)
 
     def hostname_changed(self, src_ignore):
         self.populate_uri()
@@ -263,10 +262,10 @@ class vmmConnect(vmmGObjectUI):
 
     def connect_remote_toggled(self, src_ignore):
         is_remote = self.is_remote()
-        self.window.get_widget("hostname").set_sensitive(is_remote)
-        self.window.get_widget("connection").set_sensitive(is_remote)
-        self.window.get_widget("autoconnect").set_active(not is_remote)
-        self.window.get_widget("username-entry").set_sensitive(is_remote)
+        self.widget("hostname").set_sensitive(is_remote)
+        self.widget("connection").set_sensitive(is_remote)
+        self.widget("autoconnect").set_active(not is_remote)
+        self.widget("username-entry").set_sensitive(is_remote)
         if is_remote and self.can_browse:
             self.start_browse()
         else:
@@ -275,31 +274,33 @@ class vmmConnect(vmmGObjectUI):
         self.populate_default_user()
         self.populate_uri()
 
-    def connection_changed(self, src_ignore):
+    def conn_changed(self, src_ignore):
         self.populate_default_user()
         self.populate_uri()
 
     def populate_uri(self):
         uri = self.generate_uri()
-        self.window.get_widget("uri-entry").set_text(uri)
+        self.widget("uri-entry").set_text(uri)
 
     def populate_default_user(self):
-        conn = self.window.get_widget("connection").get_active()
+        conn = self.widget("connection").get_active()
         default_user = default_conn_user(conn)
-        self.window.get_widget("username-entry").set_text(default_user)
+        self.widget("username-entry").set_text(default_user)
 
     def generate_uri(self):
-        hv = self.window.get_widget("hypervisor").get_active()
-        conn = self.window.get_widget("connection").get_active()
-        host = self.window.get_widget("hostname").child.get_text()
-        user = self.window.get_widget("username-entry").get_text()
+        hv = self.widget("hypervisor").get_active()
+        conn = self.widget("connection").get_active()
+        host = self.widget("hostname").child.get_text()
+        user = self.widget("username-entry").get_text()
         is_remote = self.is_remote()
 
         hvstr = ""
         if hv == HV_XEN:
             hvstr = "xen"
-        else:
+        elif hv == HV_QEMU:
             hvstr = "qemu"
+        else:
+            hvstr = "lxc"
 
         addrstr = ""
         if user:
@@ -326,7 +327,7 @@ class vmmConnect(vmmGObjectUI):
 
     def validate(self):
         is_remote = self.is_remote()
-        host = self.window.get_widget("hostname").child.get_text()
+        host = self.widget("hostname").child.get_text()
 
         if is_remote and not host:
             return self.err.val_err(_("A hostname is required for "
@@ -334,20 +335,18 @@ class vmmConnect(vmmGObjectUI):
 
         return True
 
-    def open_connection(self, ignore):
+    def open_conn(self, ignore):
         if not self.validate():
             return
 
-        readonly = False
         auto = False
-        if self.window.get_widget("autoconnect").get_property("sensitive"):
-            auto = self.window.get_widget("autoconnect").get_active()
+        if self.widget("autoconnect").get_property("sensitive"):
+            auto = self.widget("autoconnect").get_active()
         uri = self.generate_uri()
 
-        logging.debug("Generate URI=%s, auto=%s, readonly=%s" %
-                      (uri, auto, readonly))
+        logging.debug("Generate URI=%s, auto=%s" % (uri, auto))
         self.close()
-        self.emit("completed", uri, readonly, auto)
+        self.emit("completed", uri, auto)
 
     def sanitize_hostname(self, host):
         if host == "linux" or host == "localhost":
@@ -403,3 +402,5 @@ class vmmConnect(vmmGObjectUI):
 
 
 vmmGObjectUI.type_register(vmmConnect)
+vmmConnect.signal_new(vmmConnect, "completed", [str, bool])
+vmmConnect.signal_new(vmmConnect, "cancelled", [])

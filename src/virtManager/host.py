@@ -18,10 +18,9 @@
 # MA 02110-1301 USA.
 #
 
-import gobject
-import gtk
-import traceback
 import logging
+
+import gtk
 
 from virtinst import VirtualDisk
 from virtinst import Storage
@@ -29,6 +28,7 @@ from virtinst import Interface
 
 from virtManager import uihelpers
 from virtManager import util
+from virtManager.asyncjob import vmmAsyncJob
 from virtManager.connection import vmmConnection
 from virtManager.createnet import vmmCreateNetwork
 from virtManager.createpool import vmmCreatePool
@@ -41,26 +41,15 @@ INTERFACE_PAGE_INFO = 0
 INTERFACE_PAGE_ERROR = 1
 
 class vmmHost(vmmGObjectUI):
-    __gsignals__ = {
-        "action-show-help": (gobject.SIGNAL_RUN_FIRST,
-                               gobject.TYPE_NONE, [str]),
-        "action-exit-app": (gobject.SIGNAL_RUN_FIRST,
-                            gobject.TYPE_NONE, []),
-        "action-view-manager": (gobject.SIGNAL_RUN_FIRST,
-                                gobject.TYPE_NONE, []),
-        "action-restore-domain": (gobject.SIGNAL_RUN_FIRST,
-                                  gobject.TYPE_NONE, (str,)),
-        }
-    def __init__(self, conn, engine):
+    def __init__(self, conn):
         vmmGObjectUI.__init__(self, "vmm-host.glade", "vmm-host")
         self.conn = conn
-        self.engine = engine
 
         self.title = conn.get_short_hostname() + " " + self.topwin.get_title()
         self.topwin.set_title(self.title)
 
-        self.PIXBUF_STATE_RUNNING = gtk.gdk.pixbuf_new_from_file_at_size(self.config.get_icon_dir() + "/state_running.png", 18, 18)
-        self.PIXBUF_STATE_SHUTOFF = gtk.gdk.pixbuf_new_from_file_at_size(self.config.get_icon_dir() + "/state_shutoff.png", 18, 18)
+        self.ICON_RUNNING = "state_running"
+        self.ICON_SHUTOFF = "state_shutoff"
 
         self.addnet = None
         self.addpool = None
@@ -73,9 +62,12 @@ class vmmHost(vmmGObjectUI):
         self.init_conn_state()
 
         # Set up signals
-        self.window.get_widget("net-list").get_selection().connect("changed", self.net_selected)
-        self.window.get_widget("vol-list").get_selection().connect("changed", self.vol_selected)
-        self.window.get_widget("interface-list").get_selection().connect("changed", self.interface_selected)
+        self.widget("net-list").get_selection().connect("changed",
+                                                    self.net_selected)
+        self.widget("vol-list").get_selection().connect("changed",
+                                                    self.vol_selected)
+        self.widget("interface-list").get_selection().connect("changed",
+                                                    self.interface_selected)
 
 
         self.init_net_state()
@@ -137,24 +129,24 @@ class vmmHost(vmmGObjectUI):
             })
 
         # XXX: Help docs useless/out of date
-        self.window.get_widget("help_menuitem").hide()
+        self.widget("help_menuitem").hide()
         finish_img = gtk.image_new_from_stock(gtk.STOCK_DELETE,
                                               gtk.ICON_SIZE_BUTTON)
-        self.window.get_widget("vol-delete").set_image(finish_img)
+        self.widget("vol-delete").set_image(finish_img)
         finish_img = gtk.image_new_from_stock(gtk.STOCK_NEW,
                                               gtk.ICON_SIZE_BUTTON)
-        self.window.get_widget("vol-add").set_image(finish_img)
+        self.widget("vol-add").set_image(finish_img)
 
         self.conn.connect("resources-sampled", self.refresh_resources)
         self.reset_state()
 
 
     def init_net_state(self):
-        self.window.get_widget("network-pages").set_show_tabs(False)
+        self.widget("network-pages").set_show_tabs(False)
 
         # [ unique, label, icon name, icon size, is_active ]
         netListModel = gtk.ListStore(str, str, str, int, bool)
-        self.window.get_widget("net-list").set_model(netListModel)
+        self.widget("net-list").set_model(netListModel)
 
         netCol = gtk.TreeViewColumn("Networks")
         netCol.set_spacing(6)
@@ -166,13 +158,13 @@ class vmmHost(vmmGObjectUI):
         netCol.add_attribute(net_txt, 'sensitive', 4)
         netCol.add_attribute(net_img, 'icon-name', 2)
         netCol.add_attribute(net_img, 'stock-size', 3)
-        self.window.get_widget("net-list").append_column(netCol)
+        self.widget("net-list").append_column(netCol)
         netListModel.set_sort_column_id(1, gtk.SORT_ASCENDING)
 
         self.populate_networks(netListModel)
 
     def init_storage_state(self):
-        self.window.get_widget("storage-pages").set_show_tabs(False)
+        self.widget("storage-pages").set_show_tabs(False)
 
         self.volmenu = gtk.Menu()
         volCopyPath = gtk.ImageMenuItem(_("Copy Volume Path"))
@@ -184,49 +176,49 @@ class vmmHost(vmmGObjectUI):
         self.volmenu.add(volCopyPath)
 
         volListModel = gtk.ListStore(str, str, str, str, str)
-        self.window.get_widget("vol-list").set_model(volListModel)
+        self.widget("vol-list").set_model(volListModel)
 
         volCol = gtk.TreeViewColumn("Volumes")
         vol_txt1 = gtk.CellRendererText()
         volCol.pack_start(vol_txt1, True)
         volCol.add_attribute(vol_txt1, 'text', 1)
         volCol.set_sort_column_id(1)
-        self.window.get_widget("vol-list").append_column(volCol)
+        self.widget("vol-list").append_column(volCol)
 
         volSizeCol = gtk.TreeViewColumn("Size")
         vol_txt2 = gtk.CellRendererText()
         volSizeCol.pack_start(vol_txt2, False)
         volSizeCol.add_attribute(vol_txt2, 'text', 2)
         volSizeCol.set_sort_column_id(2)
-        self.window.get_widget("vol-list").append_column(volSizeCol)
+        self.widget("vol-list").append_column(volSizeCol)
 
         volFormatCol = gtk.TreeViewColumn("Format")
         vol_txt3 = gtk.CellRendererText()
         volFormatCol.pack_start(vol_txt3, False)
         volFormatCol.add_attribute(vol_txt3, 'text', 3)
         volFormatCol.set_sort_column_id(3)
-        self.window.get_widget("vol-list").append_column(volFormatCol)
+        self.widget("vol-list").append_column(volFormatCol)
 
         volUseCol = gtk.TreeViewColumn("Used By")
         vol_txt4 = gtk.CellRendererText()
         volUseCol.pack_start(vol_txt4, False)
         volUseCol.add_attribute(vol_txt4, 'text', 4)
         volUseCol.set_sort_column_id(4)
-        self.window.get_widget("vol-list").append_column(volUseCol)
+        self.widget("vol-list").append_column(volUseCol)
 
         volListModel.set_sort_column_id(1, gtk.SORT_ASCENDING)
 
-        init_pool_list(self.window.get_widget("pool-list"),
+        init_pool_list(self.widget("pool-list"),
                        self.pool_selected)
-        populate_storage_pools(self.window.get_widget("pool-list"),
+        populate_storage_pools(self.widget("pool-list"),
                                self.conn)
 
     def init_interface_state(self):
-        self.window.get_widget("interface-pages").set_show_tabs(False)
+        self.widget("interface-pages").set_show_tabs(False)
 
         # [ unique, label, icon name, icon size, is_active ]
         interfaceListModel = gtk.ListStore(str, str, str, int, bool)
-        self.window.get_widget("interface-list").set_model(interfaceListModel)
+        self.widget("interface-list").set_model(interfaceListModel)
 
         interfaceCol = gtk.TreeViewColumn("Interfaces")
         interfaceCol.set_spacing(6)
@@ -238,16 +230,15 @@ class vmmHost(vmmGObjectUI):
         interfaceCol.add_attribute(interface_txt, 'sensitive', 4)
         interfaceCol.add_attribute(interface_img, 'icon-name', 2)
         interfaceCol.add_attribute(interface_img, 'stock-size', 3)
-        self.window.get_widget("interface-list").append_column(interfaceCol)
+        self.widget("interface-list").append_column(interfaceCol)
         interfaceListModel.set_sort_column_id(1, gtk.SORT_ASCENDING)
 
         # Starmode combo
-        uihelpers.build_startmode_combo(
-            self.window.get_widget("interface-startmode"))
+        uihelpers.build_startmode_combo(self.widget("interface-startmode"))
 
         # [ name, type ]
         childListModel = gtk.ListStore(str, str)
-        childList = self.window.get_widget("interface-child-list")
+        childList = self.widget("interface-child-list")
         childList.set_model(childListModel)
 
         childNameCol = gtk.TreeViewColumn("Name")
@@ -276,22 +267,22 @@ class vmmHost(vmmGObjectUI):
         arch = self.conn.host_architecture()
         auto = self.conn.get_autoconnect()
 
-        self.window.get_widget("overview-uri").set_text(uri)
-        self.window.get_widget("overview-hostname").set_text(host)
-        self.window.get_widget("overview-hypervisor").set_text(drv)
-        self.window.get_widget("overview-memory").set_text(memory)
-        self.window.get_widget("overview-cpus").set_text(str(proc))
-        self.window.get_widget("overview-arch").set_text(arch)
-        self.window.get_widget("config-autoconnect").set_active(auto)
+        self.widget("overview-uri").set_text(uri)
+        self.widget("overview-hostname").set_text(host)
+        self.widget("overview-hypervisor").set_text(drv)
+        self.widget("overview-memory").set_text(memory)
+        self.widget("overview-cpus").set_text(str(proc))
+        self.widget("overview-arch").set_text(arch)
+        self.widget("config-autoconnect").set_active(auto)
 
         self.cpu_usage_graph = Sparkline()
         self.cpu_usage_graph.show()
-        self.window.get_widget("performance-table").attach(self.cpu_usage_graph,                                                           1, 2, 0, 1)
+        self.widget("performance-table").attach(self.cpu_usage_graph,                                                           1, 2, 0, 1)
 
         self.memory_usage_graph = Sparkline()
         self.memory_usage_graph.show()
-        self.window.get_widget("performance-table").attach(self.memory_usage_graph,
-                                                           1, 2, 1, 2)
+        self.widget("performance-table").attach(self.memory_usage_graph,
+                                                1, 2, 1, 2)
 
 
     def show(self):
@@ -300,7 +291,7 @@ class vmmHost(vmmGObjectUI):
         if vis:
             return
 
-        self.engine.increment_window_counter()
+        self.emit("host-opened")
 
     def is_visible(self):
         return bool(self.topwin.flags() & gtk.VISIBLE)
@@ -310,8 +301,39 @@ class vmmHost(vmmGObjectUI):
             return
 
         self.topwin.hide()
-        self.engine.decrement_window_counter()
+        self.emit("host-closed")
+
         return 1
+
+    def _cleanup(self):
+        self.close()
+
+        self.conn = None
+
+        if self.addnet:
+            self.addnet.cleanup()
+            self.addnet = None
+
+        if self.addpool:
+            self.addpool.cleanup()
+            self.addpool = None
+
+        if self.addvol:
+            self.addvol.cleanup()
+            self.addvol = None
+
+        if self.addinterface:
+            self.addinterface.cleanup()
+            self.addinterface = None
+
+        self.volmenu.destroy()
+        self.volmenu = None
+
+        self.cpu_usage_graph.destroy()
+        self.cpu_usage_graph = None
+
+        self.memory_usage_graph.destroy()
+        self.memory_usage_graph = None
 
     def show_help(self, src_ignore):
         self.emit("action-show-help", "virt-manager-host-window")
@@ -331,27 +353,31 @@ class vmmHost(vmmGObjectUI):
 
         # Update autostart value
         auto = self.conn.get_autoconnect()
-        self.window.get_widget("config-autoconnect").set_active(auto)
+        self.widget("config-autoconnect").set_active(auto)
 
     def refresh_resources(self, ignore=None):
-        self.window.get_widget("performance-cpu").set_text("%d %%" % self.conn.cpu_time_percentage())
-        vm_memory = self.conn.pretty_current_memory()
+        vm_memory = self.conn.pretty_stats_memory()
         host_memory = self.conn.pretty_host_memory_size()
-        self.window.get_widget("performance-memory").set_text(_("%(currentmem)s of %(maxmem)s") % {'currentmem': vm_memory, 'maxmem': host_memory})
+        cpu_vector = self.conn.host_cpu_time_vector()
+        memory_vector = self.conn.stats_memory_vector()
 
-        cpu_vector = self.conn.cpu_time_vector()
         cpu_vector.reverse()
-        self.cpu_usage_graph.set_property("data_array", cpu_vector)
-
-        memory_vector = self.conn.current_memory_vector()
         memory_vector.reverse()
+
+        self.widget("performance-cpu").set_text("%d %%" %
+                                        self.conn.host_cpu_time_percentage())
+        self.widget("performance-memory").set_text(
+                            _("%(currentmem)s of %(maxmem)s") %
+                            {'currentmem': vm_memory, 'maxmem': host_memory})
+
+        self.cpu_usage_graph.set_property("data_array", cpu_vector)
         self.memory_usage_graph.set_property("data_array", memory_vector)
 
     def conn_state_changed(self, ignore1=None):
         state = (self.conn.get_state() == vmmConnection.STATE_ACTIVE)
-        self.window.get_widget("menu_file_restore_saved").set_sensitive(state)
-        self.window.get_widget("net-add").set_sensitive(state)
-        self.window.get_widget("pool-add").set_sensitive(state)
+        self.widget("menu_file_restore_saved").set_sensitive(state)
+        self.widget("net-add").set_sensitive(state)
+        self.widget("pool-add").set_sensitive(state)
 
         # Set error pages
         if not state:
@@ -365,7 +391,7 @@ class vmmHost(vmmGObjectUI):
                 _("Libvirt connection does not support virtual network "
                   "management."))
 
-        if not self.conn.storage_capable:
+        if not self.conn.is_storage_capable():
             self.set_storage_error_page(
                 _("Libvirt connection does not support storage management."))
 
@@ -392,11 +418,8 @@ class vmmHost(vmmGObjectUI):
             return
 
         logging.debug("Deleting network '%s'" % net.get_name())
-        try:
-            net.delete()
-        except Exception, e:
-            self.err.show_err(_("Error deleting network: %s") % str(e),
-                              "".join(traceback.format_exc()))
+        vmmAsyncJob.simple_async_noshow(net.delete, [], self,
+                            _("Error deleting network '%s'") % net.get_name())
 
     def start_network(self, src_ignore):
         net = self.current_network()
@@ -404,11 +427,8 @@ class vmmHost(vmmGObjectUI):
             return
 
         logging.debug("Starting network '%s'" % net.get_name())
-        try:
-            net.start()
-        except Exception, e:
-            self.err.show_err(_("Error starting network: %s") % str(e),
-                              "".join(traceback.format_exc()))
+        vmmAsyncJob.simple_async_noshow(net.start, [], self,
+                            _("Error starting network '%s'") % net.get_name())
 
     def stop_network(self, src_ignore):
         net = self.current_network()
@@ -416,21 +436,17 @@ class vmmHost(vmmGObjectUI):
             return
 
         logging.debug("Stopping network '%s'" % net.get_name())
-        try:
-            net.stop()
-        except Exception, e:
-            self.err.show_err(_("Error stopping network: %s") % str(e),
-                              "".join(traceback.format_exc()))
+        vmmAsyncJob.simple_async_noshow(net.stop, [], self,
+                            _("Error stopping network '%s'") % net.get_name())
 
     def add_network(self, src_ignore):
         logging.debug("Launching 'Add Network'")
         try:
             if self.addnet is None:
                 self.addnet = vmmCreateNetwork(self.conn)
-            self.addnet.show()
+            self.addnet.show(self.topwin)
         except Exception, e:
-            self.err.show_err(_("Error launching network wizard: %s") % str(e),
-                              "".join(traceback.format_exc()))
+            self.err.show_err(_("Error launching network wizard: %s") % str(e))
 
     def net_apply(self, src_ignore):
         net = self.current_network()
@@ -439,30 +455,30 @@ class vmmHost(vmmGObjectUI):
 
         logging.debug("Applying changes for network '%s'" % net.get_name())
         try:
-            net.set_autostart(self.window.get_widget("net-autostart").get_active())
+            auto = self.widget("net-autostart").get_active()
+            net.set_autostart(auto)
         except Exception, e:
-            self.err.show_err(_("Error setting net autostart: %s") % str(e),
-                              "".join(traceback.format_exc()))
+            self.err.show_err(_("Error setting net autostart: %s") % str(e))
             return
-        self.window.get_widget("net-apply").set_sensitive(False)
+        self.widget("net-apply").set_sensitive(False)
 
     def net_autostart_changed(self, src_ignore):
-        auto = self.window.get_widget("net-autostart").get_active()
-        self.window.get_widget("net-autostart").set_label(auto and \
-                                                          _("On Boot") or \
-                                                          _("Never"))
-        self.window.get_widget("net-apply").set_sensitive(True)
+        auto = self.widget("net-autostart").get_active()
+        self.widget("net-autostart").set_label(auto and
+                                               _("On Boot") or
+                                               _("Never"))
+        self.widget("net-apply").set_sensitive(True)
 
     def current_network(self):
-        sel = self.window.get_widget("net-list").get_selection()
+        sel = self.widget("net-list").get_selection()
         active = sel.get_selected()
         if active[1] != None:
             curruuid = active[0].get_value(active[1], 0)
             return self.conn.get_net(curruuid)
         return None
 
-    def refresh_network(self, src_ignore, uri_ignore, uuid):
-        uilist = self.window.get_widget("net-list")
+    def refresh_network(self, src_ignore, uuid):
+        uilist = self.widget("net-list")
         sel = uilist.get_selection()
         active = sel.get_selected()
 
@@ -477,8 +493,8 @@ class vmmHost(vmmGObjectUI):
 
     def set_net_error_page(self, msg):
         self.reset_net_state()
-        self.window.get_widget("network-pages").set_current_page(1)
-        self.window.get_widget("network-error-label").set_text(msg)
+        self.widget("network-pages").set_current_page(1)
+        self.widget("network-error-label").set_text(msg)
 
     def net_selected(self, src):
         selected = src.get_selected()
@@ -487,7 +503,7 @@ class vmmHost(vmmGObjectUI):
             self.set_net_error_page(_("No virtual network selected."))
             return
 
-        self.window.get_widget("network-pages").set_current_page(0)
+        self.widget("network-pages").set_current_page(0)
         net = self.conn.get_net(selected[0].get_value(selected[1], 0))
 
         try:
@@ -496,77 +512,80 @@ class vmmHost(vmmGObjectUI):
             logging.exception(e)
             self.set_net_error_page(_("Error selecting network: %s") % e)
 
-        self.window.get_widget("net-apply").set_sensitive(False)
+        self.widget("net-apply").set_sensitive(False)
 
     def populate_net_state(self, net):
         active = net.is_active()
 
-        self.window.get_widget("net-details").set_sensitive(True)
-        self.window.get_widget("net-name").set_text(net.get_name())
+        self.widget("net-details").set_sensitive(True)
+        self.widget("net-name").set_text(net.get_name())
 
         dev = active and net.get_bridge_device() or ""
         state = active and _("Active") or _("Inactive")
-        icon = (active and self.PIXBUF_STATE_RUNNING or
-                           self.PIXBUF_STATE_SHUTOFF)
+        icon = (active and self.ICON_RUNNING or
+                           self.ICON_SHUTOFF)
 
-        self.window.get_widget("net-device").set_text(dev)
-        self.window.get_widget("net-device").set_sensitive(active)
-        self.window.get_widget("net-state").set_text(state)
-        self.window.get_widget("net-state-icon").set_from_pixbuf(icon)
+        self.widget("net-device").set_text(dev)
+        self.widget("net-device").set_sensitive(active)
+        self.widget("net-state").set_text(state)
+        self.widget("net-state-icon").set_from_icon_name(icon,
+                                                         gtk.ICON_SIZE_MENU)
 
-        self.window.get_widget("net-start").set_sensitive(not active)
-        self.window.get_widget("net-stop").set_sensitive(active)
-        self.window.get_widget("net-delete").set_sensitive(not active)
+        self.widget("net-start").set_sensitive(not active)
+        self.widget("net-stop").set_sensitive(active)
+        self.widget("net-delete").set_sensitive(not active)
 
         autostart = net.get_autostart()
         autolabel = autostart and _("On Boot") or _("Never")
-        self.window.get_widget("net-autostart").set_active(autostart)
-        self.window.get_widget("net-autostart").set_label(autolabel)
+        self.widget("net-autostart").set_active(autostart)
+        self.widget("net-autostart").set_label(autolabel)
 
         network = net.get_ipv4_network()
-        self.window.get_widget("net-ip4-network").set_text(str(network))
+        self.widget("net-ip4-network").set_text(str(network))
 
         dhcp = net.get_ipv4_dhcp_range()
         start = dhcp and str(dhcp[0]) or _("Disabled")
         end = dhcp and str(dhcp[1]) or _("Disabled")
-        self.window.get_widget("net-ip4-dhcp-start").set_text(start)
-        self.window.get_widget("net-ip4-dhcp-end").set_text(end)
+        self.widget("net-ip4-dhcp-start").set_text(start)
+        self.widget("net-ip4-dhcp-end").set_text(end)
 
         forward, ignore = net.get_ipv4_forward()
         iconsize = gtk.ICON_SIZE_MENU
         icon = forward and gtk.STOCK_CONNECT or gtk.STOCK_DISCONNECT
 
-        self.window.get_widget("net-ip4-forwarding-icon").set_from_stock(
-                                                        icon, iconsize)
+        self.widget("net-ip4-forwarding-icon").set_from_stock(icon, iconsize)
 
         forward_str = net.pretty_forward_mode()
-        self.window.get_widget("net-ip4-forwarding").set_text(forward_str)
+        self.widget("net-ip4-forwarding").set_text(forward_str)
 
 
     def reset_net_state(self):
-        self.window.get_widget("net-details").set_sensitive(False)
-        self.window.get_widget("net-name").set_text("")
-        self.window.get_widget("net-device").set_text("")
-        self.window.get_widget("net-device").set_sensitive(False)
-        self.window.get_widget("net-state").set_text(_("Inactive"))
-        self.window.get_widget("net-state-icon").set_from_pixbuf(self.PIXBUF_STATE_SHUTOFF)
-        self.window.get_widget("net-start").set_sensitive(False)
-        self.window.get_widget("net-stop").set_sensitive(False)
-        self.window.get_widget("net-delete").set_sensitive(False)
-        self.window.get_widget("net-autostart").set_label(_("Never"))
-        self.window.get_widget("net-autostart").set_active(False)
-        self.window.get_widget("net-ip4-network").set_text("")
-        self.window.get_widget("net-ip4-dhcp-start").set_text("")
-        self.window.get_widget("net-ip4-dhcp-end").set_text("")
-        self.window.get_widget("net-ip4-forwarding-icon").set_from_stock(gtk.STOCK_DISCONNECT, gtk.ICON_SIZE_MENU)
-        self.window.get_widget("net-ip4-forwarding").set_text(_("Isolated virtual network"))
-        self.window.get_widget("net-apply").set_sensitive(False)
+        self.widget("net-details").set_sensitive(False)
+        self.widget("net-name").set_text("")
+        self.widget("net-device").set_text("")
+        self.widget("net-device").set_sensitive(False)
+        self.widget("net-state").set_text(_("Inactive"))
+        self.widget("net-state-icon").set_from_icon_name(self.ICON_SHUTOFF,
+                                                         gtk.ICON_SIZE_MENU)
+        self.widget("net-start").set_sensitive(False)
+        self.widget("net-stop").set_sensitive(False)
+        self.widget("net-delete").set_sensitive(False)
+        self.widget("net-autostart").set_label(_("Never"))
+        self.widget("net-autostart").set_active(False)
+        self.widget("net-ip4-network").set_text("")
+        self.widget("net-ip4-dhcp-start").set_text("")
+        self.widget("net-ip4-dhcp-end").set_text("")
+        self.widget("net-ip4-forwarding-icon").set_from_stock(
+                                    gtk.STOCK_DISCONNECT, gtk.ICON_SIZE_MENU)
+        self.widget("net-ip4-forwarding").set_text(
+                                    _("Isolated virtual network"))
+        self.widget("net-apply").set_sensitive(False)
 
-    def repopulate_networks(self, src_ignore, uri_ignore, uuid_ignore):
-        self.populate_networks(self.window.get_widget("net-list").get_model())
+    def repopulate_networks(self, src_ignore, uuid_ignore):
+        self.populate_networks(self.widget("net-list").get_model())
 
     def populate_networks(self, model):
-        net_list = self.window.get_widget("net-list")
+        net_list = self.widget("net-list")
         model.clear()
         for uuid in self.conn.list_net_uuids():
             net = self.conn.get_net(uuid)
@@ -591,12 +610,8 @@ class vmmHost(vmmGObjectUI):
             return
 
         logging.debug("Stopping pool '%s'" % pool.get_name())
-        try:
-            pool.stop()
-        except Exception, e:
-            self.err.show_err(_("Error starting pool '%s': %s") % \
-                               (pool.get_name(), str(e)),
-                               "".join(traceback.format_exc()))
+        vmmAsyncJob.simple_async_noshow(pool.stop, [], self,
+                            _("Error stopping pool '%s'") % pool.get_name())
 
     def start_pool(self, src_ignore):
         pool = self.current_pool()
@@ -604,12 +619,8 @@ class vmmHost(vmmGObjectUI):
             return
 
         logging.debug("Starting pool '%s'" % pool.get_name())
-        try:
-            pool.start()
-        except Exception, e:
-            self.err.show_err(_("Error starting pool '%s': %s") % \
-                               (pool.get_name(), str(e)),
-                                "".join(traceback.format_exc()))
+        vmmAsyncJob.simple_async_noshow(pool.start, [], self,
+                            _("Error starting pool '%s'") % pool.get_name())
 
     def delete_pool(self, src_ignore):
         pool = self.current_pool()
@@ -622,25 +633,21 @@ class vmmHost(vmmGObjectUI):
             return
 
         logging.debug("Deleting pool '%s'" % pool.get_name())
-        try:
-            pool.delete()
-        except Exception, e:
-            self.err.show_err(_("Error deleting pool: %s") % str(e),
-                              "".join(traceback.format_exc()))
+        vmmAsyncJob.simple_async_noshow(pool.delete, [], self,
+                            _("Error deleting pool '%s'") % pool.get_name())
 
     def pool_refresh(self, src_ignore):
         pool = self.current_pool()
         if pool is None:
             return
 
-        logging.debug("Refresh pool '%s'" % pool.get_name())
-        try:
+        def cb():
             pool.refresh()
             self.refresh_current_pool()
-        except Exception, e:
-            self.err.show_err(_("Error refreshing pool '%s': %s") % \
-                               (pool.get_name(), str(e)),
-                               "".join(traceback.format_exc()))
+
+        logging.debug("Refresh pool '%s'" % pool.get_name())
+        vmmAsyncJob.simple_async_noshow(cb, [], self,
+                            _("Error refreshing pool '%s'") % pool.get_name())
 
     def delete_vol(self, src_ignore):
         vol = self.current_vol()
@@ -652,25 +659,23 @@ class vmmHost(vmmGObjectUI):
         if not result:
             return
 
-        logging.debug("Deleting volume '%s'" % vol.get_name())
-        try:
+        def cb():
             vol.delete()
             self.refresh_current_pool()
-        except Exception, e:
-            self.err.show_err(_("Error deleting volume: %s") % str(e),
-                              "".join(traceback.format_exc()))
-            return
-        self.populate_storage_volumes()
+            self.populate_storage_volumes()
+
+        logging.debug("Deleting volume '%s'" % vol.get_name())
+        vmmAsyncJob.simple_async_noshow(cb, [], self,
+                        _("Error refreshing volume '%s'") % vol.get_name())
 
     def add_pool(self, src_ignore):
         logging.debug("Launching 'Add Pool' wizard")
         try:
             if self.addpool is None:
                 self.addpool = vmmCreatePool(self.conn)
-            self.addpool.show()
+            self.addpool.show(self.topwin)
         except Exception, e:
-            self.err.show_err(_("Error launching pool wizard: %s") % str(e),
-                              "".join(traceback.format_exc()))
+            self.err.show_err(_("Error launching pool wizard: %s") % str(e))
 
     def add_vol(self, src_ignore):
         pool = self.current_pool()
@@ -685,20 +690,19 @@ class vmmHost(vmmGObjectUI):
                 self.addvol.connect("vol-created", self.refresh_current_pool)
             else:
                 self.addvol.set_parent_pool(pool)
-            self.addvol.show()
+            self.addvol.show(self.topwin)
         except Exception, e:
-            self.err.show_err(_("Error launching volume wizard: %s") % str(e),
-                              "".join(traceback.format_exc()))
+            self.err.show_err(_("Error launching volume wizard: %s") % str(e))
 
     def refresh_current_pool(self, ignore1=None):
         cp = self.current_pool()
         if cp is None:
             return
         cp.refresh()
-        self.refresh_storage_pool(None, None, cp.get_uuid())
+        self.refresh_storage_pool(None, cp.get_uuid())
 
     def current_pool(self):
-        sel = self.window.get_widget("pool-list").get_selection()
+        sel = self.widget("pool-list").get_selection()
         active = sel.get_selected()
         if active[1] != None:
             curruuid = active[0].get_value(active[1], 0)
@@ -709,7 +713,7 @@ class vmmHost(vmmGObjectUI):
         pool = self.current_pool()
         if not pool:
             return None
-        sel = self.window.get_widget("vol-list").get_selection()
+        sel = self.widget("vol-list").get_selection()
         active = sel.get_selected()
         if active[1] != None:
             curruuid = active[0].get_value(active[1], 0)
@@ -723,25 +727,24 @@ class vmmHost(vmmGObjectUI):
 
         logging.debug("Applying changes for pool '%s'" % pool.get_name())
         try:
-            do_auto = self.window.get_widget("pool-autostart").get_active()
+            do_auto = self.widget("pool-autostart").get_active()
             pool.set_autostart(do_auto)
         except Exception, e:
-            self.err.show_err(_("Error setting pool autostart: %s") % str(e),
-                              "".join(traceback.format_exc()))
+            self.err.show_err(_("Error setting pool autostart: %s") % str(e))
             return
-        self.window.get_widget("pool-apply").set_sensitive(False)
+        self.widget("pool-apply").set_sensitive(False)
 
     def pool_autostart_changed(self, src_ignore):
-        auto = self.window.get_widget("pool-autostart").get_active()
-        self.window.get_widget("pool-autostart").set_label(auto and
-                                                           _("On Boot") or
-                                                           _("Never"))
-        self.window.get_widget("pool-apply").set_sensitive(True)
+        auto = self.widget("pool-autostart").get_active()
+        self.widget("pool-autostart").set_label(auto and
+                                                _("On Boot") or
+                                                _("Never"))
+        self.widget("pool-apply").set_sensitive(True)
 
     def set_storage_error_page(self, msg):
         self.reset_pool_state()
-        self.window.get_widget("storage-pages").set_current_page(1)
-        self.window.get_widget("storage-error-label").set_text(msg)
+        self.widget("storage-pages").set_current_page(1)
+        self.widget("storage-error-label").set_text(msg)
 
     def pool_selected(self, src):
         selected = src.get_selected()
@@ -750,7 +753,7 @@ class vmmHost(vmmGObjectUI):
             self.set_storage_error_page(_("No storage pool selected."))
             return
 
-        self.window.get_widget("storage-pages").set_current_page(0)
+        self.widget("storage-pages").set_current_page(0)
         uuid = selected[0].get_value(selected[1], 0)
 
         try:
@@ -759,7 +762,7 @@ class vmmHost(vmmGObjectUI):
             logging.exception(e)
             self.set_storage_error_page(_("Error selecting pool: %s") % e)
 
-        self.window.get_widget("pool-apply").set_sensitive(False)
+        self.widget("pool-apply").set_sensitive(False)
 
     def populate_pool_state(self, uuid):
         pool = self.conn.get_pool(uuid)
@@ -767,65 +770,81 @@ class vmmHost(vmmGObjectUI):
         active = pool.is_active()
 
         # Set pool details state
-        self.window.get_widget("pool-details").set_sensitive(True)
-        self.window.get_widget("pool-name").set_markup("<b>%s:</b>" % \
-                                                       pool.get_name())
-        self.window.get_widget("pool-sizes").set_markup("""<span size="large">%s Free</span> / <i>%s In Use</i>""" % (pool.get_pretty_available(), pool.get_pretty_allocation()))
-        self.window.get_widget("pool-type").set_text(Storage.StoragePool.get_pool_type_desc(pool.get_type()))
-        self.window.get_widget("pool-location").set_text(pool.get_target_path())
-        self.window.get_widget("pool-state-icon").set_from_pixbuf((active and self.PIXBUF_STATE_RUNNING) or self.PIXBUF_STATE_SHUTOFF)
-        self.window.get_widget("pool-state").set_text((active and _("Active")) or _("Inactive"))
-        self.window.get_widget("pool-autostart").set_label((auto and _("On Boot")) or _("Never"))
-        self.window.get_widget("pool-autostart").set_active(auto)
+        self.widget("pool-details").set_sensitive(True)
+        self.widget("pool-name").set_markup("<b>%s:</b>" %
+                                            pool.get_name())
+        self.widget("pool-sizes").set_markup(
+                """<span size="large">%s Free</span> / <i>%s In Use</i>""" %
+                (pool.get_pretty_available(), pool.get_pretty_allocation()))
+        self.widget("pool-type").set_text(
+                Storage.StoragePool.get_pool_type_desc(pool.get_type()))
+        self.widget("pool-location").set_text(
+                pool.get_target_path())
+        self.widget("pool-state-icon").set_from_icon_name(
+                ((active and self.ICON_RUNNING) or self.ICON_SHUTOFF),
+                gtk.ICON_SIZE_MENU)
+        self.widget("pool-state").set_text(
+                (active and _("Active")) or _("Inactive"))
+        self.widget("pool-autostart").set_label(
+                (auto and _("On Boot")) or _("Never"))
+        self.widget("pool-autostart").set_active(auto)
 
-        self.window.get_widget("vol-list").set_sensitive(active)
+        self.widget("vol-list").set_sensitive(active)
         self.populate_storage_volumes()
 
-        self.window.get_widget("pool-delete").set_sensitive(not active)
-        self.window.get_widget("pool-stop").set_sensitive(active)
-        self.window.get_widget("pool-start").set_sensitive(not active)
-        self.window.get_widget("vol-add").set_sensitive(active)
-        self.window.get_widget("vol-delete").set_sensitive(False)
+        self.widget("pool-delete").set_sensitive(not active)
+        self.widget("pool-stop").set_sensitive(active)
+        self.widget("pool-start").set_sensitive(not active)
+        self.widget("vol-add").set_sensitive(active)
+        self.widget("vol-delete").set_sensitive(False)
 
-    def refresh_storage_pool(self, src_ignore, uri_ignore, uuid):
-        refresh_pool_in_list(self.window.get_widget("pool-list"),
-                             self.conn, uuid)
+        if active:
+            try:
+                Storage.StoragePool.get_volume_for_pool(pool.get_type())
+            except Exception, e:
+                self.widget("vol-add").set_sensitive(False)
+                util.tooltip_wrapper(self.widget("vol-add"),
+                                     str(e))
+
+    def refresh_storage_pool(self, src_ignore, uuid):
+        refresh_pool_in_list(self.widget("pool-list"), self.conn, uuid)
         curpool = self.current_pool()
         if curpool.uuid != uuid:
             return
 
         # Currently selected pool changed state: force a 'pool_selected' to
         # update vol list
-        self.pool_selected(self.window.get_widget("pool-list").get_selection())
+        self.pool_selected(self.widget("pool-list").get_selection())
 
     def reset_pool_state(self):
-        self.window.get_widget("pool-details").set_sensitive(False)
-        self.window.get_widget("pool-name").set_text("")
-        self.window.get_widget("pool-sizes").set_markup("""<span size="large"> </span>""")
-        self.window.get_widget("pool-type").set_text("")
-        self.window.get_widget("pool-location").set_text("")
-        self.window.get_widget("pool-state-icon").set_from_pixbuf(self.PIXBUF_STATE_SHUTOFF)
-        self.window.get_widget("pool-state").set_text(_("Inactive"))
-        self.window.get_widget("vol-list").get_model().clear()
-        self.window.get_widget("pool-autostart").set_label(_("Never"))
-        self.window.get_widget("pool-autostart").set_active(False)
+        self.widget("pool-details").set_sensitive(False)
+        self.widget("pool-name").set_text("")
+        self.widget("pool-sizes").set_markup("""<span size="large"> </span>""")
+        self.widget("pool-type").set_text("")
+        self.widget("pool-location").set_text("")
+        self.widget("pool-state-icon").set_from_icon_name(self.ICON_SHUTOFF,
+                                                          gtk.ICON_SIZE_MENU)
+        self.widget("pool-state").set_text(_("Inactive"))
+        self.widget("vol-list").get_model().clear()
+        self.widget("pool-autostart").set_label(_("Never"))
+        self.widget("pool-autostart").set_active(False)
 
-        self.window.get_widget("pool-delete").set_sensitive(False)
-        self.window.get_widget("pool-stop").set_sensitive(False)
-        self.window.get_widget("pool-start").set_sensitive(False)
-        self.window.get_widget("pool-apply").set_sensitive(False)
-        self.window.get_widget("vol-add").set_sensitive(False)
-        self.window.get_widget("vol-delete").set_sensitive(False)
-        self.window.get_widget("vol-list").set_sensitive(False)
+        self.widget("pool-delete").set_sensitive(False)
+        self.widget("pool-stop").set_sensitive(False)
+        self.widget("pool-start").set_sensitive(False)
+        self.widget("pool-apply").set_sensitive(False)
+        self.widget("vol-add").set_sensitive(False)
+        self.widget("vol-delete").set_sensitive(False)
+        self.widget("vol-list").set_sensitive(False)
 
     def vol_selected(self, src):
         selected = src.get_selected()
         if selected[1] is None or \
            selected[0].get_value(selected[1], 0) is None:
-            self.window.get_widget("vol-delete").set_sensitive(False)
+            self.widget("vol-delete").set_sensitive(False)
             return
 
-        self.window.get_widget("vol-delete").set_sensitive(True)
+        self.widget("vol-delete").set_sensitive(True)
 
     def popup_vol_menu(self, widget_ignore, event):
         if event.button != 3:
@@ -843,13 +862,13 @@ class vmmHost(vmmGObjectUI):
             clipboard.set_text(target_path)
 
 
-    def repopulate_storage_pools(self, src_ignore, uri_ignore, uuid_ignore):
-        pool_list = self.window.get_widget("pool-list")
+    def repopulate_storage_pools(self, src_ignore, uuid_ignore):
+        pool_list = self.widget("pool-list")
         populate_storage_pools(pool_list, self.conn)
 
     def populate_storage_volumes(self):
         pool = self.current_pool()
-        model = self.window.get_widget("vol-list").get_model()
+        model = self.widget("vol-list").get_model()
         model.clear()
         vols = pool.get_volumes()
         for key in vols.keys():
@@ -879,54 +898,30 @@ class vmmHost(vmmGObjectUI):
         if interface is None:
             return
 
-        do_prompt = self.config.get_confirm_interface()
-
-        if do_prompt:
-            res = self.err.warn_chkbox(
-                    text1=_("Are you sure you want to stop the interface "
-                            "'%s'?" % interface.get_name()),
-                    chktext=_("Don't ask me again for interface start/stop."),
-                    buttons=gtk.BUTTONS_YES_NO)
-
-            response, skip_prompt = res
-            if not response:
-                return
-            self.config.set_confirm_interface(not skip_prompt)
+        if not util.chkbox_helper(self, self.config.get_confirm_interface,
+            self.config.set_confirm_interface,
+            text1=_("Are you sure you want to stop the interface "
+                    "'%s'?" % interface.get_name())):
+            return
 
         logging.debug("Stopping interface '%s'" % interface.get_name())
-        try:
-            interface.stop()
-        except Exception, e:
-            self.err.show_err(_("Error stopping interface '%s': %s") % \
-                              (interface.get_name(), str(e)),
-                              "".join(traceback.format_exc()))
+        vmmAsyncJob.simple_async_noshow(interface.stop, [], self,
+                    _("Error stopping interface '%s'") % interface.get_name())
 
     def start_interface(self, src_ignore):
         interface = self.current_interface()
         if interface is None:
             return
 
-        do_prompt = self.config.get_confirm_interface()
-
-        if do_prompt:
-            res = self.err.warn_chkbox(
-                    text1=_("Are you sure you want to start the interface "
-                            "'%s'?" % interface.get_name()),
-                    chktext=_("Don't ask me again for interface start/stop."),
-                    buttons=gtk.BUTTONS_YES_NO)
-
-            response, skip_prompt = res
-            if not response:
-                return
-            self.config.set_confirm_interface(not skip_prompt)
+        if not util.chkbox_helper(self, self.config.get_confirm_interface,
+            self.config.set_confirm_interface,
+            text1=_("Are you sure you want to start the interface "
+                    "'%s'?" % interface.get_name())):
+            return
 
         logging.debug("Starting interface '%s'" % interface.get_name())
-        try:
-            interface.start()
-        except Exception, e:
-            self.err.show_err(_("Error starting interface '%s': %s") % \
-                              (interface.get_name(), str(e)),
-                              "".join(traceback.format_exc()))
+        vmmAsyncJob.simple_async_noshow(interface.start, [], self,
+                    _("Error starting interface '%s'") % interface.get_name())
 
     def delete_interface(self, src_ignore):
         interface = self.current_interface()
@@ -940,31 +935,28 @@ class vmmHost(vmmGObjectUI):
             return
 
         logging.debug("Deleting interface '%s'" % interface.get_name())
-        try:
-            interface.delete()
-        except Exception, e:
-            self.err.show_err(_("Error deleting interface: %s") % str(e),
-                              "".join(traceback.format_exc()))
+        vmmAsyncJob.simple_async_noshow(interface.delete, [], self,
+                    _("Error deleting interface '%s'") % interface.get_name())
 
     def add_interface(self, src_ignore):
         logging.debug("Launching 'Add Interface' wizard")
         try:
             if self.addinterface is None:
                 self.addinterface = vmmCreateInterface(self.conn)
-            self.addinterface.show()
+            self.addinterface.show(self.topwin)
         except Exception, e:
             self.err.show_err(_("Error launching interface wizard: %s") %
-                              str(e), "".join(traceback.format_exc()))
+                              str(e))
 
     def refresh_current_interface(self, ignore1=None):
         cp = self.current_interface()
         if cp is None:
             return
 
-        self.refresh_interface(None, None, cp.get_name())
+        self.refresh_interface(None, cp.get_name())
 
     def current_interface(self):
-        sel = self.window.get_widget("interface-list").get_selection()
+        sel = self.widget("interface-list").get_selection()
         active = sel.get_selected()
         if active[1] != None:
             currname = active[0].get_value(active[1], 0)
@@ -977,7 +969,7 @@ class vmmHost(vmmGObjectUI):
         if interface is None:
             return
 
-        start_list = self.window.get_widget("interface-startmode")
+        start_list = self.widget("interface-startmode")
         model = start_list.get_model()
         newmode = model[start_list.get_active()][0]
 
@@ -987,20 +979,19 @@ class vmmHost(vmmGObjectUI):
             interface.set_startmode(newmode)
         except Exception, e:
             self.err.show_err(_("Error setting interface startmode: %s") %
-                              str(e), "".join(traceback.format_exc()))
+                              str(e))
             return
 
         # XXX: This will require an interface restart
-        self.window.get_widget("interface-apply").set_sensitive(False)
+        self.widget("interface-apply").set_sensitive(False)
 
     def interface_startmode_changed(self, src_ignore):
-        self.window.get_widget("interface-apply").set_sensitive(True)
+        self.widget("interface-apply").set_sensitive(True)
 
     def set_interface_error_page(self, msg):
         self.reset_interface_state()
-        self.window.get_widget("interface-pages").set_current_page(
-                                                        INTERFACE_PAGE_ERROR)
-        self.window.get_widget("interface-error-label").set_text(msg)
+        self.widget("interface-pages").set_current_page(INTERFACE_PAGE_ERROR)
+        self.widget("interface-error-label").set_text(msg)
 
     def interface_selected(self, src):
         selected = src.get_selected()
@@ -1009,8 +1000,7 @@ class vmmHost(vmmGObjectUI):
             self.set_interface_error_page(_("No interface selected."))
             return
 
-        self.window.get_widget("interface-pages").set_current_page(
-                                                        INTERFACE_PAGE_INFO)
+        self.widget("interface-pages").set_current_page(INTERFACE_PAGE_INFO)
         name = selected[0].get_value(selected[1], 0)
 
         try:
@@ -1020,7 +1010,7 @@ class vmmHost(vmmGObjectUI):
             self.set_interface_error_page(_("Error selecting interface: %s") %
                                           e)
 
-        self.window.get_widget("interface-apply").set_sensitive(False)
+        self.widget("interface-apply").set_sensitive(False)
 
     def populate_interface_state(self, name):
         interface = self.conn.get_interface(name)
@@ -1032,21 +1022,22 @@ class vmmHost(vmmGObjectUI):
         ipv4 = interface.get_ipv4()
         ipv6 = interface.get_ipv6()
 
-        self.window.get_widget("interface-details").set_sensitive(True)
-        self.window.get_widget("interface-name").set_markup(
+        self.widget("interface-details").set_sensitive(True)
+        self.widget("interface-name").set_markup(
             "<b>%s %s:</b>" % (interface.get_pretty_type(),
                                interface.get_name()))
-        self.window.get_widget("interface-mac").set_text(mac or _("Unknown"))
+        self.widget("interface-mac").set_text(mac or _("Unknown"))
 
-        self.window.get_widget("interface-state-icon").set_from_pixbuf(
-            (active and self.PIXBUF_STATE_RUNNING) or self.PIXBUF_STATE_SHUTOFF)
-        self.window.get_widget("interface-state").set_text(
+        self.widget("interface-state-icon").set_from_icon_name(
+            ((active and self.ICON_RUNNING) or self.ICON_SHUTOFF),
+            gtk.ICON_SIZE_MENU)
+        self.widget("interface-state").set_text(
                                     (active and _("Active")) or _("Inactive"))
 
         # Set start mode
-        start_list = self.window.get_widget("interface-startmode")
+        start_list = self.widget("interface-startmode")
         start_model = start_list.get_model()
-        start_label = self.window.get_widget("interface-startmode-label")
+        start_label = self.widget("interface-startmode-label")
         start_list.hide()
         start_label.show()
         start_label.set_text(startmode)
@@ -1061,19 +1052,19 @@ class vmmHost(vmmGObjectUI):
             idx += 1
 
         used_by = util.iface_in_use_by(self.conn, name)
-        self.window.get_widget("interface-inuseby").set_text(used_by or "-")
+        self.widget("interface-inuseby").set_text(used_by or "-")
 
         # IP info
-        self.window.get_widget("interface-ipv4-expander").set_property(
-                                                    "visible", bool(ipv4))
-        self.window.get_widget("interface-ipv6-expander").set_property(
-                                                    "visible", bool(ipv6))
+        self.widget("interface-ipv4-expander").set_property("visible",
+                                                            bool(ipv4))
+        self.widget("interface-ipv6-expander").set_property("visible",
+                                                            bool(ipv6))
 
         if ipv4:
             mode = ipv4[0] and "DHCP" or "Static"
             addr = ipv4[1] or "-"
-            self.window.get_widget("interface-ipv4-mode").set_text(mode)
-            self.window.get_widget("interface-ipv4-address").set_text(addr)
+            self.widget("interface-ipv4-mode").set_text(mode)
+            self.widget("interface-ipv4-address").set_text(addr)
 
         if ipv6:
             mode = ""
@@ -1089,22 +1080,21 @@ class vmmHost(vmmGObjectUI):
             if ipv6[2]:
                 addrstr = reduce(lambda x, y: x + "\n" + y, ipv6[2])
 
-            self.window.get_widget("interface-ipv6-mode").set_text(mode)
-            self.window.get_widget("interface-ipv6-address").set_text(addrstr)
+            self.widget("interface-ipv6-mode").set_text(mode)
+            self.widget("interface-ipv6-address").set_text(addrstr)
 
-        self.window.get_widget("interface-delete").set_sensitive(not active)
-        self.window.get_widget("interface-stop").set_sensitive(active)
-        self.window.get_widget("interface-start").set_sensitive(not active)
+        self.widget("interface-delete").set_sensitive(not active)
+        self.widget("interface-stop").set_sensitive(active)
+        self.widget("interface-start").set_sensitive(not active)
 
         show_child = (children or
                       itype in [Interface.Interface.INTERFACE_TYPE_BRIDGE,
                                 Interface.Interface.INTERFACE_TYPE_BOND])
-        self.window.get_widget("interface-child-box").set_property("visible",
-                                                                   show_child)
+        self.widget("interface-child-box").set_property("visible", show_child)
         self.populate_interface_children()
 
-    def refresh_interface(self, src_ignore, uri_ignore, name):
-        iface_list = self.window.get_widget("interface-list")
+    def refresh_interface(self, src_ignore, name):
+        iface_list = self.widget("interface-list")
         sel = iface_list.get_selection()
         active = sel.get_selected()
 
@@ -1120,18 +1110,18 @@ class vmmHost(vmmGObjectUI):
 
     def reset_interface_state(self):
         if not self.conn.interface_capable:
-            self.window.get_widget("interface-add").set_sensitive(False)
-        self.window.get_widget("interface-delete").set_sensitive(False)
-        self.window.get_widget("interface-stop").set_sensitive(False)
-        self.window.get_widget("interface-start").set_sensitive(False)
-        self.window.get_widget("interface-apply").set_sensitive(False)
+            self.widget("interface-add").set_sensitive(False)
+        self.widget("interface-delete").set_sensitive(False)
+        self.widget("interface-stop").set_sensitive(False)
+        self.widget("interface-start").set_sensitive(False)
+        self.widget("interface-apply").set_sensitive(False)
 
-    def repopulate_interfaces(self, src_ignore, uri_ignore, name_ignore):
-        interface_list = self.window.get_widget("interface-list")
+    def repopulate_interfaces(self, src_ignore, name_ignore):
+        interface_list = self.widget("interface-list")
         self.populate_interfaces(interface_list.get_model())
 
     def populate_interfaces(self, model):
-        iface_list = self.window.get_widget("interface-list")
+        iface_list = self.widget("interface-list")
         model.clear()
         for name in self.conn.list_interface_names():
             iface = self.conn.get_interface(name)
@@ -1146,7 +1136,7 @@ class vmmHost(vmmGObjectUI):
 
     def populate_interface_children(self):
         interface = self.current_interface()
-        child_list = self.window.get_widget("interface-child-list")
+        child_list = self.widget("interface-child-list")
         model = child_list.get_model()
         model.clear()
 
@@ -1215,3 +1205,9 @@ def get_pool_size_percent(conn, uuid):
     return "<span size='small' color='#484848'>%s%%</span>" % int(per)
 
 vmmGObjectUI.type_register(vmmHost)
+vmmHost.signal_new(vmmHost, "action-show-help", [str])
+vmmHost.signal_new(vmmHost, "action-exit-app", [])
+vmmHost.signal_new(vmmHost, "action-view-manager", [])
+vmmHost.signal_new(vmmHost, "action-restore-domain", [str])
+vmmHost.signal_new(vmmHost, "host-closed", [])
+vmmHost.signal_new(vmmHost, "host-opened", [])

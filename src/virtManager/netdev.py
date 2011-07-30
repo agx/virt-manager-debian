@@ -20,8 +20,6 @@
 from virtManager.baseclass import vmmGObject
 
 class vmmNetDevice(vmmGObject):
-    __gsignals__ = {}
-
     def __init__(self, name, mac, is_shared, bridge=None, hal_path=None):
         vmmGObject.__init__(self)
 
@@ -32,6 +30,9 @@ class vmmNetDevice(vmmGObject):
 
         # Used for HAL backend population
         self.hal_path = hal_path
+
+    def _cleanup(self):
+        pass
 
     def get_name(self):
         return self.name

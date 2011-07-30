@@ -18,7 +18,6 @@
 # MA 02110-1301 USA.
 #
 
-import gobject
 import gtk
 
 from virtManager.baseclass import vmmGObject
@@ -41,33 +40,6 @@ def build_image_menu_item(label):
     return menu_item
 
 class vmmSystray(vmmGObject):
-    __gsignals__ = {
-        "action-toggle-manager": (gobject.SIGNAL_RUN_FIRST,
-                                gobject.TYPE_NONE, []),
-        "action-view-manager": (gobject.SIGNAL_RUN_FIRST,
-                                gobject.TYPE_NONE, []),
-        "action-suspend-domain": (gobject.SIGNAL_RUN_FIRST,
-                                  gobject.TYPE_NONE, (str, str)),
-        "action-resume-domain": (gobject.SIGNAL_RUN_FIRST,
-                                 gobject.TYPE_NONE, (str, str)),
-        "action-run-domain": (gobject.SIGNAL_RUN_FIRST,
-                              gobject.TYPE_NONE, (str, str)),
-        "action-shutdown-domain": (gobject.SIGNAL_RUN_FIRST,
-                                   gobject.TYPE_NONE, (str, str)),
-        "action-reboot-domain": (gobject.SIGNAL_RUN_FIRST,
-                                 gobject.TYPE_NONE, (str, str)),
-        "action-destroy-domain": (gobject.SIGNAL_RUN_FIRST,
-                                  gobject.TYPE_NONE, (str, str)),
-        "action-show-host": (gobject.SIGNAL_RUN_FIRST,
-                              gobject.TYPE_NONE, [str]),
-        "action-show-details": (gobject.SIGNAL_RUN_FIRST,
-                                gobject.TYPE_NONE, (str, str)),
-        "action-show-console": (gobject.SIGNAL_RUN_FIRST,
-                                gobject.TYPE_NONE, (str, str)),
-        "action-exit-app": (gobject.SIGNAL_RUN_FIRST,
-                            gobject.TYPE_NONE, []),
-    }
-
     def __init__(self, engine):
         vmmGObject.__init__(self)
 
@@ -81,8 +53,8 @@ class vmmSystray(vmmGObject):
         self.systray_icon = None
         self.systray_indicator = False
 
-        engine.connect("connection-added", self.conn_added)
-        engine.connect("connection-removed", self.conn_removed)
+        engine.connect("conn-added", self.conn_added)
+        engine.connect("conn-removed", self.conn_removed)
 
         # Are we using Application Indicators?
         if appindicator is not None:
@@ -90,7 +62,9 @@ class vmmSystray(vmmGObject):
 
         self.init_systray_menu()
 
-        self.config.on_view_system_tray_changed(self.show_systray)
+        self.add_gconf_handle(
+            self.config.on_view_system_tray_changed(self.show_systray))
+
         self.show_systray()
 
     def is_visible(self):
@@ -101,6 +75,15 @@ class vmmSystray(vmmGObject):
             return (self.config.get_view_system_tray() and
                     self.systray_icon and
                     self.systray_icon.is_embedded())
+
+    def _cleanup(self):
+        self.err = None
+
+        if self.systray_menu:
+            self.systray_menu.destroy()
+            self.systray_menu = None
+
+        self.systray_icon = None
 
     # Initialization routines
 
@@ -140,10 +123,9 @@ class vmmSystray(vmmGObject):
             self.systray_icon.set_menu(self.systray_menu)
 
         else:
-            iconfile = self.config.get_icon_dir() + "/virt-manager-icon.svg"
             self.systray_icon = gtk.StatusIcon()
             self.systray_icon.set_visible(True)
-            self.systray_icon.set_property("file", iconfile)
+            self.systray_icon.set_property("icon-name", "virt-manager")
             self.systray_icon.connect("activate", self.systray_activate)
             self.systray_icon.connect("popup-menu", self.systray_popup)
             self.systray_icon.set_tooltip(_("Virtual Machine Manager"))
@@ -223,7 +205,7 @@ class vmmSystray(vmmGObject):
         open_item = gtk.ImageMenuItem("gtk-open")
         open_item.show()
         open_item.connect("activate", self.run_vm_action,
-                          "action-show-console", vm.get_uuid())
+                          "action-show-vm", vm.get_uuid())
 
         vm_action_dict = {}
         vm_action_dict["run"] = run_item
@@ -248,7 +230,7 @@ class vmmSystray(vmmGObject):
     # Helper functions
     def _get_vm_menu_item(self, vm):
         uuid = vm.get_uuid()
-        uri = vm.get_connection().get_uri()
+        uri = vm.conn.get_uri()
 
         if uri in self.conn_vm_menuitems:
             if uuid in self.conn_vm_menuitems[uri]:
@@ -257,7 +239,8 @@ class vmmSystray(vmmGObject):
 
     def _set_vm_status_icon(self, vm, menu_item):
         image = gtk.Image()
-        image.set_from_pixbuf(vm.run_status_icon())
+        image.set_from_icon_name(vm.run_status_icon_name(),
+                                 gtk.ICON_SIZE_MENU)
         image.set_sensitive(vm.is_active())
         menu_item.set_image(image)
 
@@ -311,14 +294,15 @@ class vmmSystray(vmmGObject):
         self.conn_state_changed(conn)
         self.populate_vm_list(conn)
 
-    def conn_removed(self, engine_ignore, conn):
-        if conn.get_uri() in self.conn_menuitems:
+    def conn_removed(self, engine_ignore, uri):
+        if not uri in self.conn_menuitems:
             return
 
-        menu_item = self.conn_menuitems[conn.get_uri()]
+        menu_item = self.conn_menuitems[uri]
         self.systray_menu.remove(menu_item)
-        del(self.conn_menuitems[conn.get_uri()])
-        self.conn_vm_menuitems[conn.get_uri()] = {}
+        menu_item.destroy()
+        del(self.conn_menuitems[uri])
+        self.conn_vm_menuitems[uri] = {}
 
         self.repopulate_menu_list()
 
@@ -357,7 +341,8 @@ class vmmSystray(vmmGObject):
                 vm_item = self.conn_vm_menuitems[uri][uuid]
                 vm_submenu.insert(vm_item, i)
 
-    def vm_added(self, conn, uri, uuid):
+    def vm_added(self, conn, uuid):
+        uri = conn.get_uri()
         vm = conn.get_vm(uuid)
         if not vm:
             return
@@ -381,7 +366,8 @@ class vmmSystray(vmmGObject):
         self.vm_state_changed(vm)
         menu_item.show()
 
-    def vm_removed(self, conn_ignore, uri, uuid):
+    def vm_removed(self, conn, uuid):
+        uri = conn.get_uri()
         vm_mappings = self.conn_vm_menuitems[uri]
         if not vm_mappings:
             return
@@ -391,6 +377,7 @@ class vmmSystray(vmmGObject):
             vm_menu_item = vm_mappings[uuid]
             vm_menu = conn_item.get_submenu()
             vm_menu.remove(vm_menu_item)
+            vm_menu_item.destroy()
             del(vm_mappings[uuid])
 
             if len(vm_menu.get_children()) == 0:
@@ -437,3 +424,14 @@ class vmmSystray(vmmGObject):
         self.emit("action-exit-app")
 
 vmmGObject.type_register(vmmSystray)
+vmmSystray.signal_new(vmmSystray, "action-toggle-manager", [])
+vmmSystray.signal_new(vmmSystray, "action-view-manager", [])
+vmmSystray.signal_new(vmmSystray, "action-suspend-domain", [str, str])
+vmmSystray.signal_new(vmmSystray, "action-resume-domain", [str, str])
+vmmSystray.signal_new(vmmSystray, "action-run-domain", [str, str])
+vmmSystray.signal_new(vmmSystray, "action-shutdown-domain", [str, str])
+vmmSystray.signal_new(vmmSystray, "action-reboot-domain", [str, str])
+vmmSystray.signal_new(vmmSystray, "action-destroy-domain", [str, str])
+vmmSystray.signal_new(vmmSystray, "action-show-host", [str])
+vmmSystray.signal_new(vmmSystray, "action-show-vm", [str, str])
+vmmSystray.signal_new(vmmSystray, "action-exit-app", [])

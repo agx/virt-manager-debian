@@ -18,11 +18,9 @@
 # MA 02110-1301 USA.
 #
 
-import gobject
-import gtk
-
-import traceback
 import logging
+
+import gtk
 
 from virtManager import util
 from virtManager.baseclass import vmmGObjectUI
@@ -35,10 +33,6 @@ DEFAULT_ALLOC = 0
 DEFAULT_CAP   = 1000
 
 class vmmCreateVolume(vmmGObjectUI):
-    __gsignals__ = {
-        "vol-created": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE, [])
-    }
-
     def __init__(self, conn, parent_pool):
         vmmGObjectUI.__init__(self, "vmm-create-vol.glade", "vmm-create-vol")
         self.conn = conn
@@ -56,34 +50,41 @@ class vmmCreateVolume(vmmGObjectUI):
             "on_vol_allocation_value_changed" : self.vol_allocation_changed,
             "on_vol_capacity_value_changed"   : self.vol_capacity_changed,
         })
-        util.bind_escape_key_close(self)
+        self.bind_escape_key_close()
 
-        format_list = self.window.get_widget("vol-format")
+        format_list = self.widget("vol-format")
         format_model = gtk.ListStore(str, str)
         format_list.set_model(format_model)
         text2 = gtk.CellRendererText()
         format_list.pack_start(text2, False)
         format_list.add_attribute(text2, 'text', 1)
-        self.window.get_widget("vol-info-view").modify_bg(gtk.STATE_NORMAL,
-                                                          gtk.gdk.color_parse("grey"))
+        self.widget("vol-info-view").modify_bg(gtk.STATE_NORMAL,
+                                               gtk.gdk.color_parse("grey"))
 
         # XXX: Help docs useless/out of date
-        self.window.get_widget("pool-help").hide()
+        self.widget("pool-help").hide()
         finish_img = gtk.image_new_from_stock(gtk.STOCK_QUIT,
                                               gtk.ICON_SIZE_BUTTON)
-        self.window.get_widget("vol-create").set_image(finish_img)
+        self.widget("vol-create").set_image(finish_img)
 
         self.reset_state()
 
 
-    def show(self):
+    def show(self, parent):
         self.reset_state()
+        self.topwin.set_transient_for(parent)
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
         self.topwin.hide()
         self.set_modal(False)
         return 1
+
+    def _cleanup(self):
+        self.close()
+
+        self.conn = None
+        self.parent_pool = None
 
     def set_name_hint(self, hint):
         self.name_hint = hint
@@ -120,32 +121,36 @@ class vmmCreateVolume(vmmGObjectUI):
 
     def reset_state(self):
         default_name = self.default_vol_name()
-        self.window.get_widget("vol-name").set_text("")
-        self.window.get_widget("vol-create").set_sensitive(False)
+        self.widget("vol-name").set_text("")
+        self.widget("vol-create").set_sensitive(False)
         if default_name:
-            self.window.get_widget("vol-name").set_text(default_name)
+            self.widget("vol-name").set_text(default_name)
 
-        self.window.get_widget("vol-name").grab_focus()
+        self.widget("vol-name").grab_focus()
         self.populate_vol_format()
         self.populate_vol_suffix()
 
         if len(self.vol_class.formats):
-            self.window.get_widget("vol-format").set_sensitive(True)
-            self.window.get_widget("vol-format").set_active(0)
+            self.widget("vol-format").set_sensitive(True)
+            self.widget("vol-format").set_active(0)
         else:
-            self.window.get_widget("vol-format").set_sensitive(False)
+            self.widget("vol-format").set_sensitive(False)
 
-        self.window.get_widget("vol-allocation").set_range(0, int(self.parent_pool.get_available() / 1024 / 1024))
-        self.window.get_widget("vol-allocation").set_value(DEFAULT_ALLOC)
-        self.window.get_widget("vol-capacity").set_range(1, int(self.parent_pool.get_available() / 1024 / 1024))
-        self.window.get_widget("vol-capacity").set_value(DEFAULT_CAP)
+        self.widget("vol-allocation").set_range(0,
+                        int(self.parent_pool.get_available() / 1024 / 1024))
+        self.widget("vol-allocation").set_value(DEFAULT_ALLOC)
+        self.widget("vol-capacity").set_range(1,
+                        int(self.parent_pool.get_available() / 1024 / 1024))
+        self.widget("vol-capacity").set_value(DEFAULT_CAP)
 
-        self.window.get_widget("vol-parent-name").set_markup("<b>" + self.parent_pool.get_name() + "'s</b>")
-        self.window.get_widget("vol-parent-space").set_text(self.parent_pool.get_pretty_available())
+        self.widget("vol-parent-name").set_markup(
+                        "<b>" + self.parent_pool.get_name() + "'s</b>")
+        self.widget("vol-parent-space").set_text(
+                        self.parent_pool.get_pretty_available())
 
 
     def get_config_format(self):
-        format_combo = self.window.get_widget("vol-format")
+        format_combo = self.widget("vol-format")
         model = format_combo.get_model()
         if format_combo.get_active_iter() != None:
             model = format_combo.get_model()
@@ -153,7 +158,7 @@ class vmmCreateVolume(vmmGObjectUI):
         return None
 
     def populate_vol_format(self):
-        model = self.window.get_widget("vol-format").get_model()
+        model = self.widget("vol-format").get_model()
         model.clear()
 
         formats = self.vol_class.formats
@@ -167,14 +172,14 @@ class vmmCreateVolume(vmmGObjectUI):
         suffix = self.default_suffix()
         if self.vol_class == Storage.FileVolume:
             suffix = ".img"
-        self.window.get_widget("vol-name-suffix").set_text(suffix)
+        self.widget("vol-name-suffix").set_text(suffix)
 
     def vol_name_changed(self, src):
         text = src.get_text()
-        self.window.get_widget("vol-create").set_sensitive(bool(text))
+        self.widget("vol-create").set_sensitive(bool(text))
 
     def vol_allocation_changed(self, src):
-        cap_widget = self.window.get_widget("vol-capacity")
+        cap_widget = self.widget("vol-capacity")
 
         alloc = src.get_value()
         cap   = cap_widget.get_value()
@@ -183,10 +188,10 @@ class vmmCreateVolume(vmmGObjectUI):
             cap_widget.set_value(alloc)
 
     def vol_capacity_changed(self, src):
-        alloc_widget = self.window.get_widget("vol-allocation")
+        alloc_widget = self.widget("vol-allocation")
 
         cap   = src.get_value()
-        alloc = self.window.get_widget("vol-allocation").get_value()
+        alloc = self.widget("vol-allocation").get_value()
 
         if cap < alloc:
             alloc_widget.set_value(cap)
@@ -196,8 +201,7 @@ class vmmCreateVolume(vmmGObjectUI):
             if not self.validate():
                 return
         except Exception, e:
-            self.show_err(_("Uncaught error validating input: %s") % str(e),
-                            "".join(traceback.format_exc()))
+            self.show_err(_("Uncaught error validating input: %s") % str(e))
             return
 
         logging.debug("Creating volume with xml:\n%s" %
@@ -209,7 +213,8 @@ class vmmCreateVolume(vmmGObjectUI):
         progWin = vmmAsyncJob(self._async_vol_create, [],
                               _("Creating storage volume..."),
                               _("Creating the storage volume may take a "
-                                "while..."))
+                                "while..."),
+                              self.topwin)
         error, details = progWin.run()
 
         self.topwin.set_sensitive(True)
@@ -217,7 +222,8 @@ class vmmCreateVolume(vmmGObjectUI):
 
         if error:
             error = _("Error creating vol: %s") % error
-            self.show_err(error, error + "\n" + details)
+            self.show_err(error,
+                          details=details)
         else:
             self.emit("vol-created")
             self.close()
@@ -234,12 +240,12 @@ class vmmCreateVolume(vmmGObjectUI):
         self.vol.install(meter=meter)
 
     def validate(self):
-        name = self.window.get_widget("vol-name").get_text()
-        suffix = self.window.get_widget("vol-name-suffix").get_text()
+        name = self.widget("vol-name").get_text()
+        suffix = self.widget("vol-name-suffix").get_text()
         volname = name + suffix
         fmt = self.get_config_format()
-        alloc = self.window.get_widget("vol-allocation").get_value()
-        cap = self.window.get_widget("vol-capacity").get_value()
+        alloc = self.widget("vol-allocation").get_value()
+        cap = self.widget("vol-capacity").get_value()
 
         try:
             self.vol = self.vol_class(name=volname,
@@ -252,7 +258,7 @@ class vmmCreateVolume(vmmGObjectUI):
             return self.val_err(_("Volume Parameter Error"), str(e))
         return True
 
-    def show_err(self, info, details):
+    def show_err(self, info, details=None):
         async = not self.topwin.get_modal()
         self.err.show_err(info, details, async=async)
 
@@ -268,3 +274,4 @@ class vmmCreateVolume(vmmGObjectUI):
         return ret
 
 vmmGObjectUI.type_register(vmmCreateVolume)
+vmmCreateVolume.signal_new(vmmCreateVolume, "vol-created", [])

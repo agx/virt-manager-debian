@@ -42,13 +42,10 @@ STORAGE_ROW_ICON_SIZE = 6
 STORAGE_ROW_TOOLTIP = 7
 
 class vmmDeleteDialog(vmmGObjectUI):
-    __gsignals__ = {
-    }
-
-    def __init__(self, vm):
+    def __init__(self):
         vmmGObjectUI.__init__(self, "vmm-delete.glade", "vmm-delete")
-        self.vm = vm
-        self.conn = vm.connection
+        self.vm = None
+        self.conn = None
 
         self.window.signal_autoconnect({
             "on_vmm_delete_delete_event" : self.close,
@@ -56,52 +53,58 @@ class vmmDeleteDialog(vmmGObjectUI):
             "on_delete_ok_clicked" : self.finish,
             "on_delete_remove_storage_toggled" : self.toggle_remove_storage,
         })
-        util.bind_escape_key_close(self)
+        self.bind_escape_key_close()
 
         image = gtk.image_new_from_icon_name("vm_delete_wizard",
                                              gtk.ICON_SIZE_DIALOG)
         image.show()
-        self.window.get_widget("icon-box").pack_end(image, False)
+        self.widget("icon-box").pack_end(image, False)
 
-
-        prepare_storage_list(self.window.get_widget("delete-storage-list"))
+        prepare_storage_list(self.widget("delete-storage-list"))
 
     def toggle_remove_storage(self, src):
         dodel = src.get_active()
-        self.window.get_widget("delete-storage-list").set_sensitive(dodel)
+        self.widget("delete-storage-list").set_sensitive(dodel)
 
 
-    def show(self):
+    def show(self, vm, parent):
+        self.vm = vm
+        self.conn = vm.conn
+
         self.reset_state()
+        self.topwin.set_transient_for(parent)
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
         self.topwin.hide()
+        self.vm = None
+        self.conn = None
         return 1
+
+    def _cleanup(self):
+        self.close()
+
+        self.vm = None
+        self.conn = None
 
     def reset_state(self):
 
         # Set VM name in title'
         title_str = ("<span size='x-large'>%s '%s'</span>" %
                      (_("Delete"), self.vm.get_name()))
-        self.window.get_widget("delete-main-label").set_markup(title_str)
+        self.widget("delete-main-label").set_markup(title_str)
 
-        self.window.get_widget("delete-cancel").grab_focus()
+        self.widget("delete-cancel").grab_focus()
 
         # Disable storage removal by default
-        self.window.get_widget("delete-remove-storage").set_active(False)
-        self.window.get_widget("delete-remove-storage").toggled()
+        self.widget("delete-remove-storage").set_active(False)
+        self.widget("delete-remove-storage").toggled()
 
-        populate_storage_list(self.window.get_widget("delete-storage-list"),
+        populate_storage_list(self.widget("delete-storage-list"),
                               self.vm, self.conn)
 
-    def set_vm(self, vm):
-        self.vm = vm
-        self.conn = vm.connection
-        self.reset_state()
-
     def get_config_format(self):
-        format_combo = self.window.get_widget("vol-format")
+        format_combo = self.widget("vol-format")
         model = format_combo.get_model()
         if format_combo.get_active_iter() != None:
             model = format_combo.get_model()
@@ -109,11 +112,11 @@ class vmmDeleteDialog(vmmGObjectUI):
         return None
 
     def get_paths_to_delete(self):
-        del_list = self.window.get_widget("delete-storage-list")
+        del_list = self.widget("delete-storage-list")
         model = del_list.get_model()
 
         paths = []
-        if self.window.get_widget("delete-remove-storage").get_active():
+        if self.widget("delete-remove-storage").get_active():
             for row in model:
                 if (not row[STORAGE_ROW_CANT_DELETE] and
                     row[STORAGE_ROW_CONFIRM]):
@@ -132,18 +135,19 @@ class vmmDeleteDialog(vmmGObjectUI):
             text = title + _(" and selected storage (this may take a while)")
 
         progWin = vmmAsyncJob(self._async_delete, [devs],
-                              title=title, text=text)
+                              title, text, self.topwin)
         error, details = progWin.run()
 
         self.topwin.set_sensitive(True)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.TOP_LEFT_ARROW))
-        self.close()
+        conn = self.conn
 
         if error is not None:
-            self.err.show_err(error, details)
+            self.err.show_err(error, details=details)
 
-        self.conn.tick(noStatsUpdate=True)
+        conn.tick(noStatsUpdate=True)
 
+        self.close()
 
     def _async_delete(self, asyncjob, paths):
         newconn = None

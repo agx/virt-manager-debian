@@ -18,18 +18,16 @@
 # MA 02110-1301 USA.
 #
 
-import gtk
-import gobject
-
 import libvirt
 import libxml2
 
 import logging
 import os.path
 
-from virtManager.config import running_config
 import virtManager
 import virtinst
+
+running_config = None
 
 # FIXME: selinux policy also has a ~/VirtualMachines/isos dir
 def get_default_pool_path(conn):
@@ -47,9 +45,6 @@ def build_default_pool(vmmconn):
     """
     # FIXME: This should use config.get_default_image_path ?
     conn = vmmconn.vmm
-    if not virtinst.util.is_storage_capable(conn):
-        # VirtualDisk will raise an error for us
-        return
 
     path = get_default_pool_path(vmmconn)
     name = get_default_pool_name(vmmconn)
@@ -101,10 +96,14 @@ def get_default_dir(conn):
     else:
         return running_config.get_default_image_dir(conn)
 
-def get_default_path(conn, name):
+def get_default_path(conn, name, collidelist=None):
+    collidelist = collidelist or []
     pool = get_default_pool(conn)
 
     default_dir = get_default_dir(conn)
+
+    def path_exists(p):
+        return os.path.exists(p) or p in collidelist
 
     if not pool:
         # Use old generating method
@@ -112,20 +111,27 @@ def get_default_path(conn, name):
         f = origf
 
         n = 1
-        while os.path.exists(f) and n < 100:
+        while path_exists(f) and n < 100:
             f = os.path.join(default_dir, name +
                              "-" + str(n) + ".img")
             n += 1
 
-        if os.path.exists(f):
+        if path_exists(f):
             f = origf
 
         path = f
     else:
         target, ignore, suffix = get_ideal_path_info(conn, name)
 
+        # Sanitize collidelist to work with the collision checker
+        for c in collidelist[:]:
+            collidelist.remove(c)
+            if os.path.dirname(c) == pool.get_target_path():
+                collidelist.append(os.path.basename(c))
+
         path = virtinst.Storage.StorageVolume.find_free_name(name,
-                        pool_object=pool.pool, suffix=suffix)
+                        pool_object=pool.pool, suffix=suffix,
+                        collidelist=collidelist)
 
         path = os.path.join(target, path)
 
@@ -135,6 +141,8 @@ def get_default_path(conn, name):
 def tooltip_wrapper(obj, txt, func="set_tooltip_text"):
     # Catch & ignore errors - set_tooltip_* is in gtk >= 2.12
     # and we can easily work with lower versions
+    import gtk
+
     try:
         funcptr = getattr(obj, func)
         funcptr(txt)
@@ -165,7 +173,7 @@ def xml_parse_wrapper(xml, parse_func, *args, **kwargs):
 
 
 def browse_local(parent, dialog_name, conn, start_folder=None,
-                 _type=None, dialog_type=gtk.FILE_CHOOSER_ACTION_OPEN,
+                 _type=None, dialog_type=None,
                  confirm_func=None, browse_reason=None):
     """
     Helper function for launching a filechooser
@@ -182,10 +190,14 @@ def browse_local(parent, dialog_name, conn, start_folder=None,
         value, and store the user chosen path.
 
     """
+    import gtk
 
     # Initial setup
     overwrite_confirm = False
     choose_button = gtk.STOCK_OPEN
+
+    if dialog_type is None:
+        dialog_type = gtk.FILE_CHOOSER_ACTION_OPEN
     if dialog_type == gtk.FILE_CHOOSER_ACTION_SAVE:
         choose_button = gtk.STOCK_SAVE
         overwrite_confirm = True
@@ -271,7 +283,7 @@ def _dup_all_conn(conn, libconn):
         # between instances
         return conn or vmm
 
-    if virtinst.support.support_threading():
+    if running_config.support_threading:
         # Libvirt 0.6.0 implemented client side request threading: this
         # removes the need to actually duplicate the connection.
         return conn or vmm
@@ -308,59 +320,6 @@ def pretty_hv(gtype, domtype):
 
     return label
 
-def connect_once(obj, signal, func, *args):
-    id_list = []
-
-    def wrap_func(*wrapargs):
-        if id_list:
-            obj.disconnect(id_list[0])
-
-        return func(*wrapargs)
-
-    conn_id = obj.connect(signal, wrap_func, *args)
-    id_list.append(conn_id)
-
-    return conn_id
-
-def connect_opt_out(obj, signal, func, *args):
-    id_list = []
-
-    def wrap_func(*wrapargs):
-        ret = func(*wrapargs)
-        if ret and id_list:
-            obj.disconnect(id_list[0])
-
-    conn_id = obj.connect(signal, wrap_func, *args)
-    id_list.append(conn_id)
-
-    return conn_id
-
-def idle_emit(self, signal, *args):
-    """
-    Safe wrapper for using 'self.emit' with gobject.idle_add
-    """
-    self.emit(signal, *args)
-    return False
-
-def _safe_wrapper(func, *args):
-    gtk.gdk.threads_enter()
-    try:
-        return func(*args)
-    finally:
-        gtk.gdk.threads_leave()
-
-def safe_idle_add(func, *args):
-    """
-    Make sure idle functions are run thread safe
-    """
-    return gobject.idle_add(_safe_wrapper, func, *args)
-
-def safe_timeout_add(timeout, func, *args):
-    """
-    Make sure timeout functions are run thread safe
-    """
-    return gobject.timeout_add(timeout, _safe_wrapper, func, *args)
-
 def uuidstr(rawuuid):
     hx = ['0', '1', '2', '3', '4', '5', '6', '7',
           '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
@@ -371,13 +330,6 @@ def uuidstr(rawuuid):
         if i == 3 or i == 5 or i == 7 or i == 9:
             uuid.append('-')
     return "".join(uuid)
-
-def bind_escape_key_close(vmmobj):
-    def close_on_escape(src_ignore, event):
-        if gtk.gdk.keyval_name(event.keyval) == "Escape":
-            vmmobj.close()
-
-    vmmobj.topwin.connect("key-press-event", close_on_escape)
 
 def safe_set_prop(self, prop, value):
     """
@@ -403,3 +355,62 @@ def iface_in_use_by(conn, name):
             use_str += iface.get_name()
 
     return use_str
+
+def pretty_mem(val):
+    val = int(val)
+    if val > (10 * 1024 * 1024):
+        return "%2.2f GB" % (val / (1024.0 * 1024.0))
+    else:
+        return "%2.0f MB" % (val / 1024.0)
+
+def pretty_bytes(val):
+    val = int(val)
+    if val > (1024 * 1024 * 1024):
+        return "%2.2f GB" % (val / (1024.0 * 1024.0 * 1024.0))
+    else:
+        return "%2.2f MB" % (val / (1024.0 * 1024.0))
+
+xpath = virtinst.util.get_xml_path
+
+def chkbox_helper(src, getcb, setcb, text1, text2=None,
+                  alwaysrecord=False,
+                  default=True,
+                  chktext=_("Don't ask me again")):
+    """
+    Helper to prompt user about proceeding with an operation
+    Returns True if the 'yes' or 'ok' button was selected, False otherwise
+
+    @alwaysrecord: Don't require user to select 'yes' to record chkbox value
+    @default: What value to return if getcb tells us not to prompt
+    """
+    import gtk
+
+    do_prompt = getcb()
+    if not do_prompt:
+        return default
+
+    res = src.err.warn_chkbox(text1=text1, text2=text2,
+                              chktext=chktext,
+                              buttons=gtk.BUTTONS_YES_NO)
+    response, skip_prompt = res
+    if alwaysrecord or response:
+        setcb(not skip_prompt)
+
+    return response
+
+def get_list_selection(widget):
+    selection = widget.get_selection()
+    active = selection.get_selected()
+
+    treestore, treeiter = active
+    if treeiter != None:
+        return treestore[treeiter]
+    return None
+
+def set_list_selection(widget, rownum):
+    path = str(rownum)
+    selection = widget.get_selection()
+
+    selection.unselect_all()
+    widget.set_cursor(path)
+    selection.select_path(path)

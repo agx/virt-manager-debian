@@ -18,11 +18,9 @@
 # MA 02110-1301 USA.
 #
 
-import gobject
-import gtk
-
-import traceback
 import logging
+
+import gtk
 
 import virtinst
 
@@ -32,12 +30,6 @@ from virtManager.createvol import vmmCreateVolume
 from virtManager.baseclass import vmmGObjectUI
 
 class vmmStorageBrowser(vmmGObjectUI):
-    __gsignals__ = {
-        #"vol-created": (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE, [])
-        "storage-browse-finish": (gobject.SIGNAL_RUN_FIRST,
-                                  gobject.TYPE_NONE, [str]),
-    }
-
     def __init__(self, conn):
         vmmGObjectUI.__init__(self,
                             "vmm-storage-browse.glade",
@@ -56,6 +48,7 @@ class vmmStorageBrowser(vmmGObjectUI):
 
         # Arguments to pass to util.browse_local for local storage
         self.browse_reason = None
+        self.rhel6_defaults = True
         self.local_args = {}
 
         self.window.signal_autoconnect({
@@ -66,19 +59,20 @@ class vmmStorageBrowser(vmmGObjectUI):
             "on_choose_volume_clicked" : self.finish,
             "on_vol_list_row_activated" : self.finish,
         })
-        util.bind_escape_key_close(self)
+        self.bind_escape_key_close()
 
         finish_img = gtk.image_new_from_stock(gtk.STOCK_NEW,
                                               gtk.ICON_SIZE_BUTTON)
-        self.window.get_widget("new-volume").set_image(finish_img)
+        self.widget("new-volume").set_image(finish_img)
         finish_img = gtk.image_new_from_stock(gtk.STOCK_OPEN,
                                               gtk.ICON_SIZE_BUTTON)
-        self.window.get_widget("choose-volume").set_image(finish_img)
+        self.widget("choose-volume").set_image(finish_img)
 
         self.set_initial_state()
 
-    def show(self, conn=None):
+    def show(self, parent, conn=None):
         self.reset_state(conn)
+        self.topwin.set_transient_for(parent)
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
@@ -86,6 +80,23 @@ class vmmStorageBrowser(vmmGObjectUI):
         if self.addvol:
             self.addvol.close()
         return 1
+
+    def _cleanup(self):
+        self.close()
+
+        self.remove_conn()
+        self.conn = None
+
+        if self.addvol:
+            self.addvol.cleanup()
+            self.addvol = None
+
+    def remove_conn(self):
+        if not self.conn:
+            return
+
+        for i in self.conn_signal_ids:
+            self.conn.disconnect(i)
 
     def set_finish_cb(self, callback):
         if self.finish_cb_id:
@@ -102,12 +113,12 @@ class vmmStorageBrowser(vmmGObjectUI):
         self.vm_name = name
 
     def set_initial_state(self):
-        pool_list = self.window.get_widget("pool-list")
+        pool_list = self.widget("pool-list")
         virtManager.host.init_pool_list(pool_list, self.pool_selected)
 
-        # (Key, Name, Cap, Format, Used By)
-        vol_list = self.window.get_widget("vol-list")
-        volListModel = gtk.ListStore(str, str, str, str, str)
+        # (Key, Name, Cap, Format, Used By, sensitive)
+        vol_list = self.widget("vol-list")
+        volListModel = gtk.ListStore(str, str, str, str, str, bool)
         vol_list.set_model(volListModel)
 
         vol_list.get_selection().connect("changed", self.vol_selected)
@@ -115,6 +126,7 @@ class vmmStorageBrowser(vmmGObjectUI):
         vol_txt1 = gtk.CellRendererText()
         volCol.pack_start(vol_txt1, True)
         volCol.add_attribute(vol_txt1, 'text', 1)
+        volCol.add_attribute(vol_txt1, 'sensitive', 5)
         volCol.set_sort_column_id(1)
         vol_list.append_column(volCol)
 
@@ -122,6 +134,7 @@ class vmmStorageBrowser(vmmGObjectUI):
         vol_txt2 = gtk.CellRendererText()
         volSizeCol.pack_start(vol_txt2, False)
         volSizeCol.add_attribute(vol_txt2, 'text', 2)
+        volSizeCol.add_attribute(vol_txt2, 'sensitive', 5)
         volSizeCol.set_sort_column_id(2)
         vol_list.append_column(volSizeCol)
 
@@ -129,6 +142,7 @@ class vmmStorageBrowser(vmmGObjectUI):
         vol_txt4 = gtk.CellRendererText()
         volPathCol.pack_start(vol_txt4, False)
         volPathCol.add_attribute(vol_txt4, 'text', 3)
+        volPathCol.add_attribute(vol_txt4, 'sensitive', 5)
         volPathCol.set_sort_column_id(3)
         vol_list.append_column(volPathCol)
 
@@ -136,19 +150,18 @@ class vmmStorageBrowser(vmmGObjectUI):
         vol_txt5 = gtk.CellRendererText()
         volUseCol.pack_start(vol_txt5, False)
         volUseCol.add_attribute(vol_txt5, 'text', 4)
+        volUseCol.add_attribute(vol_txt5, 'sensitive', 5)
         volUseCol.set_sort_column_id(4)
         vol_list.append_column(volUseCol)
 
         volListModel.set_sort_column_id(1, gtk.SORT_ASCENDING)
 
-
     def reset_state(self, conn=None):
         if conn and conn != self.conn:
-            for i in self.conn_signal_ids:
-                self.conn.disconnect(i)
+            self.remove_conn()
             self.conn = conn
 
-        pool_list = self.window.get_widget("pool-list")
+        pool_list = self.widget("pool-list")
         virtManager.host.populate_storage_pools(pool_list, self.conn)
 
         ids = []
@@ -167,49 +180,55 @@ class vmmStorageBrowser(vmmGObjectUI):
 
         # Manually trigger vol_selected, so buttons are in the correct state
         self.vol_selected()
+        self.pool_selected()
 
         tooltip = None
         is_remote = self.conn.is_remote()
-        self.window.get_widget("browse-local").set_sensitive(not is_remote)
+        self.widget("browse-local").set_sensitive(not is_remote)
         if is_remote:
             tooltip = _("Cannot use local storage on remote connection.")
-        util.tooltip_wrapper(self.window.get_widget("browse-local"),
+        util.tooltip_wrapper(self.widget("browse-local"),
                              tooltip)
 
         # Set data based on browse type
+        self.local_args["dialog_type"] = None
         self.local_args["browse_reason"] = self.browse_reason
-        allow_create = True
 
         data = self.config.browse_reason_data.get(self.browse_reason)
         if data:
             self.topwin.set_title(data["storage_title"])
             self.local_args["dialog_name"] = data["local_title"]
-            allow_create = data["enable_create"]
+            self.local_args["dialog_type"] = data.get("dialog_type")
 
-        self.window.get_widget("new-volume").set_sensitive(allow_create)
 
     # Convenience helpers
+    def allow_create(self):
+        data = self.config.browse_reason_data.get(self.browse_reason)
+        if not data:
+            return True
+
+        return data["enable_create"]
+
     def current_pool(self):
-        sel = self.window.get_widget("pool-list").get_selection()
-        active = sel.get_selected()
-        if active[1] != None:
-            curruuid = active[0].get_value(active[1], 0)
-            return self.conn.get_pool(curruuid)
-        return None
+        row = util.get_list_selection(self.widget("pool-list"))
+        if not row:
+            return
+        return self.conn.get_pool(row[0])
+
+    def current_vol_row(self):
+        if not self.current_pool():
+            return
+        return util.get_list_selection(self.widget("vol-list"))
 
     def current_vol(self):
         pool = self.current_pool()
-        if not pool:
-            return None
-        sel = self.window.get_widget("vol-list").get_selection()
-        active = sel.get_selected()
-        if active[1] != None:
-            curruuid = active[0].get_value(active[1], 0)
-            return pool.get_volume(curruuid)
-        return None
+        row = self.current_vol_row()
+        if not pool or not row:
+            return
+        return pool.get_volume(row[0])
 
-    def refresh_storage_pool(self, src_ignore, uri_ignore, uuid):
-        pool_list = self.window.get_widget("pool-list")
+    def refresh_storage_pool(self, src_ignore, uuid):
+        pool_list = self.widget("pool-list")
         virtManager.host.refresh_pool_in_list(pool_list, self.conn, uuid)
         curpool = self.current_pool()
         if curpool.uuid != uuid:
@@ -217,32 +236,37 @@ class vmmStorageBrowser(vmmGObjectUI):
 
         # Currently selected pool changed state: force a 'pool_selected' to
         # update vol list
-        self.pool_selected(self.window.get_widget("pool-list").get_selection())
+        self.pool_selected(self.widget("pool-list").get_selection())
 
-    def repopulate_storage_pools(self, src_ignore, uri_ignore, uuid_ignore):
-        pool_list = self.window.get_widget("pool-list")
+    def repopulate_storage_pools(self, src_ignore, uuid_ignore):
+        pool_list = self.widget("pool-list")
         virtManager.host.populate_storage_pools(pool_list, self.conn)
 
 
     # Listeners
 
-    def pool_selected(self, src_ignore):
+    def pool_selected(self, src_ignore=None):
         pool = self.current_pool()
-        self.window.get_widget("new-volume").set_sensitive(bool(pool))
+        newvol = bool(pool)
         if pool:
-            self.window.get_widget("new-volume").set_sensitive(pool.is_active())
+            newvol = pool.is_active()
+
+        newvol = newvol and self.allow_create()
+        self.widget("new-volume").set_sensitive(newvol)
+
         self.populate_storage_volumes()
 
     def vol_selected(self, ignore=None):
-        vol = self.current_vol()
-        self.window.get_widget("choose-volume").set_sensitive(bool(vol))
+        vol = self.current_vol_row()
+        canchoose = bool(vol and vol[5])
+        self.widget("choose-volume").set_sensitive(canchoose)
 
     def refresh_current_pool(self, ignore):
         cp = self.current_pool()
         if cp is None:
             return
         cp.refresh()
-        self.refresh_storage_pool(None, None, cp.get_uuid())
+        self.refresh_storage_pool(None, cp.get_uuid())
 
     def new_volume(self, src_ignore):
         pool = self.current_pool()
@@ -257,10 +281,9 @@ class vmmStorageBrowser(vmmGObjectUI):
                 self.addvol.set_parent_pool(pool)
             self.addvol.set_modal(True)
             self.addvol.set_name_hint(self.vm_name)
-            self.addvol.show()
+            self.addvol.show(self.topwin)
         except Exception, e:
-            self.show_err(_("Error launching volume wizard: %s") % str(e),
-                          "".join(traceback.format_exc()))
+            self.show_err(_("Error launching volume wizard: %s") % str(e))
 
     def browse_local(self, src_ignore):
         if not self.local_args.get("dialog_name"):
@@ -284,8 +307,9 @@ class vmmStorageBrowser(vmmGObjectUI):
 
     # Do stuff!
     def populate_storage_volumes(self):
-        model = self.window.get_widget("vol-list").get_model()
+        model = self.widget("vol-list").get_model()
         model.clear()
+        dironly = self.browse_reason == self.config.CONFIG_DIR_FS
 
         pool = self.current_pool()
         if not pool:
@@ -294,9 +318,11 @@ class vmmStorageBrowser(vmmGObjectUI):
         vols = pool.get_volumes()
         for key in vols.keys():
             vol = vols[key]
-
+            sensitive = True
             path = vol.get_target_path()
+            fmt = vol.get_format() or ""
             namestr = None
+
             try:
                 if path:
                     names = virtinst.VirtualDisk.path_in_use_by(
@@ -308,10 +334,19 @@ class vmmStorageBrowser(vmmGObjectUI):
                 logging.exception("Failed to determine if storage volume in "
                                   "use.")
 
-            model.append([key, vol.get_name(), vol.get_pretty_capacity(),
-                          vol.get_format() or "", namestr])
+            if dironly and fmt != 'dir':
+                sensitive = False
+            elif not self.rhel6_defaults:
+                if fmt == "vmdk":
+                    sensitive = False
 
-    def show_err(self, info, details):
-        self.err.show_err(info, details, async=False)
+            model.append([key, vol.get_name(), vol.get_pretty_capacity(),
+                          fmt, namestr, sensitive])
+
+    def show_err(self, info, details=None):
+        self.err.show_err(info,
+                          details=details,
+                          async=False)
 
 vmmGObjectUI.type_register(vmmStorageBrowser)
+vmmStorageBrowser.signal_new(vmmStorageBrowser, "storage-browse-finish", [str])

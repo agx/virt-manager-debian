@@ -1,7 +1,7 @@
 
-AC_INIT(virt-manager, 0.8.7)
+AC_INIT(virt-manager, 0.9.0)
 # Latest virtinst version required to run
-VIRTINST_VERSION="0.500.6"
+VIRTINST_VERSION="0.600.0"
 
 AC_CONFIG_SRCDIR(src/virt-manager.py.in)
 dnl Make automake keep quiet about wildcards & other GNUmake-isms
@@ -69,7 +69,9 @@ AC_ARG_ENABLE([unsupported-rhel-options],
   AC_HELP_STRING(
     [--enable-unsupported-rhel-options],
     [enable VM config options unsupported by RHEL @<:@default=yes@:>@]),
-  [test "x$enableval" == "xno" && ENABLE_UNSUPPORTED_RHEL_OPTS=0],
+  [test "x$enableval" == "xno" && \
+   ENABLE_UNSUPPORTED_RHEL_OPTS=0 ||
+   ENABLE_UNSUPPORTED_RHEL_OPTS=1],
   [ENABLE_UNSUPPORTED_RHEL_OPTS=1])
 
 dnl Allow passing in a prefered distro list
@@ -81,7 +83,7 @@ AC_ARG_WITH([preferred-distros],
     [PREFERRED_DISTROS=""])
 
 dnl Default graphics type (spice/vnc)
-AC_ARG_WITH([--with-default-graphics],
+AC_ARG_WITH([default-graphics],
     AC_HELP_STRING(
         [--with-default-graphics],
         [default graphics type for new guests in gconf(spice or vnc) @<:@default=vnc@:>@]),
@@ -102,23 +104,24 @@ AM_CONDITIONAL([INSTALL_TUI], [test "x$with_tui" = "xyes"])
 
 
 AC_OUTPUT(Makefile
-          pixmaps/Makefile
-          pixmaps/hicolor/Makefile
-          pixmaps/hicolor/16x16/Makefile
-          pixmaps/hicolor/16x16/actions/Makefile
-          pixmaps/hicolor/22x22/Makefile
-          pixmaps/hicolor/22x22/actions/Makefile
-          pixmaps/hicolor/24x24/Makefile
-          pixmaps/hicolor/24x24/actions/Makefile
-          pixmaps/hicolor/32x32/Makefile
-          pixmaps/hicolor/32x32/actions/Makefile
           po/Makefile.in
           src/Makefile
           src/virtManager/Makefile
           src/virtManagerTui/Makefile
+          src/virtManagerTui/importblacklist/Makefile
           man/Makefile
           tests/Makefile
-          virt-manager.spec)
+          virt-manager.spec
+
+          icons/Makefile
+          icons/hicolor/Makefile
+          icons/hicolor/16x16/Makefile
+          icons/hicolor/22x22/Makefile
+          icons/hicolor/24x24/Makefile
+          icons/hicolor/32x32/Makefile
+          icons/hicolor/48x48/Makefile
+          icons/hicolor/256x256/Makefile
+)
 
 
 AC_MSG_NOTICE([])

@@ -18,17 +18,14 @@
 # MA 02110-1301 USA.
 #
 
-import virtinst
 from virtinst import Interface
 
 from virtManager import util
 from virtManager.libvirtobject import vmmLibvirtObject
 
 class vmmInterface(vmmLibvirtObject):
-    __gsignals__ = {}
-
-    def __init__(self, connection, interface, name, active):
-        vmmLibvirtObject.__init__(self, connection)
+    def __init__(self, conn, interface, name, active):
+        vmmLibvirtObject.__init__(self, conn)
 
         self.interface = interface  # Libvirt virInterface object
         self.name = name            # String name
@@ -38,7 +35,7 @@ class vmmInterface(vmmLibvirtObject):
         self._xml_flags = None
 
         (self._inactive_xml_flags,
-         self._active_xml_flags) = self.connection.get_interface_flags(
+         self._active_xml_flags) = self.conn.get_interface_flags(
                                                             self.interface)
 
         self.refresh_xml()
@@ -48,19 +45,18 @@ class vmmInterface(vmmLibvirtObject):
         return self.interface.XMLDesc(flags)
 
     def _define(self, xml):
-        return self.get_connection().define_interface(xml)
+        return self.conn.define_interface(xml)
 
     def xpath(self, *args, **kwargs):
         # Must use this function for ALL XML parsing
-        ret = virtinst.util.get_xml_path(self.get_xml(), *args, **kwargs)
+        ret = util.xpath(self.get_xml(), *args, **kwargs)
         if ret:
             return ret
         if not self.is_active():
             return ret
 
         # The running config did not have the info requested
-        return virtinst.util.get_xml_path(self.get_xml(inactive=True),
-                                          *args, **kwargs)
+        return util.xpath(self.get_xml(inactive=True), *args, **kwargs)
 
     def set_active(self, state):
         self.active = state

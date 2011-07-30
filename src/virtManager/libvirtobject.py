@@ -18,14 +18,11 @@
 # MA 02110-1301 USA.
 #
 
-import gobject
-
 import difflib
 import logging
 
 import libxml2
 
-from virtManager import util
 from virtManager.baseclass import vmmGObject
 
 def _sanitize_xml(xml):
@@ -38,15 +35,9 @@ def _sanitize_xml(xml):
     return xml
 
 class vmmLibvirtObject(vmmGObject):
-    __gsignals__ = {
-        "config-changed": (gobject.SIGNAL_RUN_FIRST,
-                           gobject.TYPE_NONE,
-                           []),
-    }
-
-    def __init__(self, connection):
+    def __init__(self, conn):
         vmmGObject.__init__(self)
-        self.connection = connection
+        self._conn = conn
 
         self._xml = None
         self._is_xml_valid = False
@@ -55,8 +46,12 @@ class vmmLibvirtObject(vmmGObject):
         self._inactive_xml_flags = 0
         self._active_xml_flags = 0
 
-    def get_connection(self):
-        return self.connection
+    def _cleanup(self):
+        pass
+
+    def _get_conn(self):
+        return self._conn
+    conn = property(_get_conn)
 
     #############################################################
     # Functions that should probably be overridden in sub class #
@@ -111,7 +106,7 @@ class vmmLibvirtObject(vmmGObject):
         self._is_xml_valid = True
 
         if origxml != self._xml or forcesignal:
-            util.safe_idle_add(util.idle_emit, self, "config-changed")
+            self.idle_emit("config-changed")
 
     ######################################
     # Internal XML cache/update routines #
@@ -150,5 +145,8 @@ class vmmLibvirtObject(vmmGObject):
     def _redefine_xml(self, newxml):
         origxml = self._xml_to_redefine()
         return self._redefine_helper(origxml, newxml)
+
+
+vmmGObject.signal_new(vmmLibvirtObject, "config-changed", [])
 
 vmmGObject.type_register(vmmLibvirtObject)

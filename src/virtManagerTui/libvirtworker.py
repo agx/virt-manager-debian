@@ -16,17 +16,18 @@
 # MA  02110-1301, USA.  A copy of the GNU General Public License is
 # also available at http://www.gnu.org/copyleft/gpl.html.
 
-import dbus
-import libvirt
 import os
-import virtinst
-import utils
 import logging
+
+import virtinst
+import libvirt
+
+from virtManager.connection import vmmConnection
 
 from domainconfig import DomainConfig
 
-DEFAULT_POOL_TARGET_PATH="/var/lib/libvirt/images"
-DEFAULT_URL="qemu:///system"
+DEFAULT_POOL_TARGET_PATH = "/var/lib/libvirt/images"
+DEFAULT_URL = "qemu:///system"
 
 default_url = DEFAULT_URL
 
@@ -41,14 +42,17 @@ def get_default_url():
     return default_url
 
 class VirtManagerConfig:
-    def __init__(self, filename = "/etc/remote-libvirt.conf"):
+    def __init__(self, filename=None):
+        if filename is None:
+            filename = os.path.expanduser("~/.virt-manager/virt-manager-tui.conf")
         self.__filename = filename
 
     def get_connection_list(self):
         result = []
         if os.path.exists(self.__filename):
-            input = file(self.__filename, "r")
-            for entry in input: result.append(entry[0:-1])
+            inp = file(self.__filename, "r")
+            for entry in inp:
+                result.append(entry[0:-1])
         return result
 
     def add_connection(self, connection):
@@ -67,20 +71,26 @@ class VirtManagerConfig:
         output = file(self.__filename, "w")
         for entry in connections:
             print >> output, entry
-        output.close
+        output.close()
 
 class LibvirtWorker:
     '''Provides utilities for interfacing with libvirt.'''
-    def __init__(self, url = None):
-        if url is None: url = get_default_url()
+    def __init__(self, url=None):
+        if url is None:
+            url = get_default_url()
         logging.info("Connecting to libvirt: %s" % url)
         self.__url  = None
         self.__conn = None
+        self.__vmmconn = None
+        self.__guest = None
+        self.__domain = None
+
         self.open_connection(url)
-        self.__capabilities = virtinst.CapabilitiesParser.parse(self.__conn.getCapabilities())
-        self.__net = virtinst.VirtualNetworkInterface(conn = self.__conn)
+
+        self.__capabilities = self.__vmmconn.get_capabilities()
+        self.__net = virtinst.VirtualNetworkInterface(conn=self.__conn)
         self.__net.setup(self.__conn)
-        (self.__new_guest, self.__new_domain) = virtinst.CapabilitiesParser.guest_lookup(conn = self.__conn)
+        (self.__new_guest, self.__new_domain) = virtinst.CapabilitiesParser.guest_lookup(conn=self.__conn)
 
     def get_connection(self):
         '''Returns the underlying connection.'''
@@ -93,47 +103,77 @@ class LibvirtWorker:
         '''Lets the user change the url for the connection.'''
         old_conn = self.__conn
         old_url  = self.__url
+        old_vmmconn = self.__vmmconn
+
         try:
-            self.__conn = libvirt.open(url)
+            self.__vmmconn = vmmConnection(url)
+            self.__vmmconn.open(sync=True)
+
+            self.__conn = self.__vmmconn.vmm
             self.__url  = url
             set_default_url(url)
         except Exception, error:
             self.__conn = old_conn
             self.__url  = old_url
+            self.__vmmconn = old_vmmconn
             raise error
 
-    def list_domains(self, defined = True, started = True):
+    def get_capabilities(self):
+        '''Returns the capabilities for this libvirt host.'''
+        return self.__capabilities
+
+    def list_installable_volumes(self):
+        '''
+        Return a list of host CDROM devices that have media in them
+        XXX: virt-manager code provides other info here: can list all
+             CDROM devices and whether them are empty, or report an error
+             if HAL missing and libvirt is too old
+        '''
+        devs = self.__vmmconn.mediadevs.values()
+        ret = []
+        for dev in devs:
+            if dev.has_media() and dev.media_type == "cdrom":
+                ret.append(dev)
+        return ret
+
+    def list_network_devices(self):
+        '''
+        Return a list of physical network devices on the host
+        '''
+        ret = []
+        for path in self.__vmmconn.list_net_device_paths():
+            net = self.__vmmconn.get_net_device(path)
+            ret.append(net.get_name())
+        return ret
+
+    def list_domains(self, defined=True, created=True):
         '''Lists all domains.'''
+        self.__vmmconn.tick()
+        uuids = self.__vmmconn.list_vm_uuids()
         result = []
-        if defined:
-            result.extend(self.__conn.listDefinedDomains())
-        if started:
-            for id in self.__conn.listDomainsID():
-                result.append(self.__conn.lookupByID(id).name())
+        for uuid in uuids:
+            include = False
+            domain = self.get_domain(uuid)
+            if domain.status() in [libvirt.VIR_DOMAIN_RUNNING]:
+                if created:
+                    include = True
+            else:
+                if defined:
+                    include = True
+            if include:
+                result.append(uuid)
         return result
 
-    def get_domain(self, name):
+    def get_domain(self, uuid):
         '''Returns the specified domain.'''
-        result = self.__conn.lookupByName(name)
-        if result is None: raise Exception("No such domain exists: %s" % name)
-
-        return result
+        return self.__vmmconn.get_vm(uuid)
 
     def domain_exists(self, name):
         '''Returns whether a domain with the specified node exists.'''
         domains = self.list_domains()
-        if name in domains: return True
+        if name in domains:
+            return True
         return False
-
-    def create_domain(self, name):
-        '''Creates the specified domain.'''
-        domain = self.get_domain(name)
-        domain.create()
-
-    def destroy_domain(self, name):
-        '''Destroys the specified domain.'''
-        domain = self.get_domain(name)
-        domain.destroy()
 
     def undefine_domain(self, name):
         '''Undefines the specified domain.'''
@@ -146,28 +186,63 @@ class LibvirtWorker:
         virtmachine = self.get_domain(name)
         virtmachine.migrate(target_conn, libvirt.VIR_MIGRATE_LIVE, None, None, 0)
 
-    def list_networks(self, defined = True, started = True):
-        '''Lists all networks.'''
+    def list_networks(self, defined=True, started=True):
+        '''Lists all networks that meet the given criteria.
+
+        Keyword arguments:
+        defined -- Include defined, but not started, networks. (default True)
+        started -- Include only started networks. (default True)
+
+        '''
+        self.__vmmconn.tick()
+        uuids = self.__vmmconn.list_net_uuids()
         result = []
-        if defined: result.extend(self.__conn.listDefinedNetworks())
-        if started: result.extend(self.__conn.listNetworks())
+        for uuid in uuids:
+            include = False
+            net = self.__vmmconn.get_net(uuid)
+            if net.is_active():
+                if started:
+                    include = True
+            else:
+                if defined:
+                    include = True
+            if include:
+                result.append(uuid)
         return result
 
-    def get_network(self, name):
-        '''Returns the specified network.'''
-        result = self.__conn.networkLookupByName(name)
-        if result is None: raise Exception("No such network exists: %s" % name)
+    def get_network(self, uuid):
+        '''Returns the specified network. Raises an exception if the netowrk does not exist.
+
+        Keyword arguments:
+        uuid -- the network's identifier
+
+        '''
+        self.__vmmconn.tick()
+        result = self.__vmmconn.get_net(uuid)
+        if result is None:
+            raise Exception("No such network exists: uuid=%s" % uuid)
 
         return result
 
     def network_exists(self, name):
-        '''Returns if a network with the given name already exists.'''
+        '''Returns True if the specified network exists.
+
+        Keyword arguments:
+        name -- the name of the network
+
+        '''
         networks = self.list_networks()
-        if name in networks: return True
+        if name in networks:
+            return True
         return False
 
     def define_network(self, config):
-        '''Defines a new network.'''
+        '''Defines a new network.
+
+        Keyword arguments:
+        config -- the network descriptor
+
+        '''
         # since there's no other way currently, we'll have to use XML
         name = config.get_name()
         ip = config.get_ipv4_address_raw()
@@ -190,17 +265,7 @@ class LibvirtWorker:
         xml += "  </ip>\n"
         xml += "</network>\n"
 
-        self.__conn.networkDefineXML(xml)
-
-    def create_network(self, name):
-        '''Creates a defined network.'''
-        network = self.get_network(name)
-        network.create()
-
-    def destroy_network(self, name):
-        '''Destroys the specified network.'''
-        network = self.get_network(name)
-        network.destroy()
+        self.__vmmconn.create_network(xml)
 
     def undefine_network(self, name):
         '''Undefines the specified network.'''
@@ -210,29 +275,32 @@ class LibvirtWorker:
     def list_storage_pools(self, defined=True, created=True):
         '''Returns the list of all defined storage pools.'''
         pools = []
-        if defined: pools.extend(self.__conn.listDefinedStoragePools())
-        if created: pools.extend(self.__conn.listStoragePools())
+        if defined:
+            pools.extend(self.__conn.listDefinedStoragePools())
+        if created:
+            pools.extend(self.__conn.listStoragePools())
         return pools
 
     def storage_pool_exists(self, name):
         '''Returns whether a storage pool exists.'''
         pools = self.list_storage_pools()
-        if name in pools: return True
+        if name in pools:
+            return True
         return False
 
     def create_storage_pool(self, name):
         '''Starts the named storage pool if it is not currently started.'''
-        if name not in self.list_storage_pools(defined = False):
+        if name not in self.list_storage_pools(defined=False):
             pool = self.get_storage_pool(name)
             pool.create(0)
 
     def destroy_storage_pool(self, name):
         '''Stops the specified storage pool.'''
-        if name in self.list_storage_pools(defined = False):
+        if name in self.list_storage_pools(defined=False):
             pool = self.get_storage_pool(name)
             pool.destroy()
 
-    def define_storage_pool(self, name, config = None, meter = None):
+    def define_storage_pool(self, name, config=None, meter=None):
         '''Defines a storage pool with the given name.'''
         if config is None:
             pool = virtinst.Storage.DirectoryPool(conn=self.__conn,
@@ -274,7 +342,7 @@ class LibvirtWorker:
         '''Defines a new storage volume.'''
         self.create_storage_pool(config.get_pool().name())
         volume = config.create_volume()
-        volume.install(meter = meter)
+        volume.install(meter=meter)
 
     def remove_storage_volume(self, poolname, volumename):
         '''Removes the specified storage volume.'''
@@ -283,7 +351,7 @@ class LibvirtWorker:
 
     def get_storage_volume(self, poolname, volumename):
         '''Returns a reference to the specified storage volume.'''
-        pool =self.get_storage_pool(poolname)
+        pool = self.get_storage_pool(poolname)
         volume = pool.storageVolLookupByName(volumename)
         return volume
 
@@ -313,7 +381,8 @@ class LibvirtWorker:
                 domain_type = domain.hypervisor_type
                 label = domain_type
 
-                if domain_type is "kvm" and guest_type is "xen": label = "xenner"
+                if domain_type is "kvm" and guest_type is "xen":
+                    label = "xenner"
                 elif domain_type is "xen":
                     if guest_type is "xen":
                         label = "xen (paravirt)"
@@ -329,7 +398,8 @@ class LibvirtWorker:
                     if row[0] == label:
                         label = None
                         break
-                if label is None: continue
+                if label is None:
+                    continue
 
                 result.append([label, domain_type, guest_type])
         return result
@@ -337,8 +407,8 @@ class LibvirtWorker:
     def list_virt_types(self):
         virt_types = self.get_virt_types()
         result = []
-        for type in virt_types:
-            result.append(type[0])
+        for typ in virt_types:
+            result.append(typ[0])
         return result
 
     def get_default_architecture(self):
@@ -347,8 +417,9 @@ class LibvirtWorker:
 
     def get_hypervisor(self, virt_type):
         virt_types = self.get_virt_types()
-        for type in virt_types:
-            if type[0] is virt_type: return type[1]
+        for typ in virt_types:
+            if typ[0] is virt_type:
+                return typ[1]
         return None
 
     def get_default_virt_type(self):
@@ -357,26 +428,31 @@ class LibvirtWorker:
 
     def get_os_type(self, virt_type):
         virt_types = self.get_virt_types()
-        for type in virt_types:
-            if type[0] is virt_type: return type[2]
+        for typ in virt_types:
+            if typ[0] is virt_type:
+                return typ[2]
         return None
 
     def list_architectures(self):
         result = []
         for guest in self.__capabilities.guests:
             for domain in guest.domains:
+                ignore = domain
                 label = guest.arch
                 for row in result:
                     if row == label:
                         label = None
                         break
-                if label is None: continue
+                if label is None:
+                    continue
 
                 result.append(label)
         return result
 
     def define_domain(self, config, meter):
-        location = extra = kickstart = None
+        location = None
+        extra = None
+        kickstart = None
 
         if config.get_install_type() == DomainConfig.LOCAL_INSTALL:
             if config.get_use_cdrom_source():
@@ -393,9 +469,9 @@ class LibvirtWorker:
         elif config.get_install_type() == DomainConfig.PXE_INSTALL:
             iclass = virtinst.PXEInstaller
 
-        installer = iclass(conn = self.__conn,
-                           type = self.get_hypervisor(config.get_virt_type()),
-                           os_type = self.get_os_type(config.get_virt_type()))
+        installer = iclass(conn=self.__conn,
+                           type=self.get_hypervisor(config.get_virt_type()),
+                           os_type=self.get_os_type(config.get_virt_type()))
         self.__guest = installer.guest_from_installer()
         self.__guest.name = config.get_guest_name()
         self.__guest.vcpus = config.get_cpus()
@@ -403,33 +479,39 @@ class LibvirtWorker:
         self.__guest.maxmemory = config.get_memory()
 
         self.__guest.installer.location = location
-        if config.get_use_cdrom_source(): self.__guest.installer.cdrom = True
+        if config.get_use_cdrom_source():
+            self.__guest.installer.cdrom = True
         extraargs = ""
-        if extra: extraargs += extra
-        if kickstart: extraargs += " ks=%s" % kickstart
-        if extraargs: self.__guest.installer.extraarags = extraargs
+        if extra:
+            extraargs += extra
+        if kickstart:
+            extraargs += " ks=%s" % kickstart
+        if extraargs:
+            self.__guest.installer.extraarags = extraargs
 
         self.__guest.uuid = virtinst.util.uuidToString(virtinst.util.randomUUID())
 
-        if config.get_os_type() != "generic": self.__guest.os_type = config.get_os_type()
-        if config.get_os_variant() != "generic": self.__guest.os_variant = config.get_os_variant()
+        if config.get_os_type() != "generic":
+            self.__guest.os_type = config.get_os_type()
+        if config.get_os_variant() != "generic":
+            self.__guest.os_variant = config.get_os_variant()
 
-        self.__guest._graphics_dev = virtinst.VirtualGraphics(type = virtinst.VirtualGraphics.TYPE_VNC)
+        self.__guest._graphics_dev = virtinst.VirtualGraphics(type=virtinst.VirtualGraphics.TYPE_VNC)
         self.__guest.sound_devs = []
-        self.__guest.sound_devs.append(virtinst.VirtualAudio(model = "es1370"))
+        self.__guest.sound_devs.append(virtinst.VirtualAudio(model="es1370"))
 
         self._setup_nics(config)
         self._setup_disks(config)
 
         self.__guest.conn = self.__conn
-        self.__domain = self.__guest.start_install(False, meter = meter)
+        self.__domain = self.__guest.start_install(False, meter=meter)
 
     def _setup_nics(self, config):
         self.__guest.nics = []
-        nic = virtinst.VirtualNetworkInterface(type = virtinst.VirtualNetworkInterface.TYPE_VIRTUAL,
-                                               bridge = config.get_network_bridge(),
-                                               network = config.get_network_bridge(),
-                                               macaddr = config.get_mac_address())
+        nic = virtinst.VirtualNetworkInterface(type=virtinst.VirtualNetworkInterface.TYPE_VIRTUAL,
+                                               bridge=config.get_network_bridge(),
+                                               network=config.get_network_bridge(),
+                                               macaddr=config.get_mac_address())
         self.__guest.nics.append(nic)
         # ensure the network is running
         if config.get_network_bridge() not in self.__conn.listNetworks():
@@ -445,8 +527,8 @@ class LibvirtWorker:
                     self.define_storage_pool("default")
                 pool = self.__conn.storagePoolLookupByName("default")
                 path = virtinst.Storage.StorageVolume.find_free_name(config.get_guest_name(),
-                                                                     pool_object = pool,
-                                                                     suffix = ".img")
+                                                                     pool_object=pool,
+                                                                     suffix=".img")
                 path = os.path.join(DEFAULT_POOL_TARGET_PATH, path)
             else:
                 volume = self.get_storage_volume(config.get_storage_pool(),
@@ -454,8 +536,8 @@ class LibvirtWorker:
                 path = volume.path()
 
             if path is not None:
-                storage= virtinst.VirtualDisk(conn = self.__conn,
-                                              path = path,
-                                              size = config.get_storage_size())
+                storage = virtinst.VirtualDisk(conn=self.__conn,
+                                               path=path,
+                                               size=config.get_storage_size())
                 self.__guest.disks.append(storage)
         self.__guest.conn = self.__conn
