@@ -18,8 +18,8 @@
 # MA  02110-1301, USA.  A copy of the GNU General Public License is
 # also available at http://www.gnu.org/copyleft/gpl.html.
 
-from snack import *
-from configscreen import *
+import snack
+from storagelistconfigscreen import StorageListConfigScreen
 
 LIST_POOLS_PAGE    = 1
 FINAL_PAGE         = 2
@@ -29,13 +29,16 @@ class StopStoragePoolConfigScreen(StorageListConfigScreen):
         StorageListConfigScreen.__init__(self, "Stop A Storage Pool")
 
     def get_elements_for_page(self, screen, page):
-        if   page is LIST_POOLS_PAGE: return self.get_storage_pool_list_page(screen, defined = False)
-        elif page is FINAL_PAGE:      return self.get_final_page(screen)
+        if   page is LIST_POOLS_PAGE:
+            return self.get_storage_pool_list_page(screen, defined=False)
+        elif page is FINAL_PAGE:
+            return self.get_final_page(screen)
 
     def page_has_next(self, page):
         return page is LIST_POOLS_PAGE and self.has_selectable_pools()
 
     def page_has_back(self, page):
+        ignore = page
         return False
 
     def page_has_finish(self, page):
@@ -55,7 +58,8 @@ class StopStoragePoolConfigScreen(StorageListConfigScreen):
             self.set_finished()
 
     def get_final_page(self, screen):
-        return [Label("Storage pool stopped: %s" % self.get_selected_pool())]
+        ignore = screen
+        return [snack.Label("Storage pool stopped: %s" % self.get_selected_pool())]
 
 def StopStoragePool():
     screen = StopStoragePoolConfigScreen()

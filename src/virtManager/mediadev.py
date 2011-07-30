@@ -18,12 +18,10 @@
 # MA 02110-1301 USA.
 #
 
-import gobject
 import logging
 
 import virtinst
 
-from virtManager import util
 from virtManager.baseclass import vmmGObject
 
 MEDIA_FLOPPY = "floppy"
@@ -32,15 +30,10 @@ MEDIA_CDROM = "cdrom"
 MEDIA_TIMEOUT = 3
 
 class vmmMediaDevice(vmmGObject):
-    __gsignals__ = {
-        "media-added"  : (gobject.SIGNAL_RUN_FIRST, gobject.TYPE_NONE,
-                          []),
-        "media-removed"  : (gobject.SIGNAL_RUN_FIRST,
-                            gobject.TYPE_NONE, []),
-    }
-
     @staticmethod
-    def mediadev_from_nodedev(conn, nodedev):
+    def mediadev_from_nodedev(dev):
+        nodedev = dev.get_virtinst_obj()
+
         if nodedev.device_type != "storage":
             return None
 
@@ -54,9 +47,8 @@ class vmmMediaDevice(vmmGObject):
         media_label = nodedev.media_label
         media_key = None
 
-        nodedev_obj = conn.vmm.nodeDeviceLookupByName(key)
         obj = vmmMediaDevice(path, key, has_media, media_label, media_key,
-                             nodedev_obj, drvtype)
+                             dev, drvtype)
         obj.enable_poll_for_media()
 
         return obj
@@ -74,6 +66,9 @@ class vmmMediaDevice(vmmGObject):
 
         self.nodedev_obj = nodedev_obj
         self.poll_signal = None
+
+    def _cleanup(self):
+        pass
 
     def get_path(self):
         return self.path
@@ -139,10 +134,12 @@ class vmmMediaDevice(vmmGObject):
         if self.poll_signal:
             return
 
-        self.poll_signal = util.safe_timeout_add(MEDIA_TIMEOUT * 1000,
+        self.poll_signal = self.safe_timeout_add(MEDIA_TIMEOUT * 1000,
                                                  self._poll_for_media)
+        self.add_gobject_timeout(self.poll_signal)
 
     def disable_poll_for_media(self):
+        self.remove_gobject_timeout(self.poll_signal)
         self.poll_signal = None
 
     def _poll_for_media(self):
@@ -152,8 +149,12 @@ class vmmMediaDevice(vmmGObject):
         if not self.nodedev_obj:
             return False
 
+        if not self.nodedev_obj.conn.is_active():
+            return False
+
         try:
-            xml = self.nodedev_obj.XMLDesc(0)
+            self.nodedev_obj.refresh_xml()
+            xml = self.nodedev_obj.get_xml()
         except:
             # Assume the device was removed
             return False
@@ -175,3 +176,5 @@ class vmmMediaDevice(vmmGObject):
         return True
 
 vmmGObject.type_register(vmmMediaDevice)
+vmmMediaDevice.signal_new(vmmMediaDevice, "media-added", [])
+vmmMediaDevice.signal_new(vmmMediaDevice, "media-removed", [])

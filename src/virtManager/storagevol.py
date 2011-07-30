@@ -18,15 +18,12 @@
 # MA 02110-1301 USA.
 #
 
-import virtinst.util as util
-
+from virtManager import util
 from virtManager.libvirtobject import vmmLibvirtObject
 
 class vmmStorageVolume(vmmLibvirtObject):
-    __gsignals__ = {}
-
-    def __init__(self, connection, vol, name):
-        vmmLibvirtObject.__init__(self, connection)
+    def __init__(self, conn, vol, name):
+        vmmLibvirtObject.__init__(self, conn)
 
         self.vol = vol      # Libvirt storage volume object
         self.name = name
@@ -42,35 +39,29 @@ class vmmStorageVolume(vmmLibvirtObject):
 
     def get_pool(self):
         pobj = self.vol.storagePoolLookupByVolume()
-        return self.connection.get_pool_by_name(pobj.name())
+        return self.conn.get_pool_by_name(pobj.name())
 
     def delete(self):
         self.vol.delete(0)
         del(self.vol)
 
     def get_target_path(self):
-        return util.get_xml_path(self.get_xml(), "/volume/target/path")
+        return util.xpath(self.get_xml(), "/volume/target/path")
 
     def get_format(self):
-        return util.get_xml_path(self.get_xml(), "/volume/target/format/@type")
+        return util.xpath(self.get_xml(), "/volume/target/format/@type")
 
     def get_allocation(self):
-        return long(util.get_xml_path(self.get_xml(), "/volume/allocation"))
+        return long(util.xpath(self.get_xml(), "/volume/allocation"))
     def get_capacity(self):
-        return long(util.get_xml_path(self.get_xml(), "/volume/capacity"))
+        return long(util.xpath(self.get_xml(), "/volume/capacity"))
 
     def get_pretty_capacity(self):
-        return self._prettyify(self.get_capacity())
+        return util.pretty_bytes(self.get_capacity())
     def get_pretty_allocation(self):
-        return self._prettyify(self.get_allocation())
+        return util.pretty_bytes(self.get_allocation())
 
     def get_type(self):
-        return util.get_xml_path(self.get_xml(), "/volume/format/@type")
-
-    def _prettyify(self, val):
-        if val > (1024 * 1024 * 1024):
-            return "%2.2f GB" % (val / (1024.0 * 1024.0 * 1024.0))
-        else:
-            return "%2.2f MB" % (val / (1024.0 * 1024.0))
+        return util.xpath(self.get_xml(), "/volume/format/@type")
 
 vmmLibvirtObject.type_register(vmmStorageVolume)

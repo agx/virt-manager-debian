@@ -37,8 +37,10 @@ import signal
 import socket
 import logging
 
-from virtManager import util
-from virtManager.baseclass import vmmGObjectUI
+import virtManager.util as util
+import virtManager.uihelpers as uihelpers
+from virtManager.autodrawer import AutoDrawer
+from virtManager.baseclass import vmmGObjectUI, vmmGObject
 from virtManager.error import vmmErrorDialog
 
 # Console pages
@@ -199,11 +201,22 @@ class Tunnels(object):
         return errout
 
 
-class Viewer(object):
-    def __init__(self, console, config):
+class Viewer(vmmGObject):
+    def __init__(self, console):
+        vmmGObject.__init__(self)
         self.console = console
-        self.config = config
         self.display = None
+
+    def close(self):
+        raise NotImplementedError()
+
+    def _cleanup(self):
+        self.close()
+
+        if self.display:
+            self.display.destroy()
+        self.display = None
+        self.console = None
 
     def get_widget(self):
         return self.display
@@ -253,11 +266,17 @@ class Viewer(object):
     def open_host(self, host, user, port, socketpath, password=None):
         raise NotImplementedError()
 
+    def get_desktop_resolution(self):
+        raise NotImplementedError()
+
 class VNCViewer(Viewer):
-    def __init__(self, console, config):
-        Viewer.__init__(self, console, config)
+    def __init__(self, console):
+        Viewer.__init__(self, console)
         self.display = gtkvnc.Display()
         self.sockfd = None
+
+        # Last noticed desktop resolution
+        self.desktop_resolution = None
 
     def init_widget(self):
         # Set default grab key combination if found and supported
@@ -281,36 +300,51 @@ class VNCViewer(Viewer):
                              lambda src: self.console.connected())
         self.display.connect("vnc-disconnected",
                              lambda src: self.console.disconnected())
-        self.display.connect("vnc-desktop-resize", self.console.desktop_resize)
+        self.display.connect("vnc-desktop-resize", self._desktop_resize)
         self.display.connect("focus-in-event", self.console.viewer_focus_changed)
         self.display.connect("focus-out-event", self.console.viewer_focus_changed)
 
         self.display.show()
 
+    def _desktop_resize(self, src_ignore, w, h):
+        self.desktop_resolution = (w, h)
+        self.console.window.get_widget("console-vnc-scroll").queue_resize()
+
+    def get_desktop_resolution(self):
+        return self.desktop_resolution
+
     def _auth_credential(self, src_ignore, credList):
-        for i in range(len(credList)):
-            if credList[i] not in [gtkvnc.CREDENTIAL_PASSWORD,
-                                   gtkvnc.CREDENTIAL_USERNAME,
-                                   gtkvnc.CREDENTIAL_CLIENTNAME]:
-                self.console.err.show_err(summary=_("Unable to provide requested credentials to the VNC server"),
-                                          details=_("The credential type %s is not supported") % (str(credList[i])),
-                                          title=_("Unable to authenticate"),
-                                          async=True)
-                self.console.viewerRetriesScheduled = 10 # schedule_retry will error out
-                self.close()
-                self.console.activate_unavailable_page(_("Unsupported console authentication type"))
-                return
+        for cred in credList:
+            if cred in [gtkvnc.CREDENTIAL_PASSWORD,
+                        gtkvnc.CREDENTIAL_USERNAME,
+                        gtkvnc.CREDENTIAL_CLIENTNAME]:
+                continue
+
+            self.console.err.show_err(
+                summary=_("Unable to provide requested credentials to "
+                          "the VNC server"),
+                details=(_("The credential type %s is not supported") %
+                         (str(cred))),
+                title=_("Unable to authenticate"),
+                async=True)
+
+            # schedule_retry will error out
+            self.console.viewerRetriesScheduled = 10
+            self.close()
+            self.console.activate_unavailable_page(
+                            _("Unsupported console authentication type"))
+            return
 
         withUsername = False
         withPassword = False
-        for i in range(len(credList)):
-            logging.debug("Got credential request %s", str(credList[i]))
-            if credList[i] == gtkvnc.CREDENTIAL_PASSWORD:
+        for cred in credList:
+            logging.debug("Got credential request %s" % cred)
+            if cred == gtkvnc.CREDENTIAL_PASSWORD:
                 withPassword = True
-            elif credList[i] == gtkvnc.CREDENTIAL_USERNAME:
+            elif cred == gtkvnc.CREDENTIAL_USERNAME:
                 withUsername = True
-            elif credList[i] == gtkvnc.CREDENTIAL_CLIENTNAME:
-                self.display.set_credential(credList[i], "libvirt-vnc")
+            elif cred == gtkvnc.CREDENTIAL_CLIENTNAME:
+                self.display.set_credential(cred, "libvirt-vnc")
 
         if withUsername or withPassword:
             self.console.activate_auth_page(withPassword, withUsername)
@@ -376,11 +410,12 @@ class VNCViewer(Viewer):
 
 
 class SpiceViewer(Viewer):
-    def __init__(self, console, config):
-        Viewer.__init__(self, console, config)
+    def __init__(self, console):
+        Viewer.__init__(self, console)
         self.spice_session = None
         self.display = None
         self.audio = None
+        self.display_channel = None
 
     def _init_widget(self):
         self.set_grab_keys()
@@ -396,16 +431,21 @@ class SpiceViewer(Viewer):
             self.spice_session.disconnect()
         self.spice_session = None
         self.audio = None
+        if self.display:
+            self.display.destroy()
         self.display = None
+        self.display_channel = None
 
     def is_open(self):
         return self.spice_session != None
 
     def _main_channel_event_cb(self, channel, event):
         if event == spice.CHANNEL_CLOSED:
-            self.console.disconnected()
+            if self.console:
+                self.console.disconnected()
         elif event == spice.CHANNEL_ERROR_AUTH:
-            self.console.activate_auth_page()
+            if self.console:
+                self.console.activate_auth_page()
 
     def _channel_open_fd_request(self, channel, tls_ignore):
         if not self.console.tunnels:
@@ -424,6 +464,12 @@ class SpiceViewer(Viewer):
 
         if type(channel) == spice.DisplayChannel:
             channel_id = channel.get_property("channel-id")
+
+            if channel_id != 0:
+                logging.debug("Spice multi-head unsupported")
+                return
+
+            self.display_channel = channel
             self.display = spice.Display(self.spice_session, channel_id)
             self.console.window.get_widget("console-vnc-viewport").add(self.display)
             self._init_widget()
@@ -434,6 +480,12 @@ class SpiceViewer(Viewer):
             not self.audio):
             self.audio = spice.Audio(self.spice_session)
             return
+
+    def get_desktop_resolution(self):
+        if (not self.display_channel or
+            not has_property(self.display_channel, "width")):
+            return None
+        return self.display_channel.get_properties("width", "height")
 
     def open_host(self, host, user, port, socketpath, password=None):
         ignore = socketpath
@@ -482,7 +534,7 @@ class vmmConsolePages(vmmGObjectUI):
 
         self.windowname = "vmm-details"
         self.window = window
-        self.topwin = self.window.get_widget(self.windowname)
+        self.topwin = self.widget(self.windowname)
         self.err = vmmErrorDialog(self.topwin)
 
         self.pointer_is_grabbed = False
@@ -494,45 +546,114 @@ class vmmConsolePages(vmmGObjectUI):
         self.gtk_settings_accel = None
         self.gtk_settings_mnemonic = None
 
-        # Last noticed desktop resolution
-        self.desktop_resolution = None
-
         # Initialize display widget
-        self.scale_type = self.vm.get_console_scaling()
+        self.viewer = None
         self.tunnels = None
         self.viewerRetriesScheduled = 0
         self.viewerRetryDelay = 125
-        self.viewer = None
-        self.viewer_connected = False
+        self._viewer_connected = False
         self.viewer_connecting = False
+        self.scale_type = self.vm.get_console_scaling()
+
+        # Fullscreen toolbar
+        self.fs_toolbar = None
+        self.fs_drawer = None
+        self.keycombo_menu = uihelpers.build_keycombo_menu(self.send_key)
+        self.init_fs_toolbar()
 
         finish_img = gtk.image_new_from_stock(gtk.STOCK_YES,
                                               gtk.ICON_SIZE_BUTTON)
-        self.window.get_widget("console-auth-login").set_image(finish_img)
+        self.widget("console-auth-login").set_image(finish_img)
 
         # Make viewer widget background always be black
         black = gtk.gdk.Color(0, 0, 0)
-        self.window.get_widget("console-vnc-viewport").modify_bg(
-                                                        gtk.STATE_NORMAL,
-                                                        black)
+        self.widget("console-vnc-viewport").modify_bg(gtk.STATE_NORMAL,
+                                                      black)
 
         # Signals are added by vmmDetails. Don't use signal_autoconnect here
         # or it changes will be overwritten
         # Set console scaling
-        self.vm.on_console_scaling_changed(self.refresh_scaling)
+        self.add_gconf_handle(
+            self.vm.on_console_scaling_changed(self.refresh_scaling))
 
-        scroll = self.window.get_widget("console-vnc-scroll")
+        scroll = self.widget("console-vnc-scroll")
         scroll.connect("size-allocate", self.scroll_size_allocate)
-        self.config.on_console_accels_changed(self.set_enable_accel)
+        self.add_gconf_handle(
+            self.config.on_console_accels_changed(self.set_enable_accel))
+
+        self.page_changed()
 
     def is_visible(self):
         if self.topwin.flags() & gtk.VISIBLE:
             return 1
         return 0
 
+    def _cleanup(self):
+        self.vm = None
+
+        if self.viewer:
+            self.viewer.cleanup()
+        self.viewer = None
+
+        self.keycombo_menu.destroy()
+        self.keycombo_menu = None
+        self.fs_toolbar.destroy()
+        self.fs_toolbar = None
+        self.fs_drawer.destroy()
+        self.fs_drawer = None
+
     ##########################
     # Initialization helpers #
     ##########################
+
+    def init_fs_toolbar(self):
+        scroll = self.widget("console-vnc-scroll")
+        pages = self.widget("console-pages")
+        pages.remove(scroll)
+
+        self.fs_toolbar = gtk.Toolbar()
+        self.fs_toolbar.set_show_arrow(False)
+        self.fs_toolbar.set_no_show_all(True)
+        self.fs_toolbar.set_style(gtk.TOOLBAR_BOTH_HORIZ)
+
+        # Exit fullscreen button
+        button = gtk.ToolButton(gtk.STOCK_LEAVE_FULLSCREEN)
+        util.tooltip_wrapper(button, _("Leave fullscreen"))
+        button.show()
+        self.fs_toolbar.add(button)
+        button.connect("clicked", self.leave_fullscreen)
+
+        def keycombo_menu_clicked(src):
+            ignore = src
+            def menu_location(menu, toolbar):
+                ignore = menu
+                x, y = toolbar.window.get_origin()
+                ignore, height = toolbar.window.get_size()
+
+                return x, y + height, True
+
+            self.keycombo_menu.popup(None, None, menu_location, 0,
+                                     gtk.get_current_event_time(),
+                                     self.fs_toolbar)
+
+        item = gtk.ToolButton()
+        item.set_icon_name("preferences-desktop-keyboard-shortcuts")
+        util.tooltip_wrapper(item, _("Send key combination"))
+        item.show_all()
+        item.connect("clicked", keycombo_menu_clicked)
+        self.fs_toolbar.add(item)
+
+        self.fs_drawer = AutoDrawer()
+        self.fs_drawer.set_active(False)
+        self.fs_drawer.set_over(self.fs_toolbar)
+        self.fs_drawer.set_under(scroll)
+        self.fs_drawer.set_offset(-1)
+        self.fs_drawer.set_fill(False)
+        self.fs_drawer.set_overlap_pixels(1)
+        self.fs_drawer.set_nooverlap_pixels(0)
+        self.fs_drawer.show_all()
+
+        pages.add(self.fs_drawer)
 
     def change_title(self, ignore1=None):
         title = self.vm.get_name() + " " + _("Virtual Machine")
@@ -604,11 +725,11 @@ class vmmConsolePages(vmmGObjectUI):
     def refresh_scaling(self, ignore1=None, ignore2=None, ignore3=None,
                         ignore4=None):
         self.scale_type = self.vm.get_console_scaling()
-        self.window.get_widget("details-menu-view-scale-always").set_active(
+        self.widget("details-menu-view-scale-always").set_active(
             self.scale_type == self.config.CONSOLE_SCALE_ALWAYS)
-        self.window.get_widget("details-menu-view-scale-never").set_active(
+        self.widget("details-menu-view-scale-never").set_active(
             self.scale_type == self.config.CONSOLE_SCALE_NEVER)
-        self.window.get_widget("details-menu-view-scale-fullscreen").set_active(
+        self.widget("details-menu-view-scale-fullscreen").set_active(
             self.scale_type == self.config.CONSOLE_SCALE_FULLSCREEN)
 
         self.update_scaling()
@@ -617,11 +738,11 @@ class vmmConsolePages(vmmGObjectUI):
         if not src.get_active():
             return
 
-        if src == self.window.get_widget("details-menu-view-scale-always"):
+        if src == self.widget("details-menu-view-scale-always"):
             self.scale_type = self.config.CONSOLE_SCALE_ALWAYS
-        elif src == self.window.get_widget("details-menu-view-scale-fullscreen"):
+        elif src == self.widget("details-menu-view-scale-fullscreen"):
             self.scale_type = self.config.CONSOLE_SCALE_FULLSCREEN
-        elif src == self.window.get_widget("details-menu-view-scale-never"):
+        elif src == self.widget("details-menu-view-scale-never"):
             self.scale_type = self.config.CONSOLE_SCALE_NEVER
 
         self.vm.set_console_scaling(self.scale_type)
@@ -632,8 +753,8 @@ class vmmConsolePages(vmmGObjectUI):
             return
 
         curscale = self.viewer.get_scaling()
-        fs = self.window.get_widget("control-fullscreen").get_active()
-        vnc_scroll = self.window.get_widget("console-vnc-scroll")
+        fs = self.widget("control-fullscreen").get_active()
+        vnc_scroll = self.widget("console-vnc-scroll")
 
         if (self.scale_type == self.config.CONSOLE_SCALE_NEVER
             and curscale == True):
@@ -654,62 +775,45 @@ class vmmConsolePages(vmmGObjectUI):
 
     def toggle_fullscreen(self, src):
         do_fullscreen = src.get_active()
+        self._change_fullscreen(do_fullscreen)
 
-        self.window.get_widget("control-fullscreen").set_active(do_fullscreen)
+    def leave_fullscreen(self, ignore=None):
+        self._change_fullscreen(False)
+
+    def _change_fullscreen(self, do_fullscreen):
+        self.widget("control-fullscreen").set_active(do_fullscreen)
 
         if do_fullscreen:
             self.topwin.fullscreen()
-            self.window.get_widget("toolbar-box").hide()
+            self.fs_toolbar.show()
+            self.fs_drawer.set_active(True)
+            self.widget("toolbar-box").hide()
+            self.widget("details-menubar").hide()
         else:
+            self.fs_toolbar.hide()
+            self.fs_drawer.set_active(False)
             self.topwin.unfullscreen()
 
-            if self.window.get_widget("details-menu-view-toolbar").get_active():
-                self.window.get_widget("toolbar-box").show()
+            if self.widget("details-menu-view-toolbar").get_active():
+                self.widget("toolbar-box").show()
+            self.widget("details-menubar").show()
 
         self.update_scaling()
 
     def size_to_vm(self, src_ignore):
         # Resize the console to best fit the VM resolution
-        if not self.desktop_resolution:
+        if not self.viewer:
+            return
+        if not self.viewer.get_desktop_resolution():
             return
 
-        w, h = self.desktop_resolution
+        w, h = self.viewer.get_desktop_resolution()
         self.topwin.unmaximize()
         self.topwin.resize(1, 1)
         self.queue_scroll_resize_helper(w, h)
 
-    def send_key(self, src):
-        keys = None
-        if src.get_name() == "details-menu-send-cad":
-            keys = ["Control_L", "Alt_L", "Delete"]
-        elif src.get_name() == "details-menu-send-cab":
-            keys = ["Control_L", "Alt_L", "BackSpace"]
-        elif src.get_name() == "details-menu-send-caf1":
-            keys = ["Control_L", "Alt_L", "F1"]
-        elif src.get_name() == "details-menu-send-caf2":
-            keys = ["Control_L", "Alt_L", "F2"]
-        elif src.get_name() == "details-menu-send-caf3":
-            keys = ["Control_L", "Alt_L", "F3"]
-        elif src.get_name() == "details-menu-send-caf4":
-            keys = ["Control_L", "Alt_L", "F4"]
-        elif src.get_name() == "details-menu-send-caf5":
-            keys = ["Control_L", "Alt_L", "F5"]
-        elif src.get_name() == "details-menu-send-caf6":
-            keys = ["Control_L", "Alt_L", "F6"]
-        elif src.get_name() == "details-menu-send-caf7":
-            keys = ["Control_L", "Alt_L", "F7"]
-        elif src.get_name() == "details-menu-send-caf8":
-            keys = ["Control_L", "Alt_L", "F8"]
-        elif src.get_name() == "details-menu-send-caf9":
-            keys = ["Control_L", "Alt_L", "F9"]
-        elif src.get_name() == "details-menu-send-caf10":
-            keys = ["Control_L", "Alt_L", "F10"]
-        elif src.get_name() == "details-menu-send-caf11":
-            keys = ["Control_L", "Alt_L", "F11"]
-        elif src.get_name() == "details-menu-send-caf12":
-            keys = ["Control_L", "Alt_L", "F12"]
-        elif src.get_name() == "details-menu-send-printscreen":
-            keys = ["Print"]
+    def send_key(self, src, keys):
+        ignore = src
 
         if keys != None:
             self.viewer.send_keys(keys)
@@ -728,7 +832,7 @@ class vmmConsolePages(vmmGObjectUI):
                 self.activate_unavailable_page(_("Guest has crashed"))
 
     def close_viewer(self):
-        viewport = self.window.get_widget("console-vnc-viewport")
+        viewport = self.widget("console-vnc-viewport")
         if self.viewer is None:
             return
 
@@ -740,11 +844,13 @@ class vmmConsolePages(vmmGObjectUI):
             viewport.remove(w)
 
         v.close()
+        v.cleanup()
         self.viewer_connected = False
+        self.leave_fullscreen()
 
     def update_widget_states(self, vm, status_ignore):
         runable = vm.is_runable()
-        pages   = self.window.get_widget("console-pages")
+        pages   = self.widget("console-pages")
         page    = pages.get_current_page()
 
         if runable:
@@ -769,52 +875,70 @@ class vmmConsolePages(vmmGObjectUI):
     ###################
 
     def activate_unavailable_page(self, msg):
+        """
+        This function is passed to serialcon.py at least, so change
+        with care
+        """
         self.close_viewer()
-        self.window.get_widget("console-pages").set_current_page(PAGE_UNAVAILABLE)
-        self.window.get_widget("details-menu-vm-screenshot").set_sensitive(False)
-        self.window.get_widget("console-unavailable").set_label("<b>" + msg + "</b>")
+        self.widget("console-pages").set_current_page(PAGE_UNAVAILABLE)
+        self.widget("details-menu-vm-screenshot").set_sensitive(False)
+        self.widget("console-unavailable").set_label("<b>" + msg + "</b>")
 
     def activate_auth_page(self, withPassword=True, withUsername=False):
         (pw, username) = self.config.get_console_password(self.vm)
-        self.window.get_widget("details-menu-vm-screenshot").set_sensitive(False)
+        self.widget("details-menu-vm-screenshot").set_sensitive(False)
 
         if withPassword:
-            self.window.get_widget("console-auth-password").show()
-            self.window.get_widget("label-auth-password").show()
+            self.widget("console-auth-password").show()
+            self.widget("label-auth-password").show()
         else:
-            self.window.get_widget("console-auth-password").hide()
-            self.window.get_widget("label-auth-password").hide()
+            self.widget("console-auth-password").hide()
+            self.widget("label-auth-password").hide()
 
         if withUsername:
-            self.window.get_widget("console-auth-username").show()
-            self.window.get_widget("label-auth-username").show()
+            self.widget("console-auth-username").show()
+            self.widget("label-auth-username").show()
         else:
-            self.window.get_widget("console-auth-username").hide()
-            self.window.get_widget("label-auth-username").hide()
+            self.widget("console-auth-username").hide()
+            self.widget("label-auth-username").hide()
 
-        self.window.get_widget("console-auth-username").set_text(username)
-        self.window.get_widget("console-auth-password").set_text(pw)
+        self.widget("console-auth-username").set_text(username)
+        self.widget("console-auth-password").set_text(pw)
 
         if self.config.has_keyring():
-            self.window.get_widget("console-auth-remember").set_sensitive(True)
+            self.widget("console-auth-remember").set_sensitive(True)
             if pw != "" or username != "":
-                self.window.get_widget("console-auth-remember").set_active(True)
+                self.widget("console-auth-remember").set_active(True)
             else:
-                self.window.get_widget("console-auth-remember").set_active(False)
+                self.widget("console-auth-remember").set_active(False)
         else:
-            self.window.get_widget("console-auth-remember").set_sensitive(False)
-        self.window.get_widget("console-pages").set_current_page(PAGE_AUTHENTICATE)
+            self.widget("console-auth-remember").set_sensitive(False)
+        self.widget("console-pages").set_current_page(PAGE_AUTHENTICATE)
         if withUsername:
-            self.window.get_widget("console-auth-username").grab_focus()
+            self.widget("console-auth-username").grab_focus()
         else:
-            self.window.get_widget("console-auth-password").grab_focus()
+            self.widget("console-auth-password").grab_focus()
 
 
     def activate_viewer_page(self):
-        self.window.get_widget("console-pages").set_current_page(PAGE_VIEWER)
-        self.window.get_widget("details-menu-vm-screenshot").set_sensitive(True)
+        self.widget("console-pages").set_current_page(PAGE_VIEWER)
+        self.widget("details-menu-vm-screenshot").set_sensitive(True)
         if self.viewer and self.viewer.get_widget():
             self.viewer.get_widget().grab_focus()
+
+    def page_changed(self, ignore1=None, ignore2=None, ignore3=None):
+        self.set_allow_fullscreen()
+
+    def set_allow_fullscreen(self):
+        cpage = self.widget("console-pages").get_current_page()
+        dpage = self.widget("details-pages").get_current_page()
+
+        allow_fullscreen = (dpage == 0 and
+                            cpage == PAGE_VIEWER and
+                            self.viewer_connected)
+
+        self.widget("control-fullscreen").set_sensitive(allow_fullscreen)
+        self.widget("details-menu-view-fullscreen").set_sensitive(allow_fullscreen)
 
     def disconnected(self):
         errout = ""
@@ -843,6 +967,13 @@ class vmmConsolePages(vmmGObjectUI):
 
         self.activate_unavailable_page(error)
 
+    def _set_viewer_connected(self, val):
+        self._viewer_connected = val
+        self.set_allow_fullscreen()
+    def _get_viewer_connected(self):
+        return self._viewer_connected
+    viewer_connected = property(_get_viewer_connected, _set_viewer_connected)
+
     def connected(self):
         self.viewer_connected = True
         logging.debug("Viewer connected")
@@ -860,7 +991,7 @@ class vmmConsolePages(vmmGObjectUI):
             logging.error("Too many connection failures, not retrying again")
             return
 
-        util.safe_timeout_add(self.viewerRetryDelay, self.try_login)
+        self.safe_timeout_add(self.viewerRetryDelay, self.try_login)
 
         if self.viewerRetryDelay < 2000:
             self.viewerRetryDelay = self.viewerRetryDelay * 2
@@ -870,10 +1001,7 @@ class vmmConsolePages(vmmGObjectUI):
                 not self.is_visible())
 
     def guest_not_avail(self):
-        return (not self.vm.get_handle() or
-                self.vm.status() in [libvirt.VIR_DOMAIN_SHUTOFF,
-                                     libvirt.VIR_DOMAIN_CRASHED] or
-                self.vm.get_id() < 0)
+        return (self.vm.is_shutoff() or self.vm.is_crashed())
 
     def try_login(self, src_ignore=None):
         if self.viewer_connecting:
@@ -913,7 +1041,7 @@ class vmmConsolePages(vmmGObjectUI):
             return
 
         if protocol not in self.config.embeddable_graphics():
-            logging.debug("Don't know how to show graphics type '%s'"
+            logging.debug("Don't know how to show graphics type '%s' "
                           "disabling console page" % protocol)
 
             msg = (_("Cannot display graphical console type '%s'")
@@ -940,12 +1068,12 @@ class vmmConsolePages(vmmGObjectUI):
                        gaddr, gport, gsocket))
         try:
             if protocol == "vnc":
-                self.viewer = VNCViewer(self, self.config)
-                self.window.get_widget("console-vnc-viewport").add(
+                self.viewer = VNCViewer(self)
+                self.widget("console-vnc-viewport").add(
                                                     self.viewer.get_widget())
                 self.viewer.init_widget()
             elif protocol == "spice":
-                self.viewer = SpiceViewer(self, self.config)
+                self.viewer = SpiceViewer(self)
 
             self.set_enable_accel()
 
@@ -970,20 +1098,16 @@ class vmmConsolePages(vmmGObjectUI):
                     _("Error connecting to graphical console") + ":\n%s" % e)
 
     def set_credentials(self, src_ignore=None):
-        passwd = self.window.get_widget("console-auth-password")
+        passwd = self.widget("console-auth-password")
         if passwd.flags() & gtk.VISIBLE:
             self.viewer.set_credential_password(passwd.get_text())
-        username = self.window.get_widget("console-auth-username")
+        username = self.widget("console-auth-username")
         if username.flags() & gtk.VISIBLE:
             self.viewer.set_credential_username(username.get_text())
 
-        if self.window.get_widget("console-auth-remember").get_active():
+        if self.widget("console-auth-remember").get_active():
             self.config.set_console_password(self.vm, passwd.get_text(),
                                              username.get_text())
-
-    def desktop_resize(self, src_ignore, w, h):
-        self.desktop_resolution = (w, h)
-        self.window.get_widget("console-vnc-scroll").queue_resize()
 
     def queue_scroll_resize_helper(self, w, h):
         """
@@ -991,7 +1115,7 @@ class vmmConsolePages(vmmGObjectUI):
         isn't a hard requirment so the user can still shrink the window
         again, as opposed to set_size_request
         """
-        widget = self.window.get_widget("console-vnc-scroll")
+        widget = self.widget("console-vnc-scroll")
         signal_holder = []
 
         def restore_scroll(src):
@@ -1009,7 +1133,7 @@ class vmmConsolePages(vmmGObjectUI):
 
         def unset_cb(src):
             src.queue_resize_no_redraw()
-            util.safe_idle_add(restore_scroll, src)
+            self.safe_idle_add(restore_scroll, src)
             return False
 
         def request_cb(src, req):
@@ -1019,7 +1143,7 @@ class vmmConsolePages(vmmGObjectUI):
 
             src.disconnect(signal_id)
 
-            util.safe_idle_add(unset_cb, widget)
+            self.safe_idle_add(unset_cb, widget)
             return False
 
         # Disable scroll bars while we resize, since resizing to the VM's
@@ -1032,17 +1156,19 @@ class vmmConsolePages(vmmGObjectUI):
         widget.queue_resize()
 
     def scroll_size_allocate(self, src_ignore, req):
-        if not self.viewer or not self.desktop_resolution:
+        if not self.viewer or not self.viewer.get_desktop_resolution():
             return
 
-        scroll = self.window.get_widget("console-vnc-scroll")
+        scroll = self.widget("console-vnc-scroll")
         is_scale = self.viewer.get_scaling()
 
         dx = 0
         dy = 0
         align_ratio = float(req.width) / float(req.height)
 
-        desktop_w, desktop_h = self.desktop_resolution
+        desktop_w, desktop_h = self.viewer.get_desktop_resolution()
+        if desktop_h == 0:
+            return
         desktop_ratio = float(desktop_w) / float(desktop_h)
 
         if not is_scale:

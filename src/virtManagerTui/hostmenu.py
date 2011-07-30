@@ -16,9 +16,8 @@
 # MA  02110-1301, USA.  A copy of the GNU General Public License is
 # also available at http://www.gnu.org/copyleft/gpl.html.
 
-from snack import *
+from newt_syrup.menuscreen import MenuScreen
 
-from menuscreen import MenuScreen
 from changehost import ChangeHost
 from addhost    import AddHost
 from removehost import RemoveHost
@@ -37,9 +36,12 @@ class HostMenuScreen(MenuScreen):
                 ("Remove A Host", REMOVE_HOST))
 
     def handle_selection(self, item):
-        if   item is SELECT_HOST: ChangeHost()
-        elif item is ADD_HOST:    AddHost()
-        elif item is REMOVE_HOST: RemoveHost()
+        if   item is SELECT_HOST:
+            ChangeHost()
+        elif item is ADD_HOST:
+            AddHost()
+        elif item is REMOVE_HOST:
+            RemoveHost()
 
 def HostMenu():
     screen = HostMenuScreen()

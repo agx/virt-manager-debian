@@ -23,47 +23,21 @@ import logging
 import gtk
 import gconf
 
-import libvirt
 import virtinst
-
-_spice_error = None
-try:
-    import SpiceClientGtk
-    ignore = SpiceClientGtk
-except Exception, _spice_error:
-    logging.debug("Error importing spice: %s" % _spice_error)
 
 from virtManager.keyring import vmmKeyring
 from virtManager.secret import vmmSecret
-
-CONSOLE_POPUP_NEVER = 0
-CONSOLE_POPUP_NEW_ONLY = 1
-CONSOLE_POPUP_ALWAYS = 2
-
-CONSOLE_KEYGRAB_NEVER = 0
-CONSOLE_KEYGRAB_FULLSCREEN = 1
-CONSOLE_KEYGRAB_MOUSEOVER = 2
-
-STATS_CPU = 0
-STATS_DISK = 1
-STATS_NETWORK = 2
-
-DEFAULT_XEN_IMAGE_DIR = "/var/lib/xen/images"
-DEFAULT_XEN_SAVE_DIR = "/var/lib/xen/dump"
-
-DEFAULT_VIRT_IMAGE_DIR = "/var/lib/libvirt/images"
-DEFAULT_VIRT_SAVE_DIR = "/var/lib/libvirt"
-
-running_config = None
 
 class vmmConfig(object):
 
     # GConf directory names for saving last used paths
     CONFIG_DIR_IMAGE = "image"
-    CONFIG_DIR_MEDIA = "media"
+    CONFIG_DIR_ISO_MEDIA = "isomedia"
+    CONFIG_DIR_FLOPPY_MEDIA = "floppymedia"
     CONFIG_DIR_SAVE = "save"
     CONFIG_DIR_RESTORE = "restore"
     CONFIG_DIR_SCREENSHOT = "screenshot"
+    CONFIG_DIR_FS = "fs"
 
     # Metadata mapping for browse types. Prob shouldn't go here, but works
     # for now.
@@ -74,33 +48,52 @@ class vmmConfig(object):
             "local_title"   : _("Locate existing storage"),
         },
 
-        CONFIG_DIR_MEDIA : {
+        CONFIG_DIR_ISO_MEDIA : {
             "enable_create" : False,
             "storage_title" : _("Locate ISO media volume"),
             "local_title"   : _("Locate ISO media"),
-        }
+        },
+
+        CONFIG_DIR_FLOPPY_MEDIA : {
+            "enable_create" : False,
+            "storage_title" : _("Locate floppy media volume"),
+            "local_title"   : _("Locate floppy media"),
+        },
+
+        CONFIG_DIR_FS : {
+            "enable_create" : False,
+            "storage_title" : _("Locate directory volume"),
+            "local_title"   : _("Locate directory volume"),
+            "dialog_type"   : gtk.FILE_CHOOSER_ACTION_SELECT_FOLDER,
+        },
     }
 
     CONSOLE_SCALE_NEVER = 0
     CONSOLE_SCALE_FULLSCREEN = 1
     CONSOLE_SCALE_ALWAYS = 2
 
+    CONSOLE_KEYGRAB_NEVER = 0
+    CONSOLE_KEYGRAB_FULLSCREEN = 1
+    CONSOLE_KEYGRAB_MOUSEOVER = 2
+
     _PEROBJ_FUNC_SET    = 0
     _PEROBJ_FUNC_GET    = 1
     _PEROBJ_FUNC_LISTEN = 2
 
-    def __init__(self, appname, appversion, gconf_dir, glade_dir, icon_dir,
-                 data_dir):
+    DEFAULT_XEN_IMAGE_DIR = "/var/lib/xen/images"
+    DEFAULT_XEN_SAVE_DIR = "/var/lib/xen/dump"
+
+    DEFAULT_VIRT_IMAGE_DIR = "/var/lib/libvirt/images"
+    DEFAULT_VIRT_SAVE_DIR = "/var/lib/libvirt"
+
+    def __init__(self, appname, appversion, glade_dir):
         self.appname = appname
         self.appversion = appversion
-        self.conf_dir = gconf_dir
-        self.conf = gconf.client_get_default()
-        self.conf.add_dir(gconf_dir,
-                          gconf.CLIENT_PRELOAD_NONE)
-
+        self.conf_dir = "/apps/" + appname
         self.glade_dir = glade_dir
-        self.icon_dir = icon_dir
-        self.data_dir = data_dir
+
+        self.conf = gconf.client_get_default()
+        self.conf.add_dir(self.conf_dir, gconf.CLIENT_PRELOAD_NONE)
 
         # We don't create it straight away, since we don't want
         # to block the app pending user authorizaation to access
@@ -110,71 +103,91 @@ class vmmConfig(object):
         self.default_qemu_user = "root"
 
         # Use this key to disable certain features not supported on RHEL
-        self.enable_unsupported_rhel_opts = True
+        self.rhel6_defaults = True
         self.preferred_distros = []
         self.hv_packages = []
         self.libvirt_packages = []
 
-        self.status_icons = {
-            libvirt.VIR_DOMAIN_BLOCKED: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_running.png", 18, 18),
-            libvirt.VIR_DOMAIN_CRASHED: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_crashed.png", 18, 18),
-            libvirt.VIR_DOMAIN_PAUSED: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_paused.png", 18, 18),
-            libvirt.VIR_DOMAIN_RUNNING: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_running.png", 18, 18),
-            libvirt.VIR_DOMAIN_SHUTDOWN: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_shutoff.png", 18, 18),
-            libvirt.VIR_DOMAIN_SHUTOFF: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_shutoff.png", 18, 18),
-            libvirt.VIR_DOMAIN_NOSTATE: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_running.png", 18, 18),
-            }
-        self.status_icons_large = {
-            libvirt.VIR_DOMAIN_BLOCKED: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_running.png", 32, 32),
-            libvirt.VIR_DOMAIN_CRASHED: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_crashed.png", 32, 32),
-            libvirt.VIR_DOMAIN_PAUSED: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_paused.png", 32, 32),
-            libvirt.VIR_DOMAIN_RUNNING: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_running.png", 32, 32),
-            libvirt.VIR_DOMAIN_SHUTDOWN: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_shutoff.png", 32, 32),
-            libvirt.VIR_DOMAIN_SHUTOFF: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_shutoff.png", 32, 32),
-            libvirt.VIR_DOMAIN_NOSTATE: gtk.gdk.pixbuf_new_from_file_at_size(self.get_icon_dir() + "/state_running.png", 32, 32),
-            }
+        self._objects = []
 
+        self.support_threading = virtinst.support.support_threading()
+
+        self.support_inspection = self.check_inspection(self.support_threading)
+
+        self._spice_error = None
+
+    def check_inspection(self, support_threading):
+        if not support_threading:
+            return False
+
+        try:
+            # Check we can open the Python guestfs module.
+            from guestfs import GuestFS
+            g = GuestFS()
+
+            # Check for the first version which fixed Python GIL bug.
+            version = g.version()
+            if version["major"] == 1: # major must be 1
+                if version["minor"] == 8:
+                    if version["release"] >= 6: # >= 1.8.6
+                        return True
+                elif version["minor"] == 10:
+                    if version["release"] >= 1: # >= 1.10.1
+                        return True
+                elif version["minor"] == 11:
+                    if version["release"] >= 2: # >= 1.11.2
+                        return True
+                elif version["minor"] >= 12:    # >= 1.12, 1.13, etc.
+                    return True
+        except:
+            pass
+
+        return False
 
     # General app wide helpers (gconf agnostic)
 
-    def get_vm_status_icon(self, state):
-        return self.status_icons[state]
-
-    def get_vm_status_icon_large(self, state):
-        return self.status_icons_large[state]
-
     def get_shutdown_icon_name(self):
         theme = gtk.icon_theme_get_default()
-        if theme.has_icon("system-shutdown"):
-            return "system-shutdown"
-        return "icon_shutdown"
+        iconname = "system-shutdown"
+        if theme.has_icon(iconname):
+            return iconname
+        return "media-playback-stop"
 
     def get_appname(self):
         return self.appname
-
     def get_appversion(self):
         return self.appversion
-
     def get_glade_dir(self):
         return self.glade_dir
 
-    def get_glade_file(self):
-        return self.glade_dir + "/" + self.appname + ".glade"
-
-    def get_icon_dir(self):
-        return self.icon_dir
-
-    def get_data_dir(self):
-        return self.data_dir
-
     def get_spice_error(self):
-        return _spice_error and str(_spice_error) or None
+        if self._spice_error is None:
+            try:
+                import SpiceClientGtk
+                ignore = SpiceClientGtk
+                self._spice_error = False
+            except Exception, self._spice_error:
+                logging.debug("Error importing spice: %s" % self._spice_error)
+
+        return self._spice_error and str(self._spice_error) or None
 
     def embeddable_graphics(self):
         ret = ["vnc"]
         if not bool(self.get_spice_error()):
             ret.append("spice")
         return ret
+
+    def remove_notifier(self, h):
+        self.conf.notify_remove(h)
+
+    # Used for debugging reference leaks, we keep track of all objects
+    # come and go so we can do a leak report at app shutdown
+    def add_object(self, obj):
+        self._objects.append(obj)
+    def remove_object(self, obj):
+        self._objects.remove(obj)
+    def get_objects(self):
+        return self._objects[:]
 
     # Per-VM/Connection/Connection Host Option dealings
     def _perconn_helper(self, uri, pref_func, func_type, value=None):
@@ -220,7 +233,7 @@ class vmmConfig(object):
             elif func_type == self._PEROBJ_FUNC_GET:
                 ret = pref_func()
             elif func_type == self._PEROBJ_FUNC_LISTEN:
-                pref_func(value)
+                ret = pref_func(value)
         finally:
             self.conf_dir = oldconf
 
@@ -242,7 +255,8 @@ class vmmConfig(object):
             ret = pref_func()
         return ret
     def listen_pervm(self, uri, uuid, pref_func, cb):
-        self._pervm_helper(uri, uuid, pref_func, self._PEROBJ_FUNC_LISTEN, cb)
+        return self._pervm_helper(uri, uuid, pref_func,
+                                  self._PEROBJ_FUNC_LISTEN, cb)
 
     def set_perconn(self, uri, pref_func, value):
         self._perconn_helper(uri, pref_func, self._PEROBJ_FUNC_SET, value)
@@ -253,7 +267,8 @@ class vmmConfig(object):
             ret = pref_func()
         return ret
     def listen_perconn(self, uri, pref_func, cb):
-        self._perconn_helper(uri, pref_func, self._PEROBJ_FUNC_LISTEN, cb)
+        return self._perconn_helper(uri, pref_func,
+                                    self._PEROBJ_FUNC_LISTEN, cb)
 
     def set_perhost(self, uri, pref_func, value):
         self._perhost_helper(uri, pref_func, self._PEROBJ_FUNC_SET, value)
@@ -264,7 +279,8 @@ class vmmConfig(object):
             ret = pref_func()
         return ret
     def listen_perhost(self, uri, pref_func, cb):
-        self._perhost_helper(uri, pref_func, self._PEROBJ_FUNC_LISTEN, cb)
+        return self._perhost_helper(uri, pref_func,
+                                    self._PEROBJ_FUNC_LISTEN, cb)
 
     def reconcile_vm_entries(self, uri, current_vms):
         """
@@ -292,29 +308,40 @@ class vmmConfig(object):
     #########################
 
     # Manager stats view preferences
-    def is_vmlist_cpu_usage_visible(self):
+    def is_vmlist_guest_cpu_usage_visible(self):
         return self.conf.get_bool(self.conf_dir + "/vmlist-fields/cpu_usage")
+    def is_vmlist_host_cpu_usage_visible(self):
+        return self.conf.get_bool(self.conf_dir +
+                                  "/vmlist-fields/host_cpu_usage")
     def is_vmlist_disk_io_visible(self):
         return self.conf.get_bool(self.conf_dir + "/vmlist-fields/disk_usage")
     def is_vmlist_network_traffic_visible(self):
         return self.conf.get_bool(self.conf_dir +
                                   "/vmlist-fields/network_traffic")
 
-    def set_vmlist_cpu_usage_visible(self, state):
+    def set_vmlist_guest_cpu_usage_visible(self, state):
         self.conf.set_bool(self.conf_dir + "/vmlist-fields/cpu_usage", state)
+    def set_vmlist_host_cpu_usage_visible(self, state):
+        self.conf.set_bool(self.conf_dir + "/vmlist-fields/host_cpu_usage",
+                           state)
     def set_vmlist_disk_io_visible(self, state):
         self.conf.set_bool(self.conf_dir + "/vmlist-fields/disk_usage", state)
     def set_vmlist_network_traffic_visible(self, state):
         self.conf.set_bool(self.conf_dir + "/vmlist-fields/network_traffic",
                            state)
 
-    def on_vmlist_cpu_usage_visible_changed(self, cb):
-        self.conf.notify_add(self.conf_dir + "/vmlist-fields/cpu_usage", cb)
+    def on_vmlist_guest_cpu_usage_visible_changed(self, cb):
+        return self.conf.notify_add(self.conf_dir + "/vmlist-fields/cpu_usage",
+                                    cb)
+    def on_vmlist_host_cpu_usage_visible_changed(self, cb):
+        return self.conf.notify_add(self.conf_dir +
+                                    "/vmlist-fields/host_cpu_usage", cb)
     def on_vmlist_disk_io_visible_changed(self, cb):
-        self.conf.notify_add(self.conf_dir + "/vmlist-fields/disk_usage", cb)
+        return self.conf.notify_add(self.conf_dir + "/vmlist-fields/disk_usage",
+                                    cb)
     def on_vmlist_network_traffic_visible_changed(self, cb):
-        self.conf.notify_add(self.conf_dir + "/vmlist-fields/network_traffic",
-                             cb)
+        return self.conf.notify_add(
+                        self.conf_dir + "/vmlist-fields/network_traffic", cb)
 
     # Check whether we have GTK-VNC that supports configurable grab keys
     # installed on the system
@@ -367,6 +394,8 @@ class vmmConfig(object):
         return self.conf.get_bool(self.conf_dir + "/confirm/removedev")
     def get_confirm_interface(self):
         return self.conf.get_bool(self.conf_dir + "/confirm/interface_power")
+    def get_confirm_unapplied(self):
+        return self.conf.get_bool(self.conf_dir + "/confirm/unapplied_dev")
 
 
     def set_confirm_forcepoweroff(self, val):
@@ -379,22 +408,26 @@ class vmmConfig(object):
         self.conf.set_bool(self.conf_dir + "/confirm/removedev", val)
     def set_confirm_interface(self, val):
         self.conf.set_bool(self.conf_dir + "/confirm/interface_power", val)
+    def set_confirm_unapplied(self, val):
+        self.conf.set_bool(self.conf_dir + "/confirm/unapplied_dev", val)
 
     def on_confirm_forcepoweroff_changed(self, cb):
-        self.conf.notify_add(self.conf_dir + "/confirm/forcepoweroff", cb)
+        return self.conf.notify_add(self.conf_dir + "/confirm/forcepoweroff", cb)
     def on_confirm_poweroff_changed(self, cb):
-        self.conf.notify_add(self.conf_dir + "/confirm/poweroff", cb)
+        return self.conf.notify_add(self.conf_dir + "/confirm/poweroff", cb)
     def on_confirm_pause_changed(self, cb):
-        self.conf.notify_add(self.conf_dir + "/confirm/pause", cb)
+        return self.conf.notify_add(self.conf_dir + "/confirm/pause", cb)
     def on_confirm_removedev_changed(self, cb):
-        self.conf.notify_add(self.conf_dir + "/confirm/removedev", cb)
+        return self.conf.notify_add(self.conf_dir + "/confirm/removedev", cb)
     def on_confirm_interface_changed(self, cb):
-        self.conf.notify_add(self.conf_dir + "/confirm/interface_power", cb)
+        return self.conf.notify_add(self.conf_dir + "/confirm/interface_power", cb)
+    def on_confirm_unapplied_changed(self, cb):
+        return self.conf.notify_add(self.conf_dir + "/confirm/unapplied_dev", cb)
 
 
     # System tray visibility
     def on_view_system_tray_changed(self, callback):
-        self.conf.notify_add(self.conf_dir + "/system-tray", callback)
+        return self.conf.notify_add(self.conf_dir + "/system-tray", callback)
     def get_view_system_tray(self):
         return self.conf.get_bool(self.conf_dir + "/system-tray")
     def set_view_system_tray(self, val):
@@ -419,9 +452,9 @@ class vmmConfig(object):
         self.conf.set_int(self.conf_dir + "/stats/history-length", length)
 
     def on_stats_update_interval_changed(self, callback):
-        self.conf.notify_add(self.conf_dir + "/stats/update-interval", callback)
+        return self.conf.notify_add(self.conf_dir + "/stats/update-interval", callback)
     def on_stats_history_length_changed(self, callback):
-        self.conf.notify_add(self.conf_dir + "/stats/history-length", callback)
+        return self.conf.notify_add(self.conf_dir + "/stats/history-length", callback)
 
 
     # Disable/Enable different stats polling
@@ -436,25 +469,15 @@ class vmmConfig(object):
         self.conf.set_bool(self.conf_dir + "/stats/enable-net-poll", val)
 
     def on_stats_enable_disk_poll_changed(self, cb, userdata=None):
-        self.conf.notify_add(self.conf_dir + "/stats/enable-disk-poll", cb,
-                             userdata)
+        return self.conf.notify_add(self.conf_dir + "/stats/enable-disk-poll",
+                                    cb, userdata)
     def on_stats_enable_net_poll_changed(self, cb, userdata=None):
-        self.conf.notify_add(self.conf_dir + "/stats/enable-net-poll", cb,
-                             userdata)
+        return self.conf.notify_add(self.conf_dir + "/stats/enable-net-poll",
+                                    cb, userdata)
 
     # VM Console preferences
-    def on_console_popup_changed(self, callback):
-        self.conf.notify_add(self.conf_dir + "/console/popup", callback)
-    def get_console_popup(self):
-        console_pref = self.conf.get_int(self.conf_dir + "/console/popup")
-        if console_pref == None:
-            console_pref = 0
-        return console_pref
-    def set_console_popup(self, pref):
-        self.conf.set_int(self.conf_dir + "/console/popup", pref)
-
     def on_console_accels_changed(self, callback):
-        self.conf.notify_add(self.conf_dir + "/console/enable-accels", callback)
+        return self.conf.notify_add(self.conf_dir + "/console/enable-accels", callback)
     def get_console_accels(self):
         console_pref = self.conf.get_bool(self.conf_dir +
                                           "/console/enable-accels")
@@ -465,7 +488,7 @@ class vmmConfig(object):
         self.conf.set_bool(self.conf_dir + "/console/enable-accels", pref)
 
     def on_console_scaling_changed(self, callback):
-        self.conf.notify_add(self.conf_dir + "/console/scaling", callback)
+        return self.conf.notify_add(self.conf_dir + "/console/scaling", callback)
     def get_console_scaling(self):
         ret = self.conf.get(self.conf_dir + "/console/scaling")
         if ret != None:
@@ -504,9 +527,9 @@ class vmmConfig(object):
         self.conf.set_bool(self.conf_dir + "/new-vm/remote-sound", state)
 
     def on_sound_local_changed(self, cb, data=None):
-        self.conf.notify_add(self.conf_dir + "/new-vm/local-sound", cb, data)
+        return self.conf.notify_add(self.conf_dir + "/new-vm/local-sound", cb, data)
     def on_sound_remote_changed(self, cb, data=None):
-        self.conf.notify_add(self.conf_dir + "/new-vm/remote-sound", cb, data)
+        return self.conf.notify_add(self.conf_dir + "/new-vm/remote-sound", cb, data)
 
     def get_graphics_type(self):
         ret = self.conf.get_string(self.conf_dir + "/new-vm/graphics_type")
@@ -517,8 +540,8 @@ class vmmConfig(object):
         self.conf.set_string(self.conf_dir + "/new-vm/graphics_type",
                              gtype.lower())
     def on_graphics_type_changed(self, cb, data=None):
-        self.conf.notify_add(self.conf_dir + "/new-vm/graphics_type",
-                             cb, data)
+        return self.conf.notify_add(self.conf_dir + "/new-vm/graphics_type",
+                                    cb, data)
 
 
     # URL/Media path history
@@ -576,7 +599,7 @@ class vmmConfig(object):
 
 
     # Manager view connection list
-    def add_connection(self, uri):
+    def add_conn(self, uri):
         uris = self.conf.get_list(self.conf_dir + "/connections/uris",
                                   gconf.VALUE_STRING)
         if uris == None:
@@ -586,7 +609,7 @@ class vmmConfig(object):
             uris.insert(len(uris) - 1, uri)
             self.conf.set_list(self.conf_dir + "/connections/uris",
                                gconf.VALUE_STRING, uris)
-    def remove_connection(self, uri):
+    def remove_conn(self, uri):
         uris = self.conf.get_list(self.conf_dir + "/connections/uris",
                                   gconf.VALUE_STRING)
         if uris == None:
@@ -605,7 +628,7 @@ class vmmConfig(object):
             self.conf.set_list(self.conf_dir + "/connections/autoconnect",
                                gconf.VALUE_STRING, uris)
 
-    def get_connections(self):
+    def get_conn_uris(self):
         return self.conf.get_list(self.conf_dir + "/connections/uris",
                                   gconf.VALUE_STRING)
 
@@ -639,20 +662,28 @@ class vmmConfig(object):
 
 
     # Default directory location dealings
+    def _get_default_dir_key(self, typ):
+        if (typ == self.CONFIG_DIR_ISO_MEDIA or
+            typ == self.CONFIG_DIR_FLOPPY_MEDIA):
+            return "media"
+        return typ
+
     def get_default_directory(self, conn, _type):
         if not _type:
-            logging.error("Unknown type for get_default_directory")
+            logging.error("Unknown type '%s' for get_default_directory" % _type)
             return
 
+        key = self._get_default_dir_key(_type)
         try:
-            path = self.conf.get_value(self.conf_dir + "/paths/default-%s-path"
-                                                                       % _type)
+            path = self.conf.get_value(self.conf_dir +
+                                       "/paths/default-%s-path" % key)
         except:
             path = None
 
         if not path:
             if (_type == self.CONFIG_DIR_IMAGE or
-                _type == self.CONFIG_DIR_MEDIA):
+                _type == self.CONFIG_DIR_ISO_MEDIA or
+                _type == self.CONFIG_DIR_FLOPPY_MEDIA):
                 path = self.get_default_image_dir(conn)
             if (_type == self.CONFIG_DIR_SAVE or
                 _type == self.CONFIG_DIR_RESTORE):
@@ -670,23 +701,23 @@ class vmmConfig(object):
         self.conf.set_string(self.conf_dir + "/paths/default-%s-path" % _type,
                              folder)
 
-    def get_default_image_dir(self, connection):
-        if connection.is_xen():
-            return DEFAULT_XEN_IMAGE_DIR
+    def get_default_image_dir(self, conn):
+        if conn.is_xen():
+            return self.DEFAULT_XEN_IMAGE_DIR
 
-        if (connection.is_qemu_session() or
-            not os.access(DEFAULT_VIRT_IMAGE_DIR, os.W_OK)):
+        if (conn.is_qemu_session() or
+            not os.access(self.DEFAULT_VIRT_IMAGE_DIR, os.W_OK)):
             return os.getcwd()
 
         # Just return the default dir since the intention is that it
         # is a managed pool and the user will be able to install to it.
-        return DEFAULT_VIRT_IMAGE_DIR
+        return self.DEFAULT_VIRT_IMAGE_DIR
 
-    def get_default_save_dir(self, connection):
-        if connection.is_xen():
-            return DEFAULT_XEN_SAVE_DIR
-        elif os.access(DEFAULT_VIRT_SAVE_DIR, os.W_OK):
-            return DEFAULT_VIRT_SAVE_DIR
+    def get_default_save_dir(self, conn):
+        if conn.is_xen():
+            return self.DEFAULT_XEN_SAVE_DIR
+        elif os.access(self.DEFAULT_VIRT_SAVE_DIR, os.W_OK):
+            return self.DEFAULT_VIRT_SAVE_DIR
         else:
             return os.getcwd()
 
@@ -726,7 +757,7 @@ class vmmConfig(object):
             if secret != None and secret.get_name() == self.get_secret_name(vm):
                 if not(secret.has_attribute("hvuri")):
                     return ("", "")
-                if secret.get_attribute("hvuri") != vm.get_connection().get_uri():
+                if secret.get_attribute("hvuri") != vm.conn.get_uri():
                     return ("", "")
                 if not(secret.has_attribute("uuid")):
                     return ("", "")
@@ -747,7 +778,7 @@ class vmmConfig(object):
 
         secret = vmmSecret(self.get_secret_name(vm), password,
                            {"uuid" : vm.get_uuid(),
-                            "hvuri": vm.get_connection().get_uri()})
+                            "hvuri": vm.conn.get_uri()})
         _id = self.keyring.add_secret(secret)
         if _id != None:
             self.conf.set_int(self.conf_dir + "/console/passwords/" + vm.get_uuid(), _id)

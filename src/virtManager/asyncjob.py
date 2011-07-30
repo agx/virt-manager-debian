@@ -27,7 +27,6 @@ import gobject
 
 import libvirt
 
-from virtManager import util
 from virtManager.baseclass import vmmGObjectUI
 
 # This thin wrapper only exists so we can put debugging
@@ -53,31 +52,55 @@ def cb_wrapper(callback, asyncjob, *args, **kwargs):
         asyncjob.set_error(str(e), "".join(traceback.format_exc()))
 
 def _simple_async(callback, args, title, text, parent, errorintro,
-                  show_progress):
-    asyncjob = vmmAsyncJob(callback, args, title, text,
-                           show_progress=show_progress)
+                  show_progress, simplecb):
+    """
+    @show_progress: Whether to actually show a progress dialog
+    @simplecb: If true, build a callback wrapper that ignores the asyncjob
+               param that's passed to every cb by default
+    """
+    docb = callback
+    if simplecb:
+        def tmpcb(job, *args, **kwargs):
+            ignore = job
+            callback(*args, **kwargs)
+        docb = tmpcb
+
+    asyncjob = vmmAsyncJob(docb, args, title, text, parent.topwin,
+                           show_progress=show_progress,
+                           run_main=parent.config.support_threading)
     error, details = asyncjob.run()
     if error is None:
         return
 
     error = errorintro + ": " + error
-    parent.err.show_err(error, error + "\n\n" + details)
+    parent.err.show_err(error,
+                        details=details)
 
 # Displays a progress bar while executing the "callback" method.
 class vmmAsyncJob(vmmGObjectUI):
 
     @staticmethod
-    def simple_async(callback, args, title, text, parent, errorintro):
-        _simple_async(callback, args, title, text, parent, errorintro, True)
+    def simple_async(callback, args, title, text, parent, errorintro,
+                     simplecb=True):
+        _simple_async(callback, args, title, text, parent, errorintro, True,
+                      simplecb)
 
     @staticmethod
-    def simple_async_noshow(callback, args, parent, errorintro):
-        _simple_async(callback, args, "", "", parent, errorintro, False)
+    def simple_async_noshow(callback, args, parent, errorintro, simplecb=True):
+        _simple_async(callback, args, "", "", parent, errorintro, False,
+                      simplecb)
 
 
-    def __init__(self, callback, args, title, text,
+    def __init__(self, callback, args, title, text, parent,
                  run_main=True, show_progress=True,
                  cancel_back=None, cancel_args=None):
+        """
+        @run_main: If False, run synchronously without a separate thread
+        @show_progress: If False, don't actually show a progress dialog
+        @cancel_back: If operation supports cancelling, call this function
+                      when cancel button is clicked
+        @cancel_args: Arguments for optional cancel_back
+        """
         vmmGObjectUI.__init__(self, "vmm-progress.glade", "vmm-progress")
 
         self.run_main = bool(run_main)
@@ -86,17 +109,18 @@ class vmmAsyncJob(vmmGObjectUI):
         self.cancel_args = cancel_args or []
         self.cancel_args = [self] + self.cancel_args
         if self.cancel_job:
-            self.window.get_widget("cancel-async-job").show()
+            self.widget("cancel-async-job").show()
         else:
-            self.window.get_widget("cancel-async-job").hide()
+            self.widget("cancel-async-job").hide()
         self.job_canceled = False
 
         self._error_info = None
         self._data = None
 
-        self.stage = self.window.get_widget("pbar-stage")
-        self.pbar = self.window.get_widget("pbar")
-        self.window.get_widget("pbar-text").set_text(text)
+        self.stage = self.widget("pbar-stage")
+        self.pbar = self.widget("pbar")
+        self.widget("pbar-text").set_text(text)
+        self.topwin.set_transient_for(parent)
 
         args = [self] + args
         self.bg_thread = asyncJobWorker(callback, args)
@@ -111,7 +135,7 @@ class vmmAsyncJob(vmmGObjectUI):
         self.topwin.set_title(title)
 
     def run(self):
-        timer = util.safe_timeout_add(100, self.exit_if_necessary)
+        timer = self.safe_timeout_add(100, self.exit_if_necessary)
 
         if self.show_progress:
             self.topwin.present()
@@ -136,7 +160,13 @@ class vmmAsyncJob(vmmGObjectUI):
             self.exit_if_necessary(force_exit=True)
 
         self.topwin.destroy()
+        self.cleanup()
         return self._get_error()
+
+    def _cleanup(self):
+        self.bg_thread = None
+        self.cancel_job = None
+        self.cancel_args = None
 
     def delete(self, ignore1=None, ignore2=None):
         thread_active = (self.bg_thread.isAlive() or not self.run_main)
@@ -157,12 +187,12 @@ class vmmAsyncJob(vmmGObjectUI):
         self.stage.set_text(text)
 
     def hide_warning(self):
-        self.window.get_widget("warning-box").hide()
+        self.widget("warning-box").hide()
 
     def show_warning(self, summary):
         markup = "<small>%s</small>" % summary
-        self.window.get_widget("warning-box").show()
-        self.window.get_widget("warning-text").set_markup(markup)
+        self.widget("warning-box").show()
+        self.widget("warning-text").set_markup(markup)
 
     def can_cancel(self):
         return bool(self.cancel_job)

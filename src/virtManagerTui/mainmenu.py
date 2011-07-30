@@ -16,22 +16,17 @@
 # MA  02110-1301, USA.  A copy of the GNU General Public License is
 # also available at http://www.gnu.org/copyleft/gpl.html.
 
-from snack import *
-import traceback
+from newt_syrup.menuscreen  import MenuScreen
 
-from menuscreen  import MenuScreen
 from nodemenu    import NodeMenu
 from netmenu     import NetworkMenu
 from storagemenu import StoragePoolMenu
 from hostmenu    import HostMenu
 
-import utils
-import logging
-
-NODE_MENU    =  1
-NETWORK_MENU =  2
-STORAGE_MENU =  3
-HOST_MENU    =  4
+NODE_MENU    = 1
+NETWORK_MENU = 2
+STORAGE_MENU = 3
+HOST_MENU    = 4
 EXIT_CONSOLE = 99
 
 class MainMenuScreen(MenuScreen):
@@ -45,10 +40,14 @@ class MainMenuScreen(MenuScreen):
                 ("Host Administration",         HOST_MENU))
 
     def handle_selection(self, page):
-        if   page is NODE_MENU:    NodeMenu()
-        elif page is NETWORK_MENU: NetworkMenu()
-        elif page is STORAGE_MENU: StoragePoolMenu()
-        elif page is HOST_MENU:    HostMenu()
+        if   page is NODE_MENU:
+            NodeMenu()
+        elif page is NETWORK_MENU:
+            NetworkMenu()
+        elif page is STORAGE_MENU:
+            StoragePoolMenu()
+        elif page is HOST_MENU:
+            HostMenu()
 
 def MainMenu():
     screen = MainMenuScreen()

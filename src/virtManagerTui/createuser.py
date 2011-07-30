@@ -18,8 +18,8 @@
 # MA  02110-1301, USA.  A copy of the GNU General Public License is
 # also available at http://www.gnu.org/copyleft/gpl.html.
 
-from snack import *
-from configscreen import ConfigScreen
+import snack
+from newt_syrup.configscreen import ConfigScreen
 from userworker import UserWorker
 
 import libuser
@@ -31,12 +31,17 @@ class CreateUserConfigScreen(ConfigScreen):
     def __init__(self):
         ConfigScreen.__init__(self, "Create A User Account")
         self.__username = None
+        self.__password = None
+        self.__confirm = None
+        self.__adminuser = None
         self.__useradmin = libuser.admin()
         self.__user_worker = UserWorker()
 
     def get_elements_for_page(self, screen, page):
-        if   page is DETAILS_PAGE: return self.get_details_page(screen)
-        elif page is CONFIRM_PAGE: return self.get_confirm_page(screen)
+        if   page is DETAILS_PAGE:
+            return self.get_details_page(screen)
+        elif page is CONFIRM_PAGE:
+            return self.get_confirm_page(screen)
 
     def validate_input(self, page, errors):
         if page is DETAILS_PAGE:
@@ -74,31 +79,34 @@ class CreateUserConfigScreen(ConfigScreen):
         return (page is CONFIRM_PAGE)
 
     def get_details_page(self, screen):
+        ignore = screen
+
         if self.__username is None:
-            self.__username = Entry(50, "")
-            self.__password = Entry(50, "", password = 1)
-            self.__confirm  = Entry(50, "", password = 1)
-            self.__adminuser = Checkbox("This user is an administrator", False)
-        grid = Grid(2, 4)
-        grid.setField(Label("Username:"), 0, 0, anchorRight = 1)
-        grid.setField(self.__username, 1, 0, anchorLeft = 1)
-        grid.setField(Label("Password:"), 0, 1, anchorRight = 1)
-        grid.setField(self.__password, 1, 1, anchorLeft = 1)
-        grid.setField(Label("Confirm password:"), 0, 2, anchorRight = 1)
-        grid.setField(self.__confirm, 1, 2, anchorLeft = 1)
-        grid.setField(Label(" "), 0, 3)
-        grid.setField(self.__adminuser, 1, 3, anchorLeft = 1)
-        return [Label("Enter The User Details"),
+            self.__username = snack.Entry(50, "")
+            self.__password = snack.Entry(50, "", password=1)
+            self.__confirm  = snack.Entry(50, "", password=1)
+            self.__adminuser = snack.Checkbox("This user is an administrator", False)
+        grid = snack.Grid(2, 4)
+        grid.setField(snack.Label("Username:"), 0, 0, anchorRight=1)
+        grid.setField(self.__username, 1, 0, anchorLeft=1)
+        grid.setField(snack.Label("Password:"), 0, 1, anchorRight=1)
+        grid.setField(self.__password, 1, 1, anchorLeft=1)
+        grid.setField(snack.Label("Confirm password:"), 0, 2, anchorRight=1)
+        grid.setField(self.__confirm, 1, 2, anchorLeft=1)
+        grid.setField(snack.Label(" "), 0, 3)
+        grid.setField(self.__adminuser, 1, 3, anchorLeft=1)
+        return [snack.Label("Enter The User Details"),
                 grid]
 
     def get_confirm_page(self, screen):
-        grid = Grid(1, 2)
-        grid.setField(Label("Username: %s" % self.__username.value()), 0, 0)
+        ignore = screen
+        grid = snack.Grid(1, 2)
+        grid.setField(snack.Label("Username: %s" % self.__username.value()), 0, 0)
         admin_label = "is not"
         if self.__adminuser.value():
             admin_label = "is"
-        grid.setField(Label("This user %s an administrator." % admin_label), 0, 1)
-        return [Label("Create this user account?"),
+        grid.setField(snack.Label("This user %s an administrator." % admin_label), 0, 1)
+        return [snack.Label("Create this user account?"),
                 grid]
 
 def CreateUser():

@@ -16,10 +16,8 @@
 # MA  02110-1301, USA.  A copy of the GNU General Public License is
 # also available at http://www.gnu.org/copyleft/gpl.html.
 
-from snack import *
-import traceback
+from newt_syrup.menuscreen import MenuScreen
 
-from menuscreen    import MenuScreen
 from addpool       import AddStoragePool
 from startpool     import StartStoragePool
 from stoppool      import StopStoragePool
@@ -50,13 +48,20 @@ class StoragePoolMenuScreen(MenuScreen):
                 ("List Storage Pools",      LIST_POOLS))
 
     def handle_selection(self, item):
-        if   item is ADD_POOL:      AddStoragePool()
-        elif item is START_POOL:    StartStoragePool()
-        elif item is STOP_POOL:     StopStoragePool()
-        elif item is REMOVE_POOL:   RemoveStoragePool()
-        elif item is ADD_VOLUME:    AddStorageVolume()
-        elif item is REMOVE_VOLUME: RemoveStorageVolume()
-        elif item is LIST_POOLS:    ListStoragePools()
+        if   item is ADD_POOL:
+            AddStoragePool()
+        elif item is START_POOL:
+            StartStoragePool()
+        elif item is STOP_POOL:
+            StopStoragePool()
+        elif item is REMOVE_POOL:
+            RemoveStoragePool()
+        elif item is ADD_VOLUME:
+            AddStorageVolume()
+        elif item is REMOVE_VOLUME:
+            RemoveStorageVolume()
+        elif item is LIST_POOLS:
+            ListStoragePools()
 
 def StoragePoolMenu():
     screen = StoragePoolMenuScreen()

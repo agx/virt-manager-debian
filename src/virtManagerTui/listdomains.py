@@ -18,9 +18,8 @@
 # MA  02110-1301, USA.  A copy of the GNU General Public License is
 # also available at http://www.gnu.org/copyleft/gpl.html.
 
-from snack import *
-from libvirtworker import LibvirtWorker
-from configscreen import *
+import snack
+from domainlistconfigscreen import DomainListConfigScreen
 
 class ListDomainsConfigScreen(DomainListConfigScreen):
     LIST_PAGE   = 1
@@ -49,18 +48,54 @@ class ListDomainsConfigScreen(DomainListConfigScreen):
             return self.get_detail_page_elements(screen)
 
     def get_detail_page_elements(self, screen):
-        domain = self.get_libvirt().get_domain(self.get_selected_domain())
-        grid = Grid(2, 5)
-        grid.setField(Label("Name:  "), 0, 0, anchorRight = 1)
-        grid.setField(Label(domain.name()), 1, 0, anchorLeft = 1)
-        grid.setField(Label("UUID:  "), 0, 1, anchorRight = 1)
-        grid.setField(Label(domain.UUIDString()), 1, 1, anchorLeft = 1)
-        grid.setField(Label("OS Type:  "), 0, 2, anchorRight = 1)
-        grid.setField(Label(domain.OSType()), 1, 2, anchorLeft = 1)
-        grid.setField(Label("Max. Memory:  "), 0, 3, anchorRight = 1)
-        grid.setField(Label(str(domain.maxMemory())), 1, 3, anchorLeft = 1)
-        grid.setField(Label("Max. VCPUs:  "), 0, 4, anchorRight = 1)
-        grid.setField(Label(str(domain.maxVcpus())), 1, 4, anchorLeft = 1)
+        ignore = screen
+        domain = self.get_selected_domain()
+        fields = []
+
+        # build the list to display
+        fields.append(("Basic Details", None))
+        fields.append(("Name", domain.get_name()))
+        fields.append(("UUID", domain.get_uuid()))
+        fields.append(("Status", domain.run_status()))
+        fields.append(("Description", domain.get_description() or ""))
+        fields.append(("", None))
+
+        fields.append(("Hypervisor Details", None))
+        fields.append(("Hypervisor", domain.get_pretty_hv_type()))
+        fields.append(("Architecture", domain.get_arch() or "Unknown"))
+        fields.append(("Emulator", domain.get_emulator() or "None"))
+        fields.append(("", None))
+
+        fields.append(("Machine Settings", None))
+        if bool(domain.get_acpi()):
+            fields.append(("ACPI", "Enabled"))
+        if bool(domain.get_apic()):
+            fields.append(("APIC", "Enabled"))
+        fields.append(("Clock offset", domain.get_clock() or "Same as host"))
+        fields.append(("", None))
+
+        fields.append(("Security", None))
+
+        semodel, setype, vmlabel = domain.get_seclabel()
+        caps = self.get_libvirt().get_capabilities()
+        if caps.host.secmodel  and caps.host.secmodel.model:
+            semodel = caps.host.secmodel.model
+        fields.append(("Model", semodel or "None"))
+
+        if semodel is not None and semodel != "apparmor":
+            fields.append(("Type", setype))
+            fields.append(("Label", vmlabel))
+
+        grid = snack.Grid(2, len(fields))
+        row = 0
+        for field in fields:
+            if field[1] is not None:
+                grid.setField(snack.Label("%s :  " % field[0]), 0, row, anchorRight=1)
+                grid.setField(snack.Label(field[1]), 1, row, anchorLeft=1)
+            else:
+                grid.setField(snack.Label("%s" % field[0]), 1, row)
+            row += 1
+
         return [grid]
 
 def ListDomains():

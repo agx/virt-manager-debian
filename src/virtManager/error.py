@@ -20,7 +20,9 @@
 import gtk
 
 import logging
+import traceback
 
+from virtManager.baseclass import vmmGObject
 import virtManager.util as util
 
 def safe_set_text(self, text):
@@ -47,21 +49,33 @@ def _launch_dialog(dialog, primary_text, secondary_text, title,
 
     return res
 
-class vmmErrorDialog (object):
+class vmmErrorDialog(vmmGObject):
     def __init__(self, parent=None):
+        vmmGObject.__init__(self)
         self._parent = parent
         self._simple = None
+
+    def _cleanup(self):
+        pass
 
     def set_parent(self, parent):
         self._parent = parent
     def get_parent(self):
         return self._parent
 
-    def show_err(self, summary, details, title="",
+    def show_err(self, summary, details=None, title="",
                  async=True, debug=True,
                  dialog_type=gtk.MESSAGE_ERROR,
                  buttons=gtk.BUTTONS_CLOSE,
                  text2=None):
+        if details is None:
+            details = summary + "\n\n" + "".join(traceback.format_exc())
+
+        # Make sure we have consistent details for error dialogs
+        if (dialog_type == gtk.MESSAGE_ERROR and not
+            details.count(summary)):
+            details = summary + "\n\n" + details
+
         if debug:
             logging.debug("dialog message: %s : %s" % (summary, details))
 
@@ -222,3 +236,5 @@ class _errorDialog (gtk.MessageDialog):
             res = [res, chkbox.get_active()]
 
         return res
+
+vmmGObject.type_register(vmmErrorDialog)

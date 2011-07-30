@@ -19,11 +19,9 @@
 #
 
 import logging
-import traceback
 import os
 import statvfs
 
-import libvirt
 import gtk
 
 import virtinst
@@ -32,7 +30,6 @@ from virtinst import VirtualDisk
 
 from virtManager import util
 from virtManager.error import vmmErrorDialog
-from virtManager.config import running_config
 
 OPTICAL_DEV_PATH = 0
 OPTICAL_LABEL = 1
@@ -52,6 +49,20 @@ def set_error_parent(parent):
     err_dial.set_parent(parent)
     err_dial = err_dial
 
+def cleanup():
+    global err_dial
+    err_dial = None
+
+def spin_get_helper(widget):
+    adj = widget.get_adjustment()
+    txt = widget.get_text()
+
+    try:
+        ret = int(txt)
+    except:
+        ret = adj.value
+    return ret
+
 ############################################################
 # Helpers for shared storage UI between create/addhardware #
 ############################################################
@@ -69,16 +80,13 @@ def host_disk_space(conn):
     path = util.get_default_dir(conn)
 
     avail = 0
-    if pool:
+    if pool and pool.is_active():
         # FIXME: make sure not inactive?
         # FIXME: use a conn specific function after we send pool-added
-        pool = virtinst.util.lookup_pool_by_path(conn.vmm, path)
-        if pool and pool.info()[0] == libvirt.VIR_STORAGE_POOL_RUNNING:
-            pool.refresh(0)
-            avail = int(virtinst.util.get_xml_path(pool.XMLDesc(0),
-                                                   "/pool/available"))
+        pool.refresh()
+        avail = int(util.xpath(pool.get_xml(), "/pool/available"))
 
-    elif not conn.is_remote():
+    elif not conn.is_remote() and os.path.exists(path):
         vfs = os.statvfs(os.path.dirname(path))
         avail = vfs[statvfs.F_FRSIZE] * vfs[statvfs.F_BAVAIL]
 
@@ -118,14 +126,13 @@ def check_default_pool_active(topwin, conn):
         except Exception, e:
             return topwin.err.show_err(_("Could not start storage_pool "
                                          "'%s': %s") %
-                                         (default_pool.get_name(), str(e)),
-                                         "".join(traceback.format_exc()))
+                                         (default_pool.get_name(), str(e)))
     return True
 
 #####################################################
 # Hardware model list building (for details, addhw) #
 #####################################################
-def build_video_combo(vm, video_dev, no_default=False):
+def build_video_combo(vm, video_dev, no_default=None):
     video_dev_model = gtk.ListStore(str)
     video_dev.set_model(video_dev_model)
     text = gtk.CellRendererText()
@@ -133,11 +140,27 @@ def build_video_combo(vm, video_dev, no_default=False):
     video_dev.add_attribute(text, 'text', 0)
     video_dev_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
 
-    tmpdev = virtinst.VirtualVideoDevice(vm.get_connection().vmm)
+    populate_video_combo(vm, video_dev, no_default)
+
+def populate_video_combo(vm, video_dev, no_default=None):
+    video_dev_model = video_dev.get_model()
+    has_spice = any(map(lambda g: g.type == g.TYPE_SPICE,
+                        vm.get_graphics_devices()))
+    has_qxl = any(map(lambda v: v.model_type == "qxl",
+                      vm.get_video_devices()))
+
+    video_dev_model.clear()
+    tmpdev = virtinst.VirtualVideoDevice(vm.conn.vmm)
     for m in tmpdev.model_types:
+        if not vm.rhel6_defaults():
+            if m == "qxl" and not has_spice and not has_qxl:
+                # Only list QXL video option when VM has SPICE video
+                continue
+
         if m == tmpdev.MODEL_DEFAULT and no_default:
             continue
         video_dev_model.append([m])
+
     if len(video_dev_model) > 0:
         video_dev.set_active(0)
 
@@ -149,7 +172,7 @@ def build_sound_combo(vm, combo, no_default=False):
     combo.add_attribute(text, 'text', 0)
     dev_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
 
-    disable_rhel = not vm.enable_unsupported_rhel_opts()
+    disable_rhel = not vm.rhel6_defaults()
     rhel6_soundmodels = ["ich6", "ac97", "es1370"]
 
     for m in virtinst.VirtualAudio.MODELS:
@@ -195,6 +218,58 @@ def build_watchdogaction_combo(vm, combo, no_default=False):
     if len(dev_model) > 0:
         combo.set_active(0)
 
+def build_source_mode_combo(vm, combo):
+    source_mode = gtk.ListStore(str, str)
+    combo.set_model(source_mode)
+    text = gtk.CellRendererText()
+    combo.pack_start(text, True)
+    combo.add_attribute(text, 'text', 1)
+
+    populate_source_mode_combo(vm, combo)
+    combo.set_active(0)
+
+def populate_source_mode_combo(vm, combo):
+    ignore = vm
+    model = combo.get_model()
+    model.clear()
+
+    # [xml value, label]
+    model.append([None, _("")])
+    model.append(["vepa", "VEPA"])
+    model.append(["bridge", "Bridge"])
+    model.append(["private", "Private"])
+    model.append(["passthrough", "Passthrough"])
+
+def build_smartcard_mode_combo(vm, combo):
+    dev_model = gtk.ListStore(str, str)
+    combo.set_model(dev_model)
+    text = gtk.CellRendererText()
+    combo.pack_start(text, True)
+    combo.add_attribute(text, 'text', 1)
+    dev_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
+
+    populate_smartcard_mode_combo(vm, combo)
+
+    idx = -1
+    for rowid in range(len(combo.get_model())):
+        idx = 0
+        row = combo.get_model()[rowid]
+        if row[0] == virtinst.VirtualSmartCardDevice.MODE_DEFAULT:
+            idx = rowid
+            break
+    combo.set_active(idx)
+
+def populate_smartcard_mode_combo(vm, combo):
+    ignore = vm
+    model = combo.get_model()
+    model.clear()
+
+    # [xml value, label]
+    model.append(["passthrough", "Passthrough"])
+    model.append(["host", "Host"])
+# TODO
+#    model.append(["host-certificates", "Host Certificates"])
+
 def build_netmodel_combo(vm, combo):
     dev_model = gtk.ListStore(str, str)
     combo.set_model(dev_model)
@@ -214,9 +289,9 @@ def populate_netmodel_combo(vm, combo):
     model.append([None, _("Hypervisor default")])
     if vm.is_hvm():
         mod_list = ["rtl8139", "ne2k_pci", "pcnet", "e1000"]
-        if vm.get_hv_type() == "kvm":
+        if vm.get_hv_type() in ["kvm", "qemu", "test"]:
             mod_list.append("virtio")
-        if vm.get_hv_type() == "xen":
+        if vm.get_hv_type() in ["xen", "test"]:
             mod_list.append("netfront")
         mod_list.sort()
 
@@ -234,6 +309,23 @@ def build_cache_combo(vm, combo, no_default=False):
 
     combo.set_active(-1)
     for m in virtinst.VirtualDisk.cache_types:
+        dev_model.append([m, m])
+
+    if not no_default:
+        dev_model.append([None, "default"])
+    combo.set_active(0)
+
+def build_io_combo(vm, combo, no_default=False):
+    ignore = vm
+    dev_model = gtk.ListStore(str, str)
+    combo.set_model(dev_model)
+    text = gtk.CellRendererText()
+    combo.pack_start(text, True)
+    combo.add_attribute(text, 'text', 1)
+    dev_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
+
+    combo.set_active(-1)
+    for m in virtinst.VirtualDisk.io_modes:
         dev_model.append([m, m])
 
     if not no_default:
@@ -279,12 +371,15 @@ def build_vnc_keymap_combo(vm, combo, no_default=False):
 #####################################
 
 def build_storage_format_combo(vm, combo):
-    ignore = vm
     dev_model = gtk.ListStore(str)
     combo.set_model(dev_model)
     combo.set_text_column(0)
 
-    for m in ["raw", "qcow2", "vmdk"]:
+    formats = ["raw", "qcow2"]
+    if vm.rhel6_defaults():
+        formats.append("vmdk")
+
+    for m in formats:
         dev_model.append([m])
 
     combo.set_active(0)
@@ -314,20 +409,24 @@ def pretty_network_desc(nettype, source=None, netobj=None):
 
     return ret
 
-def init_network_list(net_list, bridge_box):
+def init_network_list(net_list, bridge_box,
+                      source_mode_box=None, source_mode_label=None,
+                      vport_expander=None):
     # [ network type, source name, label, sensitive?, net is active,
     #   manual bridge, net instance]
     net_model = gtk.ListStore(str, str, str, bool, bool, bool, object)
     net_list.set_model(net_model)
 
-    net_list.connect("changed", net_list_changed, bridge_box)
+    net_list.connect("changed", net_list_changed, bridge_box, source_mode_box,
+                     source_mode_label, vport_expander)
 
     text = gtk.CellRendererText()
     net_list.pack_start(text, True)
     net_list.add_attribute(text, 'text', 2)
     net_list.add_attribute(text, 'sensitive', 3)
 
-def net_list_changed(net_list, bridge_box):
+def net_list_changed(net_list, bridge_box,
+                     source_mode_box, source_mode_label, vport_expander):
     active = net_list.get_active()
     if active < 0:
         return
@@ -336,6 +435,13 @@ def net_list_changed(net_list, bridge_box):
         return
 
     row = net_list.get_model()[active]
+
+    if source_mode_box != None:
+        show_source_mode = (row[0] == VirtualNetworkInterface.TYPE_DIRECT)
+        source_mode_box.set_property("visible", show_source_mode)
+        source_mode_label.set_property("visible", show_source_mode)
+        vport_expander.set_property("visible", show_source_mode)
+
     show_bridge = row[5]
 
     bridge_box.set_property("visible", show_bridge)
@@ -356,7 +462,7 @@ def get_network_selection(net_list, bridge_entry):
 
     return net_type, net_src
 
-def populate_network_list(net_list, conn, show_manual_bridge=True):
+def populate_network_list(net_list, conn, show_direct_interfaces=True):
     model = net_list.get_model()
     model.clear()
 
@@ -366,10 +472,10 @@ def populate_network_list(net_list, conn, show_manual_bridge=True):
     iface_dict = {}
 
     def build_row(nettype, name, label, is_sensitive, is_running,
-                  manual_bridge=False, obj=None):
+                  manual_bridge=False, key=None):
         return [nettype, name, label,
                 is_sensitive, is_running, manual_bridge,
-                obj]
+                key]
 
     def set_active(idx):
         net_list.set_active(idx)
@@ -407,7 +513,7 @@ def populate_network_list(net_list, conn, show_manual_bridge=True):
             netIdxLabel = label
 
         vnet_dict[label] = build_row(nettype, net.get_name(), label, True,
-                                     net.is_active(), obj=net)
+                                     net.is_active(), key=net.get_uuid())
 
         # Build a list of vnet bridges, so we know not to list them
         # in the physical interface list
@@ -440,14 +546,22 @@ def populate_network_list(net_list, conn, show_manual_bridge=True):
                 bridge_name = name
                 brlabel = _("(Empty bridge)")
         else:
-            sensitive = False
-            brlabel = "(%s)" % _("Not bridged")
+            if (show_direct_interfaces and virtinst.support.check_conn_support(conn.vmm,
+                         virtinst.support.SUPPORT_CONN_HV_DIRECT_INTERFACE)):
+                sensitive = True
+                nettype = VirtualNetworkInterface.TYPE_DIRECT
+                bridge_name = name
+                brlabel = ": %s" % _("macvtap")
+            else:
+                sensitive = False
+                brlabel = "(%s)" % _("Not bridged")
 
         label = _("Host device %s %s") % (br.get_name(), brlabel)
         if hasShared and not brIdxLabel:
             brIdxLabel = label
 
-        row = build_row(nettype, bridge_name, label, sensitive, True, obj=br)
+        row = build_row(nettype, bridge_name, label, sensitive, True,
+                        key=br.get_name())
 
         if sensitive:
             bridge_dict[label] = row
@@ -480,15 +594,14 @@ def populate_network_list(net_list, conn, show_manual_bridge=True):
                 break
     else:
         return_warn = True
-        row = build_row(None, None, _("No networking."), True, False)
+        row = build_row(None, None, _("No networking"), True, False)
         model.insert(0, row)
         default = 0
 
-    if show_manual_bridge:
-        # After all is said and done, add a manual bridge option
-        manual_row = build_row(None, None, _("Specify shared device name"),
-                               True, False, manual_bridge=True)
-        model.append(manual_row)
+    # After all is said and done, add a manual bridge option
+    manual_row = build_row(None, None, _("Specify shared device name"),
+                           True, False, manual_bridge=True)
+    model.append(manual_row)
 
     set_active(default)
     return return_warn
@@ -519,8 +632,7 @@ def validate_network(parent, conn, nettype, devname, macaddr, model=None):
             logging.info("Started network '%s'." % devname)
         except Exception, e:
             return err_dial.show_err(_("Could not start virtual network "
-                                       "'%s': %s") % (devname, str(e)),
-                                       "".join(traceback.format_exc()))
+                                       "'%s': %s") % (devname, str(e)))
 
     # Create network device
     try:
@@ -529,6 +641,8 @@ def validate_network(parent, conn, nettype, devname, macaddr, model=None):
         if nettype == VirtualNetworkInterface.TYPE_VIRTUAL:
             netname = devname
         elif nettype == VirtualNetworkInterface.TYPE_BRIDGE:
+            bridge = devname
+        elif nettype == VirtualNetworkInterface.TYPE_DIRECT:
             bridge = devname
         elif nettype == VirtualNetworkInterface.TYPE_USER:
             pass
@@ -697,7 +811,7 @@ def mediadev_set_default_selection(widget):
 
 def build_shutdown_button_menu(widget, shutdown_cb, reboot_cb,
                                destroy_cb, save_cb):
-    icon_name = running_config.get_shutdown_icon_name()
+    icon_name = util.running_config.get_shutdown_icon_name()
     widget.set_icon_name(icon_name)
     menu = gtk.Menu()
     widget.set_menu(menu)
@@ -744,9 +858,9 @@ def check_path_search_for_qemu(parent, conn, path):
     if conn.is_remote() or not conn.is_qemu_system():
         return
 
-    user = running_config.default_qemu_user
+    user = util.running_config.default_qemu_user
 
-    skip_paths = running_config.get_perms_fix_ignore()
+    skip_paths = util.running_config.get_perms_fix_ignore()
     broken_paths = VirtualDisk.check_path_search_for_user(conn.vmm, path, user)
     for p in broken_paths:
         if p in skip_paths:
@@ -764,7 +878,7 @@ def check_path_search_for_qemu(parent, conn, path):
                     buttons=gtk.BUTTONS_YES_NO)
 
     if chkres:
-        running_config.add_perms_fix_ignore(broken_paths)
+        util.running_config.add_perms_fix_ignore(broken_paths)
     if not resp:
         return
 
@@ -787,7 +901,7 @@ def check_path_search_for_qemu(parent, conn, path):
                          _("Don't ask about these directories again."))
 
     if chkres:
-        running_config.add_perms_fix_ignore(errors.keys())
+        util.running_config.add_perms_fix_ignore(errors.keys())
 
 ######################################
 # Interface startmode widget builder #
@@ -802,3 +916,30 @@ def build_startmode_combo(start_list):
     start_model.append(["none"])
     start_model.append(["onboot"])
     start_model.append(["hotplug"])
+
+
+#########################
+# Console keycombo menu #
+#########################
+
+def build_keycombo_menu(cb):
+    menu = gtk.Menu()
+
+    def make_item(name, combo):
+        item = gtk.MenuItem(name, use_underline=True)
+        item.connect("activate", cb, combo)
+
+        menu.add(item)
+
+    make_item("Ctrl+Alt+_Backspace", ["Control_L", "Alt_L", "BackSpace"])
+    make_item("Ctrl+Alt+_Delete", ["Control_L", "Alt_L", "Delete"])
+    menu.add(gtk.SeparatorMenuItem())
+
+    for i in range(1, 13):
+        make_item("Ctrl+Alt+F_%d" % i, ["Control_L", "Alt_L", "F%d" % i])
+    menu.add(gtk.SeparatorMenuItem())
+
+    make_item("_Printscreen", ["Print"])
+
+    menu.show_all()
+    return menu

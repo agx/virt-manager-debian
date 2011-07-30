@@ -16,23 +16,18 @@
 # MA  02110-1301, USA.  A copy of the GNU General Public License is
 # also available at http://www.gnu.org/copyleft/gpl.html.
 
-from snack import *
-import traceback
+from newt_syrup.menuscreen import MenuScreen
 
-from menuscreen      import MenuScreen
-from definenet       import DefineNetwork
-from createnetwork   import CreateNetwork
-from destroynetwork  import DestroyNetwork
-from undefinenetwork import UndefineNetwork
+from addnetwork      import AddNetwork
+from startnetwork    import StartNetwork
+from stopnetwork     import StopNetwork
+from removenetwork   import RemoveNetwork
 from listnetworks    import ListNetworks
 
-import utils
-import logging
-
-DEFINE_NETWORK   = 1
-CREATE_NETWORK   = 2
-DESTROY_NETWORK  = 3
-UNDEFINE_NETWORK = 4
+ADD_NETWORK      = 1
+START_NETWORK    = 2
+STOP_NETWORK     = 3
+REMOVE_NETWORK   = 4
 LIST_NETWORKS    = 5
 
 class NetworkMenuScreen(MenuScreen):
@@ -40,18 +35,23 @@ class NetworkMenuScreen(MenuScreen):
         MenuScreen.__init__(self, "Network Administration")
 
     def get_menu_items(self):
-        return (("Define A Network",   DEFINE_NETWORK),
-                ("Create A Network",   CREATE_NETWORK),
-                ("Destroy A Network",  DESTROY_NETWORK),
-                ("Undefine A Network", UNDEFINE_NETWORK),
+        return (("Add A Network",      ADD_NETWORK),
+                ("Start A Network",    START_NETWORK),
+                ("Stop A Network",     STOP_NETWORK),
+                ("Remove A Network",   REMOVE_NETWORK),
                 ("List Networks",      LIST_NETWORKS))
 
     def handle_selection(self, item):
-        if   item is DEFINE_NETWORK:   DefineNetwork()
-        elif item is CREATE_NETWORK:   CreateNetwork()
-        elif item is DESTROY_NETWORK:  DestroyNetwork()
-        elif item is UNDEFINE_NETWORK: UndefineNetwork()
-        elif item is LIST_NETWORKS:    ListNetworks()
+        if   item is ADD_NETWORK:
+            AddNetwork()
+        elif item is START_NETWORK:
+            StartNetwork()
+        elif item is STOP_NETWORK:
+            StopNetwork()
+        elif item is REMOVE_NETWORK:
+            RemoveNetwork()
+        elif item is LIST_NETWORKS:
+            ListNetworks()
 
 def NetworkMenu():
     screen = NetworkMenuScreen()
