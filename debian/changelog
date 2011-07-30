@@ -1,3 +1,12 @@
+virt-manager (0.9.0-1) unstable; urgency=low
+
+  * [5fffe42] Imported Upstream version 0.9.0
+  * [77f1b30] Update patch 0005-Use-IPy-from-python-ipy.patch
+  * [dfe1b89] Bump virtinst dependency version to 0.600.0
+  * [84ea640] Bump Standards-Version to 3.9.2
+
+ -- Laurent Léonard <laurent@open-minds.org>  Sat, 30 Jul 2011 21:01:45 +0200
+
 virt-manager (0.8.7-1) unstable; urgency=low
 
   * [e1716e0] Imported Upstream version 0.8.7
