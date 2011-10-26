@@ -16,7 +16,7 @@ Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}, python-gtk2,
  python-glade2, python-gnome2, python-dbus, python-urlgrabber, python-vte,
  librsvg2-common, python-libvirt (>= 0.7.1), virtinst (>= 0.600.0),
- python-gtk-vnc (>= 0.3.8), python-ipy (>= 0.70)
+ python-gtk-vnc (>= 0.3.8), python-ipy (>= 0.70), python-spice-client-gtk
 Recommends: libvirt-bin (>= 0.4.6), gnome-icon-theme
 Suggests: virt-viewer, ssh-askpass, gnome-keyring, python-gnomekeyring, hal,
  python-guestfs
