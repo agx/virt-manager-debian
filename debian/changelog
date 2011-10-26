@@ -1,3 +1,10 @@
+virt-manager (0.9.0-2) unstable; urgency=low
+
+  * [d9ddb0e] Suggest python-guestfs for gathering image introspection data.
+  * [2183ad6] Add dependency on python-spice-client-gtk (Closes: #646624)
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 26 Oct 2011 09:10:13 +0200
+
 virt-manager (0.9.0-1) unstable; urgency=low
 
   * [5fffe42] Imported Upstream version 0.9.0
