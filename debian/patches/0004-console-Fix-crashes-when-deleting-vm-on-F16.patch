@@ -1,0 +1,31 @@
+From: Cole Robinson <crobinso@redhat.com>
+Date: Fri, 28 Oct 2011 12:20:11 -0400
+Subject: console: Fix crashes when deleting vm on F16
+
+The toolbar cleanup order was causing crashed on f16 at app shutdown or
+VM delete (when a console window is fully uninstantiated)
+
+Origin: upstream, http://git.fedorahosted.org/git/?p=virt-manager.git;a=commitdiff;h=930a321f8e411cd02f4f43c193f967763e8b6e5c
+Bug-Debian: http://bugs.debian.org/648420
+---
+ src/virtManager/console.py |    4 ++--
+ 1 files changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/src/virtManager/console.py b/src/virtManager/console.py
+index 1bdf26b..bd08cc3 100644
+--- a/src/virtManager/console.py
++++ b/src/virtManager/console.py
+@@ -597,10 +597,10 @@ class vmmConsolePages(vmmGObjectUI):
+ 
+         self.keycombo_menu.destroy()
+         self.keycombo_menu = None
+-        self.fs_toolbar.destroy()
+-        self.fs_toolbar = None
+         self.fs_drawer.destroy()
+         self.fs_drawer = None
++        self.fs_toolbar.destroy()
++        self.fs_toolbar = None
+ 
+     ##########################
+     # Initialization helpers #
+-- 
