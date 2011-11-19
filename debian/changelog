@@ -1,3 +1,11 @@
+virt-manager (0.9.0-3) unstable; urgency=low
+
+  * [0b10320] New patch 0003-virt-manager-Fix-Resize-to-VM-menu-option.patch
+  * [fd980dc] New patch 0004-console-Fix-crashes-when-deleting-vm-on-F16.patch
+    (Closes: #648420)
+
+ -- Laurent Léonard <laurent@open-minds.org>  Sat, 19 Nov 2011 19:00:17 +0100
+
 virt-manager (0.9.0-2) unstable; urgency=low
 
   * [d9ddb0e] Suggest python-guestfs for gathering image introspection data.
