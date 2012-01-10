@@ -2,3 +2,4 @@
 0002-Use-IPy-from-python-ipy.patch
 0003-virt-manager-Fix-Resize-to-VM-menu-option.patch
 0004-console-Fix-crashes-when-deleting-vm-on-F16.patch
+0005-storagebrowser-ignore-unparseable-volumes.patch
