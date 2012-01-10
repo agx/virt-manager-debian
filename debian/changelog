@@ -1,3 +1,9 @@
+virt-manager (0.9.0-4) unstable; urgency=low
+
+  * [e7e6e5b] New patch 0005-storagebrowser-ignore-unparseable-volumes.patch
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 10 Jan 2012 20:04:08 +0100
+
 virt-manager (0.9.0-3) unstable; urgency=low
 
   * [0b10320] New patch 0003-virt-manager-Fix-Resize-to-VM-menu-option.patch
