@@ -3,3 +3,5 @@
 0003-virt-manager-Fix-Resize-to-VM-menu-option.patch
 0004-console-Fix-crashes-when-deleting-vm-on-F16.patch
 0005-storagebrowser-ignore-unparseable-volumes.patch
+0006-Improve-error-message-if-netcat-can-t-forward-Unix-d.patch
+0007-console-Fix-hang-when-reconnecting-to-remote-VNC-con.patch
