@@ -1,3 +1,12 @@
+virt-manager (0.9.0-5) unstable; urgency=low
+
+  * [e18d4f4] Improve error message if netcat can't forward Unix domain sockets
+    (Closes: #614291)
+  * [d5baa70] console: Fix hang when reconnecting to remote VNC console.
+    Cherry-picked from upstream (e18d4f40946598b1bc929fbc401074183ae5b4c9)
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 15 Jan 2012 13:49:06 +0100
+
 virt-manager (0.9.0-4) unstable; urgency=low
 
   * [e7e6e5b] New patch 0005-storagebrowser-ignore-unparseable-volumes.patch
