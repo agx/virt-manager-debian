@@ -1,3 +1,18 @@
+virt-manager (0.9.1-1) unstable; urgency=low
+
+  * [b4fdde6] Imported Upstream version 0.9.1
+  * [6782cf0] Drop patches
+    - 0003-virt-manager-Fix-Resize-to-VM-menu-option.patch - fixed upstream
+    - 0004-console-Fix-crashes-when-deleting-vm-on-F16.patch - fixed upstream
+    - 0005-storagebrowser-ignore-unparseable-volumes.patch - fixed upstream
+    - 0006-Improve-error-message-if-netcat-can-t-forward-Unix-d.patch - fixed
+      upstream
+    - 0007-console-Fix-hang-when-reconnecting-to-remote-VNC-con.patch - fixed
+      upstream
+  * [0f418f5] Bump virtinst dependency version to 0.600.1
+
+ -- Laurent Léonard <laurent@open-minds.org>  Thu, 02 Feb 2012 11:59:43 +0100
+
 virt-manager (0.9.0-5) unstable; urgency=low
 
   * [e18d4f4] Improve error message if netcat can't forward Unix domain sockets
