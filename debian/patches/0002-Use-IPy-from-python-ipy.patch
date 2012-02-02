@@ -10,7 +10,7 @@ Bug-Debian: http://bugs.debian.org/605967
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/virtManager/createnet.py b/src/virtManager/createnet.py
-index 5bad52e..4b10472 100644
+index 2632b73..6ddab4d 100644
 --- a/src/virtManager/createnet.py
 +++ b/src/virtManager/createnet.py
 @@ -23,7 +23,7 @@ import re
