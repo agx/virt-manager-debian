@@ -122,7 +122,7 @@ def check_default_pool_active(topwin, conn):
         # Try to start the pool
         try:
             default_pool.start()
-            logging.info("Started pool '%s'." % default_pool.get_name())
+            logging.info("Started pool '%s'", default_pool.get_name())
         except Exception, e:
             return topwin.err.show_err(_("Could not start storage_pool "
                                          "'%s': %s") %
@@ -234,7 +234,7 @@ def populate_source_mode_combo(vm, combo):
     model.clear()
 
     # [xml value, label]
-    model.append([None, _("")])
+    model.append([None, "Default"])
     model.append(["vepa", "VEPA"])
     model.append(["bridge", "Bridge"])
     model.append(["private", "Private"])
@@ -269,6 +269,25 @@ def populate_smartcard_mode_combo(vm, combo):
     model.append(["host", "Host"])
 # TODO
 #    model.append(["host-certificates", "Host Certificates"])
+
+def build_redir_type_combo(vm, combo):
+    source_mode = gtk.ListStore(str, str, bool)
+    combo.set_model(source_mode)
+    text = gtk.CellRendererText()
+    combo.pack_start(text, True)
+    combo.add_attribute(text, 'text', 1)
+
+    populate_redir_type_combo(vm, combo)
+    combo.set_active(0)
+
+def populate_redir_type_combo(vm, combo):
+    ignore = vm
+    model = combo.get_model()
+    model.clear()
+
+    # [xml value, label, conn details]
+    model.append(["spicevmc", "Spice channel", False])
+    model.append(["tcp", "TCP", True])
 
 def build_netmodel_combo(vm, combo):
     dev_model = gtk.ListStore(str, str)
@@ -629,7 +648,7 @@ def validate_network(parent, conn, nettype, devname, macaddr, model=None):
         try:
             virnet = conn.vmm.networkLookupByName(devname)
             virnet.create()
-            logging.info("Started network '%s'." % devname)
+            logging.info("Started network '%s'", devname)
         except Exception, e:
             return err_dial.show_err(_("Could not start virtual network "
                                        "'%s': %s") % (devname, str(e)))
@@ -654,7 +673,7 @@ def validate_network(parent, conn, nettype, devname, macaddr, model=None):
                                       macaddr=macaddr,
                                       model=model)
     except Exception, e:
-        return err_dial.val_err(_("Error with network parameters."), str(e))
+        return err_dial.val_err(_("Error with network parameters."), e)
 
     # Make sure there is no mac address collision
     isfatal, errmsg = net.is_conflict_net(conn.vmm)
@@ -869,7 +888,7 @@ def check_path_search_for_qemu(parent, conn, path):
     if not broken_paths:
         return
 
-    logging.debug("No search access for dirs: %s" % broken_paths)
+    logging.debug("No search access for dirs: %s", broken_paths)
     resp, chkres = err_dial.warn_chkbox(
                     _("The emulator may not have search permissions "
                       "for the path '%s'.") % path,
@@ -895,7 +914,7 @@ def check_path_search_for_qemu(parent, conn, path):
             continue
         details += "%s : %s\n" % (path, error)
 
-    logging.debug("Permission errors:\n%s" % details)
+    logging.debug("Permission errors:\n%s", details)
 
     ignore, chkres = err_dial.err_chkbox(errmsg, details,
                          _("Don't ask about these directories again."))

@@ -77,7 +77,7 @@ class vmmErrorDialog(vmmGObject):
             details = summary + "\n\n" + details
 
         if debug:
-            logging.debug("dialog message: %s : %s" % (summary, details))
+            logging.debug("dialog message: %s : %s", summary, details)
 
         dialog = _errorDialog(parent=self.get_parent(),
                               type=dialog_type, buttons=buttons)
@@ -106,10 +106,21 @@ class vmmErrorDialog(vmmGObject):
                               sync=not async)
 
     def val_err(self, text1, text2=None, title=_("Input Error"), async=True):
-        logging.debug("Validation Error: %s" % text1)
+        logtext = "Validation Error: %s" % text1
+        if text2:
+            logtext += " %s" % text2
+
+        if isinstance(text1, Exception) or isinstance(text2, Exception):
+            logging.exception(logtext)
+        else:
+            self._logtrace(logtext)
+
         dtype = gtk.MESSAGE_ERROR
         buttons = gtk.BUTTONS_OK
-        self._simple_dialog(dtype, buttons, text1, text2, title, async)
+        self._simple_dialog(dtype, buttons,
+                            str(text1),
+                            text2 and str(text2) or "",
+                            str(title), async)
         return False
 
     def show_info(self, text1, text2=None, title="", async=True):

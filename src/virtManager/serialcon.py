@@ -28,7 +28,11 @@ import logging
 import gtk
 import gobject
 
-import vte
+try:
+    import vte
+except ImportError:
+    logging.debug("Could not import vte, no serial console support")
+    vte = None
 
 import libvirt
 
@@ -71,7 +75,7 @@ class LocalConsoleConnection(ConsoleConnection):
             self.close()
 
         ipty = dev and dev.source_path or None
-        logging.debug("Opening serial tty path: %s" % ipty)
+        logging.debug("Opening serial tty path: %s", ipty)
         if ipty == None:
             return
 
@@ -145,7 +149,7 @@ class LibvirtConsoleConnection(ConsoleConnection):
 
         if events & libvirt.VIR_EVENT_HANDLE_READABLE:
             try:
-                got = self.stream.recv(1024)
+                got = self.stream.recv(1024 * 100)
             except:
                 logging.exception("Error receiving stream data")
                 self.close()
@@ -154,8 +158,9 @@ class LibvirtConsoleConnection(ConsoleConnection):
             if got == -2:
                 return
 
+            queued_text = bool(self.streamToTerminal)
             self.streamToTerminal += got
-            if self.streamToTerminal:
+            if not queued_text:
                 self.safe_idle_add(self.display_data, terminal)
 
         if (events & libvirt.VIR_EVENT_HANDLE_WRITABLE and
@@ -183,11 +188,14 @@ class LibvirtConsoleConnection(ConsoleConnection):
         if self.stream:
             self.close()
 
+        name = dev and dev.alias.name or None
+        logging.debug("Opening console stream for dev=%s alias=%s",
+                      dev, name)
+        if not name:
+            raise RuntimeError(_("Cannot open a device with no alias name"))
+
         self.stream = self.conn.vmm.newStream(libvirt.VIR_STREAM_NONBLOCK)
 
-        name = dev and dev.alias.name or None
-        logging.debug("Opening console stream for dev=%s alias=%s" %
-                      (dev, name))
         self.vm.open_console(name, self.stream)
 
         self.stream.eventAddCallback((libvirt.VIR_STREAM_EVENT_READABLE |
@@ -301,6 +309,9 @@ class vmmSerialConsole(vmmGObject):
         self.vm.connect("status-changed", self.vm_status_changed)
 
     def init_terminal(self):
+        if not vte:
+            return
+
         self.terminal = vte.Terminal()
         self.terminal.set_cursor_blinks(True)
         self.terminal.set_emulation("xterm")
@@ -335,12 +346,14 @@ class vmmSerialConsole(vmmGObject):
         evbox.modify_bg(gtk.STATE_NORMAL, gtk.gdk.Color(0, 0, 0))
         terminalbox = gtk.HBox()
         scrollbar = gtk.VScrollbar()
-        scrollbar.set_adjustment(self.terminal.get_adjustment())
         self.error_label = gtk.Label()
         self.error_label.set_width_chars(40)
         self.error_label.set_line_wrap(True)
 
-        align.add(self.terminal)
+        if self.terminal:
+            scrollbar.set_adjustment(self.terminal.get_adjustment())
+            align.add(self.terminal)
+
         evbox.add(align)
         terminalbox.pack_start(evbox)
         terminalbox.pack_start(scrollbar, expand=False, fill=False)
@@ -363,6 +376,10 @@ class vmmSerialConsole(vmmGObject):
 
     def open_console(self):
         try:
+            if not vte:
+                raise RuntimeError(
+                        _("vte2 is required for text console support"))
+
             self.console.open(self.lookup_dev(), self.terminal)
             self.box.set_current_page(0)
             return True
@@ -390,12 +407,12 @@ class vmmSerialConsole(vmmGObject):
 
             if port == self.target_port:
                 if path != self.lastpath:
-                    logging.debug("Serial console '%s' path changed to %s."
-                                  % (self.target_port, path))
+                    logging.debug("Serial console '%s' path changed to %s",
+                                  self.target_port, path)
                 self.lastpath = path
                 return dev
 
-        logging.debug("No devices found for serial target port '%s'." %
+        logging.debug("No devices found for serial target port '%s'",
                       self.target_port)
         self.lastpath = None
         return None

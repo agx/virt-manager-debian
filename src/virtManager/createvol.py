@@ -71,11 +71,13 @@ class vmmCreateVolume(vmmGObjectUI):
 
 
     def show(self, parent):
+        logging.debug("Showing new volume wizard")
         self.reset_state()
         self.topwin.set_transient_for(parent)
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
+        logging.debug("Closing new volume wizard")
         self.topwin.hide()
         self.set_modal(False)
         return 1
@@ -158,12 +160,21 @@ class vmmCreateVolume(vmmGObjectUI):
         return None
 
     def populate_vol_format(self):
+        rhel6_file_whitelist = ["raw", "qcow2", "qed"]
         model = self.widget("vol-format").get_model()
         model.clear()
 
         formats = self.vol_class.formats
         if hasattr(self.vol_class, "create_formats"):
             formats = getattr(self.vol_class, "create_formats")
+
+        if (self.vol_class == Storage.FileVolume and
+            not self.conn.rhel6_defaults_caps()):
+            newfmts = []
+            for f in rhel6_file_whitelist:
+                if f in formats:
+                    newfmts.append(f)
+            formats = newfmts
 
         for f in formats:
             model.append([f, f])
@@ -204,7 +215,7 @@ class vmmCreateVolume(vmmGObjectUI):
             self.show_err(_("Uncaught error validating input: %s") % str(e))
             return
 
-        logging.debug("Creating volume with xml:\n%s" %
+        logging.debug("Creating volume with xml:\n%s",
                       self.vol.get_xml_config())
 
         self.topwin.set_sensitive(False)
@@ -255,7 +266,7 @@ class vmmCreateVolume(vmmGObjectUI):
             if fmt:
                 self.vol.format = fmt
         except ValueError, e:
-            return self.val_err(_("Volume Parameter Error"), str(e))
+            return self.val_err(_("Volume Parameter Error"), e)
         return True
 
     def show_err(self, info, details=None):

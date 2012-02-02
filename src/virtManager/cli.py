@@ -68,26 +68,29 @@ def setup_logging(appname, debug_stdout):
                         "%(asctime)s (%(module)s:%(lineno)d): %(message)s"))
         rootLogger.addHandler(streamHandler)
 
-    logging.info("%s startup" % appname)
+    logging.info("%s startup", appname)
 
     # Register libvirt handler
     def libvirt_callback(ctx_ignore, err):
         if err[3] != libvirt.VIR_ERR_ERROR:
             # Don't log libvirt errors: global error handler will do that
-            logging.warn("Non-error from libvirt: '%s'" % err[2])
+            logging.warn("Non-error from libvirt: '%s'", err[2])
     libvirt.registerErrorHandler(f=libvirt_callback, ctx=None)
 
     # Log uncaught exceptions
     def exception_log(typ, val, tb):
-        if not traceback:
-            return
         s = traceback.format_exception(typ, val, tb)
-        logging.exception("".join(s))
+        logging.debug("Uncaught exception:\n" + "".join(s))
         sys.__excepthook__(typ, val, tb)
     sys.excepthook = exception_log
 
 def setup_i18n(gettext_app, gettext_dir):
-    locale.setlocale(locale.LC_ALL, '')
+    try:
+        locale.setlocale(locale.LC_ALL, '')
+    except:
+        # Can happen if user passed a bogus LANG
+        pass
+
     gettext.install(gettext_app, gettext_dir)
     gettext.bindtextdomain(gettext_app, gettext_dir)
 

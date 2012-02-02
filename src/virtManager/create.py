@@ -148,12 +148,14 @@ class vmmCreate(vmmGObjectUI):
         return False
 
     def show(self, parent, uri=None):
+        logging.debug("Showing new vm wizard")
         self.reset_state(uri)
 
         self.topwin.set_transient_for(parent)
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
+        logging.debug("Closing new vm wizard")
         self.topwin.hide()
         self.remove_timers()
 
@@ -419,12 +421,12 @@ class vmmCreate(vmmGObjectUI):
             return self.startup_error(_("Connection is read only."))
 
         if self.conn.no_install_options():
-            error = _("No hypervisor options were found for this\n"
+            error = _("No hypervisor options were found for this "
                       "connection.")
 
             if self.conn.is_qemu():
                 error += "\n\n"
-                error += _("This usually means that QEMU or KVM is not\n"
+                error += _("This usually means that QEMU or KVM is not "
                            "installed on your machine, or the KVM kernel "
                            "modules are not loaded.")
             return self.startup_error(error)
@@ -439,21 +441,21 @@ class vmmCreate(vmmGObjectUI):
         if self.conn.is_xen():
             if self.conn.hw_virt_supported():
                 if self.conn.is_bios_virt_disabled():
-                    error = _("Host supports full virtualization, but\n"
-                              "no related install options are available.\n"
-                              "This may mean support is disabled in your\n"
+                    error = _("Host supports full virtualization, but "
+                              "no related install options are available. "
+                              "This may mean support is disabled in your "
                               "system BIOS.")
                     self.startup_warning(error)
 
             else:
-                error = _("Host does not appear to support hardware\n"
+                error = _("Host does not appear to support hardware "
                           "virtualization. Install options may be limited.")
                 self.startup_warning(error)
 
         elif self.conn.is_qemu():
             if not self.conn.is_kvm_supported():
-                error = _("KVM is not available. This may mean the KVM\n"
-                 "package is not installed, or the KVM kernel modules \n"
+                error = _("KVM is not available. This may mean the KVM "
+                 "package is not installed, or the KVM kernel modules "
                  "are not loaded. Your virtual machines may perform poorly.")
                 self.startup_warning(error)
 
@@ -827,9 +829,10 @@ class vmmCreate(vmmGObjectUI):
 
         self.capsguest = newg
         self.capsdomain = newdom
-        logging.debug("Guest type set to os_type=%s, arch=%s, dom_type=%s" %
-                      (self.capsguest.os_type, self.capsguest.arch,
-                       self.capsdomain.hypervisor_type))
+        logging.debug("Guest type set to os_type=%s, arch=%s, dom_type=%s",
+                      self.capsguest.os_type,
+                      self.capsguest.arch,
+                      self.capsdomain.hypervisor_type)
 
     def populate_summary(self):
         ignore, ignore, dlabel, vlabel = self.get_config_os_info()
@@ -998,7 +1001,7 @@ class vmmCreate(vmmGObjectUI):
 
         elif self.is_default_storage():
             path = self.get_default_path(self.guest.name)
-            logging.debug("Default storage path is: %s" % path)
+            logging.debug("Default storage path is: %s", path)
         else:
             path = self.widget("config-storage-entry").get_text()
 
@@ -1394,10 +1397,14 @@ class vmmCreate(vmmGObjectUI):
         if guest.installer.is_container():
             return
 
+        support_spice = virtinst.support.check_conn_support(guest.conn,
+                            virtinst.support.SUPPORT_CONN_HV_GRAPHICS_SPICE)
+        if not self._rhel6_defaults():
+            support_spice = True
+
         gtype = self.get_config_graphics_type()
-        if (gtype == virtinst.VirtualGraphics.TYPE_SPICE and not
-            virtinst.support.check_conn_support(guest.conn,
-                            virtinst.support.SUPPORT_CONN_HV_GRAPHICS_SPICE)):
+        if (gtype == virtinst.VirtualGraphics.TYPE_SPICE and
+            not support_spice):
             logging.debug("Spice requested but HV doesn't support it. "
                           "Using VNC graphics.")
             gtype = virtinst.VirtualGraphics.TYPE_VNC
@@ -1466,7 +1473,7 @@ class vmmCreate(vmmGObjectUI):
             g = virtinst.Guest(conn=self.conn.vmm)
             g.name = name
         except Exception, e:
-            return self.verr(_("Invalid System Name"), str(e))
+            return self.err.val_err(_("Invalid System Name"), e)
 
         return True
 
@@ -1487,7 +1494,8 @@ class vmmCreate(vmmGObjectUI):
             media = self.get_config_local_media()
 
             if not media:
-                return self.verr(_("An install media selection is required."))
+                return self.err.val_err(
+                                _("An install media selection is required."))
 
             location = media
             cdrom = True
@@ -1497,7 +1505,7 @@ class vmmCreate(vmmGObjectUI):
             media, extra, ks = self.get_config_url_info()
 
             if not media:
-                return self.verr(_("An install tree is required."))
+                return self.err.val_err(_("An install tree is required."))
 
             location = media
 
@@ -1510,21 +1518,22 @@ class vmmCreate(vmmGObjectUI):
 
             import_path = self.get_config_import_path()
             if not import_path:
-                return self.verr(_("A storage path to import is required."))
+                return self.err.val_err(
+                                _("A storage path to import is required."))
 
         elif instmethod == INSTALL_PAGE_CONTAINER_APP:
             instclass = virtinst.ContainerInstaller
 
             init = self.get_config_container_app_path()
             if not init:
-                return self.verr(_("An application path is required."))
+                return self.err.val_err(_("An application path is required."))
 
         elif instmethod == INSTALL_PAGE_CONTAINER_OS:
             instclass = virtinst.ContainerInstaller
 
             fs = self.get_config_container_fs_path()
             if not fs:
-                return self.verr(_("An OS directory path is required."))
+                return self.err.val_err(_("An OS directory path is required."))
 
         # Build the installer and Guest instance
         try:
@@ -1534,7 +1543,8 @@ class vmmCreate(vmmGObjectUI):
             if not self.guest:
                 return False
         except Exception, e:
-            return self.verr(_("Error setting installer parameters."), str(e))
+            return self.err.val_err(
+                        _("Error setting installer parameters."), e)
 
         # Validate media location
         try:
@@ -1562,8 +1572,8 @@ class vmmCreate(vmmGObjectUI):
                 self.guest.add_device(fsdev)
 
         except Exception, e:
-            return self.verr(_("Error setting install media location."),
-                             str(e))
+            return self.err.val_err(
+                                _("Error setting install media location."), e)
 
         # OS distro/variant validation
         try:
@@ -1572,8 +1582,7 @@ class vmmCreate(vmmGObjectUI):
             if variant and variant != OS_GENERIC:
                 self.guest.os_variant = variant
         except ValueError, e:
-            return self.err.val_err(_("Error setting OS information."),
-                                    str(e))
+            return self.err.val_err(_("Error setting OS information."), e)
 
         # Kind of wonky, run storage validation now, which will assign
         # the import path. Import installer skips the storage page.
@@ -1607,14 +1616,14 @@ class vmmCreate(vmmGObjectUI):
         try:
             self.guest.vcpus = int(cpus)
         except Exception, e:
-            return self.verr(_("Error setting CPUs."), str(e))
+            return self.err.val_err(_("Error setting CPUs."), e)
 
         # Memory
         try:
             self.guest.memory = int(mem)
             self.guest.maxmemory = int(mem)
         except Exception, e:
-            return self.verr(_("Error setting guest memory."), str(e))
+            return self.err.val_err(_("Error setting guest memory."), e)
 
         return True
 
@@ -1677,7 +1686,7 @@ class vmmCreate(vmmGObjectUI):
                         diskpath = ideal
 
             if not diskpath:
-                return self.verr(_("A storage path must be specified."))
+                return self.err.val_err(_("A storage path must be specified."))
 
             disk = virtinst.VirtualDisk(conn=self.conn.vmm,
                                         path=diskpath,
@@ -1685,7 +1694,7 @@ class vmmCreate(vmmGObjectUI):
                                         sparse=sparse)
 
         except Exception, e:
-            return self.verr(_("Storage parameter error."), str(e))
+            return self.err.val_err(_("Storage parameter error."), e)
 
         isfatal, errmsg = disk.is_size_conflict()
         if not oldguest and not isfatal and errmsg:
@@ -1729,8 +1738,9 @@ class vmmCreate(vmmGObjectUI):
                 methname = "URL"
 
             if methname:
-                return self.verr(_("Network device required for %s install.") %
-                                 methname)
+                return self.err.val_err(
+                            _("Network device required for %s install.") %
+                            methname)
 
         nic = uihelpers.validate_network(self.topwin,
                                          self.conn, nettype, devname, macaddr)
@@ -1952,7 +1962,7 @@ class vmmCreate(vmmGObjectUI):
         return True
 
     def pretty_storage(self, size):
-        return "%.1f Gb" % float(size)
+        return "%.1f GB" % float(size)
 
     def pretty_memory(self, mem):
         return "%d MB" % (mem / 1024.0)
@@ -2046,7 +2056,7 @@ class vmmCreate(vmmGObjectUI):
 
             self.detectedDistro = None
 
-            logging.debug("Starting OS detection thread for media=%s" % media)
+            logging.debug("Starting OS detection thread for media=%s", media)
             self._safe_wrapper(self._set_forward_sensitive, (False,))
 
             detectThread = threading.Thread(target=self.actually_detect,
@@ -2120,9 +2130,6 @@ class vmmCreate(vmmGObjectUI):
     def show_help(self, ignore):
         # No help available yet.
         pass
-
-    def verr(self, msg, extra=None):
-        return self.err.val_err(msg, extra)
 
 vmmGObjectUI.type_register(vmmCreate)
 vmmCreate.signal_new(vmmCreate, "action-show-vm", [str, str])

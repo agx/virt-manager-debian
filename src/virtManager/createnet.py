@@ -67,6 +67,7 @@ class vmmCreateNetwork(vmmGObjectUI):
         self.set_initial_state()
 
     def show(self, parent):
+        logging.debug("Showing new network wizard")
         self.reset_state()
         self.topwin.set_transient_for(parent)
         self.topwin.present()
@@ -77,6 +78,7 @@ class vmmCreateNetwork(vmmGObjectUI):
         return 0
 
     def close(self, ignore1=None, ignore2=None):
+        logging.debug("Closing new network wizard")
         self.topwin.hide()
         return 1
 
@@ -165,7 +167,7 @@ class vmmCreateNetwork(vmmGObjectUI):
             return
 
         # We've got a valid IP
-        if ip.len() < 16 or ip.iptype() != "PRIVATE":
+        if ip.len() < 4 or ip.iptype() != "PRIVATE":
             src.modify_base(gtk.STATE_NORMAL, red)
         else:
             src.modify_base(gtk.STATE_NORMAL, green)
@@ -378,7 +380,7 @@ class vmmCreateNetwork(vmmGObjectUI):
             return self.err.val_err(_("Invalid Network Address"),
                     _("The network must be an IPv4 address"))
 
-        if ip.len() < 16:
+        if ip.len() < 4:
             return self.err.val_err(_("Invalid Network Address"),
                     _("The network prefix must be at least /4 (16 addresses)"))
 

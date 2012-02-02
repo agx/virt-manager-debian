@@ -18,6 +18,8 @@
 # MA 02110-1301 USA.
 #
 
+import logging
+
 import gtk
 
 from virtManager.baseclass import vmmGObjectUI
@@ -44,10 +46,12 @@ class vmmAbout(vmmGObjectUI):
             })
 
     def show(self):
+        logging.debug("Showing about")
         self.topwin.set_version(self.config.get_appversion())
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
+        logging.debug("Closing about")
         self.topwin.hide()
         return 1
 
