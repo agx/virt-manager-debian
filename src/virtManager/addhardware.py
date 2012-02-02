@@ -26,7 +26,8 @@ import gtk
 import virtinst
 from virtinst import (VirtualCharDevice, VirtualDevice,
                       VirtualVideoDevice, VirtualWatchdog,
-                      VirtualFilesystem, VirtualSmartCardDevice)
+                      VirtualFilesystem, VirtualSmartCardDevice,
+                      VirtualRedirDevice)
 
 import virtManager.util as util
 import virtManager.uihelpers as uihelpers
@@ -47,6 +48,7 @@ PAGE_VIDEO = 8
 PAGE_WATCHDOG = 9
 PAGE_FILESYSTEM = 10
 PAGE_SMARTCARD = 11
+PAGE_USBREDIR = 12
 
 char_widget_mappings = {
     "source_path" : "char-path",
@@ -92,7 +94,10 @@ class vmmAddHardware(vmmGObjectUI):
             "on_char_device_type_changed": self.change_char_device_type,
 
             "on_fs_type_combo_changed": self.change_fs_type,
+            "on_fs_driver_combo_changed": self.change_fs_driver,
             "on_fs_source_browse_clicked": self.browse_fs_source,
+
+            "on_usbredir_type_changed": self.change_usbredir_type,
 
             # Char dev info signals
             "char_device_type_focus": (self.update_doc, "char_type"),
@@ -142,11 +147,13 @@ class vmmAddHardware(vmmGObjectUI):
         return doc
 
     def show(self, parent):
+        logging.debug("Showing addhw")
         self.reset_state()
         self.topwin.set_transient_for(parent)
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
+        logging.debug("Closing addhw")
         self.topwin.hide()
         self.remove_timers()
         if self.storage_browser:
@@ -323,11 +330,18 @@ class vmmAddHardware(vmmGObjectUI):
                          [VirtualFilesystem.TYPE_MOUNT,
                           VirtualFilesystem.TYPE_TEMPLATE])
         simple_store_set("fs-mode-combo", VirtualFilesystem.MOUNT_MODES)
+        simple_store_set("fs-driver-combo", VirtualFilesystem.DRIVER_TYPES)
+        simple_store_set("fs-wrpolicy-combo", VirtualFilesystem.WRPOLICIES)
         self.show_pair_combo("fs-type", self.conn.is_openvz())
+        self.show_check_button("fs-readonly", self.conn.is_qemu())
 
         # Smartcard widgets
         combo = self.widget("smartcard-mode")
         uihelpers.build_smartcard_mode_combo(self.vm, combo)
+
+        # Usbredir widgets
+        combo = self.widget("usbredir-list")
+        uihelpers.build_redir_type_combo(self.vm, combo)
 
         # Available HW options
         is_local = not self.conn.is_remote()
@@ -392,6 +406,8 @@ class vmmAddHardware(vmmGObjectUI):
                       _("Not supported for this hypervisor/libvirt "
                         "combination."))
         add_hw_option("Smartcard", "device_serial", PAGE_SMARTCARD,
+                      True, None)
+        add_hw_option("USB Redirection", "device_usb", PAGE_USBREDIR,
                       True, None)
 
     def reset_state(self):
@@ -469,8 +485,11 @@ class vmmAddHardware(vmmGObjectUI):
         # FS params
         self.widget("fs-type-combo").set_active(0)
         self.widget("fs-mode-combo").set_active(0)
+        self.widget("fs-driver-combo").set_active(0)
+        self.widget("fs-wrpolicy-combo").set_active(0)
         self.widget("fs-source").set_text("")
         self.widget("fs-target").set_text("")
+        self.widget("fs-readonly").set_active(False)
 
         # Hide all notebook pages, so the wizard isn't as big as the largest
         # page
@@ -506,7 +525,8 @@ class vmmAddHardware(vmmGObjectUI):
                 add_dev("scsi", virtinst.VirtualDisk.DEVICE_DISK, "SCSI disk")
                 add_dev("usb", virtinst.VirtualDisk.DEVICE_DISK, "USB disk")
         if self.vm.get_hv_type() == "kvm":
-            add_dev("virtio", virtinst.VirtualDisk.DEVICE_DISK, "Virtio Disk")
+            add_dev("sata", virtinst.VirtualDisk.DEVICE_DISK, "SATA disk")
+            add_dev("virtio", virtinst.VirtualDisk.DEVICE_DISK, "Virtio disk")
         if self.conn.is_xen():
             add_dev("xen", virtinst.VirtualDisk.DEVICE_DISK, "Virtual disk")
 
@@ -571,7 +591,7 @@ class vmmAddHardware(vmmGObjectUI):
             path = util.get_default_path(self.conn,
                                          self.vm.get_name(),
                                          collidelist=pathlist)
-            logging.debug("Default storage path is: %s" % path)
+            logging.debug("Default storage path is: %s", path)
         else:
             path = self.widget("config-storage-entry").get_text()
 
@@ -713,8 +733,33 @@ class vmmAddHardware(vmmGObjectUI):
             return None
 
         return combo.get_model()[combo.get_active()][0]
+
+    def get_config_fs_wrpolicy(self):
+        name = "fs-wrpolicy-combo"
+        combo = self.widget(name)
+        if not combo.get_property("visible"):
+            return None
+
+        return combo.get_model()[combo.get_active()][0]
+
     def get_config_fs_type(self):
         name = "fs-type-combo"
+        combo = self.widget(name)
+        if not combo.get_property("visible"):
+            return None
+
+        return combo.get_model()[combo.get_active()][0]
+
+    def get_config_fs_readonly(self):
+        name = "fs-readonly"
+        check = self.widget(name)
+        if not check.get_property("visible"):
+            return None
+
+        return check.get_active()
+
+    def get_config_fs_driver(self):
+        name = "fs-driver-combo"
         combo = self.widget(name)
         if not combo.get_property("visible"):
             return None
@@ -727,6 +772,26 @@ class vmmAddHardware(vmmGObjectUI):
         modestr = mode.get_model().get_value(mode.get_active_iter(), 0)
         return modestr
 
+    # USB redir getters
+    def get_config_usbredir_host(self):
+        host = self.widget("usbredir-host")
+        if not host.is_sensitive():
+            return None
+
+        hoststr = host.get_text()
+        return hoststr
+
+    def get_config_usbredir_service(self):
+        service = self.widget("usbredir-service")
+        if not service.is_sensitive():
+            return None
+
+        return int(service.get_value())
+
+    def get_config_usbredir_type(self):
+        typebox = self.widget("usbredir-list")
+        return typebox.get_model()[typebox.get_active()][0]
+
     ################
     # UI listeners #
     ################
@@ -738,6 +803,8 @@ class vmmAddHardware(vmmGObjectUI):
         return util.get_list_selection(self.widget("hardware-list"))
 
     def update_char_device_type_model(self):
+        rhel6_blacklist = ["pipe", "udp"]
+
         # Char device type
         char_devtype = self.widget("char-device-type")
         dev_type = self.get_char_type()
@@ -748,7 +815,12 @@ class vmmAddHardware(vmmGObjectUI):
         text = gtk.CellRendererText()
         char_devtype.pack_start(text, True)
         char_devtype.add_attribute(text, 'text', 1)
+
         for t in VirtualCharDevice.char_types_for_dev_type[dev_type]:
+            if (t in rhel6_blacklist and
+                not self.vm.rhel6_defaults()):
+                continue
+
             desc = VirtualCharDevice.get_char_type_desc(t)
             row = [t, desc + " (%s)" % t]
             char_devtype_model.append(row)
@@ -824,6 +896,10 @@ class vmmAddHardware(vmmGObjectUI):
 
         combo.set_property("visible", show_combo)
         label.set_property("visible", not show_combo)
+
+    def show_check_button(self, basename, show):
+        check = self.widget(basename)
+        check.set_property("visible", show)
 
     # Storage listeners
     def browse_storage(self, ignore1):
@@ -912,6 +988,8 @@ class vmmAddHardware(vmmGObjectUI):
             return _("Filesystem Passthrough")
         if page == PAGE_SMARTCARD:
             return _("Smartcard")
+        if page == PAGE_USBREDIR:
+            return _("USB Redirection")
 
         if page == PAGE_CHAR:
             return self.get_char_type().capitalize() + " Device"
@@ -956,6 +1034,15 @@ class vmmAddHardware(vmmGObjectUI):
         if has_mode and self.widget("char-mode").get_active() == -1:
             self.widget("char-mode").set_active(0)
 
+    def change_usbredir_type(self, src):
+        idx = src.get_active()
+        if idx < 0:
+            return
+
+        hostdetails = src.get_model()[src.get_active()][2]
+        self.widget("usbredir-host").set_sensitive(hostdetails)
+        self.widget("usbredir-service").set_sensitive(hostdetails)
+
     # FS listeners
     def browse_fs_source(self, ignore1):
         self._browse_file(self.widget("fs-source"), isdir=True)
@@ -964,6 +1051,8 @@ class vmmAddHardware(vmmGObjectUI):
         idx = src.get_active()
         fstype = None
         show_mode_combo = False
+        show_driver_combo = False
+        show_wrpolicy_combo = self.conn.is_qemu()
 
         if idx >= 0 and src.get_property("visible"):
             fstype = src.get_model()[idx][0]
@@ -973,10 +1062,40 @@ class vmmAddHardware(vmmGObjectUI):
         else:
             source_text = _("_Source path:")
             show_mode_combo = self.conn.is_qemu()
+            show_driver_combo = self.conn.is_qemu()
 
         self.widget("fs-source-title").set_text(source_text)
         self.widget("fs-source-title").set_use_underline(True)
         self.show_pair_combo("fs-mode", show_mode_combo)
+        self.show_pair_combo("fs-driver", show_driver_combo)
+        self.show_pair_combo("fs-wrpolicy", show_wrpolicy_combo)
+
+    def change_fs_driver(self, src):
+        idx = src.get_active()
+        fsdriver = None
+        modecombo = self.widget("fs-mode-combo")
+        modelabel1 = self.widget("fs-mode-title")
+        wrpcombo = self.widget("fs-wrpolicy-combo")
+        wrplabel1 = self.widget("fs-wrpolicy-title")
+
+        if idx >= 0 and src.get_property("visible"):
+            fsdriver = src.get_model()[idx][0]
+
+        if (fsdriver == virtinst.VirtualFilesystem.DRIVER_PATH or
+            fsdriver == virtinst.VirtualFilesystem.DRIVER_DEFAULT):
+            modecombo.set_property("visible", True)
+            modelabel1.set_property("visible", True)
+        else:
+            modecombo.set_property("visible", False)
+            modelabel1.set_property("visible", False)
+
+        if (fsdriver == virtinst.VirtualFilesystem.DRIVER_DEFAULT):
+            wrpcombo.set_property("visible", False)
+            wrplabel1.set_property("visible", False)
+        else:
+            wrpcombo.set_property("visible", True)
+            wrplabel1.set_property("visible", True)
+
 
 
     ######################
@@ -1025,7 +1144,7 @@ class vmmAddHardware(vmmGObjectUI):
         try:
             self.vm.attach_device(self._dev)
         except Exception, e:
-            logging.debug("Device could not be hotplugged: %s" % str(e))
+            logging.debug("Device could not be hotplugged: %s", str(e))
             attach_err = (str(e), "".join(traceback.format_exc()))
 
         if attach_err:
@@ -1083,6 +1202,8 @@ class vmmAddHardware(vmmGObjectUI):
             return self.validate_page_filesystem()
         elif page_num == PAGE_SMARTCARD:
             return self.validate_page_smartcard()
+        elif page_num == PAGE_USBREDIR:
+            return self.validate_page_usbredir()
 
     def validate_page_storage(self):
         bus, device = self.get_config_disk_target()
@@ -1148,7 +1269,7 @@ class vmmAddHardware(vmmGObjectUI):
                 disk.driver_name = virtinst.VirtualDisk.DRIVER_TAP
 
         except Exception, e:
-            return self.err.val_err(_("Storage parameter error."), str(e))
+            return self.err.val_err(_("Storage parameter error."), e)
 
         # Generate target
         used = []
@@ -1224,7 +1345,7 @@ class vmmAddHardware(vmmGObjectUI):
             self._dev.listen = self.get_config_graphics_address()
             self._dev.keymap = self.get_config_keymap()
         except ValueError, e:
-            self.err.val_err(_("Graphics device parameter error"), str(e))
+            self.err.val_err(_("Graphics device parameter error"), e)
 
     def validate_page_sound(self):
         smodel = self.get_config_sound_model()
@@ -1232,7 +1353,7 @@ class vmmAddHardware(vmmGObjectUI):
             self._dev = virtinst.VirtualAudio(conn=self.conn.vmm,
                                               model=smodel)
         except Exception, e:
-            return self.err.val_err(_("Sound device parameter error"), str(e))
+            return self.err.val_err(_("Sound device parameter error"), e)
 
     def validate_page_hostdev(self):
         ret = self.get_config_host_device_info()
@@ -1247,10 +1368,11 @@ class vmmAddHardware(vmmGObjectUI):
                             conn=self.conn.vmm,
                             name=nodedev_name)
         except Exception, e:
-            return self.err.val_err(_("Host device parameter error"), str(e))
+            return self.err.val_err(_("Host device parameter error"), e)
 
     def validate_page_char(self):
         chartype = self.get_char_type()
+        modebox = self.widget("char-mode")
         devbox = self.widget("char-device-type")
         devtype = devbox.get_model()[devbox.get_active()][0]
         conn = self.conn.vmm
@@ -1258,6 +1380,7 @@ class vmmAddHardware(vmmGObjectUI):
         devclass = VirtualCharDevice.get_dev_instance(conn, chartype, devtype)
 
         source_path = self.widget("char-path").get_text()
+        source_mode = modebox.get_model()[modebox.get_active()][0]
         source_host = self.widget("char-host").get_text()
         bind_host = self.widget("char-bind-host").get_text()
         source_port = self.widget("char-port").get_adjustment().value
@@ -1271,6 +1394,7 @@ class vmmAddHardware(vmmGObjectUI):
 
         value_mappings = {
             "source_path" : source_path,
+            "source_mode" : source_mode,
             "source_host" : source_host,
             "source_port" : source_port,
             "bind_port": bind_port,
@@ -1290,7 +1414,7 @@ class vmmAddHardware(vmmGObjectUI):
             self._dev.get_xml_config()
         except Exception, e:
             return self.err.val_err(_("%s device parameter error") %
-                                    chartype.capitalize(), str(e))
+                                    chartype.capitalize(), e)
 
     def validate_page_video(self):
         conn = self.conn.vmm
@@ -1300,8 +1424,7 @@ class vmmAddHardware(vmmGObjectUI):
             self._dev = VirtualVideoDevice(conn=conn)
             self._dev.model_type = model
         except Exception, e:
-            return self.err.val_err(_("Video device parameter error"),
-                                    str(e))
+            return self.err.val_err(_("Video device parameter error"), e)
 
     def validate_page_watchdog(self):
         conn = self.conn.vmm
@@ -1313,8 +1436,7 @@ class vmmAddHardware(vmmGObjectUI):
             self._dev.model = model
             self._dev.action = action
         except Exception, e:
-            return self.err.val_err(_("Watchdog parameter error"),
-                                    str(e))
+            return self.err.val_err(_("Watchdog parameter error"), e)
 
     def validate_page_filesystem(self):
         conn = self.conn.vmm
@@ -1322,11 +1444,18 @@ class vmmAddHardware(vmmGObjectUI):
         target = self.widget("fs-target").get_text()
         mode = self.get_config_fs_mode()
         fstype = self.get_config_fs_type()
+        readonly = self.get_config_fs_readonly()
+        driver = self.get_config_fs_driver()
+        wrpolicy = self.get_config_fs_wrpolicy()
 
         if not source:
             return self.err.val_err(_("A filesystem source must be specified"))
         if not target:
             return self.err.val_err(_("A filesystem target must be specified"))
+
+        if self.conn.is_qemu() and self.filesystem_target_present(target):
+            return self.err.val_err(_('Invalid target path. A filesystem with'
+                                       ' that target already exists'))
 
         try:
             self._dev = virtinst.VirtualFilesystem(conn=conn)
@@ -1336,9 +1465,23 @@ class vmmAddHardware(vmmGObjectUI):
                 self._dev.mode = mode
             if fstype:
                 self._dev.type = fstype
+            if readonly:
+                self._dev.readonly = readonly
+            if driver:
+                self._dev.driver = driver
+            if wrpolicy:
+                self._dev.wrpolicy = wrpolicy
         except Exception, e:
-            return self.err.val_err(_("Filesystem parameter error"),
-                                    str(e))
+            return self.err.val_err(_("Filesystem parameter error"), e)
+
+    def filesystem_target_present(self, target):
+        fsdevs = self.vm.get_filesystem_devices()
+
+        for fs in fsdevs:
+            if (fs.target == target):
+                return True
+
+        return False
 
     def validate_page_smartcard(self):
         conn = self.conn.vmm
@@ -1347,7 +1490,22 @@ class vmmAddHardware(vmmGObjectUI):
         try:
             self._dev = VirtualSmartCardDevice(conn, mode)
         except Exception, e:
-            return self.err.val_err(_("Video device parameter error"),
+            return self.err.val_err(_("Smartcard device parameter error"), e)
+
+    def validate_page_usbredir(self):
+        conn = self.conn.vmm
+        stype = self.get_config_usbredir_type()
+        host = self.get_config_usbredir_host()
+        service = self.get_config_usbredir_service()
+
+        try:
+            self._dev = VirtualRedirDevice(conn=conn, bus="usb", stype=stype)
+            if host:
+                self._dev.host = host
+            if service:
+                self._dev.service = service
+        except Exception, e:
+            return self.err.val_err(_("USB redirected device parameter error"),
                                     str(e))
 
 

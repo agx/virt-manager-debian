@@ -10,11 +10,39 @@
 %define kvm_packages               ""
 %define libvirt_packages           ""
 %define disable_unsupported_rhel   0
-%define default_graphics           ""
 
 %define with_guestfs               0
 %define with_spice                 0
 %define with_tui                   0
+
+
+# Compat for use of spec in multiple distros
+
+%if 0%{?gconf_schema_prepare} == 0
+%define gconf_schema_prepare() \
+if [ "$1" -gt 1 ]; then \
+    export GCONF_CONFIG_SOURCE=`gconftool-2 --get-default-source` \
+    gconftool-2 --makefile-uninstall-rule %{_sysconfdir}/gconf/schemas/%1.schemas > /dev/null || : \
+fi \
+%{nil}
+%endif
+
+%if 0%{?gconf_schema_upgrade} == 0
+%define gconf_schema_upgrade() \
+export GCONF_CONFIG_SOURCE=`gconftool-2 --get-default-source` \
+gconftool-2 --makefile-install-rule %{_sysconfdir}/gconf/schemas/%1.schemas > /dev/null || : \
+%{nil}
+%endif
+
+%if 0%{?gconf_schema_remove} == 0
+%define gconf_schema_remove() \
+if [ "$1" -eq 0 ]; then \
+    export GCONF_CONFIG_SOURCE=`gconftool-2 --get-default-source` \
+    gconftool-2 --makefile-uninstall-rule %{_sysconfdir}/gconf/schemas/%1.schemas > /dev/null || : \
+fi \
+%{nil}
+%endif
+
 
 # End local config
 
@@ -90,12 +118,17 @@ Requires: virt-manager-common = %{verrel}
 BuildRequires: gettext
 BuildRequires: scrollkeeper
 BuildRequires: intltool
+BuildRequires: GConf2
 
 Requires(pre): GConf2
 Requires(post): GConf2
 Requires(preun): GConf2
 Requires(post): desktop-file-utils
 Requires(postun): desktop-file-utils
+
+%if %{with_spice}
+%define default_graphics "spice"
+%endif
 
 %description
 Virtual Machine Manager provides a graphical tool for administering virtual
@@ -111,7 +144,7 @@ Summary: Virtual Machine Manager text user interface
 Group: Applications/Emulators
 
 Requires: virt-manager-common = %{verrel}
-Requires: python-newt_syrup
+Requires: python-newt_syrup >= 0.1.2
 Requires: libuser-python
 Requires: python-IPy
 
@@ -159,7 +192,7 @@ Common files used by the different Virtual Machine Manager interfaces.
 %define _disable_unsupported_rhel --disable-unsupported-rhel-options
 %endif
 
-%if %{default_graphics}
+%if 0%{?default_graphics}
 %define _default_graphics --with-default-graphics=%{default_graphics}
 %endif
 
@@ -174,7 +207,7 @@ Common files used by the different Virtual Machine Manager interfaces.
             %{?_kvm_packages} \
             %{?_libvirt_packages} \
             %{?_preferred_distros} \
-            %{?_enable_unsupported_rhel} \
+            %{?_disable_unsupported_rhel} \
             %{?_default_graphics}
 make %{?_smp_mflags}
 
@@ -191,15 +224,22 @@ rm -rf $RPM_BUILD_ROOT
 %gconf_schema_prepare %{name}
 
 %post
+/bin/touch --no-create %{_datadir}/icons/hicolor &>/dev/null || :
 update-desktop-database -q %{_datadir}/applications
-%gconf_schema_upgrade virt-manager
+%gconf_schema_upgrade %{name}
 
 %postun
+if [ $1 -eq 0 ] ; then
+    /bin/touch --no-create %{_datadir}/icons/hicolor &>/dev/null
+    /usr/bin/gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
+fi
 update-desktop-database -q %{_datadir}/applications
 
 %preun
 %gconf_schema_remove %{name}
 
+%posttrans
+/usr/bin/gtk-update-icon-cache %{_datadir}/icons/hicolor &>/dev/null || :
 
 %if %{with_tui}
 %files
@@ -247,6 +287,13 @@ update-desktop-database -q %{_datadir}/applications
 %endif
 
 %changelog
+* Tue Jan 31 2012 Cole Robinson <crobinso@redhat.com> - 0.9.1-1
+- Support for adding usb redirection devices (Marc-André Lureau)
+- Option to switch usb controller to support usb2.0 (Marc-André Lureau)
+- Option to specify machine type for non-x86 guests (Li Zhang)
+- Support for filesystem device type and write policy (Deepak C Shetty)
+- Many bug fixes!
+
 * Tue Jul 26 2011 Cole Robinson <crobinso@redhat.com> - 0.9.0-1
 - Use a hiding toolbar for fullscreen mode
 - Use libguestfs to show guest packagelist and more (Richard W.M. Jones)

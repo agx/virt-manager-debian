@@ -29,6 +29,8 @@ import virtinst
 
 running_config = None
 
+xml_escape = virtinst.util.xml_escape
+
 # FIXME: selinux policy also has a ~/VirtualMachines/isos dir
 def get_default_pool_path(conn):
     if conn.is_session_uri():
@@ -58,7 +60,7 @@ def build_default_pool(vmmconn):
         return
 
     try:
-        logging.debug("Attempting to build default pool with target '%s'" %
+        logging.debug("Attempting to build default pool with target '%s'",
                       path)
         defpool = virtinst.Storage.DirectoryPool(conn=conn,
                                                  name=name,
@@ -124,14 +126,14 @@ def get_default_path(conn, name, collidelist=None):
         target, ignore, suffix = get_ideal_path_info(conn, name)
 
         # Sanitize collidelist to work with the collision checker
-        for c in collidelist[:]:
-            collidelist.remove(c)
-            if os.path.dirname(c) == pool.get_target_path():
-                collidelist.append(os.path.basename(c))
+        newcollidelist = []
+        for c in collidelist:
+            if c and os.path.dirname(c) == pool.get_target_path():
+                newcollidelist.append(os.path.basename(c))
 
         path = virtinst.Storage.StorageVolume.find_free_name(name,
                         pool_object=pool.pool, suffix=suffix,
-                        collidelist=collidelist)
+                        collidelist=newcollidelist)
 
         path = os.path.join(target, path)
 
@@ -174,7 +176,8 @@ def xml_parse_wrapper(xml, parse_func, *args, **kwargs):
 
 def browse_local(parent, dialog_name, conn, start_folder=None,
                  _type=None, dialog_type=None,
-                 confirm_func=None, browse_reason=None):
+                 confirm_func=None, browse_reason=None,
+                 choose_button=None):
     """
     Helper function for launching a filechooser
 
@@ -194,13 +197,16 @@ def browse_local(parent, dialog_name, conn, start_folder=None,
 
     # Initial setup
     overwrite_confirm = False
-    choose_button = gtk.STOCK_OPEN
 
     if dialog_type is None:
         dialog_type = gtk.FILE_CHOOSER_ACTION_OPEN
     if dialog_type == gtk.FILE_CHOOSER_ACTION_SAVE:
-        choose_button = gtk.STOCK_SAVE
-        overwrite_confirm = True
+        if choose_button is None:
+            choose_button = gtk.STOCK_SAVE
+            overwrite_confirm = True
+
+    if choose_button is None:
+        choose_button = gtk.STOCK_OPEN
 
     fcdialog = gtk.FileChooserDialog(dialog_name, parent,
                                      dialog_type,

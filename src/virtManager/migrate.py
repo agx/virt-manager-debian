@@ -80,12 +80,14 @@ class vmmMigrateDialog(vmmGObjectUI):
         self.init_state()
 
     def show(self, parent):
+        logging.debug("Showing migrate wizard")
         self.reset_state()
         self.topwin.resize(1, 1)
         self.topwin.set_transient_for(parent)
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
+        logging.debug("Closing migrate wizard")
         self.topwin.hide()
         # If we only do this at show time, operation takes too long and
         # user actually sees the expander close.
@@ -122,7 +124,7 @@ class vmmMigrateDialog(vmmGObjectUI):
 
     def reset_state(self):
         title_str = ("<span size='large' color='white'>%s '%s'</span>" %
-                     (_("Migrate"), self.vm.get_name()))
+                     (_("Migrate"), util.xml_escape(self.vm.get_name())))
         self.widget("migrate-main-label").set_markup(title_str)
 
         self.widget("migrate-cancel").grab_focus()
@@ -256,7 +258,7 @@ class vmmMigrateDialog(vmmGObjectUI):
             return 0
         return int(self.widget("migrate-port").get_value())
 
-    def build_localhost_uri(self, destconn):
+    def build_localhost_uri(self, destconn, srcuri):
         desthost = destconn.get_qualified_hostname()
         if desthost == "localhost":
             # We couldn't find a host name for the destination machine
@@ -267,12 +269,10 @@ class vmmMigrateDialog(vmmGObjectUI):
             raise RuntimeError(_("Could not determine remotely accessible "
                                  "hostname for destination connection."))
 
-        desturi_tuple = virtinst.util.uri_split(destconn.get_uri())
-
-        # Replace dest hostname with src hostname
-        desturi_tuple = list(desturi_tuple)
-        desturi_tuple[2] = desthost
-        return uri_join(desturi_tuple)
+        # Since the connection started as local, we have no clue about
+        # how to access it remotely. Assume users have a uniform access
+        # setup and use the same credentials as the remote source URI
+        return self.edit_uri(srcuri, desthost, None)
 
     def edit_uri(self, uri, hostname, port):
         split = list(virtinst.util.uri_split(uri))
@@ -286,7 +286,7 @@ class vmmMigrateDialog(vmmGObjectUI):
         split[2] = hostname
         return uri_join(tuple(split))
 
-    def build_migrate_uri(self, destconn):
+    def build_migrate_uri(self, destconn, srcuri):
         conn = self.conn
 
         interface = self.get_config_interface()
@@ -304,7 +304,7 @@ class vmmMigrateDialog(vmmGObjectUI):
             # to the local connection, because libvirt will pull try to use
             # 'qemu:///system' as the migrate URI which will deadlock
             if destconn.is_local():
-                uri = self.build_localhost_uri(destconn)
+                uri = self.build_localhost_uri(destconn, srcuri)
             else:
                 uri = destconn.get_uri()
 
@@ -450,12 +450,13 @@ class vmmMigrateDialog(vmmGObjectUI):
                 return
 
             destconn = self.get_config_destconn()
+            srcuri = self.vm.conn.get_uri()
             srchost = self.vm.conn.get_hostname()
             dsthost = destconn.get_qualified_hostname()
             max_downtime = self.get_config_max_downtime()
             live = not self.get_config_offline()
             secure = self.get_config_secure()
-            uri = self.build_migrate_uri(destconn)
+            uri = self.build_migrate_uri(destconn, srcuri)
             rate = self.get_config_rate()
             if rate:
                 rate = int(rate)
@@ -512,7 +513,7 @@ class vmmMigrateDialog(vmmGObjectUI):
                 # migration has not been started, wait 100 milliseconds
                 return True
 
-            logging.warning("Error setting migrate downtime: %s" % e)
+            logging.warning("Error setting migrate downtime: %s", e)
             return False
 
     def cancel_migration(self, asyncjob, vm):

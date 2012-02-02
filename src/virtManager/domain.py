@@ -30,8 +30,6 @@ import virtinst.support as support
 from virtManager import util
 from virtManager.libvirtobject import vmmLibvirtObject
 
-from inspectiondata import vmmInspectionData
-
 def compare_device(origdev, newdev, idx):
     devprops = {
         "disk"      : ["target", "bus"],
@@ -51,6 +49,7 @@ def compare_device(origdev, newdev, idx):
         "channel"   : ["char_type", "target_name"],
         "filesystem" : ["target" , "vmmindex"],
         "smartcard" : ["mode" , "vmmindex"],
+        "redirdev" : ["bus" , "type", "vmmindex"],
     }
 
     if id(origdev) == id(newdev):
@@ -118,6 +117,18 @@ def start_job_progress_thread(vm, meter, progtext):
                              args=())
         t.daemon = True
         t.start()
+
+class vmmInspectionData(object):
+    def __init__(self):
+        self.type = None
+        self.distro = None
+        self.major_version = None
+        self.minor_version = None
+        self.hostname = None
+        self.product_name = None
+        self.product_variant = None
+        self.icon = None
+        self.applications = None
 
 class vmmDomain(vmmLibvirtObject):
     """
@@ -373,7 +384,7 @@ class vmmDomain(vmmLibvirtObject):
         if self.is_active():
             raise RuntimeError(_("Cannot rename an active guest"))
 
-        logging.debug("Changing guest name to '%s'" % newname)
+        logging.debug("Changing guest name to '%s'", newname)
         origxml = guest.get_xml_config()
         guest.name = newname
         newxml = guest.get_xml_config()
@@ -511,6 +522,11 @@ class vmmDomain(vmmLibvirtObject):
             guest.clock.offset = newvalue
         return self._redefine_guest(change)
 
+    def define_machtype(self, newvalue):
+        def change(guest):
+            guest.installer.machine = newvalue
+        return self._redefine_guest(change)
+
     def define_description(self, newvalue):
         def change(guest):
             guest.description = newvalue or None
@@ -565,12 +581,29 @@ class vmmDomain(vmmLibvirtObject):
         return self._redefine_device(change, devobj)
     def define_disk_bus(self, devobj, newval):
         def change(editdev):
-            if editdev.bus != newval:
-                # Old <address> probably isn't applicable for new bus value
-                editdev.address.clear()
-                # XXX: Need to change target value as well?
-
+            oldprefix = editdev.get_target_prefix()[0]
+            oldbus = editdev.bus
             editdev.bus = newval
+
+            if oldbus == newval:
+                return
+
+            editdev.address.clear()
+
+            if oldprefix == editdev.get_target_prefix()[0]:
+                return
+
+            used = []
+            disks = (self.get_disk_devices() +
+                     self.get_disk_devices(inactive=True))
+            for d in disks:
+                used.append(d.target)
+
+            if editdev.target:
+                used.remove(editdev.target)
+
+            editdev.target = None
+            editdev.generate_target(used)
         return self._redefine_device(change, devobj)
     def define_disk_serial(self, devobj, val):
         def change(editdev):
@@ -592,6 +625,8 @@ class vmmDomain(vmmLibvirtObject):
         return self._redefine_device(change, devobj)
     def define_network_model(self, devobj, newmodel):
         def change(editdev):
+            if editdev.model != newmodel:
+                editdev.address.clear()
             editdev.model = newmodel
         return self._redefine_device(change, devobj)
 
@@ -644,6 +679,8 @@ class vmmDomain(vmmLibvirtObject):
 
     def define_sound_model(self, devobj, newmodel):
         def change(editdev):
+            if editdev.model != newmodel:
+                editdev.address.clear()
             editdev.model = newmodel
         return self._redefine_device(change, devobj)
 
@@ -655,6 +692,7 @@ class vmmDomain(vmmLibvirtObject):
                 return
 
             editdev.model_type = newmodel
+            editdev.address.clear()
 
             # Clear out heads/ram values so they reset to default. If
             # we ever allow editing these values in the UI we should
@@ -668,6 +706,8 @@ class vmmDomain(vmmLibvirtObject):
 
     def define_watchdog_model(self, devobj, newval):
         def change(editdev):
+            if editdev.model != newval:
+                editdev.address.clear()
             editdev.model = newval
         return self._redefine_device(change, devobj)
     def define_watchdog_action(self, devobj, newval):
@@ -681,6 +721,26 @@ class vmmDomain(vmmLibvirtObject):
         def change(editdev):
             editdev.mode = newmodel
         return self._redefine_device(change, devobj)
+
+    # Controller define methods
+
+    def define_controller_model(self, devobj, newmodel):
+        def change(editdev):
+            ignore = editdev
+
+            guest = self._get_guest_to_define()
+            ctrls = guest.get_devices("controller")
+            ctrls = filter(lambda x: (x.type ==
+                           virtinst.VirtualController.CONTROLLER_TYPE_USB),
+                           ctrls)
+            for dev in ctrls:
+                guest.remove_device(dev)
+
+            if newmodel == "ich9-ehci1":
+                guest.add_usb_ich9_controllers()
+
+        return self._redefine_device(change, devobj)
+
 
 
     ####################
@@ -729,8 +789,8 @@ class vmmDomain(vmmLibvirtObject):
             self._backend.setMaxMemory(maxmem)
 
     def hotplug_both_mem(self, memory, maxmem):
-        logging.info("Hotplugging curmem=%s maxmem=%s for VM '%s'" %
-                     (memory, maxmem, self.get_name()))
+        logging.info("Hotplugging curmem=%s maxmem=%s for VM '%s'",
+                     memory, maxmem, self.get_name())
 
         if self.is_active():
             actual_cur = self.get_memory()
@@ -816,6 +876,8 @@ class vmmDomain(vmmLibvirtObject):
         return self._get_guest().features["apic"]
     def get_clock(self):
         return self._get_guest().clock.offset
+    def get_machtype(self):
+        return self._get_guest().installer.machine
 
     def get_description(self):
         # Always show the inactive <description>, let's us fake hotplug
@@ -943,6 +1005,8 @@ class vmmDomain(vmmLibvirtObject):
         return self._build_device_list("filesystem")
     def get_smartcard_devices(self):
         return self._build_device_list("smartcard")
+    def get_redirdev_devices(self):
+        return self._build_device_list("redirdev")
 
     def get_disk_devices(self, refresh_if_necc=True, inactive=False):
         devs = self._build_device_list("disk", refresh_if_necc, inactive)
@@ -1055,6 +1119,11 @@ class vmmDomain(vmmLibvirtObject):
         self.force_update_status()
 
     def delete(self):
+        if self.hasSavedImage():
+            try:
+                self._backend.managedSaveRemove(0)
+            except:
+                logging.exception("Failed to remove managed save state")
         self._backend.undefine()
 
     def resume(self):
@@ -1114,8 +1183,8 @@ class vmmDomain(vmmLibvirtObject):
 
         newxml = self.get_xml(inactive=True)
 
-        logging.debug("Migrating: conn=%s flags=%s dname=%s uri=%s rate=%s" %
-                      (destconn.vmm, flags, newname, interface, rate))
+        logging.debug("Migrating: conn=%s flags=%s dname=%s uri=%s rate=%s",
+                      destconn.vmm, flags, newname, interface, rate)
 
         if meter:
             start_job_progress_thread(self, meter, _("Migrating domain"))
@@ -1152,10 +1221,10 @@ class vmmDomain(vmmLibvirtObject):
 
         if not (info[0] in [libvirt.VIR_DOMAIN_SHUTOFF,
                             libvirt.VIR_DOMAIN_CRASHED]):
+            guestcpus = info[3]
             cpuTime = info[4] - prevCpuTime
             cpuTimeAbs = info[4]
             hostcpus = self.conn.host_active_processor_count()
-            guestcpus = self.vcpu_count()
 
             pcentbase = (((cpuTime) * 100.0) /
                          ((now - prevTimestamp) * 1000.0 * 1000.0 * 1000.0))
@@ -1334,7 +1403,10 @@ class vmmDomain(vmmLibvirtObject):
         elif self.status() == libvirt.VIR_DOMAIN_SHUTDOWN:
             return _("Shutting Down")
         elif self.status() == libvirt.VIR_DOMAIN_SHUTOFF:
-            return _("Shutoff")
+            if self.hasSavedImage():
+                return _("Saved")
+            else:
+                return _("Shutoff")
         elif self.status() == libvirt.VIR_DOMAIN_CRASHED:
             return _("Crashed")
 
@@ -1448,7 +1520,7 @@ class vmmDomain(vmmLibvirtObject):
     def _sample_network_traffic(self):
         rx = 0
         tx = 0
-        if (not self._stats_net_supported or not
+        if (not self._stats_net_supported or
             not self._enable_net_poll or
             not self.is_active()):
             return rx, tx
@@ -1468,13 +1540,13 @@ class vmmDomain(vmmLibvirtObject):
                     tx += io[4]
             except libvirt.libvirtError, err:
                 if support.is_error_nosupport(err):
-                    logging.debug("Net stats not supported: %s" % err)
+                    logging.debug("Net stats not supported: %s", err)
                     self._stats_net_supported = False
                 else:
                     logging.error("Error reading net stats for "
-                                  "'%s' dev '%s': %s" %
-                                  (self.get_name(), dev, err))
-                    logging.debug("Adding %s to skip list." % dev)
+                                  "'%s' dev '%s': %s",
+                                  self.get_name(), dev, err)
+                    logging.debug("Adding %s to skip list", dev)
                     self._stats_net_skip.append(dev)
 
         return rx, tx
@@ -1502,13 +1574,13 @@ class vmmDomain(vmmLibvirtObject):
                     wr += io[3]
             except libvirt.libvirtError, err:
                 if support.is_error_nosupport(err):
-                    logging.debug("Disk stats not supported: %s" % err)
+                    logging.debug("Disk stats not supported: %s", err)
                     self._stats_disk_supported = False
                 else:
                     logging.error("Error reading disk stats for "
-                                  "'%s' dev '%s': %s" %
-                                  (self.get_name(), dev, err))
-                    logging.debug("Adding %s to skip list." % dev)
+                                  "'%s' dev '%s': %s",
+                                  self.get_name(), dev, err)
+                    logging.debug("Adding %s to skip list", dev)
                     self._stats_disk_skip.append(dev)
 
         return rd, wr
@@ -1609,7 +1681,7 @@ class vmmDomainVirtinst(vmmDomain):
     def _define(self, newxml):
         ignore = newxml
         self._orig_xml = None
-        self.idle_emit("config-changed")
+        self.emit("config-changed")
 
     def _redefine_xml(self, newxml):
         # We need to cache origxml in order to have something to diff against
@@ -1624,7 +1696,7 @@ class vmmDomainVirtinst(vmmDomain):
         return self._backend.autostart
     def set_autostart(self, val):
         self._backend.autostart = bool(val)
-        self.idle_emit("config-changed")
+        self.emit("config-changed")
 
     def define_name(self, newname):
         def change(guest):

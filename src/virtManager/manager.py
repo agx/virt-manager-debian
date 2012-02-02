@@ -18,6 +18,9 @@
 # MA 02110-1301 USA.
 #
 
+import logging
+import re
+
 import gtk
 
 import virtManager.uihelpers as uihelpers
@@ -165,6 +168,7 @@ class vmmManager(vmmGObjectUI):
     ##################
 
     def show(self):
+        logging.debug("Showing manager")
         vis = self.is_visible()
         self.topwin.present()
         if vis:
@@ -177,6 +181,7 @@ class vmmManager(vmmGObjectUI):
         self.emit("manager-opened")
 
     def close(self, src_ignore=None, src2_ignore=None):
+        logging.debug("Closing manager")
         if not self.is_visible():
             return
 
@@ -643,24 +648,42 @@ class vmmManager(vmmGObjectUI):
             conn.open()
             return True
 
-    def _connect_error(self, conn, details):
-        if conn.get_driver() == "xen" and not conn.is_remote():
-            self.err.show_err(
-            _("Unable to open a connection to the Xen hypervisor/daemon.\n\n" +
-              "Verify that:\n" +
-              " - A Xen host kernel was booted\n" +
-              " - The Xen service has been started\n"),
-              details=details,
-              title=_("Virtual Machine Manager Connection Failure"))
+    def _connect_error(self, conn, shortmsg, tb, warnconsole):
+        shortmsg = shortmsg.strip(" \n")
+        tb = tb.strip(" \n")
+        msg = _("Unable to connect to libvirt:\n\n%s\n\n") % shortmsg
+
+        if conn.is_xen() and not conn.is_remote():
+            msg += _("Verify that:\n"
+                     " - A Xen host kernel was booted\n"
+                     " - The Xen service has been started\n")
+            msg = msg.strip("\n")
+            details = "%s\n\n%s" % (msg, tb)
+
         else:
-            self.err.show_err(
-            _("Unable to open a connection to the libvirt "
-              "management daemon.\n\n" +
-              "Libvirt URI is: %s\n\n" % conn.get_uri() +
-              "Verify that:\n" +
-              " - The 'libvirtd' daemon has been started\n"),
-              details=details,
-              title=_("Virtual Machine Manager Connection Failure"))
+            hints = []
+            if conn.is_remote() and re.search(r"nc: .* -- 'U'", details):
+                hints.append(
+                    _("\n - The remote netcat understands the '-U' option"))
+
+            if warnconsole:
+                msg += _("Could not detect a local session: if you are \n"
+                         "running virt-manager over ssh -X or VNC, you \n"
+                         "may not be able to connect to libvirt as a \n"
+                         "regular user. Try running as root.\n\n")
+            else:
+                msg += _("Verify that:\n" +
+                         " - The 'libvirtd' daemon has been started")
+                for hint in hints:
+                    msg += hint
+
+            msg = msg.strip("\n")
+            details = (("%s\n\n" % msg) +
+                       (_("Libvirt URI is: %s\n\n") % conn.get_uri()) +
+                       tb)
+
+        self.err.show_err(msg, details,
+                    title=_("Virtual Machine Manager Connection Failure"))
 
 
     ####################################
@@ -701,12 +724,12 @@ class vmmManager(vmmGObjectUI):
         return hint
 
     def _build_conn_markup(self, conn, row):
+        name = util.xml_escape(row[ROW_NAME])
+        text = name
         if conn.state == conn.STATE_DISCONNECTED:
-            text = str(row[ROW_NAME]) + " - " + _("Not Connected")
+            text += " - " + _("Not Connected")
         elif conn.state == conn.STATE_CONNECTING:
-            text = str(row[ROW_NAME]) + " - " + _("Connecting...")
-        else:
-            text = str(row[ROW_NAME])
+            text += " - " + _("Connecting...")
 
         markup = "<span size='smaller'>%s</span>" % text
         return markup
@@ -720,19 +743,20 @@ class vmmManager(vmmGObjectUI):
 
     def _build_vm_markup(self, row):
         domtext     = ("<span size='smaller' weight='bold'>%s</span>" %
-                       row[ROW_NAME])
+                       util.xml_escape(row[ROW_NAME]))
         statetext   = "<span size='smaller'>%s</span>" % row[ROW_STATUS]
         return domtext + "\n" + statetext
 
     def _build_vm_row(self, vm):
         row = []
+
         row.insert(ROW_HANDLE, vm)
         row.insert(ROW_NAME, vm.get_name())
         row.insert(ROW_MARKUP, "")
         row.insert(ROW_STATUS, vm.run_status())
         row.insert(ROW_STATUS_ICON, vm.run_status_icon_name())
         row.insert(ROW_KEY, vm.get_uuid())
-        row.insert(ROW_HINT, vm.get_description())
+        row.insert(ROW_HINT, util.xml_escape(vm.get_description()))
         row.insert(ROW_IS_CONN, False)
         row.insert(ROW_IS_CONN_CONNECTED, True)
         row.insert(ROW_IS_VM, True)
@@ -876,7 +900,7 @@ class vmmManager(vmmGObjectUI):
         row[ROW_MARKUP] = self._build_vm_markup(row)
 
         if config_changed:
-            row[ROW_HINT] = vm.get_description()
+            row[ROW_HINT] = util.xml_escape(vm.get_description())
 
         model.row_changed(row.path, row.iter)
 

@@ -93,7 +93,7 @@ class Tunnel(object):
             nc_params = "%s %s" % (gaddr, gport)
 
         nc_cmd = (
-            """nc -q 2>&1 | grep -q "requires an argument";"""
+            """nc -q 2>&1 | grep "requires an argument" >/dev/null;"""
             """if [ $? -eq 0 ] ; then"""
             """   CMD="nc -q 0 %(nc_params)s";"""
             """else"""
@@ -106,7 +106,7 @@ class Tunnel(object):
         argv.append("'%s'" % nc_cmd)
 
         argv_str = reduce(lambda x, y: x + " " + y, argv[1:])
-        logging.debug("Creating SSH tunnel: %s" % argv_str)
+        logging.debug("Creating SSH tunnel: %s", argv_str)
 
         fds      = socket.socketpair()
         errorfds = socket.socketpair()
@@ -128,8 +128,8 @@ class Tunnel(object):
             fds[1].close()
             errorfds[1].close()
 
-        logging.debug("Tunnel PID=%d OUTFD=%d ERRFD=%d" %
-                      (pid, fds[0].fileno(), errorfds[0].fileno()))
+        logging.debug("Tunnel PID=%d OUTFD=%d ERRFD=%d",
+                      pid, fds[0].fileno(), errorfds[0].fileno())
         errorfds[0].setblocking(0)
 
         self.outfd = fds[0]
@@ -145,9 +145,9 @@ class Tunnel(object):
         if self.outfd is None:
             return
 
-        logging.debug("Shutting down tunnel PID=%d OUTFD=%d ERRFD=%d" %
-                      (self.pid, self.outfd.fileno(),
-                       self.errfd.fileno()))
+        logging.debug("Shutting down tunnel PID=%d OUTFD=%d ERRFD=%d",
+                      self.pid, self.outfd.fileno(),
+                      self.errfd.fileno())
         self.outfd.close()
         self.outfd = None
         self.errfd.close()
@@ -224,19 +224,6 @@ class Viewer(vmmGObject):
     def get_pixbuf(self):
         return self.display.get_pixbuf()
 
-    def get_grab_keys_from_config(self):
-        keys = []
-        grab_keys = self.config.get_keys_combination(True)
-        if grab_keys is not None:
-            # If somebody edited this in GConf it would fail so
-            # we encapsulate this into try/except block
-            try:
-                keys = map(int, grab_keys.split(','))
-            except:
-                logging.debug("Error in grab_keys configuration in GConf")
-
-        return keys
-
     def get_grab_keys(self):
         keystr = None
         try:
@@ -256,11 +243,25 @@ class Viewer(vmmGObject):
 
     def set_grab_keys(self):
         try:
-            keys = self.get_grab_keys_from_config()
-            if keys:
-                self.display.set_grab_keys(keys)
+            keys = self.config.get_keys_combination()
+            if not keys:
+                return
+
+            if not hasattr(self.display, "set_grab_keys"):
+                logging.debug("Display class doesn't support custom grab "
+                              "combination.")
+                return
+
+            try:
+                keys = map(int, keys.split(','))
+            except:
+                logging.debug("Error in grab_keys configuration in GConf",
+                              exc_info=True)
+                return
+
+            self.display.set_grab_keys(keys)
         except Exception, e:
-            logging.debug("Error when getting the grab keys combination: %s" %
+            logging.debug("Error when getting the grab keys combination: %s",
                           str(e))
 
     def open_host(self, host, user, port, socketpath, password=None):
@@ -279,9 +280,7 @@ class VNCViewer(Viewer):
         self.desktop_resolution = None
 
     def init_widget(self):
-        # Set default grab key combination if found and supported
-        if self.config.vnc_grab_keys_supported():
-            self.set_grab_keys()
+        self.set_grab_keys()
 
         self.display.realize()
 
@@ -338,7 +337,7 @@ class VNCViewer(Viewer):
         withUsername = False
         withPassword = False
         for cred in credList:
-            logging.debug("Got credential request %s" % cred)
+            logging.debug("Got credential request %s", cred)
             if cred == gtkvnc.CREDENTIAL_PASSWORD:
                 withPassword = True
             elif cred == gtkvnc.CREDENTIAL_USERNAME:
@@ -392,13 +391,8 @@ class VNCViewer(Viewer):
         self.display.open_fd(fd)
 
     def get_grab_keys(self):
-        keystr = None
-        if self.config.vnc_grab_keys_supported():
-            keystr = super(VNCViewer, self).get_grab_keys()
-
-        # If grab keys are set to None then preserve old behaviour since
-        # the GTK-VNC - we're using older version of GTK-VNC
-        if keystr is None:
+        keystr = self.get_grab_keys()
+        if not keystr:
             keystr = "Control_L+Alt_L"
         return keystr
 
@@ -424,6 +418,12 @@ class SpiceViewer(Viewer):
         self.display.realize()
         self.display.connect("mouse-grab", lambda src, g: g and self.console.pointer_grabbed(src))
         self.display.connect("mouse-grab", lambda src, g: g or self.console.pointer_ungrabbed(src))
+
+        self.display.connect("focus-in-event",
+                             self.console.viewer_focus_changed)
+        self.display.connect("focus-out-event",
+                             self.console.viewer_focus_changed)
+
         self.display.show()
 
     def close(self):
@@ -493,7 +493,7 @@ class SpiceViewer(Viewer):
         uri = "spice://"
         uri += (user and str(user) or "")
         uri += str(host) + "?port=" + str(port)
-        logging.debug("spice uri: %s" % uri)
+        logging.debug("spice uri: %s", uri)
 
         self.spice_session = spice.Session()
         self.spice_session.set_property("uri", uri)
@@ -520,10 +520,15 @@ class SpiceViewer(Viewer):
             self.spice_session.connect()
 
     def get_scaling(self):
-        return self.display.get_property("resize-guest")
+        if not has_property(self.display, "scaling"):
+            return False
+        return self.display.get_property("scaling")
 
     def set_scaling(self, scaling):
-        self.display.set_property("resize-guest", scaling)
+        if not has_property(self.display, "scaling"):
+            logging.debug("Spice version doesn't support scaling.")
+            return
+        self.display.set_property("scaling", scaling)
 
 
 class vmmConsolePages(vmmGObjectUI):
@@ -556,6 +561,7 @@ class vmmConsolePages(vmmGObjectUI):
         self.scale_type = self.vm.get_console_scaling()
 
         # Fullscreen toolbar
+        self.send_key_button = None
         self.fs_toolbar = None
         self.fs_drawer = None
         self.keycombo_menu = uihelpers.build_keycombo_menu(self.send_key)
@@ -580,6 +586,8 @@ class vmmConsolePages(vmmGObjectUI):
         scroll.connect("size-allocate", self.scroll_size_allocate)
         self.add_gconf_handle(
             self.config.on_console_accels_changed(self.set_enable_accel))
+        self.add_gconf_handle(
+            self.config.on_keys_combination_changed(self.grab_keys_changed))
 
         self.page_changed()
 
@@ -597,10 +605,10 @@ class vmmConsolePages(vmmGObjectUI):
 
         self.keycombo_menu.destroy()
         self.keycombo_menu = None
-        self.fs_toolbar.destroy()
-        self.fs_toolbar = None
         self.fs_drawer.destroy()
         self.fs_drawer = None
+        self.fs_toolbar.destroy()
+        self.fs_toolbar = None
 
     ##########################
     # Initialization helpers #
@@ -636,12 +644,13 @@ class vmmConsolePages(vmmGObjectUI):
                                      gtk.get_current_event_time(),
                                      self.fs_toolbar)
 
-        item = gtk.ToolButton()
-        item.set_icon_name("preferences-desktop-keyboard-shortcuts")
-        util.tooltip_wrapper(item, _("Send key combination"))
-        item.show_all()
-        item.connect("clicked", keycombo_menu_clicked)
-        self.fs_toolbar.add(item)
+        self.send_key_button = gtk.ToolButton()
+        self.send_key_button.set_icon_name(
+                                "preferences-desktop-keyboard-shortcuts")
+        util.tooltip_wrapper(self.send_key_button, _("Send key combination"))
+        self.send_key_button.show_all()
+        self.send_key_button.connect("clicked", keycombo_menu_clicked)
+        self.fs_toolbar.add(self.send_key_button)
 
         self.fs_drawer = AutoDrawer()
         self.fs_drawer.set_active(False)
@@ -716,6 +725,11 @@ class vmmConsolePages(vmmGObjectUI):
 
         for g in self.accel_groups:
             self.topwin.add_accel_group(g)
+
+    def grab_keys_changed(self,
+                          ignore1=None, ignore2=None,
+                          ignore3=None, ignore4=None):
+        self.viewer.set_grab_keys()
 
     def set_enable_accel(self, ignore=None, ignore1=None,
                          ignore2=None, ignore3=None):
@@ -844,7 +858,6 @@ class vmmConsolePages(vmmGObjectUI):
             viewport.remove(w)
 
         v.close()
-        v.cleanup()
         self.viewer_connected = False
         self.leave_fullscreen()
 
@@ -962,7 +975,7 @@ class vmmConsolePages(vmmGObjectUI):
         error = _("Error: viewer connection to hypervisor host got refused "
                   "or disconnected!")
         if errout:
-            logging.debug("Error output from closed console: %s" % errout)
+            logging.debug("Error output from closed console: %s", errout)
             error += "\n\nError: %s" % errout
 
         self.activate_unavailable_page(error)
@@ -1031,7 +1044,7 @@ class vmmConsolePages(vmmGObjectUI):
         except Exception, e:
             # We can fail here if VM is destroyed: xen is a bit racy
             # and can't handle domain lookups that soon after
-            logging.exception("Getting graphics console failed: %s" % str(e))
+            logging.exception("Getting graphics console failed: %s", str(e))
             return
 
         if protocol is None:
@@ -1042,7 +1055,7 @@ class vmmConsolePages(vmmGObjectUI):
 
         if protocol not in self.config.embeddable_graphics():
             logging.debug("Don't know how to show graphics type '%s' "
-                          "disabling console page" % protocol)
+                          "disabling console page", protocol)
 
             msg = (_("Cannot display graphical console type '%s'")
                      % protocol)
@@ -1063,9 +1076,9 @@ class vmmConsolePages(vmmGObjectUI):
 
         logging.debug("Starting connect process for "
                       "proto=%s trans=%s connhost=%s connuser=%s "
-                      "connport=%s gaddr=%s gport=%s gsocket=%s" %
-                      (protocol, transport, connhost, connuser, connport,
-                       gaddr, gport, gsocket))
+                      "connport=%s gaddr=%s gport=%s gsocket=%s",
+                      protocol, transport, connhost, connuser, connport,
+                      gaddr, gport, gsocket)
         try:
             if protocol == "vnc":
                 self.viewer = VNCViewer(self)

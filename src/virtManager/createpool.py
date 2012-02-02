@@ -105,11 +105,13 @@ class vmmCreatePool(vmmGObjectUI):
         self.set_initial_state()
 
     def show(self, parent):
+        logging.debug("Showing new pool wizard")
         self.reset_state()
         self.topwin.set_transient_for(parent)
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
+        logging.debug("Closing new pool wizard")
         self.topwin.hide()
         return 1
 
@@ -391,7 +393,7 @@ class vmmCreatePool(vmmGObjectUI):
 
     def get_config_iqn(self):
         iqn = self.widget("pool-iqn")
-        if iqn.get_sensitive() and iqn.get_property("visible"):
+        if iqn.get_property("sensitive") and iqn.get_property("visible"):
             return iqn.get_text().strip()
         return None
 
@@ -522,7 +524,7 @@ class vmmCreatePool(vmmGObjectUI):
                 self._pool_class = Storage.StoragePool.get_pool_class(typ)
                 self._pool = self._pool_class(name=name, conn=conn)
             except ValueError, e:
-                return self.err.val_err(_("Pool Parameter Error"), str(e))
+                return self.err.val_err(_("Pool Parameter Error"), e)
 
             return True
 
@@ -547,7 +549,7 @@ class vmmCreatePool(vmmGObjectUI):
 
                 tmppool.get_xml_config()
             except ValueError, e:
-                return self.err.val_err(_("Pool Parameter Error"), str(e))
+                return self.err.val_err(_("Pool Parameter Error"), e)
 
             buildval = self.widget("pool-build").get_active()
             buildsen = (self.widget("pool-build").get_property("sensitive") and

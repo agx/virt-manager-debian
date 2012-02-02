@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 #
 # removepool.py - Copyright (C) 2009 Red Hat, Inc.
 # Written by Darryl L. Pierce <dpierce@redhat.com>
@@ -18,11 +17,14 @@
 # MA  02110-1301, USA.  A copy of the GNU General Public License is
 # also available at http://www.gnu.org/copyleft/gpl.html.
 
-import snack
+from snack import Checkbox
+from snack import Label
+
 from storagelistconfigscreen import StorageListConfigScreen
 
 LIST_POOLS_PAGE    = 1
 CONFIRM_PAGE       = 2
+FINISHED_REMOVING  = 3
 
 class RemoveStoragePoolConfigScreen(StorageListConfigScreen):
     def __init__(self):
@@ -34,16 +36,22 @@ class RemoveStoragePoolConfigScreen(StorageListConfigScreen):
             return self.get_storage_pool_list_page(screen)
         elif page is CONFIRM_PAGE:
             return self.get_confirm_page(screen)
+        elif page is FINISHED_REMOVING:
+            return self.get_finished_removing_page(screen)
 
     def page_has_next(self, page):
-        return page is LIST_POOLS_PAGE and self.has_selectable_pools()
+        if page is LIST_POOLS_PAGE and self.has_selectable_pools():
+            return True
+        elif page is CONFIRM_PAGE:
+            return True
+        return False
+
+    def page_has_finish(self, page):
+        return page is FINISHED_REMOVING
 
     def page_has_back(self, page):
         ignore = page
         return False
-
-    def page_has_finish(self, page):
-        return page is CONFIRM_PAGE
 
     def validate_input(self, page, errors):
         if page is LIST_POOLS_PAGE:
@@ -60,17 +68,28 @@ class RemoveStoragePoolConfigScreen(StorageListConfigScreen):
 
     def process_input(self, page):
         if page is CONFIRM_PAGE:
-            self.get_libvirt().destroy_storage_pool(self.get_selected_pool())
-            self.get_libvirt().undefine_storage_pool(self.get_selected_pool())
-            self.set_finished()
+            try:
+                self.get_libvirt().destroy_storage_pool(self.get_selected_pool())
+                self.get_libvirt().undefine_storage_pool(self.get_selected_pool())
+            except Exception:
+                pass
 
     def get_confirm_page(self, screen):
         ignore = screen
-        self.__confirm = snack.Checkbox("Check here to confirm deleting pool: %s" % self.get_selected_pool())
-        grid = snack.Grid(1, 1)
-        grid.setField(self.__confirm, 0, 0)
-        return [snack.Label("Remove Selected Storage Pool"),
-                grid]
+        self.__confirm = Checkbox("Check here to confirm deleting pool: %s" % self.get_selected_pool())
+        fields = []
+        fields.append((None, self.__confirm))
+        return [Label("Remove Selected Storage Pool"),
+                self.create_grid_from_fields(fields)]
+
+    def get_finished_removing_page(self, page):
+        ignore = page
+        self.set_finished()
+        pool = self.get_selected_pool()
+        state = ""
+        if self.get_libvirt().storage_pool_exists(pool):
+            state = "was not "
+        return [Label("Storage pool '%s' %sdeleted." % (pool, state))]
 
 def RemoveStoragePool():
     screen = RemoveStoragePoolConfigScreen()

@@ -71,11 +71,13 @@ class vmmStorageBrowser(vmmGObjectUI):
         self.set_initial_state()
 
     def show(self, parent, conn=None):
+        logging.debug("Showing storage browser")
         self.reset_state(conn)
         self.topwin.set_transient_for(parent)
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
+        logging.debug("Closing storage browser")
         self.topwin.hide()
         if self.addvol:
             self.addvol.close()
@@ -199,6 +201,7 @@ class vmmStorageBrowser(vmmGObjectUI):
             self.topwin.set_title(data["storage_title"])
             self.local_args["dialog_name"] = data["local_title"]
             self.local_args["dialog_type"] = data.get("dialog_type")
+            self.local_args["choose_button"] = data.get("choose_button")
 
 
     # Convenience helpers
@@ -319,8 +322,14 @@ class vmmStorageBrowser(vmmGObjectUI):
         for key in vols.keys():
             vol = vols[key]
             sensitive = True
-            path = vol.get_target_path()
-            fmt = vol.get_format() or ""
+            try:
+                path = vol.get_target_path()
+                fmt = vol.get_format() or ""
+            except Exception:
+                logging.exception("Failed to determine volume parameters, "
+                                  "skipping volume %s", key)
+                continue
+
             namestr = None
 
             try:

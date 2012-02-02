@@ -18,6 +18,8 @@
 # MA 02110-1301 USA.
 #
 
+import logging
+
 import virtManager.uihelpers as uihelpers
 import virtManager.util as util
 from virtManager.baseclass import vmmGObjectUI
@@ -49,6 +51,7 @@ class vmmChooseCD(vmmGObjectUI):
         self.reset_state()
 
     def close(self, ignore1=None, ignore2=None):
+        logging.debug("Closing media chooser")
         self.topwin.hide()
         if self.storage_browser:
             self.storage_browser.close()
@@ -56,9 +59,10 @@ class vmmChooseCD(vmmGObjectUI):
         return 1
 
     def show(self, parent):
+        logging.debug("Showing media chooser")
         self.reset_state()
         self.topwin.set_transient_for(parent)
-        self.topwin.show()
+        self.topwin.present()
 
     def _cleanup(self):
         self.close()
@@ -99,7 +103,7 @@ class vmmChooseCD(vmmGObjectUI):
         try:
             self.disk.path = path
         except Exception, e:
-            return self.err.val_err(_("Invalid Media Path"), str(e))
+            return self.err.val_err(_("Invalid Media Path"), e)
 
         uihelpers.check_path_search_for_qemu(self.topwin, self.conn, path)
 

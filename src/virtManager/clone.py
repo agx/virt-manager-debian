@@ -177,12 +177,14 @@ class vmmCloneVM(vmmGObjectUI):
         self.set_initial_state()
 
     def show(self, parent):
+        logging.debug("Showing clone wizard")
         self.reset_state()
         self.topwin.set_transient_for(parent)
         self.topwin.resize(1, 1)
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
+        logging.debug("Closing clone wizard")
         self.change_mac_close()
         self.change_storage_close()
         self.topwin.hide()
@@ -402,7 +404,7 @@ class vmmCloneVM(vmmGObjectUI):
                 cd.skip_target = skip_targets
                 cd.setup_original()
             except Exception, e:
-                logging.exception("Disk target '%s' caused clone error" %
+                logging.exception("Disk target '%s' caused clone error",
                                   force_target)
                 storage_add(str(e))
                 continue
@@ -416,13 +418,13 @@ class vmmCloneVM(vmmGObjectUI):
                 # Generate disk path, make sure that works
                 clone_path = self.generate_clone_path_name(path)
 
-                logging.debug("Original path: %s\nGenerated clone path: %s" %
-                              (path, clone_path))
+                logging.debug("Original path: %s\nGenerated clone path: %s",
+                              path, clone_path)
 
                 cd.clone_devices = clone_path
                 size = cd.original_virtual_disks[0].size
             except Exception, e:
-                logging.exception("Error setting generated path '%s'" %
+                logging.exception("Error setting generated path '%s'",
                                   clone_path)
                 storage_add(str(e))
 

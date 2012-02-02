@@ -18,9 +18,10 @@
 # MA 02110-1301 USA.
 #
 
+import logging
+
 import gtk
 
-import virtManager.util as util
 from virtManager.baseclass import vmmGObjectUI
 
 PREFS_PAGE_STATS    = 0
@@ -94,10 +95,12 @@ class vmmPreferences(vmmGObjectUI):
         self.widget("prefs-help").hide()
 
     def close(self, ignore1=None, ignore2=None):
+        logging.debug("Closing preferences")
         self.topwin.hide()
         return 1
 
     def show(self, parent):
+        logging.debug("Showing preferences")
         self.topwin.set_transient_for(parent)
         self.topwin.present()
 
@@ -168,15 +171,26 @@ class vmmPreferences(vmmGObjectUI):
     def refresh_grabkeys_combination(self, ignore1=None, ignore2=None,
                            ignore3=None, ignore4=None):
         val = self.config.get_keys_combination()
-        if val is None:
-            val = "Control_L+Alt_L"
 
-        prefs_button = self.widget("prefs-keys-grab-changebtn")
-        self.widget("prefs-keys-grab-sequence").set_text(val)
-        if not self.config.vnc_grab_keys_supported():
-            util.tooltip_wrapper(prefs_button,
-                                 _("Installed version of GTK-VNC doesn't "
-                                   "support configurable grab keys"))
+        # We convert keysyms to names
+        if not val:
+            keystr = "Control_L+Alt_L"
+        else:
+            keystr = None
+            for k in val.split(','):
+                try:
+                    key = int(k)
+                except:
+                    key = None
+
+                if key is not None:
+                    if keystr is None:
+                        keystr = gtk.gdk.keyval_name(key)
+                    else:
+                        keystr = keystr + "+" + gtk.gdk.keyval_name(key)
+
+
+        self.widget("prefs-keys-grab-sequence").set_text(keystr)
 
     def refresh_confirm_forcepoweroff(self, ignore1=None, ignore2=None,
                                       ignore3=None, ignore4=None):

@@ -46,6 +46,8 @@ class vmmConfig(object):
             "enable_create" : True,
             "storage_title" : _("Locate or create storage volume"),
             "local_title"   : _("Locate existing storage"),
+            "dialog_type"   : gtk.FILE_CHOOSER_ACTION_SAVE,
+            "choose_button" : gtk.STOCK_OPEN,
         },
 
         CONFIG_DIR_ISO_MEDIA : {
@@ -167,7 +169,7 @@ class vmmConfig(object):
                 ignore = SpiceClientGtk
                 self._spice_error = False
             except Exception, self._spice_error:
-                logging.debug("Error importing spice: %s" % self._spice_error)
+                logging.debug("Error importing spice: %s", self._spice_error)
 
         return self._spice_error and str(self._spice_error) or None
 
@@ -343,45 +345,19 @@ class vmmConfig(object):
         return self.conf.notify_add(
                         self.conf_dir + "/vmlist-fields/network_traffic", cb)
 
-    # Check whether we have GTK-VNC that supports configurable grab keys
-    # installed on the system
-    def vnc_grab_keys_supported(self):
-        try:
-            import gtkvnc
-            return hasattr(gtkvnc.Display, "set_grab_keys")
-        except:
-            return False
-
     # Keys preferences
-    def get_keys_combination(self, syms=False):
-        val = self.conf.get_string(self.conf_dir + "/keys/grab-keys")
-        if syms == True:
-            return val
-
-        # If val is None we return it
-        if val is None:
-            return None
-
-        # We convert keysyms to names
-        keystr = None
-        for k in val.split(','):
-            try:
-                key = int(k)
-            except:
-                key = None
-
-            if key is not None:
-                if keystr is None:
-                    keystr = gtk.gdk.keyval_name(key)
-                else:
-                    keystr = keystr + "+" + gtk.gdk.keyval_name(key)
-
-        return keystr
-
+    def get_keys_combination(self):
+        ret = self.conf.get_string(self.conf_dir + "/keys/grab-keys")
+        if not ret:
+            # Left Control + Left Alt
+            return "65507,65513"
+        return ret
     def set_keys_combination(self, val):
         # Val have to be a list of integers
         val = ','.join(map(str, val))
         self.conf.set_string(self.conf_dir + "/keys/grab-keys", val)
+    def on_keys_combination_changed(self, cb):
+        return self.conf.notify_add(self.conf_dir + "/keys/grab-keys", cb)
 
     # Confirmation preferences
     def get_confirm_forcepoweroff(self):
@@ -670,7 +646,7 @@ class vmmConfig(object):
 
     def get_default_directory(self, conn, _type):
         if not _type:
-            logging.error("Unknown type '%s' for get_default_directory" % _type)
+            logging.error("Unknown type '%s' for get_default_directory", _type)
             return
 
         key = self._get_default_dir_key(_type)
@@ -689,7 +665,7 @@ class vmmConfig(object):
                 _type == self.CONFIG_DIR_RESTORE):
                 path = self.get_default_save_dir(conn)
 
-        logging.debug("get_default_directory(%s): returning %s" % (_type, path))
+        logging.debug("get_default_directory(%s): returning %s", _type, path)
         return path
 
     def set_default_directory(self, folder, _type):
@@ -697,7 +673,7 @@ class vmmConfig(object):
             logging.error("Unknown type for set_default_directory")
             return
 
-        logging.debug("set_default_directory(%s): saving %s" % (_type, folder))
+        logging.debug("set_default_directory(%s): saving %s", _type, folder)
         self.conf.set_string(self.conf_dir + "/paths/default-%s-path" % _type,
                              folder)
 
