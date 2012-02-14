@@ -1,3 +1,10 @@
+virt-manager (0.9.1-2) unstable; urgency=low
+
+  * [d0d2014] manager: Fix error reporting when can't connect remotely.
+    Thanks to Cole Robinson (Closes: #659860)
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 14 Feb 2012 12:19:34 +0100
+
 virt-manager (0.9.1-1) unstable; urgency=low
 
   * [b4fdde6] Imported Upstream version 0.9.1
