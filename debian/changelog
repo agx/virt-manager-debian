@@ -1,3 +1,9 @@
+virt-manager (0.9.1-3) unstable; urgency=low
+
+  * [a1de813] Add presubj file to (hopefully) increase the bug report quality.
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 12 Mar 2012 21:58:30 +0100
+
 virt-manager (0.9.1-2) unstable; urgency=low
 
   * [d0d2014] manager: Fix error reporting when can't connect remotely.
