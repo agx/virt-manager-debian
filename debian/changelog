@@ -1,3 +1,10 @@
+virt-manager (0.9.1-4) unstable; urgency=low
+
+  * [851972d] vnc: Fix accidental recursion we reporting grab keys.
+    Thanks to Cole Robinson
+
+ -- Guido Günther <agx@sigxcpu.org>  Mon, 04 Jun 2012 16:12:02 +0200
+
 virt-manager (0.9.1-3) unstable; urgency=low
 
   * [a1de813] Add presubj file to (hopefully) increase the bug report quality.
