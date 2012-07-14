@@ -1,4 +1,2 @@
 0001-use-usr-share-gconf-for-schema-data.patch
 0002-Use-IPy-from-python-ipy.patch
-0003-manager-Fix-error-reporting-when-can-t-connect-remot.patch
-0004-vnc-Fix-accidental-recursion-we-reporting-grab-keys.patch

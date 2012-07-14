@@ -8,7 +8,7 @@ Subject: use /usr/share/gconf for schema data
  2 files changed, 2 insertions(+), 2 deletions(-)
 
 diff --git a/src/Makefile.am b/src/Makefile.am
-index 9fa9fed..f03dba0 100644
+index e51d7b2..c4a4ad5 100644
 --- a/src/Makefile.am
 +++ b/src/Makefile.am
 @@ -22,7 +22,7 @@ dbusdir = $(datadir)/dbus-1/services
@@ -21,10 +21,10 @@ index 9fa9fed..f03dba0 100644
  schema_DATA = $(PACKAGE).schemas
  
 diff --git a/src/Makefile.in b/src/Makefile.in
-index c64d781..df4e900 100644
+index f3d53be..3c83244 100644
 --- a/src/Makefile.in
 +++ b/src/Makefile.in
-@@ -261,7 +261,7 @@ desktop_DATA = $(PACKAGE).desktop
+@@ -272,7 +272,7 @@ desktop_DATA = $(PACKAGE).desktop
  dbusdir = $(datadir)/dbus-1/services
  dbus_DATA_IN = $(PACKAGE).service.in
  dbus_DATA = $(PACKAGE).service
@@ -33,4 +33,3 @@ index c64d781..df4e900 100644
  schema_DATA_IN = $(PACKAGE).schemas.in
  schema_DATA = $(PACKAGE).schemas
  CLEANFILES = $(bin_SCRIPTS) $(desktop_DATA) $(dbus_DATA) $(python_DATA) $(libexec_SCRIPTS) $(schema_DATA) $(PACKAGE).desktop.in
--- 
