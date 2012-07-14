@@ -1,3 +1,16 @@
+virt-manager (0.9.3-1) unstable; urgency=low
+
+  * [fe23ee2] Imported Upstream version 0.9.3
+  * [a2c30a8] Drop patches
+    - 0003-manager-Fix-error-reporting-when-can-t-connect-remot.patch - fixed
+      upstream
+    - 0004-vnc-Fix-accidental-recursion-we-reporting-grab-keys.patch - fixed
+      upstream
+  * [f662d3e] Bump virtinst dependency version to 0.600.2
+  * [11d8752] Bump Standards-Version to 3.9.3
+
+ -- Laurent Léonard <laurent@open-minds.org>  Sat, 14 Jul 2012 19:09:49 +0200
+
 virt-manager (0.9.1-4) unstable; urgency=low
 
   * [851972d] vnc: Fix accidental recursion we reporting grab keys.
