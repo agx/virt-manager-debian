@@ -22,20 +22,21 @@ import gobject
 import gtk
 
 import logging
-import traceback
 import threading
 import os
 
 import libvirt
 import virtinst
-import dbus
 
+from virtManager import halhelper
+from virtManager import packageutils
+from virtManager import uihelpers
+from virtManager import util
 from virtManager.about import vmmAbout
 from virtManager.baseclass import vmmGObject
 from virtManager.clone import vmmCloneVM
 from virtManager.connect import vmmConnect
 from virtManager.connection import vmmConnection
-from virtManager.createmeter import vmmCreateMeter
 from virtManager.preferences import vmmPreferences
 from virtManager.manager import vmmManager
 from virtManager.migrate import vmmMigrateDialog
@@ -45,9 +46,6 @@ from virtManager.create import vmmCreate
 from virtManager.host import vmmHost
 from virtManager.error import vmmErrorDialog
 from virtManager.systray import vmmSystray
-import virtManager.uihelpers as uihelpers
-import virtManager.halhelper as halhelper
-import virtManager.util as util
 
 # Enable this to get a report of leaked objects on app shutdown
 debug_ref_leaks = True
@@ -73,149 +71,6 @@ def _safe_getattr(obj, name):
     if not hasattr(obj, name):
         return None
     return getattr(obj, name)
-
-#############################
-# PackageKit lookup helpers #
-#############################
-
-def check_packagekit(errbox, packages, libvirt_packages):
-    """
-    Returns None when we determine nothing useful.
-    Returns (success, did we just install libvirt) otherwise.
-    """
-    if not packages:
-        logging.debug("No PackageKit packages to search for.")
-        return
-
-    logging.debug("Asking PackageKit what's installed locally.")
-    try:
-        session = dbus.SystemBus()
-
-        pk_control = dbus.Interface(
-                        session.get_object("org.freedesktop.PackageKit",
-                                           "/org/freedesktop/PackageKit"),
-                        "org.freedesktop.PackageKit")
-    except Exception:
-        logging.exception("Couldn't connect to packagekit")
-        return
-
-    found = []
-    progWin = vmmAsyncJob(_do_async_search,
-                          [session, pk_control, packages],
-                          _("Searching for available hypervisors..."),
-                          _("Searching for available hypervisors..."),
-                          None, async=False)
-    error, ignore = progWin.run()
-    if error:
-        return
-
-    found = progWin.get_data()
-
-    not_found = filter(lambda x: x not in found, packages)
-    logging.debug("Missing packages: %s", not_found)
-
-    do_install = not_found
-    if not do_install:
-        if not not_found:
-            # Got everything we wanted, try to connect
-            logging.debug("All packages found locally.")
-            return (True, False)
-
-        else:
-            logging.debug("No packages are available for install.")
-            return
-
-    msg = (_("The following packages are not installed:\n%s\n\n"
-             "These are required to create KVM guests locally.\n"
-             "Would you like to install them now?") %
-            reduce(lambda x, y: x + "\n" + y, do_install, ""))
-
-    ret = errbox.yes_no(_("Packages required for KVM usage"), msg)
-
-    if not ret:
-        logging.debug("Package install declined.")
-        return
-
-    try:
-        packagekit_install(do_install)
-    except Exception, e:
-        errbox.show_err(_("Error talking to PackageKit: %s") % str(e))
-        return
-
-    need_libvirt = False
-    for p in libvirt_packages:
-        if p in do_install:
-            need_libvirt = True
-            break
-
-    return (True, need_libvirt)
-
-def _do_async_search(asyncjob, session, pk_control, packages):
-    found = []
-    try:
-        for name in packages:
-            ret_found = packagekit_search(session, pk_control, name, packages)
-            found += ret_found
-
-    except Exception, e:
-        logging.exception("Error searching for installed packages")
-        asyncjob.set_error(str(e), "".join(traceback.format_exc()))
-
-    asyncjob.set_data(found)
-
-def packagekit_install(package_list):
-    session = dbus.SessionBus()
-
-    pk_control = dbus.Interface(
-                    session.get_object("org.freedesktop.PackageKit",
-                                       "/org/freedesktop/PackageKit"),
-                        "org.freedesktop.PackageKit.Modify")
-
-    # Set 2 hour timeout
-    timeout = 60 * 60 * 2
-    logging.debug("Installing packages: %s", package_list)
-    pk_control.InstallPackageNames(0, package_list, "hide-confirm-search",
-                                   timeout=timeout)
-
-def packagekit_search(session, pk_control, package_name, packages):
-    tid = pk_control.GetTid()
-    pk_trans = dbus.Interface(
-                    session.get_object("org.freedesktop.PackageKit", tid),
-                    "org.freedesktop.PackageKit.Transaction")
-
-    found = []
-    def package(info, package_id, summary):
-        ignore = info
-        ignore = summary
-
-        found_name = str(package_id.split(";")[0])
-        if found_name in packages:
-            found.append(found_name)
-
-    def error(code, details):
-        raise RuntimeError("PackageKit search failure: %s %s" %
-                            (code, details))
-
-    def finished(ignore, runtime_ignore):
-        gtk.main_quit()
-
-    pk_trans.connect_to_signal('Finished', finished)
-    pk_trans.connect_to_signal('ErrorCode', error)
-    pk_trans.connect_to_signal('Package', package)
-    try:
-        pk_trans.SearchNames("installed", [package_name])
-    except dbus.exceptions.DBusException, e:
-        if e.get_dbus_name() != "org.freedesktop.DBus.Error.UnknownMethod":
-            raise
-
-        # Try older search API
-        pk_trans.SearchName("installed", package_name)
-
-    # Call main() so this function is synchronous
-    gtk.main()
-
-    return found
-
 
 
 class vmmEngine(vmmGObject):
@@ -283,10 +138,6 @@ class vmmEngine(vmmGObject):
             # Show the manager so that the user can control the application
             self.show_manager()
 
-    ########################
-    # First run PackageKit #
-    ########################
-
     def add_default_conn(self, manager):
         # Only add default if no connections are currently known
         if self.config.get_conn_uris():
@@ -308,15 +159,18 @@ class vmmEngine(vmmGObject):
             libvirt_packages = self.config.libvirt_packages
             packages = self.config.hv_packages + libvirt_packages
 
-            ret = check_packagekit(self.err, packages, libvirt_packages)
+            ret = packageutils.check_packagekit(self.err, packages, True)
         except:
             logging.exception("Error talking to PackageKit")
 
-        if ret:
-            # We found the default packages via packagekit: use default URI
-            ignore, did_install_libvirt = ret
-            tryuri = "qemu:///system"
+        if ret is not None:
+            did_install_libvirt = False
+            for p in libvirt_packages:
+                if p in ret:
+                    did_install_libvirt = True
+                    break
 
+            tryuri = "qemu:///system"
         else:
             tryuri = default_uri()
 
@@ -325,16 +179,15 @@ class vmmEngine(vmmGObject):
             return
 
         if did_install_libvirt:
+            didstart = packageutils.start_libvirtd()
             warnmsg = _(
                 "Libvirt was just installed, so the 'libvirtd' service will\n"
-                "will need to be started. This can be done with one \n"
-                "of the following:\n\n"
-                "- From GNOME menus: System->Administration->Services\n"
-                "- From the terminal: su -c 'service libvirtd restart'\n"
-                "- Restart your computer\n\n"
+                "will need to be started.\n"
                 "virt-manager will connect to libvirt on the next application\n"
                 "start up.")
-            self.err.ok(_("Libvirt service must be started"), warnmsg)
+
+            if not didstart:
+                self.err.ok(_("Libvirt service must be started"), warnmsg)
 
         self.connect_to_uri(tryuri, autoconnect=True,
                             do_start=not did_install_libvirt)
@@ -413,7 +266,7 @@ class vmmEngine(vmmGObject):
             gobject.source_remove(self.timer)
             self.timer = None
 
-        # No need to use 'safe_timeout_add', the tick should be
+        # No need to use 'timeout_add', the tick should be
         # manually made thread safe
         self.timer = gobject.timeout_add(interval, self.tick)
 
@@ -457,7 +310,7 @@ class vmmEngine(vmmGObject):
                     self.err.show_err(_("Error polling connection '%s': %s") %
                                       (conn.get_uri(), e))
 
-                self.safe_idle_add(conn.close)
+                self.idle_add(conn.close)
 
         return 1
 
@@ -929,8 +782,7 @@ class vmmEngine(vmmGObject):
 
         if error is not None:
             error = _("Error saving domain: %s") % error
-            src.err.show_err(error,
-                             details=details)
+            src.err.show_err(error, details=details)
 
     def _save_cancel(self, asyncjob, vm):
         logging.debug("Cancelling save job")
@@ -950,7 +802,7 @@ class vmmEngine(vmmGObject):
     def _save_callback(self, asyncjob, vm, file_to_save):
         conn = util.dup_conn(vm.conn)
         newvm = conn.get_vm(vm.get_uuid())
-        meter = vmmCreateMeter(asyncjob)
+        meter = asyncjob.get_meter()
 
         newvm.save(file_to_save, meter=meter)
 
@@ -1021,14 +873,34 @@ class vmmEngine(vmmGObject):
         logging.debug("Starting vm '%s'", vm.get_name())
 
         if vm.hasSavedImage():
-            # VM will be restored, which can take some time, so show a
-            # progress dialog.
-            errorintro  = _("Error restoring domain")
+            def errorcb(error, details):
+                # This is run from the main thread
+                res = src.err.show_err(
+                    _("Error restoring domain") + ": " + error,
+                    details=details,
+                    text2=_(
+                        "The domain could not be restored. Would you like\n"
+                        "to remove the saved state and perform a regular\n"
+                        "start up?"),
+                    dialog_type=gtk.MESSAGE_WARNING,
+                    buttons=gtk.BUTTONS_YES_NO,
+                    async=False)
+
+                if not res:
+                    return
+
+                try:
+                    vm.removeSavedImage()
+                    self._do_run_domain(src, uri, uuid)
+                except Exception, e:
+                    src.err.show_err(_("Error removing domain state: %s")
+                                     % str(e))
+
+            # VM will be restored, which can take some time, so show progress
             title = _("Restoring Virtual Machine")
             text = _("Restoring virtual machine memory from disk")
             vmmAsyncJob.simple_async(vm.startup,
-                                     [], title, text, src,
-                                     errorintro)
+                                     [], title, text, src, "", errorcb=errorcb)
 
         else:
             # Regular startup
@@ -1069,8 +941,8 @@ class vmmEngine(vmmGObject):
             except Exception, reboot_err:
                 no_support = virtinst.support.is_error_nosupport(reboot_err)
                 if not no_support:
-                    src.err.show_err(_("Error rebooting domain: %s" %
-                                     str(reboot_err)))
+                    raise RuntimeError(_("Error rebooting domain: %s" %
+                                       str(reboot_err)))
 
             if not no_support:
                 return
@@ -1083,8 +955,8 @@ class vmmEngine(vmmGObject):
                 logging.exception("Could not fake a reboot")
 
                 # Raise the original error message
-                src.err.show_err(_("Error rebooting domain: %s" %
-                                 str(reboot_err)))
+                raise RuntimeError(_("Error rebooting domain: %s" %
+                                   str(reboot_err)))
 
         vmmAsyncJob.simple_async_noshow(reboot_cb, [], src, "")
 

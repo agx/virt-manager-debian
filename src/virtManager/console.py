@@ -55,6 +55,51 @@ def has_property(obj, setting):
         return False
     return True
 
+class ConnectionInfo(object):
+    """
+    Holds all the bits needed to make a connection to a graphical console
+    """
+    def __init__(self, conn, gdev):
+        self.gtype      = gdev.type
+        self.gport      = gdev.port and str(gdev.port) or None
+        self.gsocket    = gdev.socket
+        self.gaddr      = gdev.listen or "127.0.0.1"
+
+        self.transport, self.connuser = conn.get_transport()
+        self._connhost = conn.get_uri_hostname() or "127.0.0.1"
+
+        self._connport = None
+        if self._connhost.count(":"):
+            self._connhost, self._connport = self._connhost.split(":", 1)
+
+    def need_tunnel(self):
+        if self.gaddr != "127.0.0.1":
+            return False
+
+        return self.transport in ["ssh", "ext"]
+
+    def get_conn_host(self):
+        host = self._connhost
+        port = self._connport
+
+        if not self.need_tunnel():
+            port = self.gport
+            if self.gaddr != "0.0.0.0":
+                host = self.gaddr
+
+        return host, port
+
+    def logstring(self):
+        return ("proto=%s trans=%s connhost=%s connuser=%s "
+                "connport=%s gaddr=%s gport=%s gsocket=%s" %
+                (self.gtype, self.transport, self._connhost, self.connuser,
+                 self._connport, self.gaddr, self.gport, self.gsocket))
+    def console_active(self):
+        if self.gsocket:
+            return True
+        if not self.gport:
+            return False
+        return int(self.gport) == -1
 
 class Tunnel(object):
     def __init__(self):
@@ -62,19 +107,21 @@ class Tunnel(object):
         self.errfd = None
         self.pid = None
 
-    def open(self, connhost, connuser, connport, gaddr, gport, gsocket):
+    def open(self, ginfo):
         if self.outfd is not None:
             return -1
 
+        host, port = ginfo.get_conn_host()
+
         # Build SSH cmd
         argv = ["ssh", "ssh"]
-        if connport:
-            argv += ["-p", str(connport)]
+        if port:
+            argv += ["-p", str(port)]
 
-        if connuser:
-            argv += ['-l', connuser]
+        if ginfo.connuser:
+            argv += ['-l', ginfo.connuser]
 
-        argv += [connhost]
+        argv += [host]
 
         # Build 'nc' command run on the remote host
         #
@@ -87,10 +134,10 @@ class Tunnel(object):
         # Fedora's 'nc' doesn't have this option, and apparently defaults
         # to the desired behavior.
         #
-        if gsocket:
-            nc_params = "-U %s" % gsocket
+        if ginfo.gsocket:
+            nc_params = "-U %s" % ginfo.gsocket
         else:
-            nc_params = "%s %s" % (gaddr, gport)
+            nc_params = "%s %s" % (ginfo.gaddr, ginfo.gport)
 
         nc_cmd = (
             """nc -q 2>&1 | grep "requires an argument" >/dev/null;"""
@@ -154,6 +201,7 @@ class Tunnel(object):
         self.errfd = None
 
         os.kill(self.pid, signal.SIGKILL)
+        os.waitpid(self.pid, 0)
         self.pid = None
 
     def get_err_output(self):
@@ -171,22 +219,14 @@ class Tunnel(object):
 
         return errout
 
-
 class Tunnels(object):
-    def __init__(self, connhost, connuser, connport, gaddr, gport, gsocket):
-        self.connhost = connhost
-        self.connuser = connuser
-        self.connport = connport
-
-        self.gaddr = gaddr
-        self.gport = gport
-        self.gsocket = gsocket
+    def __init__(self, ginfo):
+        self.ginfo = ginfo
         self._tunnels = []
 
     def open_new(self):
         t = Tunnel()
-        fd = t.open(self.connhost, self.connuser, self.connport,
-                    self.gaddr, self.gport, self.gsocket)
+        fd = t.open(self.ginfo)
         self._tunnels.append(t)
         return fd
 
@@ -206,6 +246,7 @@ class Viewer(vmmGObject):
         vmmGObject.__init__(self)
         self.console = console
         self.display = None
+        self.need_keygrab = False
 
     def close(self):
         raise NotImplementedError()
@@ -217,9 +258,6 @@ class Viewer(vmmGObject):
             self.display.destroy()
         self.display = None
         self.console = None
-
-    def get_widget(self):
-        return self.display
 
     def get_pixbuf(self):
         return self.display.get_pixbuf()
@@ -264,7 +302,10 @@ class Viewer(vmmGObject):
             logging.debug("Error when getting the grab keys combination: %s",
                           str(e))
 
-    def open_host(self, host, user, port, socketpath, password=None):
+    def open_host(self, ginfo, password=None):
+        raise NotImplementedError()
+
+    def open_fd(self, fd, password=None):
         raise NotImplementedError()
 
     def get_desktop_resolution(self):
@@ -278,6 +319,9 @@ class VNCViewer(Viewer):
 
         # Last noticed desktop resolution
         self.desktop_resolution = None
+
+        # VNC viewer needs a bit of help grabbing keyboard in a friendly way
+        self.need_keygrab = True
 
     def init_widget(self):
         self.set_grab_keys()
@@ -307,7 +351,7 @@ class VNCViewer(Viewer):
 
     def _desktop_resize(self, src_ignore, w, h):
         self.desktop_resolution = (w, h)
-        self.console.window.get_widget("console-vnc-scroll").queue_resize()
+        self.console.window.get_object("console-vnc-scroll").queue_resize()
 
     def get_desktop_resolution(self):
         return self.desktop_resolution
@@ -365,36 +409,32 @@ class VNCViewer(Viewer):
     def is_open(self):
         return self.display.is_open()
 
-    def open_host(self, host, user, port, socketpath, password=None):
-        ignore = password
-        ignore = user
+    def open_host(self, ginfo, password=None):
+        host, port = ginfo.get_conn_host()
 
-        if not socketpath:
+        if not ginfo.gsocket:
+            logging.debug("VNC connection to %s:%s", host, port)
             self.display.open_host(host, port)
             return
 
+        logging.debug("VNC connecting to socket=%s", ginfo.gsocket)
         try:
             sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
-            sock.connect(socketpath)
+            sock.connect(ginfo.gsocket)
             self.sockfd = sock
         except Exception, e:
             raise RuntimeError(_("Error opening socket path '%s': %s") %
-                               (socketpath, e))
+                               (ginfo.gsocket, e))
 
         fd = self.sockfd.fileno()
         if fd < 0:
             raise RuntimeError((_("Error opening socket path '%s'") %
-                                socketpath) + " fd=%s" % fd)
+                                ginfo.gsocket) + " fd=%s" % fd)
         self.open_fd(fd)
 
-    def open_fd(self, fd):
+    def open_fd(self, fd, password=None):
+        ignore = password
         self.display.open_fd(fd)
-
-    def get_grab_keys(self):
-        keystr = self.get_grab_keys()
-        if not keystr:
-            keystr = "Control_L+Alt_L"
-        return keystr
 
     def set_credential_username(self, cred):
         self.display.set_credential(gtkvnc.CREDENTIAL_USERNAME, cred)
@@ -451,6 +491,7 @@ class SpiceViewer(Viewer):
         if not self.console.tunnels:
             raise SystemError("Got fd request with no configured tunnel!")
 
+        logging.debug("Opening tunnel for channel: %s", channel)
         fd = self.console.tunnels.open_new()
         channel.open_fd(fd)
 
@@ -471,7 +512,7 @@ class SpiceViewer(Viewer):
 
             self.display_channel = channel
             self.display = spice.Display(self.spice_session, channel_id)
-            self.console.window.get_widget("console-vnc-viewport").add(self.display)
+            self.console.window.get_object("console-vnc-viewport").add(self.display)
             self._init_widget()
             self.console.connected()
             return
@@ -487,11 +528,10 @@ class SpiceViewer(Viewer):
             return None
         return self.display_channel.get_properties("width", "height")
 
-    def open_host(self, host, user, port, socketpath, password=None):
-        ignore = socketpath
+    def open_host(self, ginfo, password=None):
+        host, port = ginfo.get_conn_host()
 
         uri = "spice://"
-        uri += (user and str(user) or "")
         uri += str(host) + "?port=" + str(port)
         logging.debug("spice uri: %s", uri)
 
@@ -576,7 +616,7 @@ class vmmConsolePages(vmmGObjectUI):
         self.widget("console-vnc-viewport").modify_bg(gtk.STATE_NORMAL,
                                                       black)
 
-        # Signals are added by vmmDetails. Don't use signal_autoconnect here
+        # Signals are added by vmmDetails. Don't use connect_signals here
         # or it changes will be overwritten
         # Set console scaling
         self.add_gconf_handle(
@@ -675,9 +715,21 @@ class vmmConsolePages(vmmGObjectUI):
 
         self.topwin.set_title(title)
 
+    def grab_keyboard(self, do_grab):
+        if self.viewer and not self.viewer.need_keygrab:
+            return
+
+        if (not do_grab or
+            not self.viewer or
+            not self.viewer.display):
+            gtk.gdk.keyboard_ungrab()
+        else:
+            gtk.gdk.keyboard_grab(self.viewer.display.window)
+
     def viewer_focus_changed(self, ignore1=None, ignore2=None):
-        has_focus = self.viewer and self.viewer.get_widget() and \
-            self.viewer.get_widget().get_property("has-focus")
+        has_focus = (self.viewer and
+                     self.viewer.display and
+                     self.viewer.display.get_property("has-focus"))
         force_accel = self.config.get_console_accels()
 
         if force_accel:
@@ -686,6 +738,8 @@ class vmmConsolePages(vmmGObjectUI):
             self._disable_modifiers()
         else:
             self._enable_modifiers()
+
+        self.grab_keyboard(has_focus)
 
     def pointer_grabbed(self, src_ignore):
         self.pointer_is_grabbed = True
@@ -852,7 +906,7 @@ class vmmConsolePages(vmmGObjectUI):
 
         v = self.viewer # close_viewer() can be reentered
         self.viewer = None
-        w = v.get_widget()
+        w = v.display
 
         if w and w in viewport.get_children():
             viewport.remove(w)
@@ -936,8 +990,8 @@ class vmmConsolePages(vmmGObjectUI):
     def activate_viewer_page(self):
         self.widget("console-pages").set_current_page(PAGE_VIEWER)
         self.widget("details-menu-vm-screenshot").set_sensitive(True)
-        if self.viewer and self.viewer.get_widget():
-            self.viewer.get_widget().grab_focus()
+        if self.viewer and self.viewer.display:
+            self.viewer.display.grab_focus()
 
     def page_changed(self, ignore1=None, ignore2=None, ignore3=None):
         self.set_allow_fullscreen()
@@ -1004,7 +1058,7 @@ class vmmConsolePages(vmmGObjectUI):
             logging.error("Too many connection failures, not retrying again")
             return
 
-        self.safe_timeout_add(self.viewerRetryDelay, self.try_login)
+        self.timeout_add(self.viewerRetryDelay, self.try_login)
 
         if self.viewerRetryDelay < 2000:
             self.viewerRetryDelay = self.viewerRetryDelay * 2
@@ -1037,35 +1091,37 @@ class vmmConsolePages(vmmGObjectUI):
             self.schedule_retry()
             return
 
+        ginfo = None
         try:
-            (protocol, transport,
-             connhost, connuser, connport,
-             gaddr, gport, gsocket) = self.vm.get_graphics_console()
+            gdevs = self.vm.get_graphics_devices()
+            gdev = gdevs and gdevs[0] or None
+            if gdev:
+                ginfo = ConnectionInfo(self.vm.conn, gdev)
         except Exception, e:
             # We can fail here if VM is destroyed: xen is a bit racy
             # and can't handle domain lookups that soon after
             logging.exception("Getting graphics console failed: %s", str(e))
             return
 
-        if protocol is None:
+        if ginfo is None:
             logging.debug("No graphics configured for guest")
             self.activate_unavailable_page(
                             _("Graphical console not configured for guest"))
             return
 
-        if protocol not in self.config.embeddable_graphics():
+        if ginfo.gtype not in self.config.embeddable_graphics():
             logging.debug("Don't know how to show graphics type '%s' "
-                          "disabling console page", protocol)
+                          "disabling console page", ginfo.gtype)
 
             msg = (_("Cannot display graphical console type '%s'")
-                     % protocol)
-            if protocol == "spice":
+                     % ginfo.gtype)
+            if ginfo.gtype == "spice":
                 msg += ":\n %s" % self.config.get_spice_error()
 
             self.activate_unavailable_page(msg)
             return
 
-        if (gport == -1 and not gsocket):
+        if ginfo.console_active():
             self.activate_unavailable_page(
                             _("Graphical console is not yet active for guest"))
             self.schedule_retry()
@@ -1074,36 +1130,26 @@ class vmmConsolePages(vmmGObjectUI):
         self.activate_unavailable_page(
                 _("Connecting to graphical console for guest"))
 
-        logging.debug("Starting connect process for "
-                      "proto=%s trans=%s connhost=%s connuser=%s "
-                      "connport=%s gaddr=%s gport=%s gsocket=%s",
-                      protocol, transport, connhost, connuser, connport,
-                      gaddr, gport, gsocket)
+        logging.debug("Starting connect process for %s", ginfo.logstring())
         try:
-            if protocol == "vnc":
+            if ginfo.gtype == "vnc":
                 self.viewer = VNCViewer(self)
-                self.widget("console-vnc-viewport").add(
-                                                    self.viewer.get_widget())
+                self.widget("console-vnc-viewport").add(self.viewer.display)
                 self.viewer.init_widget()
-            elif protocol == "spice":
+            elif ginfo.gtype == "spice":
                 self.viewer = SpiceViewer(self)
 
             self.set_enable_accel()
 
-            if transport in ("ssh", "ext"):
+            if ginfo.need_tunnel():
                 if self.tunnels:
                     # Tunnel already open, no need to continue
                     return
 
-                self.tunnels = Tunnels(connhost, connuser, connport,
-                                       gaddr, gport, gsocket)
-                fd = self.tunnels.open_new()
-                if fd >= 0:
-                    self.viewer.open_fd(fd)
-
+                self.tunnels = Tunnels(ginfo)
+                self.viewer.open_fd(self.tunnels.open_new())
             else:
-                self.viewer.open_host(connhost, connuser,
-                                      str(gport), gsocket)
+                self.viewer.open_host(ginfo)
 
         except Exception, e:
             logging.exception("Error connection to graphical console")
@@ -1146,7 +1192,7 @@ class vmmConsolePages(vmmGObjectUI):
 
         def unset_cb(src):
             src.queue_resize_no_redraw()
-            self.safe_idle_add(restore_scroll, src)
+            self.idle_add(restore_scroll, src)
             return False
 
         def request_cb(src, req):
@@ -1156,7 +1202,7 @@ class vmmConsolePages(vmmGObjectUI):
 
             src.disconnect(signal_id)
 
-            self.safe_idle_add(unset_cb, widget)
+            self.idle_add(unset_cb, widget)
             return False
 
         # Disable scroll bars while we resize, since resizing to the VM's
@@ -1188,14 +1234,14 @@ class vmmConsolePages(vmmGObjectUI):
             # Scaling disabled is easy, just force the VNC widget size. Since
             # we are inside a scrollwindow, it shouldn't cause issues.
             scroll.set_policy(gtk.POLICY_AUTOMATIC, gtk.POLICY_AUTOMATIC)
-            self.viewer.get_widget().set_size_request(desktop_w, desktop_h)
+            self.viewer.display.set_size_request(desktop_w, desktop_h)
             return
 
         # Make sure we never show scrollbars when scaling
         scroll.set_policy(gtk.POLICY_NEVER, gtk.POLICY_NEVER)
 
         # Make sure there is no hard size requirement so we can scale down
-        self.viewer.get_widget().set_size_request(-1, -1)
+        self.viewer.display.set_size_request(-1, -1)
 
         # Make sure desktop aspect ratio is maintained
         if align_ratio > desktop_ratio:
@@ -1213,6 +1259,6 @@ class vmmConsolePages(vmmGObjectUI):
                                          width=desktop_w,
                                          height=desktop_h)
 
-        self.viewer.get_widget().size_allocate(viewer_alloc)
+        self.viewer.display.size_allocate(viewer_alloc)
 
 vmmGObjectUI.type_register(vmmConsolePages)

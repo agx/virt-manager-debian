@@ -1,7 +1,7 @@
 
-AC_INIT(virt-manager, 0.9.1)
+AC_INIT(virt-manager, 0.9.3)
 # Latest virtinst version required to run
-VIRTINST_VERSION="0.600.1"
+VIRTINST_VERSION="0.600.2"
 
 AC_CONFIG_SRCDIR(src/virt-manager.py.in)
 dnl Make automake keep quiet about wildcards & other GNUmake-isms
@@ -12,6 +12,11 @@ ALL_LINGUAS="as bg bn_IN bs ca cs da de es fi fr gu hi hr hu is it ja kn ko ml m
 IT_PROG_INTLTOOL([0.35.0], [no-xml])
 AM_GNU_GETTEXT_VERSION([0.14.1])
 AM_GNU_GETTEXT([external])
+
+GETTEXT_PACKAGE=virt-manager
+AC_SUBST(GETTEXT_PACKAGE)
+AC_DEFINE_UNQUOTED([GETTEXT_PACKAGE],"$GETTEXT_PACKAGE",
+                   [GETTEXT package name])
 
 dnl ====================================
 dnl = Begin tests for scrollkeeper
@@ -64,6 +69,14 @@ AC_ARG_WITH([kvm-packages],
     [KVM_PACKAGES=$withval],
     [KVM_PACKAGES=""])
 
+dnl askpass package name
+AC_ARG_WITH([askpass-package],
+    AC_HELP_STRING(
+        [--with-askpass-package],
+        [name of your distros openssh askpass package@<:@default=none@:>@]),
+    [ASKPASS_PACKAGE=$withval],
+    [ASKPASS_PACKAGE=""])
+
 dnl Don't list options that rhel doesn't support
 AC_ARG_ENABLE([unsupported-rhel-options],
   AC_HELP_STRING(
@@ -99,6 +112,7 @@ AC_SUBST([ENABLE_UNSUPPORTED_RHEL_OPTS])
 AC_SUBST([PREFERRED_DISTROS])
 AC_SUBST([LIBVIRT_PACKAGES])
 AC_SUBST([KVM_PACKAGES])
+AC_SUBST([ASKPASS_PACKAGE])
 AC_SUBST([DEFAULT_GRAPHICS])
 AM_CONDITIONAL([INSTALL_TUI], [test "x$with_tui" = "xyes"])
 
@@ -153,6 +167,11 @@ if test "x$KVM_PACKAGES" = "x" ; then
 AC_MSG_NOTICE([KVM packages:                    none])
 else
 AC_MSG_NOTICE([KVM packages:                    $KVM_PACKAGES])
+fi
+if test "x$ASKPASS_PACKAGE" = "x" ; then
+AC_MSG_NOTICE([askpass package:                 none])
+else
+AC_MSG_NOTICE([askpass package:                 $ASKPASS_PACKAGE])
 fi
 AC_MSG_NOTICE([Default graphics:                $DEFAULT_GRAPHICS])
 

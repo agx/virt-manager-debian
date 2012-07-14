@@ -26,8 +26,59 @@ import gtk
 import gobject
 
 import libvirt
+import urlgrabber
 
 from virtManager.baseclass import vmmGObjectUI
+
+class vmmCreateMeter(urlgrabber.progress.BaseMeter):
+    def __init__(self, asyncjob):
+        # progress meter has to run asynchronously, so pass in the
+        # async job to call back to with progress info
+        urlgrabber.progress.BaseMeter.__init__(self)
+        self.asyncjob = asyncjob
+        self.started = False
+
+    def _do_start(self, now=None):
+        if self.text is not None:
+            text = self.text
+        else:
+            text = self.basename
+        if self.size is None:
+            out = "    %5sB" % (0)
+            self.asyncjob.pulse_pbar(out, text)
+        else:
+            out = "%3i%% %5sB" % (0, 0)
+            self.asyncjob.set_pbar_fraction(0, out, text)
+        self.started = True
+
+    def _do_update(self, amount_read, now=None):
+        if self.text is not None:
+            text = self.text
+        else:
+            text = self.basename
+        fread = urlgrabber.progress.format_number(amount_read)
+        if self.size is None:
+            out = "    %5sB" % (fread)
+            self.asyncjob.pulse_pbar(out, text)
+        else:
+            frac = self.re.fraction_read()
+            out = "%3i%% %5sB" % (frac * 100, fread)
+            self.asyncjob.set_pbar_fraction(frac, out, text)
+
+    def _do_end(self, amount_read, now=None):
+        if self.text is not None:
+            text = self.text
+        else:
+            text = self.basename
+        fread = urlgrabber.progress.format_number(amount_read)
+        if self.size is None:
+            out = "    %5sB" % (fread)
+            self.asyncjob.pulse_pbar(out, text)
+        else:
+            out = "%3i%% %5sB" % (100, fread)
+            self.asyncjob.set_pbar_done(out, text)
+        self.started = False
+
 
 # This thin wrapper only exists so we can put debugging
 # code in the run() method every now & then
@@ -53,7 +104,7 @@ def cb_wrapper(callback, asyncjob, *args, **kwargs):
         asyncjob.set_error(str(e), "".join(traceback.format_exc()))
 
 def _simple_async(callback, args, title, text, parent, errorintro,
-                  show_progress, simplecb):
+                  show_progress, simplecb, errorcb):
     """
     @show_progress: Whether to actually show a progress dialog
     @simplecb: If true, build a callback wrapper that ignores the asyncjob
@@ -73,23 +124,32 @@ def _simple_async(callback, args, title, text, parent, errorintro,
     if error is None:
         return
 
-    error = errorintro + ": " + error
-    parent.err.show_err(error,
-                        details=details)
+    if errorcb:
+        errorcb(error, details)
+    else:
+        error = errorintro + ": " + error
+        parent.err.show_err(error,
+                            details=details)
+
+def idle_wrapper(fn):
+    def wrapped(self, *args, **kwargs):
+        return self.idle_add(fn, self, *args, **kwargs)
+    return wrapped
 
 # Displays a progress bar while executing the "callback" method.
 class vmmAsyncJob(vmmGObjectUI):
 
     @staticmethod
     def simple_async(callback, args, title, text, parent, errorintro,
-                     simplecb=True):
+                     simplecb=True, errorcb=None):
         _simple_async(callback, args, title, text, parent, errorintro, True,
-                      simplecb)
+                      simplecb, errorcb)
 
     @staticmethod
-    def simple_async_noshow(callback, args, parent, errorintro, simplecb=True):
+    def simple_async_noshow(callback, args, parent, errorintro,
+                            simplecb=True, errorcb=None):
         _simple_async(callback, args, "", "", parent, errorintro, False,
-                      simplecb)
+                      simplecb, errorcb)
 
 
     def __init__(self, callback, args, title, text, parent,
@@ -102,14 +162,13 @@ class vmmAsyncJob(vmmGObjectUI):
                       when cancel button is clicked
         @cancel_args: Arguments for optional cancel_back
         """
-        vmmGObjectUI.__init__(self, "vmm-progress.glade", "vmm-progress")
+        vmmGObjectUI.__init__(self, "vmm-progress.ui", "vmm-progress")
         self.topwin.set_transient_for(parent)
 
         self.async = bool(async)
         self.show_progress = bool(show_progress)
         self.cancel_job = cancel_back
-        self.cancel_args = cancel_args or []
-        self.cancel_args = [self] + self.cancel_args
+        self.cancel_args = [self] + (cancel_args or [])
         self.job_canceled = False
 
         self._error_info = None
@@ -118,12 +177,13 @@ class vmmAsyncJob(vmmGObjectUI):
         self.stage = self.widget("pbar-stage")
         self.pbar = self.widget("pbar")
         self.is_pulsing = True
+        self._meter = None
 
         args = [self] + args
         self.bg_thread = asyncJobWorker(callback, args)
         logging.debug("Creating async job for function cb=%s", callback)
 
-        self.window.signal_autoconnect({
+        self.window.connect_signals({
             "on_async_job_delete_event" : self.delete,
             "on_async_job_cancel_clicked" : self.cancel,
         })
@@ -154,6 +214,11 @@ class vmmAsyncJob(vmmGObjectUI):
     def get_data(self):
         return self._data
 
+    def get_meter(self):
+        if not self._meter:
+            self._meter = vmmCreateMeter(self)
+        return self._meter
+
     def can_cancel(self):
         return bool(self.cancel_job)
 
@@ -161,7 +226,7 @@ class vmmAsyncJob(vmmGObjectUI):
         self.bg_thread = None
         self.cancel_job = None
         self.cancel_args = None
-
+        self._meter = None
 
     ####################
     # Internal helpers #
@@ -180,33 +245,12 @@ class vmmAsyncJob(vmmGObjectUI):
         self.widget("warning-box").show()
         self.widget("warning-text").set_markup(markup)
 
-    def exit_if_necessary(self, force_exit=False):
-        thread_active = (self.bg_thread.isAlive() or not self.async)
-
-        if not thread_active or force_exit:
-            if self.async:
-                gtk.main_quit()
-            return False
-
-        if not self.is_pulsing or not self.show_progress:
-            return True
-
-        gtk.gdk.threads_enter()
-        try:
-            self.pbar.pulse()
-        finally:
-            gtk.gdk.threads_leave()
-
-        return True
-
 
     ###########
     # Actions #
     ###########
 
     def run(self):
-        # Don't use safe_timeout_add, since it's mostly needless locking
-        # since a lot of these windows don't touch any UI
         timer = gobject.timeout_add(100, self.exit_if_necessary)
 
         if self.show_progress:
@@ -265,38 +309,41 @@ class vmmAsyncJob(vmmGObjectUI):
     # All functions after this point are called from the timer loop
     # which means we need to be careful and lock threads before doing
     # any UI bits
+    def exit_if_necessary(self, force_exit=False):
+        thread_active = (self.bg_thread.isAlive() or not self.async)
+
+        if not thread_active or force_exit:
+            if self.async:
+                gtk.main_quit()
+            return False
+
+        if not self.is_pulsing or not self.show_progress:
+            return True
+
+        self.idle_add(self.pbar.pulse)
+        return True
+
+    @idle_wrapper
     def pulse_pbar(self, progress="", stage=None):
-        gtk.gdk.threads_enter()
-        try:
-            self.is_pulsing = True
-            self.pbar.set_text(progress)
-            self.set_stage_text(stage or _("Processing..."))
-        finally:
-            gtk.gdk.threads_leave()
+        self.is_pulsing = True
+        self.pbar.set_text(progress)
+        self.set_stage_text(stage or _("Processing..."))
 
-
+    @idle_wrapper
     def set_pbar_fraction(self, frac, progress, stage=None):
-        gtk.gdk.threads_enter()
-        try:
-            self.is_pulsing = False
-            self.set_stage_text(stage or _("Processing..."))
-            self.pbar.set_text(progress)
+        self.is_pulsing = False
+        self.set_stage_text(stage or _("Processing..."))
+        self.pbar.set_text(progress)
 
-            if frac > 1:
-                frac = 1.0
-            if frac < 0:
-                frac = 0
-            self.pbar.set_fraction(frac)
-        finally:
-            gtk.gdk.threads_leave()
+        if frac > 1:
+            frac = 1.0
+        if frac < 0:
+            frac = 0
+        self.pbar.set_fraction(frac)
 
-
+    @idle_wrapper
     def set_pbar_done(self, progress, stage=None):
-        gtk.gdk.threads_enter()
-        try:
-            self.is_pulsing = False
-            self.set_stage_text(stage or _("Completed"))
-            self.pbar.set_text(progress)
-            self.pbar.set_fraction(1)
-        finally:
-            gtk.gdk.threads_leave()
+        self.is_pulsing = False
+        self.set_stage_text(stage or _("Completed"))
+        self.pbar.set_text(progress)
+        self.pbar.set_fraction(1)

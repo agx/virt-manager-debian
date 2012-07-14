@@ -48,13 +48,22 @@ def default_conn_user(conn):
         return "root"
     return current_user()
 
+_hostname_xml = """
+<interface>
+               <object class="GtkComboBoxEntry" id="hostname">
+                 <property name="visible">True</property>
+                 <signal name="changed" handler="on_hostname_combo_changed"/>
+               </object>
+</interface>
+"""
+
 class vmmConnect(vmmGObjectUI):
     def __init__(self):
         vmmGObjectUI.__init__(self,
-                              "vmm-open-connection.glade",
+                              "vmm-open-connection.ui",
                               "vmm-open-connection")
 
-        self.window.signal_autoconnect({
+        self.window.connect_signals({
             "on_hypervisor_changed": self.hypervisor_changed,
             "on_connection_changed": self.conn_changed,
             "on_hostname_combo_changed": self.hostname_combo_changed,
@@ -69,6 +78,10 @@ class vmmConnect(vmmGObjectUI):
         self.browser = None
         self.browser_sigs = []
         self.can_browse = False
+
+        self.window.add_from_string(_hostname_xml)
+        self.widget("table1").attach(self.widget("hostname"),
+                                     1, 2, 4, 5, yoptions=gtk.FILL)
 
         # Set this if we can't resolve 'hostname.local': means avahi
         # prob isn't configured correctly, and we should strip .local

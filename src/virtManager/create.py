@@ -18,7 +18,6 @@
 # MA 02110-1301 USA.
 #
 
-import time
 import threading
 import logging
 
@@ -31,12 +30,9 @@ from virtManager import util
 from virtManager.mediadev import MEDIA_CDROM
 from virtManager.baseclass import vmmGObjectUI
 from virtManager.asyncjob import vmmAsyncJob
-from virtManager.createmeter import vmmCreateMeter
 from virtManager.storagebrowse import vmmStorageBrowser
 from virtManager.details import vmmDetails
 from virtManager.domain import vmmDomainVirtinst
-
-OS_GENERIC = "generic"
 
 # Number of seconds to wait for media detection
 DETECT_TIMEOUT = 20
@@ -61,9 +57,25 @@ RHEL6_OS_SUPPORT = [
     "win2k3", "winxp", "win2k8", "vista", "win7",
 ]
 
+_comboentry_xml = """
+<interface>
+    <object class="GtkComboBoxEntry" id="install-local-box">
+        <property name="visible">True</property>
+        <signal name="changed" handler="on_install_local_box_changed"/>
+    </object>
+    <object class="GtkComboBoxEntry" id="install-url-box">
+        <property name="visible">True</property>
+        <signal name="changed" handler="on_install_url_box_changed"/>
+    </object>
+    <object class="GtkComboBoxEntry" id="install-ks-box">
+        <property name="visible">True</property>
+    </object>
+</interface>
+"""
+
 class vmmCreate(vmmGObjectUI):
     def __init__(self, engine):
-        vmmGObjectUI.__init__(self, "vmm-create.glade", "vmm-create")
+        vmmGObjectUI.__init__(self, "vmm-create.ui", "vmm-create")
         self.engine = engine
 
         self.conn = None
@@ -80,8 +92,7 @@ class vmmCreate(vmmGObjectUI):
 
         # Distro detection state variables
         self.detectedDistro = None
-        self.detectThreadEvent = threading.Event()
-        self.detectThreadEvent.set()
+        self.detecting = False
         self.mediaDetected = False
         self.show_all_os = False
 
@@ -98,7 +109,14 @@ class vmmCreate(vmmGObjectUI):
         self.config_window = None
         self.config_window_signals = []
 
-        self.window.signal_autoconnect({
+        self.window.add_from_string(_comboentry_xml)
+        self.widget("table2").attach(self.widget("install-url-box"),
+                                     1, 2, 0, 1)
+        self.widget("table7").attach(self.widget("install-ks-box"),
+                                     1, 2, 0, 1)
+        self.widget("alignment8").add(self.widget("install-local-box"))
+
+        self.window.connect_signals({
             "on_vmm_newcreate_delete_event" : self.close,
 
             "on_create_cancel_clicked": self.close,
@@ -149,9 +167,11 @@ class vmmCreate(vmmGObjectUI):
 
     def show(self, parent, uri=None):
         logging.debug("Showing new vm wizard")
-        self.reset_state(uri)
 
-        self.topwin.set_transient_for(parent)
+        if not self.is_visible():
+            self.reset_state(uri)
+            self.topwin.set_transient_for(parent)
+
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
@@ -167,7 +187,6 @@ class vmmCreate(vmmGObjectUI):
         return 1
 
     def _cleanup(self):
-        self.close()
         self.remove_conn()
 
         self.conn = None
@@ -211,11 +230,12 @@ class vmmCreate(vmmGObjectUI):
 
 
     # State init methods
-    def startup_error(self, error):
+    def startup_error(self, error, hideinstall=True):
         self.have_startup_error = True
         self.widget("startup-error-box").show()
-        self.widget("install-box").hide()
         self.widget("create-forward").set_sensitive(False)
+        if hideinstall:
+            self.widget("install-box").hide()
 
         self.widget("startup-error").set_text("Error: %s" % error)
         return False
@@ -396,7 +416,7 @@ class vmmCreate(vmmGObjectUI):
         label_widget = self.widget("phys-hd-label")
         label_widget.set_markup("")
         if not self.host_storage_timer:
-            self.host_storage_timer = self.safe_timeout_add(3 * 1000,
+            self.host_storage_timer = self.timeout_add(3 * 1000,
                                                     uihelpers.host_space_tick,
                                                     self.conn,
                                                     label_widget)
@@ -459,8 +479,10 @@ class vmmCreate(vmmGObjectUI):
                  "are not loaded. Your virtual machines may perform poorly.")
                 self.startup_warning(error)
 
+        # Helper state
         is_local = not self.conn.is_remote()
         is_storage_capable = self.conn.is_storage_capable()
+        can_storage = (is_local or is_storage_capable)
         is_pv = (self.capsguest.os_type == "xen")
         is_container = self.conn.is_container()
         can_remote_url = virtinst.support.check_stream_support(self.conn.vmm,
@@ -470,41 +492,48 @@ class vmmCreate(vmmGObjectUI):
         method_tree = self.widget("method-tree")
         method_pxe = self.widget("method-pxe")
         method_local = self.widget("method-local")
+        method_import = self.widget("method-import")
         method_container_app = self.widget("method-container-app")
 
         method_tree.set_sensitive(is_local or can_remote_url)
-        method_local.set_sensitive(not is_pv)
+        method_local.set_sensitive(not is_pv and can_storage)
         method_pxe.set_sensitive(not is_pv)
+        method_import.set_sensitive(can_storage)
+        virt_methods = [method_local, method_tree, method_pxe, method_import]
 
         pxe_tt = None
         local_tt = None
         tree_tt = None
+        import_tt = None
+
+        if not is_local:
+            if not can_remote_url:
+                tree_tt = _("Libvirt version does not "
+                            "support remote URL installs.")
+            if not is_storage_capable:
+                local_tt = _("Connection does not support storage management.")
+                import_tt = local_tt
 
         if is_pv:
             base = _("%s installs not available for paravirt guests.")
             pxe_tt = base % "PXE"
             local_tt = base % "CDROM/ISO"
-        if not is_local:
-            tree_tt = _("Libvirt version does not support remote URL installs.")
-            if not is_storage_capable and not local_tt:
-                local_tt = _("Connection does not support storage management.")
 
-        if not is_local and not is_storage_capable:
-            method_local.set_sensitive(False)
-        if method_tree.get_active() and not is_local:
-            method_local.set_active(True)
-        elif is_pv:
-            method_tree.set_active(True)
+        for w in virt_methods:
+            if w.get_property("sensitive"):
+                w.set_active(True)
+                break
 
-        if not (method_tree.get_property("sensitive") or
-                method_local.get_property("sensitive") or
-                method_pxe.get_property("sensitive")):
-            self.startup_error(_("No install options available for this "
-                                 "connection."))
+        if not (is_container or
+                filter(lambda w: w.get_property("sensitive"), virt_methods)):
+            return self.startup_error(
+                    _("No install methods available for this connection."),
+                    hideinstall=False)
 
         util.tooltip_wrapper(method_tree, tree_tt)
         util.tooltip_wrapper(method_local, local_tt)
         util.tooltip_wrapper(method_pxe, pxe_tt)
+        util.tooltip_wrapper(method_import, import_tt)
 
         # Container install options
         method_container_app.set_active(True)
@@ -577,14 +606,13 @@ class vmmCreate(vmmGObjectUI):
         self.widget("phys-cpu-label").set_markup(cpu_label)
 
         # Storage
-        have_storage = (is_local or is_storage_capable)
         storage_tooltip = None
 
         use_storage = self.widget("config-storage-select")
         storage_area = self.widget("config-storage-area")
 
-        storage_area.set_sensitive(have_storage)
-        if not have_storage:
+        storage_area.set_sensitive(can_storage)
+        if not can_storage:
             storage_tooltip = _("Connection does not support storage"
                                 " management.")
             use_storage.set_sensitive(True)
@@ -754,7 +782,7 @@ class vmmCreate(vmmGObjectUI):
         supportl = virtinst.FullVirtGuest.list_os_types(supported=True,
                                                         filtervars=filtervars)
 
-        self._add_os_row(model, OS_GENERIC, _("Generic"), True)
+        self._add_os_row(model, None, _("Generic"), True)
 
         for t in types:
             label = virtinst.FullVirtGuest.get_os_type_label(t)
@@ -771,8 +799,8 @@ class vmmCreate(vmmGObjectUI):
     def populate_os_variant_model(self, _type):
         model = self.widget("install-os-version").get_model()
         model.clear()
-        if _type == OS_GENERIC:
-            self._add_os_row(model, OS_GENERIC, _("Generic"), True)
+        if _type == None:
+            self._add_os_row(model, None, _("Generic"), True)
             return
 
         filtervars = (not self._rhel6_defaults() and
@@ -801,7 +829,6 @@ class vmmCreate(vmmGObjectUI):
 
 
     def change_caps(self, gtype=None, dtype=None, arch=None):
-
         if gtype == None:
             # If none specified, prefer HVM. This way, the default install
             # options won't be limited because we default to PV. If hvm not
@@ -811,8 +838,7 @@ class vmmCreate(vmmGObjectUI):
                     gtype = "hvm"
                     break
 
-        (newg,
-         newdom) = virtinst.CapabilitiesParser.guest_lookup(
+        (newg, newdom) = virtinst.CapabilitiesParser.guest_lookup(
                                                         conn=self.conn.vmm,
                                                         caps=self.caps,
                                                         os_type=gtype,
@@ -835,7 +861,7 @@ class vmmCreate(vmmGObjectUI):
                       self.capsdomain.hypervisor_type)
 
     def populate_summary(self):
-        ignore, ignore, dlabel, vlabel = self.get_config_os_info()
+        distro, version, dlabel, vlabel = self.get_config_os_info()
         mem = self.pretty_memory(int(self.guest.memory) * 1024)
         cpu = str(int(self.guest.vcpus))
 
@@ -868,17 +894,21 @@ class vmmCreate(vmmGObjectUI):
             storage = _("None")
 
         osstr = ""
+        have_os = True
         if self.guest.installer.is_container():
             osstr = _("Linux")
-        elif not dlabel:
+        elif not distro:
             osstr = _("Generic")
-        elif not vlabel:
+            have_os = False
+        elif not version:
             osstr = _("Generic") + " " + dlabel
+            have_os = False
         else:
             osstr = vlabel
 
         title = "Ready to begin installation of <b>%s</b>" % self.guest.name
 
+        self.widget("finish-warn-os").set_property("visible", not have_os)
         self.widget("summary-title").set_markup(title)
         self.widget("summary-os").set_text(osstr)
         self.widget("summary-install").set_text(install)
@@ -1120,7 +1150,7 @@ class vmmCreate(vmmGObjectUI):
             return
         if not self.is_install_page():
             return
-        self.start_detect_thread(forward=forward)
+        self.start_detection(forward=forward)
 
     def toggle_detect_os(self, src):
         dodetect = src.get_active()
@@ -1152,9 +1182,8 @@ class vmmCreate(vmmGObjectUI):
         row = self._selected_os_row()
         if row:
             _type = row[0]
-            if _type:
-                self.populate_os_variant_model(_type)
-            elif row[3]:
+            self.populate_os_variant_model(_type)
+            if row[3]:
                 self.show_all_os = True
                 self.populate_os_type_model()
                 return
@@ -1577,9 +1606,9 @@ class vmmCreate(vmmGObjectUI):
 
         # OS distro/variant validation
         try:
-            if distro and distro != OS_GENERIC:
+            if distro:
                 self.guest.os_type = distro
-            if variant and variant != OS_GENERIC:
+            if variant:
                 self.guest.os_variant = variant
         except ValueError, e:
             return self.err.val_err(_("Error setting OS information."), e)
@@ -1693,6 +1722,13 @@ class vmmCreate(vmmGObjectUI):
                                         size=disksize,
                                         sparse=sparse)
 
+            fmt = self.config.get_storage_format()
+            if (self.is_default_storage() and
+                disk.vol_install and
+                fmt in disk.vol_install.formats):
+                logging.debug("Setting disk format from prefs: %s", fmt)
+                disk.vol_install.format = fmt
+
         except Exception, e:
             return self.err.val_err(_("Storage parameter error."), e)
 
@@ -1772,10 +1808,8 @@ class vmmCreate(vmmGObjectUI):
             return
 
         # FIXME: some things are dependent on domain type (vcpu max)
-        if instmeth == INSTALL_PAGE_URL:
+        if instmeth in [INSTALL_PAGE_URL, INSTALL_PAGE_IMPORT]:
             self.change_caps(gtype="xen")
-        else:
-            self.change_caps(gtype="hvm")
 
     def reset_guest_type(self):
         self.change_caps()
@@ -1898,7 +1932,7 @@ class vmmCreate(vmmGObjectUI):
         self.emit("action-show-vm", self.conn.get_uri(), guest.uuid)
 
     def do_install(self, asyncjob, guest):
-        meter = vmmCreateMeter(asyncjob)
+        meter = asyncjob.get_meter()
 
         logging.debug("Starting background install process")
 
@@ -1919,11 +1953,14 @@ class vmmCreate(vmmGObjectUI):
             # Probably means guest had no 'install' phase, as in
             # for live cds. Try to restart the domain.
             vm.startup()
-        else:
+        elif guest.installer.has_install_phase():
             # Register a status listener, which will restart the
             # guest after the install has finished
-            vm.connect_opt_out("status-changed",
-                               self.check_install_status, guest)
+            def cb():
+                vm.connect_opt_out("status-changed",
+                                   self.check_install_status, guest)
+                return False
+            self.idle_add(cb)
 
 
     def check_install_status(self, vm, ignore1, ignore2, virtinst_guest=None):
@@ -1967,20 +2004,8 @@ class vmmCreate(vmmGObjectUI):
     def pretty_memory(self, mem):
         return "%d MB" % (mem / 1024.0)
 
+
     # Distro detection methods
-
-    # Create and launch a detection thread (if no detection already running)
-    def start_detect_thread(self, forward):
-        if not self.detectThreadEvent.isSet():
-            # We are already checking (some) media, so let that continue
-            return
-
-        self.detectThreadEvent.clear()
-        detectThread = threading.Thread(target=self.do_detect,
-                                        args=(forward,),
-                                        name="Detect OS")
-        detectThread.setDaemon(True)
-        detectThread.start()
 
     def set_distro_labels(self, distro, ver):
         # Helper to set auto detect result labels
@@ -2031,63 +2056,56 @@ class vmmCreate(vmmGObjectUI):
         if not self.is_detect_active():
             return
 
-        dl = self.set_os_val(self.widget("install-os-type"),
-                             distro)
-        vl = self.set_os_val(self.widget("install-os-version"),
-                             ver)
+        dl = self.set_os_val(self.widget("install-os-type"), distro)
+        vl = self.set_os_val(self.widget("install-os-version"), ver)
         self.set_distro_labels(dl, vl)
 
-    def _safe_wrapper(self, func, args):
-        gtk.gdk.threads_enter()
+    def check_detection(self, idx, forward):
+        results = None
         try:
-            return func(*args)
-        finally:
-            gtk.gdk.threads_leave()
+            base = _("Detecting")
 
-    def _set_forward_sensitive(self, val):
-        self.widget("create-forward").set_sensitive(val)
+            if not self.detectedDistro or (idx >= (DETECT_TIMEOUT * 2)):
+                detect_str = base + ("." * ((idx % 3) + 1))
+                self.set_distro_labels(detect_str, detect_str)
 
-    # The actual detection routine
-    def do_detect(self, forward):
-        try:
-            media = self._safe_wrapper(self.get_config_detectable_media, ())
-            if not media:
+                self.timeout_add(500, self.check_detection,
+                                      idx + 1, forward)
                 return
 
-            self.detectedDistro = None
-
-            logging.debug("Starting OS detection thread for media=%s", media)
-            self._safe_wrapper(self._set_forward_sensitive, (False,))
-
-            detectThread = threading.Thread(target=self.actually_detect,
-                                            name="Actual media detection",
-                                            args=(media,))
-            detectThread.setDaemon(True)
-            detectThread.start()
-
-            base = _("Detecting")
-            for i in range(1, DETECT_TIMEOUT * 2):
-                if self.detectedDistro != None:
-                    break
-                detect_str = base + ("." * (((i + 2) % 3) + 1))
-                self._safe_wrapper(self.set_distro_labels,
-                                   (detect_str, detect_str))
-                time.sleep(.5)
-
             results = self.detectedDistro
-            if results == None:
-                results = (None, None)
+        except:
+            logging.exception("Error in distro detect timeout")
 
-            self._safe_wrapper(self.set_distro_selection, results)
-        finally:
-            self._safe_wrapper(self._set_forward_sensitive, (True,))
-            self.detectThreadEvent.set()
-            self.mediaDetected = True
-            logging.debug("Leaving OS detection thread.")
-            if forward:
-                self.safe_idle_add(self.forward, ())
+        results = results or (None, None)
+        self.widget("create-forward").set_sensitive(True)
+        self.mediaDetected = True
+        self.detecting = False
+        logging.debug("Finished OS detection.")
+        self.set_distro_selection(*results)
+        if forward:
+            self.idle_add(self.forward, ())
 
-        return
+    def start_detection(self, forward):
+        if self.detecting:
+            return
+
+        media = self.get_config_detectable_media()
+        if not media:
+            return
+
+        self.detectedDistro = None
+
+        logging.debug("Starting OS detection thread for media=%s", media)
+        self.widget("create-forward").set_sensitive(False)
+
+        detectThread = threading.Thread(target=self.actually_detect,
+                                        name="Actual media detection",
+                                        args=(media,))
+        detectThread.setDaemon(True)
+        detectThread.start()
+
+        self.check_detection(0, forward)
 
     def actually_detect(self, media):
         try:

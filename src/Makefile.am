@@ -12,7 +12,7 @@ libexec_DATA_IN = $(PACKAGE)-launch.in
 libexec_SCRIPTS = $(PACKAGE)-launch
 
 gladedir = $(pkgdatadir)
-glade_DATA = $(wildcard $(srcdir)/*.glade)
+glade_DATA = $(wildcard $(srcdir)/*.ui)
 
 desktopdir = $(datadir)/applications
 desktop_DATA_IN = $(PACKAGE).desktop.in.in
@@ -66,6 +66,7 @@ endif
 	  -e "s,::ENABLE_UNSUPPORTED_RHEL_OPTS::,$(ENABLE_UNSUPPORTED_RHEL_OPTS)," \
 	  -e "s|::PREFERRED_DISTROS::|$(PREFERRED_DISTROS)|" \
 	  -e "s|::HV_PACKAGES::|$(KVM_PACKAGES)|" \
+	  -e "s|::ASKPASS_PACKAGE::|$(ASKPASS_PACKAGE)|" \
 	  -e "s|::LIBVIRT_PACKAGES::|$(LIBVIRT_PACKAGES)|" \
 	  < $< > $@
 

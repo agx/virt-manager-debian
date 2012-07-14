@@ -30,7 +30,6 @@ import virtinst
 from virtManager import util
 from virtManager.baseclass import vmmGObjectUI
 from virtManager.asyncjob import vmmAsyncJob
-from virtManager.createmeter import vmmCreateMeter
 
 STORAGE_ROW_CONFIRM = 0
 STORAGE_ROW_CANT_DELETE = 1
@@ -43,11 +42,11 @@ STORAGE_ROW_TOOLTIP = 7
 
 class vmmDeleteDialog(vmmGObjectUI):
     def __init__(self):
-        vmmGObjectUI.__init__(self, "vmm-delete.glade", "vmm-delete")
+        vmmGObjectUI.__init__(self, "vmm-delete.ui", "vmm-delete")
         self.vm = None
         self.conn = None
 
-        self.window.signal_autoconnect({
+        self.window.connect_signals({
             "on_vmm_delete_delete_event" : self.close,
             "on_delete_cancel_clicked" : self.close,
             "on_delete_ok_clicked" : self.finish,
@@ -84,8 +83,6 @@ class vmmDeleteDialog(vmmGObjectUI):
         return 1
 
     def _cleanup(self):
-        self.close()
-
         self.vm = None
         self.conn = None
 
@@ -160,7 +157,7 @@ class vmmDeleteDialog(vmmGObjectUI):
             # Open a seperate connection to install on since this is async
             logging.debug("Threading off connection to delete vol.")
             newconn = util.dup_conn(self.conn).vmm
-            meter = vmmCreateMeter(asyncjob)
+            meter = asyncjob.get_meter()
 
             for path in paths:
                 try:

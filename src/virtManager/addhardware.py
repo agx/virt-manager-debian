@@ -32,7 +32,6 @@ from virtinst import (VirtualCharDevice, VirtualDevice,
 import virtManager.util as util
 import virtManager.uihelpers as uihelpers
 from virtManager.asyncjob import vmmAsyncJob
-from virtManager.createmeter import vmmCreateMeter
 from virtManager.storagebrowse import vmmStorageBrowser
 from virtManager.baseclass import vmmGObjectUI
 
@@ -61,10 +60,18 @@ char_widget_mappings = {
     "target_name" : "char-target-name",
 }
 
+_comboentry_xml = """
+<interface>
+    <object class="GtkComboBoxEntry" id="config-storage-format">
+      <property name="visible">True</property>
+    </object>
+</interface>
+"""
+
 class vmmAddHardware(vmmGObjectUI):
     def __init__(self, vm):
         vmmGObjectUI.__init__(self,
-                              "vmm-add-hardware.glade", "vmm-add-hardware")
+                              "vmm-add-hardware.ui", "vmm-add-hardware")
 
         self.vm = vm
         self.conn = vm.conn
@@ -76,7 +83,11 @@ class vmmAddHardware(vmmGObjectUI):
 
         self._dev = None
 
-        self.window.signal_autoconnect({
+        self.window.add_from_string(_comboentry_xml)
+        self.widget("table7").attach(self.widget("config-storage-format"),
+                                     1, 2, 2, 3, xoptions=gtk.FILL)
+
+        self.window.connect_signals({
             "on_create_cancel_clicked" : self.close,
             "on_vmm_create_delete_event" : self.close,
             "on_create_finish_clicked" : self.finish,
@@ -162,8 +173,6 @@ class vmmAddHardware(vmmGObjectUI):
         return 1
 
     def _cleanup(self):
-        self.close()
-
         self.vm = None
         self.conn = None
         self._dev = None
@@ -415,7 +424,7 @@ class vmmAddHardware(vmmGObjectUI):
         label_widget = self.widget("phys-hd-label")
         label_widget.set_markup("")
         if not self.host_storage_timer:
-            self.host_storage_timer = self.safe_timeout_add(3 * 1000,
+            self.host_storage_timer = self.timeout_add(3 * 1000,
                                                 uihelpers.host_space_tick,
                                                 self.conn,
                                                 label_widget)
@@ -490,6 +499,9 @@ class vmmAddHardware(vmmGObjectUI):
         self.widget("fs-source").set_text("")
         self.widget("fs-target").set_text("")
         self.widget("fs-readonly").set_active(False)
+
+        # Video params
+        uihelpers.populate_video_combo(self.vm, self.widget("video-model"))
 
         # Hide all notebook pages, so the wizard isn't as big as the largest
         # page
@@ -595,7 +607,7 @@ class vmmAddHardware(vmmGObjectUI):
         else:
             path = self.widget("config-storage-entry").get_text()
 
-        return (path, size, sparse)
+        return (path or None, size, sparse)
 
     def get_config_disk_target(self):
         target = self.widget("config-storage-devtype")
@@ -775,7 +787,7 @@ class vmmAddHardware(vmmGObjectUI):
     # USB redir getters
     def get_config_usbredir_host(self):
         host = self.widget("usbredir-host")
-        if not host.is_sensitive():
+        if not host.props.sensitive:
             return None
 
         hoststr = host.get_text()
@@ -783,7 +795,7 @@ class vmmAddHardware(vmmGObjectUI):
 
     def get_config_usbredir_service(self):
         service = self.widget("usbredir-service")
-        if not service.is_sensitive():
+        if not service.props.sensitive:
             return None
 
         return int(service.get_value())
@@ -1109,7 +1121,7 @@ class vmmAddHardware(vmmGObjectUI):
             return
 
         def do_file_allocate(asyncjob, disk):
-            meter = vmmCreateMeter(asyncjob)
+            meter = asyncjob.get_meter()
 
             # If creating disk via storage API, we need to thread
             # off a new connection
@@ -1250,9 +1262,6 @@ class vmmAddHardware(vmmGObjectUI):
                     if do_use:
                         diskpath = ideal
 
-            if not diskpath:
-                return self.err.val_err(_("A storage path must be specified."))
-
             disk = virtinst.VirtualDisk(conn=self.conn.vmm,
                                         path=diskpath,
                                         size=disksize,
@@ -1262,6 +1271,14 @@ class vmmAddHardware(vmmGObjectUI):
                                         bus=bus,
                                         driverCache=cache,
                                         format=fmt)
+
+            if not fmt:
+                fmt = self.config.get_storage_format()
+                if (self.is_default_storage() and
+                    disk.vol_install and
+                    fmt in disk.vol_install.formats):
+                    logging.debug("Setting disk format from prefs: %s", fmt)
+                    disk.vol_install.format = fmt
 
             if (disk.type == virtinst.VirtualDisk.TYPE_FILE and
                 not self.vm.is_hvm() and

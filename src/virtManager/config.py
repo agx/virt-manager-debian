@@ -88,11 +88,11 @@ class vmmConfig(object):
     DEFAULT_VIRT_IMAGE_DIR = "/var/lib/libvirt/images"
     DEFAULT_VIRT_SAVE_DIR = "/var/lib/libvirt"
 
-    def __init__(self, appname, appversion, glade_dir):
+    def __init__(self, appname, appversion, ui_dir):
         self.appname = appname
         self.appversion = appversion
         self.conf_dir = "/apps/" + appname
-        self.glade_dir = glade_dir
+        self.ui_dir = ui_dir
 
         self.conf = gconf.client_get_default()
         self.conf.add_dir(self.conf_dir, gconf.CLIENT_PRELOAD_NONE)
@@ -109,6 +109,7 @@ class vmmConfig(object):
         self.preferred_distros = []
         self.hv_packages = []
         self.libvirt_packages = []
+        self.askpass_package = []
 
         self._objects = []
 
@@ -159,8 +160,8 @@ class vmmConfig(object):
         return self.appname
     def get_appversion(self):
         return self.appversion
-    def get_glade_dir(self):
-        return self.glade_dir
+    def get_ui_dir(self):
+        return self.ui_dir
 
     def get_spice_error(self):
         if self._spice_error is None:
@@ -168,7 +169,8 @@ class vmmConfig(object):
                 import SpiceClientGtk
                 ignore = SpiceClientGtk
                 self._spice_error = False
-            except Exception, self._spice_error:
+            except Exception, e:
+                self._spice_error = e
                 logging.debug("Error importing spice: %s", self._spice_error)
 
         return self._spice_error and str(self._spice_error) or None
@@ -517,6 +519,18 @@ class vmmConfig(object):
                              gtype.lower())
     def on_graphics_type_changed(self, cb, data=None):
         return self.conf.notify_add(self.conf_dir + "/new-vm/graphics_type",
+                                    cb, data)
+
+    def get_storage_format(self):
+        ret = self.conf.get_string(self.conf_dir + "/new-vm/storage-format")
+        if ret not in ["default", "raw", "qcow2"]:
+            return "default"
+        return ret
+    def set_storage_format(self, typ):
+        self.conf.set_string(self.conf_dir + "/new-vm/storage-format",
+                             typ.lower())
+    def on_storage_format_changed(self, cb, data=None):
+        return self.conf.notify_add(self.conf_dir + "/new-vm/storage-format",
                                     cb, data)
 
 
