@@ -29,7 +29,7 @@ PREFS_PAGE_VM_PREFS = 1
 
 class vmmPreferences(vmmGObjectUI):
     def __init__(self):
-        vmmGObjectUI.__init__(self, "vmm-preferences.glade", "vmm-preferences")
+        vmmGObjectUI.__init__(self, "vmm-preferences.ui", "vmm-preferences")
 
         self.add_gconf_handle(self.config.on_view_system_tray_changed(self.refresh_view_system_tray))
         self.add_gconf_handle(self.config.on_console_accels_changed(self.refresh_console_accels))
@@ -39,6 +39,7 @@ class vmmPreferences(vmmGObjectUI):
         self.add_gconf_handle(self.config.on_sound_local_changed(self.refresh_sound_local))
         self.add_gconf_handle(self.config.on_sound_remote_changed(self.refresh_sound_remote))
         self.add_gconf_handle(self.config.on_graphics_type_changed(self.refresh_graphics_type))
+        self.add_gconf_handle(self.config.on_storage_format_changed(self.refresh_storage_format))
         self.add_gconf_handle(self.config.on_stats_enable_disk_poll_changed(self.refresh_disk_poll))
         self.add_gconf_handle(self.config.on_stats_enable_net_poll_changed(self.refresh_net_poll))
 
@@ -57,6 +58,7 @@ class vmmPreferences(vmmGObjectUI):
         self.refresh_sound_local()
         self.refresh_sound_remote()
         self.refresh_graphics_type()
+        self.refresh_storage_format()
         self.refresh_disk_poll()
         self.refresh_net_poll()
         self.refresh_grabkeys_combination()
@@ -67,7 +69,7 @@ class vmmPreferences(vmmGObjectUI):
         self.refresh_confirm_interface()
         self.refresh_confirm_unapplied()
 
-        self.window.signal_autoconnect({
+        self.window.connect_signals({
             "on_prefs_system_tray_toggled" : self.change_view_system_tray,
             "on_prefs_stats_update_interval_changed": self.change_update_interval,
             "on_prefs_stats_history_length_changed": self.change_history_length,
@@ -88,6 +90,7 @@ class vmmPreferences(vmmGObjectUI):
             "on_prefs_confirm_unapplied_toggled": self.change_confirm_unapplied,
             "on_prefs_btn_keys_define_clicked": self.change_grab_keys,
             "on_prefs_graphics_type_changed": self.change_graphics_type,
+            "on_prefs_storage_format_changed": self.change_storage_format,
             })
         self.bind_escape_key_close()
 
@@ -158,6 +161,20 @@ class vmmPreferences(vmmGObjectUI):
                 break
 
         self.widget("prefs-graphics-type").set_active(active)
+    def refresh_storage_format(self, ignore1=None, ignore2=None, ignore=None,
+                               ignore4=None):
+        combo = self.widget("prefs-storage-format")
+        model = combo.get_model()
+        gtype = self.config.get_storage_format()
+
+        # Default to row 0 == raw
+        active = 0
+        for rowidx in range(len(model)):
+            if model[rowidx][0].lower() == gtype:
+                active = rowidx
+                break
+
+        self.widget("prefs-storage-format").set_active(active)
 
     def refresh_disk_poll(self, ignore1=None, ignore2=None, ignore3=None,
                           ignore4=None):
@@ -217,32 +234,25 @@ class vmmPreferences(vmmGObjectUI):
         self.widget("prefs-confirm-unapplied").set_active(
                                 self.config.get_confirm_unapplied())
 
-    def grabkeys_get_string(self, keysyms):
-        keystr = None
-        for k in keysyms:
-            if keystr is None:
-                keystr = gtk.gdk.keyval_name(k)
-            else:
-                keystr = keystr + "+" + gtk.gdk.keyval_name(k)
-        # Disallow none
-        if keystr is None:
-            keystr = ""
+    def grabkeys_get_string(self, events):
+        keystr = ""
+        for ignore, keyval in events:
+            if keystr:
+                keystr += "+"
+            keystr += gtk.gdk.keyval_name(keyval)
         return keystr
 
-    def grabkeys_dlg_press(self, src_ignore, ev, defs):
-        label = defs['label']
-        # Try to get the index, it fails when not found
-        try:
-            defs['keysyms'].index(ev.keyval)
-        except:
-            defs['keysyms'].append(ev.keyval)
+    def grabkeys_dlg_press(self, src_ignore, event, label, events):
+        if not filter(lambda e: e[0] == event.hardware_keycode, events):
+            events.append((event.hardware_keycode, event.keyval))
 
-        label.set_text(self.grabkeys_get_string(defs['keysyms']))
+        label.set_text(self.grabkeys_get_string(events))
 
-    def grabkeys_dlg_release(self, src_ignore, ev, defs):
-        label = defs['label']
-        defs['keysyms'].remove(ev.keyval)
-        label.set_text(self.grabkeys_get_string(defs['keysyms']))
+    def grabkeys_dlg_release(self, src_ignore, event, label, events):
+        for e in filter(lambda e: e[0] == event.hardware_keycode, events):
+            events.remove(e)
+
+        label.set_text(self.grabkeys_get_string(events))
 
     def change_grab_keys(self, src_ignore):
         dialog = gtk.Dialog(_("Configure grab key combination"),
@@ -265,14 +275,16 @@ class vmmPreferences(vmmGObjectUI):
         vbox.pack_start(keylabel, False, False)
         dialog.get_content_area().add(vbox)
 
-        defs = {'label': keylabel, 'keysyms': []}
-        dialog.connect("key-press-event", self.grabkeys_dlg_press, defs)
-        dialog.connect("key-release-event", self.grabkeys_dlg_release, defs)
+        events = []
+        dialog.connect("key-press-event", self.grabkeys_dlg_press,
+                       keylabel, events)
+        dialog.connect("key-release-event", self.grabkeys_dlg_release,
+                       keylabel, events)
         dialog.show_all()
         result = dialog.run()
 
         if result == gtk.RESPONSE_ACCEPT:
-            self.config.set_keys_combination(defs['keysyms'])
+            self.config.set_keys_combination(map(lambda e: e[1], events))
 
         self.refresh_grabkeys_combination()
         dialog.destroy()
@@ -319,6 +331,12 @@ class vmmPreferences(vmmGObjectUI):
         if idx >= 0:
             gtype = src.get_model()[idx][0]
         self.config.set_graphics_type(gtype.lower())
+    def change_storage_format(self, src):
+        typ = 'default'
+        idx = src.get_active()
+        if idx >= 0:
+            typ = src.get_model()[idx][0]
+        self.config.set_storage_format(typ.lower())
 
     def show_help(self, src_ignore):
         # From the Preferences window, show the help document from

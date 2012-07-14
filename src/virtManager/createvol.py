@@ -25,7 +25,6 @@ import gtk
 from virtManager import util
 from virtManager.baseclass import vmmGObjectUI
 from virtManager.asyncjob import vmmAsyncJob
-from virtManager.createmeter import vmmCreateMeter
 
 from virtinst import Storage
 
@@ -34,7 +33,7 @@ DEFAULT_CAP   = 1000
 
 class vmmCreateVolume(vmmGObjectUI):
     def __init__(self, conn, parent_pool):
-        vmmGObjectUI.__init__(self, "vmm-create-vol.glade", "vmm-create-vol")
+        vmmGObjectUI.__init__(self, "vmm-create-vol.ui", "vmm-create-vol")
         self.conn = conn
         self.parent_pool = parent_pool
 
@@ -42,7 +41,7 @@ class vmmCreateVolume(vmmGObjectUI):
         self.vol = None
         self.vol_class = Storage.StoragePool.get_volume_for_pool(parent_pool.get_type())
 
-        self.window.signal_autoconnect({
+        self.window.connect_signals({
             "on_vmm_create_vol_delete_event" : self.close,
             "on_vol_cancel_clicked"  : self.close,
             "on_vol_create_clicked"  : self.finish,
@@ -83,8 +82,6 @@ class vmmCreateVolume(vmmGObjectUI):
         return 1
 
     def _cleanup(self):
-        self.close()
-
         self.conn = None
         self.parent_pool = None
 
@@ -246,9 +243,10 @@ class vmmCreateVolume(vmmGObjectUI):
         newpool = newconn.storagePoolLookupByName(self.parent_pool.get_name())
         self.vol.pool = newpool
 
-        meter = vmmCreateMeter(asyncjob)
+        meter = asyncjob.get_meter()
         logging.debug("Starting backround vol creation.")
         self.vol.install(meter=meter)
+        logging.debug("vol creation complete.")
 
     def validate(self):
         name = self.widget("vol-name").get_text()

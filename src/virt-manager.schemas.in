@@ -196,8 +196,8 @@
     </schema>
 
     <schema>
-      <key>/schemas/apps/::PACKAGE::/new-vm/graphics-type</key>
-      <applyto>/apps/::PACKAGE::/new-vm/graphics-type</applyto>
+      <key>/schemas/apps/::PACKAGE::/new-vm/graphics_type</key>
+      <applyto>/apps/::PACKAGE::/new-vm/graphics_type</applyto>
       <owner>::PACKAGE::</owner>
       <type>string</type>
       <default>::DEFAULT_GRAPHICS::</default>
@@ -205,6 +205,19 @@
       <locale name="C">
         <short>Install selected graphics type for new VM</short>
         <long>Install selected graphics type for new VM. vnc or spice</long>
+      </locale>
+    </schema>
+
+    <schema>
+      <key>/schemas/apps/::PACKAGE::/new-vm/storage-format</key>
+      <applyto>/apps/::PACKAGE::/new-vm/storage-format</applyto>
+      <owner>::PACKAGE::</owner>
+      <type>string</type>
+      <default>default</default>
+
+      <locale name="C">
+        <short>Use selected format for new VM storage</short>
+        <long>Use selected format when creating new disk images in new VM wizard</long>
       </locale>
     </schema>
 

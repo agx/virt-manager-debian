@@ -31,7 +31,6 @@ import libvirt
 from virtManager import util
 from virtManager.baseclass import vmmGObjectUI
 from virtManager.asyncjob import vmmAsyncJob
-from virtManager.createmeter import vmmCreateMeter
 from virtManager.domain import vmmDomain
 
 def uri_join(uri_tuple):
@@ -48,14 +47,14 @@ def uri_join(uri_tuple):
 
 class vmmMigrateDialog(vmmGObjectUI):
     def __init__(self, vm, engine):
-        vmmGObjectUI.__init__(self, "vmm-migrate.glade", "vmm-migrate")
+        vmmGObjectUI.__init__(self, "vmm-migrate.ui", "vmm-migrate")
         self.vm = vm
         self.conn = vm.conn
         self.engine = engine
 
         self.destconn_rows = []
 
-        self.window.signal_autoconnect({
+        self.window.connect_signals({
             "on_vmm_migrate_delete_event" : self.close,
 
             "on_migrate_cancel_clicked" : self.close,
@@ -95,8 +94,6 @@ class vmmMigrateDialog(vmmGObjectUI):
         return 1
 
     def _cleanup(self):
-        self.close()
-
         self.vm = None
         self.conn = None
         self.engine = None
@@ -534,7 +531,7 @@ class vmmMigrateDialog(vmmGObjectUI):
     def _async_migrate(self, asyncjob,
                        origvm, origdconn, migrate_uri, rate, live,
                        secure, max_downtime):
-        meter = vmmCreateMeter(asyncjob)
+        meter = asyncjob.get_meter()
 
         srcconn = util.dup_conn(origvm.conn)
         dstconn = util.dup_conn(origdconn)
@@ -550,13 +547,11 @@ class vmmMigrateDialog(vmmGObjectUI):
             # 0 means that the spin box migrate-max-downtime does not
             # be enabled.
             current_thread = threading.currentThread()
-            timer = self.safe_timeout_add(100,
-                                          self._async_set_max_downtime,
-                                          vm, max_downtime,
-                                          current_thread)
+            timer = self.timeout_add(100, self._async_set_max_downtime,
+                                     vm, max_downtime, current_thread)
 
         vm.migrate(dstconn, migrate_uri, rate, live, secure, meter=meter)
         if timer:
-            gobject.source_remove(timer)
+            self.idle_add(gobject.source_remove, timer)
 
 vmmGObjectUI.type_register(vmmMigrateDialog)

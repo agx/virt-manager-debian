@@ -23,7 +23,8 @@ import re
 
 import gtk
 
-import virtManager.uihelpers as uihelpers
+from virtManager import packageutils
+from virtManager import uihelpers
 from virtManager.connection import vmmConnection
 from virtManager.baseclass import vmmGObjectUI
 from virtManager.delete import vmmDeleteDialog
@@ -71,7 +72,7 @@ gtk.rc_parse_string(rcstring)
 
 class vmmManager(vmmGObjectUI):
     def __init__(self):
-        vmmGObjectUI.__init__(self, "vmm-manager.glade", "vmm-manager")
+        vmmGObjectUI.__init__(self, "vmm-manager.ui", "vmm-manager")
 
         self.delete_dialog = None
         self.ignore_pause = False
@@ -98,7 +99,7 @@ class vmmManager(vmmGObjectUI):
         self.guestcpucol = None
         self.hostcpucol = None
 
-        self.window.signal_autoconnect({
+        self.window.connect_signals({
             "on_menu_view_guest_cpu_usage_activate":
                     (self.toggle_stats_visible, COL_GUEST_CPU),
             "on_menu_view_host_cpu_usage_activate":
@@ -193,8 +194,6 @@ class vmmManager(vmmGObjectUI):
 
 
     def _cleanup(self):
-        self.close()
-
         self.rows = None
 
         self.diskcol = None
@@ -362,11 +361,9 @@ class vmmManager(vmmGObjectUI):
                               bool, bool, bool, bool, gtk.gdk.Color,
                               gtk.gdk.Pixbuf)
         vmlist.set_model(model)
-        util.tooltip_wrapper(vmlist, ROW_HINT, "set_tooltip_column")
-
+        vmlist.set_tooltip_column(ROW_HINT)
         vmlist.set_headers_visible(True)
-        if hasattr(vmlist, "set_level_indentation"):
-            vmlist.set_level_indentation(-15)
+        vmlist.set_level_indentation(-15)
 
         nameCol = gtk.TreeViewColumn(_("Name"))
         nameCol.set_expand(True)
@@ -648,42 +645,66 @@ class vmmManager(vmmGObjectUI):
             conn.open()
             return True
 
-    def _connect_error(self, conn, shortmsg, tb, warnconsole):
-        shortmsg = shortmsg.strip(" \n")
+    def _connect_error(self, conn, errmsg, tb, warnconsole):
+        errmsg = errmsg.strip(" \n")
         tb = tb.strip(" \n")
-        msg = _("Unable to connect to libvirt:\n\n%s\n\n") % shortmsg
+        hint = ""
+        show_errmsg = True
 
-        if conn.is_xen() and not conn.is_remote():
-            msg += _("Verify that:\n"
-                     " - A Xen host kernel was booted\n"
-                     " - The Xen service has been started\n")
-            msg = msg.strip("\n")
-            details = "%s\n\n%s" % (msg, tb)
+        if conn.is_remote():
+            logging.debug(conn.get_transport())
+            if re.search(r"nc: .* -- 'U'", tb):
+                hint += _("The remote host requires a version of netcat/nc\n"
+                          "which supports the -U option.")
+                show_errmsg = False
+            elif (conn.get_transport()[0] == "ssh" and
+                  re.search(r"ssh-askpass", tb)):
+
+                if self.config.askpass_package:
+                    ret = packageutils.check_packagekit(
+                                            self.err,
+                                            self.config.askpass_package,
+                                            False)
+                    if ret:
+                        conn.open()
+                        return
+
+                hint += _("You need to install openssh-askpass or "
+                          "similar\nto connect to this host.")
+                show_errmsg = False
+            else:
+                hint += _("Verify that the 'libvirtd' daemon is running\n"
+                          "on the remote host.")
+
+        elif conn.is_xen():
+            hint += _("Verify that:\n"
+                      " - A Xen host kernel was booted\n"
+                      " - The Xen service has been started")
 
         else:
-            hints = []
-            if conn.is_remote() and re.search(r"nc: .* -- 'U'", details):
-                hints.append(
-                    _("\n - The remote netcat understands the '-U' option"))
-
             if warnconsole:
-                msg += _("Could not detect a local session: if you are \n"
-                         "running virt-manager over ssh -X or VNC, you \n"
-                         "may not be able to connect to libvirt as a \n"
-                         "regular user. Try running as root.\n\n")
-            else:
-                msg += _("Verify that:\n" +
-                         " - The 'libvirtd' daemon has been started")
-                for hint in hints:
-                    msg += hint
+                hint += _("Could not detect a local session: if you are \n"
+                          "running virt-manager over ssh -X or VNC, you \n"
+                          "may not be able to connect to libvirt as a \n"
+                          "regular user. Try running as root.")
+                show_errmsg = False
+            elif re.search(r"libvirt-sock", tb):
+                hint += _("Verify that the 'libvirtd' daemon is running.")
+                show_errmsg = False
 
-            msg = msg.strip("\n")
-            details = (("%s\n\n" % msg) +
-                       (_("Libvirt URI is: %s\n\n") % conn.get_uri()) +
-                       tb)
+        msg = _("Unable to connect to libvirt.")
+        if show_errmsg:
+            msg += "\n\n%s" % errmsg
+        if hint:
+            msg += "\n\n%s" % hint
 
-        self.err.show_err(msg, details,
-                    title=_("Virtual Machine Manager Connection Failure"))
+        msg = msg.strip("\n")
+        details = msg
+        details += "\n\n"
+        details += "Libvirt URI is: %s\n\n" % conn.get_uri()
+        details += tb
+
+        self.err.show_err(msg, details, title=_("Virtual Machine Manager Connection Failure"))
 
 
     ####################################
@@ -905,7 +926,7 @@ class vmmManager(vmmGObjectUI):
         model.row_changed(row.path, row.iter)
 
     def vm_inspection_changed(self, vm):
-        vmlist = self.window.get_widget("vm-list")
+        vmlist = self.widget("vm-list")
         model = vmlist.get_model()
 
         if self.vm_row_key(vm) not in self.rows:
@@ -1124,15 +1145,13 @@ class vmmManager(vmmGObjectUI):
             widget.set_sensitive(False)
             tool_text = _("Disabled in preferences dialog.")
 
-        util.tooltip_wrapper(widget, tool_text)
+        widget.set_tooltip_text(tool_text)
 
-        # RHEL5 GTK doesn't support get_label for a checkmenuitem
-        if hasattr(widget, "get_label"):
-            disabled_text = _(" (disabled)")
-            current_text = widget.get_label().strip(disabled_text)
-            if tool_text:
-                current_text = current_text + disabled_text
-            widget.set_label(current_text)
+        disabled_text = _(" (disabled)")
+        current_text = widget.get_label().strip(disabled_text)
+        if tool_text:
+            current_text = current_text + disabled_text
+        widget.set_label(current_text)
 
     def toggle_network_traffic_visible_widget(self, *ignore):
         val = self.config.is_vmlist_network_traffic_visible()

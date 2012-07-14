@@ -28,7 +28,7 @@ from virtManager.storagebrowse import vmmStorageBrowser
 
 class vmmChooseCD(vmmGObjectUI):
     def __init__(self, vm, disk):
-        vmmGObjectUI.__init__(self, "vmm-choose-cd.glade", "vmm-choose-cd")
+        vmmGObjectUI.__init__(self, "vmm-choose-cd.ui", "vmm-choose-cd")
 
         self.vm = vm
         self.conn = self.vm.conn
@@ -36,7 +36,7 @@ class vmmChooseCD(vmmGObjectUI):
         self.storage_browser = None
         self.media_type = disk.device
 
-        self.window.signal_autoconnect({
+        self.window.connect_signals({
             "on_media_toggled": self.media_toggled,
             "on_fv_iso_location_browse_clicked": self.browse_fv_iso_location,
             "on_cd_path_changed": self.change_cd_path,
@@ -65,8 +65,6 @@ class vmmChooseCD(vmmGObjectUI):
         self.topwin.present()
 
     def _cleanup(self):
-        self.close()
-
         self.vm = None
         self.conn = None
         self.disk = None

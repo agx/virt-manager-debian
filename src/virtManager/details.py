@@ -37,6 +37,19 @@ from virtManager import util as util
 
 import virtinst
 
+_comboentry_xml = """
+<interface>
+    <object class="GtkComboBoxEntry" id="cpu-model">
+        <property name="visible">True</property>
+        <signal name="changed" handler="on_cpu_model_changed"/>
+    </object>
+    <object class="GtkComboBoxEntry" id="disk-format">
+        <property name="visible">True</property>
+        <signal name="changed" handler="on_disk_format_changed"/>
+    </object>
+</interface>
+"""
+
 # Parameters that can be editted in the details window
 EDIT_TOTAL = 36
 (EDIT_NAME,
@@ -143,6 +156,9 @@ def prettyify_disk_bus(bus):
 
     if bus == "virtio":
         return "VirtIO"
+
+    if bus == "spapr-vscsi":
+        return "vSCSI"
 
     return bus
 
@@ -271,9 +287,11 @@ def lookup_nodedev(vmmconn, hostdev):
 
     devs = vmmconn.get_nodedevs(devtype, None)
     for dev in devs:
-        # Try to get info from {product|vendor}_id
+        # Try to match with product_id|vendor_id|bus|device
         if (attrVal(dev, "product_id") == product_id and
-            attrVal(dev, "vendor_id") == vendor_id):
+            attrVal(dev, "vendor_id") == vendor_id and
+            attrVal(dev, "bus") == bus and
+            attrVal(dev, "device") == device):
             found_dev = dev
             break
         else:
@@ -294,7 +312,7 @@ def lookup_nodedev(vmmconn, hostdev):
 
 class vmmDetails(vmmGObjectUI):
     def __init__(self, vm, parent=None):
-        vmmGObjectUI.__init__(self, "vmm-details.glade", "vmm-details")
+        vmmGObjectUI.__init__(self, "vmm-details.ui", "vmm-details")
         self.vm = vm
         self.conn = self.vm.conn
 
@@ -326,6 +344,12 @@ class vmmDetails(vmmGObjectUI):
         self.ignoreDetails = False
         self._cpu_copy_host = False
 
+        self.window.add_from_string(_comboentry_xml)
+        self.widget("hbox17").pack_start(self.widget("disk-format"),
+                                         False, True, 0)
+        self.widget("hbox21").pack_start(self.widget("cpu-model"),
+                                         False, True, 0)
+
         self.console = vmmConsolePages(self.vm, self.window)
 
         # Set default window size
@@ -344,7 +368,7 @@ class vmmDetails(vmmGObjectUI):
         self.network_traffic_graph = None
         self.init_graphs()
 
-        self.window.signal_autoconnect({
+        self.window.connect_signals({
             "on_close_details_clicked": self.close,
             "on_details_menu_close_activate": self.close,
             "on_vmm_details_delete_event": self.close,
@@ -504,8 +528,6 @@ class vmmDetails(vmmGObjectUI):
         self.refresh_vm_state()
 
     def _cleanup(self):
-        self.close()
-
         self.oldhwrow = None
 
         if self.addhw:
@@ -562,8 +584,8 @@ class vmmDetails(vmmGObjectUI):
 
         self.topwin.hide()
         if (self.console.viewer and
-            self.console.viewer.get_widget() and
-            self.console.viewer.get_widget().flags() & gtk.VISIBLE):
+            self.console.viewer.display and
+            self.console.viewer.display.flags() & gtk.VISIBLE):
             try:
                 self.console.close_viewer()
             except:
@@ -698,7 +720,7 @@ class vmmDetails(vmmGObjectUI):
         desc.set_buffer(buf)
 
         # List of applications.
-        apps_list = self.window.get_widget("inspection-apps")
+        apps_list = self.widget("inspection-apps")
         apps_model = gtk.ListStore(str, str, str)
         apps_list.set_model(apps_model)
 
@@ -1439,6 +1461,11 @@ class vmmDetails(vmmGObjectUI):
 
     def activate_default_console_page(self):
         if self.vm.get_graphics_devices() or not self.vm.get_serial_devs():
+            return
+
+        # Only show serial page if we are already on console view
+        pages = self.widget("details-pages")
+        if pages.get_current_page() != PAGE_CONSOLE:
             return
 
         # Show serial console
@@ -2186,7 +2213,11 @@ class vmmDetails(vmmGObjectUI):
         # Do this last since it can change uniqueness info of the dev
         if self.editted(EDIT_DISK_BUS):
             bus = self.get_combo_label_value("disk-bus")
-            add_define(self.vm.define_disk_bus, dev_id_info, bus)
+            addr = None
+            if bus == "spapr-vscsi":
+                bus = "scsi"
+                addr = "spapr-vio"
+            add_define(self.vm.define_disk_bus, dev_id_info, bus, addr)
 
         return self._change_config_helper(df, da, hf, ha)
 
@@ -2221,7 +2252,10 @@ class vmmDetails(vmmGObjectUI):
 
         if self.editted(EDIT_NET_MODEL):
             model = self.get_combo_label_value("network-model")
-            add_define(self.vm.define_network_model, dev_id_info, model)
+            addr = None
+            if model == "spapr-vlan":
+                addr = "spapr-vio"
+            add_define(self.vm.define_network_model, dev_id_info, model, addr)
 
         if self.editted(EDIT_NET_SOURCE):
             mode = None
@@ -2515,16 +2549,16 @@ class vmmDetails(vmmGObjectUI):
         hostname = self.vm.inspection.hostname
         if not hostname:
             hostname = _("unknown")
-        self.window.get_widget("inspection-hostname").set_text(hostname)
+        self.widget("inspection-hostname").set_text(hostname)
         product_name = self.vm.inspection.product_name
         if not product_name:
             product_name = _("unknown")
-        self.window.get_widget("inspection-product-name").set_text(product_name)
+        self.widget("inspection-product-name").set_text(product_name)
 
         # Applications (also inspection data)
         apps = self.vm.inspection.applications or []
 
-        apps_list = self.window.get_widget("inspection-apps")
+        apps_list = self.widget("inspection-apps")
         apps_model = apps_list.get_model()
         apps_model.clear()
         for app in apps:
@@ -2772,6 +2806,7 @@ class vmmDetails(vmmGObjectUI):
         ro = disk.read_only
         share = disk.shareable
         bus = disk.bus
+        addr = disk.address.type
         idx = disk.disk_bus_index
         cache = disk.driver_cache
         io = disk.driver_io
@@ -2794,6 +2829,9 @@ class vmmDetails(vmmGObjectUI):
 
         is_cdrom = (devtype == virtinst.VirtualDisk.DEVICE_CDROM)
         is_floppy = (devtype == virtinst.VirtualDisk.DEVICE_FLOPPY)
+
+        if addr == "spapr-vio":
+            bus = "spapr-vscsi"
 
         pretty_name = prettyify_disk(devtype, bus, idx)
 
@@ -3033,7 +3071,7 @@ class vmmDetails(vmmGObjectUI):
         def show_ui(param, val=None):
             widgetname = "char-" + param.replace("_", "-")
             labelname = widgetname + "-label"
-            doshow = chardev.supports_property(param)
+            doshow = chardev.supports_property(param, ro=True)
 
             # Exception: don't show target type for serial/parallel
             if (param == "target_type" and not show_target_type):
@@ -3117,7 +3155,7 @@ class vmmDetails(vmmGObjectUI):
 
         no_default = not self.is_customize_dialog
         uihelpers.populate_video_combo(self.vm,
-                                self.window.get_widget("video-model-combo"),
+                                self.widget("video-model-combo"),
                                 no_default=no_default)
 
         model = vid.model_type
@@ -3260,6 +3298,9 @@ class vmmDetails(vmmGObjectUI):
             if self.vm.get_hv_type() in ["kvm", "test"]:
                 buses.append(["sata", "SATA"])
                 buses.append(["virtio", "Virtio"])
+            if (self.vm.get_hv_type() == "kvm" and
+                    self.vm.get_machtype() == "pseries"):
+                buses.append(["spapr-vscsi", "sPAPR-vSCSI"])
             if self.vm.conn.is_xen() or self.vm.get_hv_type() == "test":
                 buses.append(["xen", "Xen"])
 
@@ -3344,6 +3385,9 @@ class vmmDetails(vmmGObjectUI):
                 icon = "media-optical"
             elif devtype == "floppy":
                 icon = "media-floppy"
+
+            if disk.address.type == "spapr-vio":
+                bus = "spapr-vscsi"
 
             label = prettyify_disk(devtype, bus, idx)
 

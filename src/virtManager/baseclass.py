@@ -24,15 +24,9 @@ import logging
 
 import virtManager
 import virtManager.guidiff
+from virtManager import util
 
 running_config, gobject, GObject, gtk = virtManager.guidiff.get_imports()
-
-def _safe_wrapper(func, *args):
-    gtk.gdk.threads_enter()
-    try:
-        return func(*args)
-    finally:
-        gtk.gdk.threads_leave()
 
 class vmmGObject(GObject):
 
@@ -190,23 +184,23 @@ class vmmGObject(GObject):
             self.emit(_s, *_a)
             return False
 
-        self.safe_idle_add(emitwrap, signal, *args)
+        self.idle_add(emitwrap, signal, *args)
 
-    def safe_idle_add(self, func, *args):
+    def idle_add(self, func, *args):
         """
         Make sure idle functions are run thread safe
         """
         if not hasattr(gobject, "idle_add"):
             return func(*args)
-        return gobject.idle_add(_safe_wrapper, func, *args)
+        return gobject.idle_add(func, *args)
 
-    def safe_timeout_add(self, timeout, func, *args):
+    def timeout_add(self, timeout, func, *args):
         """
         Make sure timeout functions are run thread safe
         """
         if not hasattr(gobject, "timeout_add"):
             return
-        return gobject.timeout_add(timeout, _safe_wrapper, func, *args)
+        return gobject.timeout_add(timeout, func, *args)
 
     def emit(self, signal_name, *args):
         if hasattr(GObject, "emit"):
@@ -234,29 +228,32 @@ class vmmGObjectUI(vmmGObject):
         self.windowname = windowname
         self.window = None
         self.topwin = None
-        self.gladefile = None
+        self.uifile = None
         self.err = None
 
         if filename:
-            self.gladefile = os.path.join(self.config.get_glade_dir(),
-                                          filename)
-            self.window = gtk.glade.XML(self.gladefile,
-                                        self.windowname,
-                                        domain="virt-manager")
+            self.uifile = os.path.join(self.config.get_ui_dir(), filename)
+
+            self.window = gtk.Builder()
+            self.window.set_translation_domain("virt-manager")
+            self.window.add_from_string(
+                util.sanitize_gtkbuilder(self.uifile))
+
             self.topwin = self.widget(self.windowname)
             self.topwin.hide()
 
             self.err = virtManager.error.vmmErrorDialog(self.topwin)
 
     def widget(self, name):
-        return self.window.get_widget(name)
+        return self.window.get_object(name)
 
     def cleanup(self):
+        self.close()
         vmmGObject.cleanup(self)
         self.window = None
         self.topwin.destroy()
         self.topwin = None
-        self.gladefile = None
+        self.uifile = None
         self.err = None
 
     def _cleanup(self):

@@ -26,24 +26,44 @@ import logging
 from virtManager import util
 from virtManager.baseclass import vmmGObjectUI
 from virtManager.asyncjob import vmmAsyncJob
-from virtManager.createmeter import vmmCreateMeter
 
 from virtinst import Storage
 
 PAGE_NAME   = 0
 PAGE_FORMAT = 1
 
+_comboentry_xml = """
+<interface>
+    <object class="GtkComboBoxEntry" id="pool-source-path">
+        <property name="visible">True</property>
+        <signal name="changed" handler="on_pool_source_path_changed"/>
+        <signal name="focus" handler="on_pool_source_path_focus"/>
+    </object>
+    <object class="GtkComboBoxEntry" id="pool-target-path">
+        <property name="visible">True</property>
+        <signal name="changed" handler="on_pool_target_path_changed"/>
+        <signal name="focus_in_event" handler="on_pool_target_path_focus_in_event"/>
+    </object>
+</interface>
+"""
+
 class vmmCreatePool(vmmGObjectUI):
     def __init__(self, conn):
         vmmGObjectUI.__init__(self,
-                              "vmm-create-pool.glade",
+                              "vmm-create-pool.ui",
                               "vmm-create-pool")
         self.conn = conn
 
         self._pool = None
         self._pool_class = Storage.StoragePool
 
-        self.window.signal_autoconnect({
+        self.window.add_from_string(_comboentry_xml)
+        self.widget("pool-source-box").pack_start(
+            self.widget("pool-source-path"))
+        self.widget("pool-target-box").pack_start(
+            self.widget("pool-target-path"))
+
+        self.window.connect_signals({
             "on_pool_forward_clicked" : self.forward,
             "on_pool_back_clicked"    : self.back,
             "on_pool_cancel_clicked"  : self.close,
@@ -116,8 +136,6 @@ class vmmCreatePool(vmmGObjectUI):
         return 1
 
     def _cleanup(self):
-        self.close()
-
         self.conn = None
         self._pool = None
 
@@ -451,8 +469,9 @@ class vmmCreatePool(vmmGObjectUI):
     def finish(self):
         self.topwin.set_sensitive(False)
         self.topwin.window.set_cursor(gtk.gdk.Cursor(gtk.gdk.WATCH))
+        build = self.widget("pool-build").get_active()
 
-        progWin = vmmAsyncJob(self._async_pool_create, [],
+        progWin = vmmAsyncJob(self._async_pool_create, [build],
                               _("Creating storage pool..."),
                               _("Creating the storage pool may take a "
                                 "while..."),
@@ -469,16 +488,15 @@ class vmmCreatePool(vmmGObjectUI):
         else:
             self.close()
 
-    def _async_pool_create(self, asyncjob):
+    def _async_pool_create(self, asyncjob, build):
         newconn = None
 
         # Open a seperate connection to install on since this is async
         newconn = util.dup_lib_conn(self._pool.conn)
-        meter = vmmCreateMeter(asyncjob)
+        meter = asyncjob.get_meter()
         self._pool.conn = newconn
 
         logging.debug("Starting backround pool creation.")
-        build = self.widget("pool-build").get_active()
         poolobj = self._pool.install(create=True, meter=meter, build=build)
         poolobj.setAutostart(True)
         logging.debug("Pool creation succeeded")

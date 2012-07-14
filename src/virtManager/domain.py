@@ -266,8 +266,6 @@ class vmmDomain(vmmLibvirtObject):
 
     # If manual shutdown or destroy specified, make sure we don't continue
     # install process
-    def set_install_abort(self, val):
-        self._install_abort = bool(val)
     def get_install_abort(self):
         return bool(self._install_abort)
 
@@ -579,7 +577,7 @@ class vmmDomain(vmmLibvirtObject):
         def change(editdev):
             editdev.driver_type = new_driver_type or None
         return self._redefine_device(change, devobj)
-    def define_disk_bus(self, devobj, newval):
+    def define_disk_bus(self, devobj, newval, addr):
         def change(editdev):
             oldprefix = editdev.get_target_prefix()[0]
             oldbus = editdev.bus
@@ -589,6 +587,7 @@ class vmmDomain(vmmLibvirtObject):
                 return
 
             editdev.address.clear()
+            editdev.set_address(addr)
 
             if oldprefix == editdev.get_target_prefix()[0]:
                 return
@@ -623,10 +622,11 @@ class vmmDomain(vmmLibvirtObject):
             editdev.source = newsource
             editdev.source_mode = newmode or None
         return self._redefine_device(change, devobj)
-    def define_network_model(self, devobj, newmodel):
+    def define_network_model(self, devobj, newmodel, addr):
         def change(editdev):
             if editdev.model != newmodel:
                 editdev.address.clear()
+                editdev.set_address(addr)
             editdev.model = newmodel
         return self._redefine_device(change, devobj)
 
@@ -936,42 +936,6 @@ class vmmDomain(vmmLibvirtObject):
         devlist += filter(lambda x: x.virtual_device_type == "console", devs)
         return devlist
 
-    def get_graphics_console(self):
-        gdevs = self.get_graphics_devices()
-        connhost = self.conn.get_uri_hostname()
-        transport, connuser = self.conn.get_transport()
-
-        gdev = gdevs and gdevs[0] or None
-        gtype = None
-        gport = None
-        gaddr = None
-        gsocket = None
-
-        if gdev:
-            gport = gdev.port
-            if gport != None:
-                gport = int(gport)
-            gtype = gdev.type
-            gaddr = "127.0.0.1"
-            gsocket = gdev.socket
-
-        if connhost == None:
-            # Force use of 127.0.0.1, because some (broken) systems don't
-            # reliably resolve 'localhost' into 127.0.0.1, either returning
-            # the public IP, or an IPv6 addr. Neither work since QEMU only
-            # listens on 127.0.0.1 for VNC.
-            connhost = "127.0.0.1"
-
-        # Parse URI port
-        connport = None
-        if connhost.count(":"):
-            connhost, connport = connhost.split(":", 1)
-
-        return [gtype, transport,
-                connhost, connuser, connport,
-                gaddr, gport, gsocket]
-
-
     def _build_device_list(self, device_type,
                            refresh_if_necc=True, inactive=False):
         guest = self._get_guest(refresh_if_necc=refresh_if_necc,
@@ -1054,12 +1018,16 @@ class vmmDomain(vmmLibvirtObject):
     # Domain lifecycle methods #
     ############################
 
+    # All these methods are usually run asynchronously from threads, so
+    # let's be extra careful and have anything which might touch UI
+    # or gobject props invoked in an idle callback
+
     def _unregister_reboot_listener(self):
         if self.reboot_listener == None:
             return
 
         try:
-            self.disconnect(self.reboot_listener)
+            self.idle_add(self.disconnect, self.reboot_listener)
             self.reboot_listener = None
         except:
             pass
@@ -1093,37 +1061,44 @@ class vmmDomain(vmmLibvirtObject):
         # Request a shutdown
         self.shutdown()
 
-        self.reboot_listener = self.connect_opt_out("status-changed",
+        def add_reboot():
+            self.reboot_listener = self.connect_opt_out("status-changed",
                                                     reboot_listener, self)
+        self.idle_add(add_reboot)
 
     def shutdown(self):
-        self.set_install_abort(True)
+        self._install_abort = True
         self._unregister_reboot_listener()
         self._backend.shutdown()
-        self.force_update_status()
+        self.idle_add(self.force_update_status)
 
     def reboot(self):
-        self.set_install_abort(True)
+        self._install_abort = True
         self._backend.reboot(0)
-        self.force_update_status()
+        self.idle_add(self.force_update_status)
+
+    def destroy(self):
+        self._install_abort = True
+        self._unregister_reboot_listener()
+        self._backend.destroy()
+        self.idle_add(self.force_update_status)
 
     def startup(self):
         if self.get_cloning():
             raise RuntimeError(_("Cannot start guest while cloning "
                                  "operation in progress"))
         self._backend.create()
-        self.force_update_status()
+        self.idle_add(self.force_update_status)
 
     def suspend(self):
         self._backend.suspend()
-        self.force_update_status()
+        self.idle_add(self.force_update_status)
 
     def delete(self):
-        if self.hasSavedImage():
-            try:
-                self._backend.managedSaveRemove(0)
-            except:
-                logging.exception("Failed to remove managed save state")
+        try:
+            self.removeSavedImage()
+        except:
+            logging.exception("Failed to remove managed save state")
         self._backend.undefine()
 
     def resume(self):
@@ -1132,15 +1107,20 @@ class vmmDomain(vmmLibvirtObject):
                                  "operation in progress"))
 
         self._backend.resume()
-        self.force_update_status()
+        self.idle_add(self.force_update_status)
 
     def hasSavedImage(self):
         if not self.managedsave_supported:
             return False
         return self._backend.hasManagedSaveImage(0)
 
+    def removeSavedImage(self):
+        if not self.hasSavedImage():
+            return
+        self._backend.managedSaveRemove(0)
+
     def save(self, filename=None, meter=None):
-        self.set_install_abort(True)
+        self._install_abort = True
 
         if meter:
             start_job_progress_thread(self, meter, _("Saving domain to disk"))
@@ -1150,15 +1130,8 @@ class vmmDomain(vmmLibvirtObject):
         else:
             self._backend.managedSave(0)
 
-        self.force_update_status()
+        self.idle_add(self.force_update_status)
 
-    def destroy(self):
-        self.set_install_abort(True)
-        self._unregister_reboot_listener()
-        self._backend.destroy()
-        self.force_update_status()
-
-    # Migrate methods
 
     def support_downtime(self):
         return support.check_domain_support(self._backend,
@@ -1169,7 +1142,7 @@ class vmmDomain(vmmLibvirtObject):
 
     def migrate(self, destconn, interface=None, rate=0,
                 live=False, secure=False, meter=None):
-        self.set_install_abort(True)
+        self._install_abort = True
 
         newname = None
 
@@ -1181,8 +1154,6 @@ class vmmDomain(vmmLibvirtObject):
             flags |= libvirt.VIR_MIGRATE_PEER2PEER
             flags |= libvirt.VIR_MIGRATE_TUNNELLED
 
-        newxml = self.get_xml(inactive=True)
-
         logging.debug("Migrating: conn=%s flags=%s dname=%s uri=%s rate=%s",
                       destconn.vmm, flags, newname, interface, rate)
 
@@ -1190,7 +1161,11 @@ class vmmDomain(vmmLibvirtObject):
             start_job_progress_thread(self, meter, _("Migrating domain"))
 
         self._backend.migrate(destconn.vmm, flags, newname, interface, rate)
-        destconn.define_domain(newxml)
+
+        def define_cb():
+            newxml = self.get_xml(inactive=True)
+            destconn.define_domain(newxml)
+        self.idle_add(define_cb)
 
 
     ###################
@@ -1546,8 +1521,11 @@ class vmmDomain(vmmLibvirtObject):
                     logging.error("Error reading net stats for "
                                   "'%s' dev '%s': %s",
                                   self.get_name(), dev, err)
-                    logging.debug("Adding %s to skip list", dev)
-                    self._stats_net_skip.append(dev)
+                    if self.is_active():
+                        logging.debug("Adding %s to skip list", dev)
+                        self._stats_net_skip.append(dev)
+                    else:
+                        logging.debug("Aren't running, don't add to skiplist")
 
         return rx, tx
 
@@ -1580,8 +1558,11 @@ class vmmDomain(vmmLibvirtObject):
                     logging.error("Error reading disk stats for "
                                   "'%s' dev '%s': %s",
                                   self.get_name(), dev, err)
-                    logging.debug("Adding %s to skip list", dev)
-                    self._stats_disk_skip.append(dev)
+                    if self.is_active():
+                        logging.debug("Adding %s to skip list", dev)
+                        self._stats_disk_skip.append(dev)
+                    else:
+                        logging.debug("Aren't running, don't add to skiplist")
 
         return rd, wr
 

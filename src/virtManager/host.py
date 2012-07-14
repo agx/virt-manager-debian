@@ -42,7 +42,7 @@ INTERFACE_PAGE_ERROR = 1
 
 class vmmHost(vmmGObjectUI):
     def __init__(self, conn):
-        vmmGObjectUI.__init__(self, "vmm-host.glade", "vmm-host")
+        vmmGObjectUI.__init__(self, "vmm-host.ui", "vmm-host")
         self.conn = conn
 
         self.title = conn.get_short_hostname() + " " + self.topwin.get_title()
@@ -56,6 +56,7 @@ class vmmHost(vmmGObjectUI):
         self.addvol = None
         self.addinterface = None
         self.volmenu = None
+        self._in_refresh = False
 
         self.cpu_usage_graph = None
         self.memory_usage_graph = None
@@ -91,7 +92,7 @@ class vmmHost(vmmGObjectUI):
 
         self.conn.connect("state-changed", self.conn_state_changed)
 
-        self.window.signal_autoconnect({
+        self.window.connect_signals({
             "on_menu_file_view_manager_activate" : self.view_manager,
             "on_menu_file_quit_activate" : self.exit_app,
             "on_menu_file_close_activate": self.close,
@@ -308,8 +309,6 @@ class vmmHost(vmmGObjectUI):
         return 1
 
     def _cleanup(self):
-        self.close()
-
         self.conn = None
 
         if self.addnet:
@@ -639,13 +638,22 @@ class vmmHost(vmmGObjectUI):
                             _("Error deleting pool '%s'") % pool.get_name())
 
     def pool_refresh(self, src_ignore):
+        if self._in_refresh:
+            logging.debug("Already refreshing the pool, skipping")
+            return
+
         pool = self.current_pool()
         if pool is None:
             return
 
+        self._in_refresh = True
+
         def cb():
-            pool.refresh()
-            self.refresh_current_pool()
+            try:
+                pool.refresh()
+                self.idle_add(self.refresh_current_pool)
+            finally:
+                self._in_refresh = False
 
         logging.debug("Refresh pool '%s'", pool.get_name())
         vmmAsyncJob.simple_async_noshow(cb, [], self,
@@ -663,8 +671,10 @@ class vmmHost(vmmGObjectUI):
 
         def cb():
             vol.delete()
-            self.refresh_current_pool()
-            self.populate_storage_volumes()
+            def idlecb():
+                self.refresh_current_pool()
+                self.populate_storage_volumes()
+            self.idle_add(idlecb)
 
         logging.debug("Deleting volume '%s'", vol.get_name())
         vmmAsyncJob.simple_async_noshow(cb, [], self,
@@ -1062,7 +1072,12 @@ class vmmHost(vmmGObjectUI):
                 break
             idx += 1
 
-        used_by = util.iface_in_use_by(self.conn, name)
+        # This can fail if other interfaces are busted, so ignore errors
+        used_by = None
+        try:
+            used_by = util.iface_in_use_by(self.conn, name)
+        except Exception, e:
+            logging.debug("Error looking up iface usage: %s", e)
         self.widget("interface-inuseby").set_text(used_by or "-")
 
         # IP info
@@ -1097,6 +1112,7 @@ class vmmHost(vmmGObjectUI):
         self.widget("interface-delete").set_sensitive(not active)
         self.widget("interface-stop").set_sensitive(active)
         self.widget("interface-start").set_sensitive(not active)
+        self.widget("interface-add").set_sensitive(bool(self.conn.interface_capable))
 
         show_child = (children or
                       itype in [Interface.Interface.INTERFACE_TYPE_BRIDGE,
@@ -1120,8 +1136,7 @@ class vmmHost(vmmGObjectUI):
 
 
     def reset_interface_state(self):
-        if not self.conn.interface_capable:
-            self.widget("interface-add").set_sensitive(False)
+        self.widget("interface-add").set_sensitive(bool(self.conn.interface_capable))
         self.widget("interface-delete").set_sensitive(False)
         self.widget("interface-stop").set_sensitive(False)
         self.widget("interface-start").set_sensitive(False)
