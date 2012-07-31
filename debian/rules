@@ -6,6 +6,7 @@ include /usr/share/cdbs/1/class/gnome.mk
 
 binary-install/virt-manager::
 	rm debian/virt-manager/usr/share/virt-manager/virtManager/IPy.py
+	rm debian/virt-manager/usr/bin/virt-manager-tui
 	dh_pysupport -p$(cdbs_curpkg)
 
 clean::
