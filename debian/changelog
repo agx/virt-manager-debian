@@ -1,3 +1,10 @@
+virt-manager (0.9.4-1) unstable; urgency=low
+
+  * [39ce90d] Imported Upstream version 0.9.4
+  * [8bf706a] Bump virtinst dependency version to 0.600.3
+
+ -- Laurent Léonard <laurent@open-minds.org>  Sun, 26 Aug 2012 18:49:52 +0200
+
 virt-manager (0.9.3-2) unstable; urgency=low
 
   * [1d4ae00] Remove hal from suggests since libvirt now has netcf support.
