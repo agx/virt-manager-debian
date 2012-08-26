@@ -1,9 +1,9 @@
 # -*- rpm-spec -*-
 
 %define _package virt-manager
-%define _version 0.9.3
+%define _version 0.9.4
 %define _release 1
-%define virtinst_version 0.600.2
+%define virtinst_version 0.600.3
 
 %define qemu_user                  ""
 %define preferred_distros          ""
@@ -289,6 +289,10 @@ update-desktop-database -q %{_datadir}/applications
 %endif
 
 %changelog
+* Sun Jul 29 2012 Cole Robinson <crobinso@redhat.com> - 0.9.4-1
+- virt-manager release 0.9.4
+- Fix VNC keygrab issues
+
 * Mon Jul 09 2012 Cole Robinson <crobinso@redhat.com> - 0.9.3-1
 - virt-manager release 0.9.3
 - Fix broken release tar.gz of version 0.9.2
