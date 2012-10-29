@@ -16,8 +16,9 @@ Architecture: all
 Depends: ${misc:Depends}, ${python:Depends}, python-gtk2,
  python-glade2, python-gnome2, python-dbus, python-urlgrabber, python-vte,
  librsvg2-common, python-libvirt (>= 0.7.1), virtinst (>= 0.600.2),
- python-gtk-vnc (>= 0.3.8), python-ipy (>= 0.70), python-spice-client-gtk
-Recommends: libvirt-bin (>= 0.4.6), gnome-icon-theme
+ python-gtk-vnc (>= 0.3.8), python-ipy (>= 0.70),
+Recommends: libvirt-bin (>= 0.4.6), gnome-icon-theme,
+ python-spice-client-gtk
 Suggests: virt-viewer, ssh-askpass, gnome-keyring, python-gnomekeyring,
  python-guestfs
 Description: desktop application for managing virtual machines
