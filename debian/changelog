@@ -1,3 +1,12 @@
+virt-manager (0.9.4-2) unstable; urgency=low
+
+  * [fa6aa2e] Don't depend on python-spice-client-gtk.
+    It's only there on amd64 and i386 and since we can't use per arch
+    dependencies in architecture all packages we just recommend it.
+    (Closes: #691784)
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 30 Oct 2012 09:47:09 +0100
+
 virt-manager (0.9.4-1) unstable; urgency=low
 
   * [39ce90d] Imported Upstream version 0.9.4
