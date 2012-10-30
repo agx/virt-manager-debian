@@ -1,3 +1,12 @@
+virt-manager (0.9.3-3) unstable; urgency=low
+
+  * [18053f2] Don't depend on python-spice-client-gtk.
+    It's only there on amd64 and i386 and since we can't use per arch
+    dependencies in architecture all packages we just recommend it.
+    (Closes: #691784)
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 30 Oct 2012 08:44:37 +0100
+
 virt-manager (0.9.3-2) unstable; urgency=low
 
   * [1d4ae00] Remove hal from suggests since libvirt now has netcf support.
