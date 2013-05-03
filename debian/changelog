@@ -1,3 +1,11 @@
+virt-manager (0.9.5-1) unstable; urgency=low
+
+  * [effdbc4] Imported Upstream version 0.9.5
+  * [0fea9cf] Redo patches
+  * [244f888] Bump virtinst dependency version to 0.600.4
+
+ -- Laurent Léonard <laurent@open-minds.org>  Sat, 04 May 2013 01:26:05 +0200
+
 virt-manager (0.9.4-2) unstable; urgency=low
 
   * [fa6aa2e] Don't depend on python-spice-client-gtk.
