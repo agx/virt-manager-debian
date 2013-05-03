@@ -1,11 +1,11 @@
 
-AC_INIT(virt-manager, 0.9.4)
+AC_INIT(virt-manager, 0.9.5)
 # Latest virtinst version required to run
-VIRTINST_VERSION="0.600.3"
+VIRTINST_VERSION="0.600.4"
 
 AC_CONFIG_SRCDIR(src/virt-manager.py.in)
 dnl Make automake keep quiet about wildcards & other GNUmake-isms
-AM_INIT_AUTOMAKE([-Wno-portability])
+AM_INIT_AUTOMAKE([foreign -Wno-portability])
 AM_MAINTAINER_MODE([enable])
 
 ALL_LINGUAS="as bg bn_IN bs ca cs da de es fi fr gu hi hr hu is it ja kn ko ml mr ms nb nl or pa pl pt_BR pt ro ru sr@latin sr sv ta te tr uk zh_CN zh_TW"

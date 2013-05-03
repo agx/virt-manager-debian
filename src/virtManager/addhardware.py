@@ -28,6 +28,7 @@ from virtinst import (VirtualCharDevice, VirtualDevice,
                       VirtualVideoDevice, VirtualWatchdog,
                       VirtualFilesystem, VirtualSmartCardDevice,
                       VirtualRedirDevice)
+from virtinst.VirtualController import VirtualControllerSCSI
 
 import virtManager.util as util
 import virtManager.uihelpers as uihelpers
@@ -264,12 +265,11 @@ class vmmAddHardware(vmmGObjectUI):
 
         # Input device type
         input_list = self.widget("input-type")
-        input_model = gtk.ListStore(str, str, str, bool)
+        input_model = gtk.ListStore(str, str, str)
         input_list.set_model(input_model)
         text = gtk.CellRendererText()
         input_list.pack_start(text, True)
         input_list.add_attribute(text, 'text', 0)
-        input_list.add_attribute(text, 'sensitive', 3)
 
         # Graphics type
         graphics_list = self.widget("graphics-type")
@@ -529,26 +529,35 @@ class vmmAddHardware(vmmGObjectUI):
             model.append([bus, device, icon, desc, gtk.ICON_SIZE_BUTTON])
 
         if self.vm.is_hvm():
-            add_dev("ide", virtinst.VirtualDisk.DEVICE_DISK, "IDE disk")
-            add_dev("ide", virtinst.VirtualDisk.DEVICE_CDROM, "IDE cdrom")
-            add_dev("fdc", virtinst.VirtualDisk.DEVICE_FLOPPY, "Floppy disk")
+            add_dev("ide", virtinst.VirtualDisk.DEVICE_DISK, _("IDE disk"))
+            add_dev("ide", virtinst.VirtualDisk.DEVICE_CDROM, _("IDE CDROM"))
+            add_dev("fdc", virtinst.VirtualDisk.DEVICE_FLOPPY,
+                    _("Floppy disk"))
 
             if self.vm.rhel6_defaults():
-                add_dev("scsi", virtinst.VirtualDisk.DEVICE_DISK, "SCSI disk")
-                add_dev("usb", virtinst.VirtualDisk.DEVICE_DISK, "USB disk")
-        if self.vm.get_hv_type() == "kvm":
-            add_dev("sata", virtinst.VirtualDisk.DEVICE_DISK, "SATA disk")
-            add_dev("virtio", virtinst.VirtualDisk.DEVICE_DISK, "Virtio disk")
-        if self.conn.is_xen():
-            add_dev("xen", virtinst.VirtualDisk.DEVICE_DISK, "Virtual disk")
+                add_dev("scsi", virtinst.VirtualDisk.DEVICE_DISK,
+                        _("SCSI disk"))
+                add_dev("usb", virtinst.VirtualDisk.DEVICE_DISK,
+                        _("USB disk"))
+        if self.vm.get_hv_type() in ["kvm", "test"]:
+            add_dev("sata", virtinst.VirtualDisk.DEVICE_DISK,
+                    _("SATA disk"))
+            add_dev("virtio", virtinst.VirtualDisk.DEVICE_DISK,
+                    _("Virtio disk"))
+            add_dev("virtio", virtinst.VirtualDisk.DEVICE_LUN,
+                    _("Virtio lun"))
+            add_dev("virtio-scsi", virtinst.VirtualDisk.DEVICE_DISK,
+                    _("Virtio SCSI disk"))
+            add_dev("virtio-scsi", virtinst.VirtualDisk.DEVICE_LUN,
+                    _("Virtio SCSI lun"))
+        if self.conn.is_xen() or self.conn.is_test_conn():
+            add_dev("xen", virtinst.VirtualDisk.DEVICE_DISK,
+                    _("Xen virtual disk"))
 
     def populate_input_model(self, model):
         model.clear()
-        model.append([_("EvTouch USB Graphics Tablet"), "tablet", "usb", True])
-        # XXX libvirt needs to support 'model' for input devices to distinguish
-        # wacom from evtouch tablets
-        #model.append([_("Wacom Graphics Tablet"), "tablet", "usb", True])
-        model.append([_("Generic USB Mouse"), "mouse", "usb", True])
+        model.append([_("EvTouch USB Graphics Tablet"), "tablet", "usb"])
+        model.append([_("Generic USB Mouse"), "mouse", "usb"])
 
     def populate_graphics_model(self, model):
         model.clear()
@@ -1114,12 +1123,7 @@ class vmmAddHardware(vmmGObjectUI):
     # Add device methods #
     ######################
 
-    def setup_device(self):
-        if (self._dev.virtual_device_type !=
-            virtinst.VirtualDevice.VIRTUAL_DEV_DISK):
-            self._dev.setup_dev(self.conn.vmm)
-            return
-
+    def _storage_progress(self):
         def do_file_allocate(asyncjob, disk):
             meter = asyncjob.get_meter()
 
@@ -1141,6 +1145,12 @@ class vmmAddHardware(vmmGObjectUI):
 
         return progWin.run()
 
+    def setup_device(self):
+        if (self._dev.virtual_device_type == self._dev.VIRTUAL_DEV_DISK and
+            self._dev.creating_storage()):
+            return self._storage_progress()
+
+        return self._dev.setup_dev(self.conn.vmm)
 
     def add_device(self):
         ret = self.setup_device()
@@ -1151,9 +1161,15 @@ class vmmAddHardware(vmmGObjectUI):
         self._dev.get_xml_config()
         logging.debug("Adding device:\n" + self._dev.get_xml_config())
 
+        controller = getattr(self._dev, "vmm_controller", None)
+        if controller is not None:
+            logging.debug("Adding controller:\n%s",
+                          self._dev.vmm_controller.get_xml_config())
         # Hotplug device
         attach_err = False
         try:
+            if controller is not None:
+                self.vm.attach_device(self._dev.vmm_controller)
             self.vm.attach_device(self._dev)
         except Exception, e:
             logging.debug("Device could not be hotplugged: %s", str(e))
@@ -1176,6 +1192,8 @@ class vmmAddHardware(vmmGObjectUI):
 
         # Alter persistent config
         try:
+            if controller is not None:
+                self.vm.add_device(self._dev.vmm_controller)
             self.vm.add_device(self._dev)
         except Exception, e:
             self.err.show_err(_("Error adding device: %s" % str(e)))
@@ -1221,6 +1239,10 @@ class vmmAddHardware(vmmGObjectUI):
         bus, device = self.get_config_disk_target()
         cache = self.get_config_disk_cache()
         fmt = self.get_config_disk_format()
+        controller_model = None
+        if bus == "virtio-scsi":
+            bus = "scsi"
+            controller_model = "virtio-scsi"
 
         # Make sure default pool is running
         if self.is_default_storage():
@@ -1314,6 +1336,17 @@ class vmmAddHardware(vmmGObjectUI):
 
         uihelpers.check_path_search_for_qemu(self.topwin,
                                              self.conn, disk.path)
+
+        # Add a SCSI controller with model virtio-scsi if needed
+        disk.vmm_controller = None
+        if (controller_model == "virtio-scsi") and (bus == "scsi"):
+            controllers = self.vm.get_controller_devices()
+            controller = VirtualControllerSCSI(conn = self.conn.vmm)
+            controller.set_model(controller_model)
+            disk.vmm_controller = controller
+            for d in controllers:
+                if controller_model == d.model:
+                    disk.vmm_controller = None
 
         self._dev = disk
         return True

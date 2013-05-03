@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2008 Red Hat, Inc.
+# Copyright (C) 2008, 2013 Red Hat, Inc.
 # Copyright (C) 2008 Cole Robinson <crobinso@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -29,7 +29,7 @@ from virtManager.asyncjob import vmmAsyncJob
 from virtinst import Storage
 
 DEFAULT_ALLOC = 0
-DEFAULT_CAP   = 1000
+DEFAULT_CAP   = 8192
 
 class vmmCreateVolume(vmmGObjectUI):
     def __init__(self, conn, parent_pool):
@@ -135,9 +135,14 @@ class vmmCreateVolume(vmmGObjectUI):
         else:
             self.widget("vol-format").set_sensitive(False)
 
+        alloc = DEFAULT_ALLOC
+        if self.parent_pool.get_type() == "logical":
+            # Sparse LVM volumes don't auto grow, so alloc=0 is useless
+            alloc = DEFAULT_CAP
+
         self.widget("vol-allocation").set_range(0,
                         int(self.parent_pool.get_available() / 1024 / 1024))
-        self.widget("vol-allocation").set_value(DEFAULT_ALLOC)
+        self.widget("vol-allocation").set_value(alloc)
         self.widget("vol-capacity").set_range(1,
                         int(self.parent_pool.get_available() / 1024 / 1024))
         self.widget("vol-capacity").set_value(DEFAULT_CAP)

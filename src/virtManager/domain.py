@@ -459,6 +459,10 @@ class vmmDomain(vmmLibvirtObject):
                 guest.cpu.vendor = vendor
 
             guest.cpu.model = model or None
+            if guest.cpu.model is None:
+                for f in guest.cpu.features:
+                    guest.cpu.remove_feature(f)
+                return
 
             origfeatures = guest.cpu.features
             def set_feature(fname, fpol):
@@ -491,12 +495,18 @@ class vmmDomain(vmmLibvirtObject):
 
     # Security define methods
 
-    def define_seclabel(self, model, t, label):
+    def define_seclabel(self, model, t, label, relabel):
         def change(guest):
             seclabel = guest.seclabel
             seclabel.model = model or None
             if not model:
                 return
+
+            if relabel is not None:
+                if relabel:
+                    seclabel.relabel = "yes"
+                else:
+                    seclabel.relabel = "no"
 
             seclabel.type = t
             if label:
@@ -608,6 +618,36 @@ class vmmDomain(vmmLibvirtObject):
         def change(editdev):
             if val != editdev.serial:
                 editdev.serial = val or None
+        return self._redefine_device(change, devobj)
+
+    def define_disk_iotune_read_bytes_sec(self, devobj, val):
+        def change(editdev):
+            editdev.iotune_read_bytes_sec = val
+        return self._redefine_device(change, devobj)
+
+    def define_disk_iotune_read_iops_sec(self, devobj, val):
+        def change(editdev):
+            editdev.iotune_read_iops_sec = val
+        return self._redefine_device(change, devobj)
+
+    def define_disk_iotune_total_bytes_sec(self, devobj, val):
+        def change(editdev):
+            editdev.iotune_total_bytes_sec = val
+        return self._redefine_device(change, devobj)
+
+    def define_disk_iotune_total_iops_sec(self, devobj, val):
+        def change(editdev):
+            editdev.iotune_total_iops_sec = val
+        return self._redefine_device(change, devobj)
+
+    def define_disk_iotune_write_bytes_sec(self, devobj, val):
+        def change(editdev):
+            editdev.iotune_write_bytes_sec = val
+        return self._redefine_device(change, devobj)
+
+    def define_disk_iotune_write_iops_sec(self, devobj, val):
+        def change(editdev):
+            editdev.iotune_write_iops_sec = val
         return self._redefine_device(change, devobj)
 
     # Network define methods
@@ -813,6 +853,23 @@ class vmmDomain(vmmLibvirtObject):
         devobj.passwd = newval or None
         self.update_device(devobj)
 
+    def hotplug_description(self, desc):
+        # We already fake hotplug like behavior, by reading the
+        # description from the inactive XML from a running VM
+        #
+        # libvirt since 0.9.10 provides a SetMetadata API that provides
+        # actual <description> 'hotplug', and using that means checkig
+        # for support, version, etc.
+        if not virtinst.support.check_domain_support(self._backend,
+                virtinst.support.SUPPORT_DOMAIN_SET_METADATA):
+            return
+
+        flags = (libvirt.VIR_DOMAIN_AFFECT_LIVE |
+                libvirt.VIR_DOMAIN_AFFECT_CONFIG)
+        self._backend.setMetadata(
+                libvirt.VIR_DOMAIN_METADATA_DESCRIPTION,
+                desc, None, None, flags)
+
 
     ########################
     # Libvirt API wrappers #
@@ -920,11 +977,19 @@ class vmmDomain(vmmLibvirtObject):
         return (kernel, initrd, args)
 
     def get_seclabel(self):
-        model = self._get_guest().seclabel.model
-        t     = self._get_guest().seclabel.type or "dynamic"
-        label = self._get_guest().seclabel.label or ""
+        seclabel = self._get_guest().seclabel
+        model = seclabel.model
+        t     = seclabel.type or "dynamic"
+        label = seclabel.label or ""
 
-        return [model, t, label]
+        relabel = getattr(seclabel, "relabel", None)
+        if relabel is not None:
+            if relabel == "yes":
+                relabel = True
+            else:
+                relabel = False
+
+        return [model, t, label, relabel]
 
     # XML Device listing
 
@@ -1081,6 +1146,11 @@ class vmmDomain(vmmLibvirtObject):
         self._install_abort = True
         self._unregister_reboot_listener()
         self._backend.destroy()
+        self.idle_add(self.force_update_status)
+
+    def reset(self):
+        self._install_abort = True
+        self._backend.reset(0)
         self.idle_add(self.force_update_status)
 
     def startup(self):
@@ -1371,19 +1441,27 @@ class vmmDomain(vmmLibvirtObject):
         self.vcpu_max_count()
 
     def run_status(self):
-        if self.status() == libvirt.VIR_DOMAIN_RUNNING:
+        status = self.status()
+
+        if status == libvirt.VIR_DOMAIN_RUNNING:
             return _("Running")
-        elif self.status() == libvirt.VIR_DOMAIN_PAUSED:
+        elif status == libvirt.VIR_DOMAIN_PAUSED:
             return _("Paused")
-        elif self.status() == libvirt.VIR_DOMAIN_SHUTDOWN:
+        elif status == libvirt.VIR_DOMAIN_SHUTDOWN:
             return _("Shutting Down")
-        elif self.status() == libvirt.VIR_DOMAIN_SHUTOFF:
+        elif status == libvirt.VIR_DOMAIN_SHUTOFF:
             if self.hasSavedImage():
                 return _("Saved")
             else:
                 return _("Shutoff")
-        elif self.status() == libvirt.VIR_DOMAIN_CRASHED:
+        elif status == libvirt.VIR_DOMAIN_CRASHED:
             return _("Crashed")
+        elif (hasattr(libvirt, "VIR_DOMAIN_PMSUSPENDED") and
+              status == libvirt.VIR_DOMAIN_PMSUSPENDED):
+            return _("Suspended")
+
+        logging.debug("Unknown status %d, returning 'Unknown'")
+        return _("Unknown")
 
     def _normalize_status(self, status):
         if status == libvirt.VIR_DOMAIN_NOSTATE:
@@ -1423,9 +1501,16 @@ class vmmDomain(vmmLibvirtObject):
             libvirt.VIR_DOMAIN_SHUTDOWN: "state_shutoff",
             libvirt.VIR_DOMAIN_SHUTOFF: "state_shutoff",
             libvirt.VIR_DOMAIN_NOSTATE: "state_running",
+            # VIR_DOMAIN_PMSUSPENDED
+            7: "state_paused",
         }
 
-        return status_icons[self.status()]
+        status = self.status()
+        if status not in status_icons:
+            logging.debug("Unknown status %d, using NOSTATE")
+            status = libvirt.VIR_DOMAIN_NOSTATE
+
+        return status_icons[status]
 
     def force_update_status(self):
         """

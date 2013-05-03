@@ -61,7 +61,7 @@ def check_packagekit(errbox, packages, ishv):
     found = []
     progWin = vmmAsyncJob(_do_async_search,
                           [session, pk_control, packages], msg, msg,
-                          None, async=False)
+                          errbox.get_parent(), async=False)
     error, ignore = progWin.run()
     if error:
         return
@@ -131,11 +131,20 @@ def packagekit_install(package_list):
     # Set 2 hour timeout
     timeout = 60 * 60 * 2
     logging.debug("Installing packages: %s", package_list)
-    pk_control.InstallPackageNames(0, package_list, "hide-confirm-search",
+    pk_control.InstallPackageNames(dbus.UInt32(0),
+                                   package_list, "hide-confirm-search",
                                    timeout=timeout)
 
 def packagekit_search(session, pk_control, package_name, packages):
-    tid = pk_control.GetTid()
+    newstyle = False
+    try:
+        tid = pk_control.GetTid()
+    except dbus.exceptions.DBusException, e:
+        if e.get_dbus_name() != "org.freedesktop.DBus.Error.UnknownMethod":
+            raise
+        newstyle = True
+        tid = pk_control.CreateTransaction()
+
     pk_trans = dbus.Interface(
                     session.get_object("org.freedesktop.PackageKit", tid),
                     "org.freedesktop.PackageKit.Transaction")
@@ -160,7 +169,10 @@ def packagekit_search(session, pk_control, package_name, packages):
     pk_trans.connect_to_signal('ErrorCode', error)
     pk_trans.connect_to_signal('Package', package)
     try:
-        pk_trans.SearchNames("installed", [package_name])
+        searchtype = "installed"
+        if newstyle:
+            searchtype = 2 ** 2
+        pk_trans.SearchNames(searchtype, [package_name])
     except dbus.exceptions.DBusException, e:
         if e.get_dbus_name() != "org.freedesktop.DBus.Error.UnknownMethod":
             raise
@@ -206,7 +218,7 @@ def start_libvirtd():
         state = props.Get("org.freedesktop.systemd1.Unit", "ActiveState")
 
         logging.debug("libvirtd state=%s", state)
-        if state == "Active":
+        if str(state).lower() == "active":
             logging.debug("libvirtd already active, not starting")
             return True
     except:
@@ -215,12 +227,15 @@ def start_libvirtd():
 
     # Connect to system-config-services and offer to start
     try:
+        logging.debug("libvirtd not running, asking system-config-services "
+                      "to start it")
         scs = dbus.Interface(bus.get_object(
                              "org.fedoraproject.Config.Services",
                              "/org/fedoraproject/Config/Services/systemd1"),
                              "org.freedesktop.systemd1.Manager")
         scs.StartUnit(unitname, "replace")
         time.sleep(2)
+        logging.debug("Starting libvirtd appeared to succeed")
         return True
     except:
         logging.exception("Failed to talk to system-config-services")

@@ -1,9 +1,9 @@
 # -*- rpm-spec -*-
 
 %define _package virt-manager
-%define _version 0.9.4
+%define _version 0.9.5
 %define _release 1
-%define virtinst_version 0.600.3
+%define virtinst_version 0.600.4
 
 %define qemu_user                  ""
 %define preferred_distros          ""
@@ -81,7 +81,7 @@ Requires: libvirt-python >= 0.7.0
 # Definitely does not work with earlier due to python API changes
 Requires: dbus-python >= 0.61
 Requires: dbus-x11
-%if !0%{?rhel} || 0%{?rhel} > 6
+%if 0%{?rhel} > 6
 # Might work with earlier, but this is what we've tested
 Requires: gnome-keyring >= 0.4.9
 %else
@@ -120,6 +120,7 @@ BuildRequires: gettext
 BuildRequires: scrollkeeper
 BuildRequires: intltool
 BuildRequires: GConf2
+BuildRequires: /usr/bin/pod2man
 
 Requires(pre): GConf2
 Requires(post): GConf2
@@ -289,6 +290,14 @@ update-desktop-database -q %{_datadir}/applications
 %endif
 
 %changelog
+* Mon Apr 01 2013 Cole Robinson <crobinso@redhat.com> - 0.9.5-1
+- virt-manager release 0.9.5
+- Enable adding virtio-scsi disks (Chen Hanxiao)
+- Support security auto-relabel setting (Martin Kletzander)
+- Support disk iotune settings (David Shane Holden)
+- Support 'reset' as a reboot option (John Doyle)
+- Bug fixes and minor improvements
+
 * Sun Jul 29 2012 Cole Robinson <crobinso@redhat.com> - 0.9.4-1
 - virt-manager release 0.9.4
 - Fix VNC keygrab issues

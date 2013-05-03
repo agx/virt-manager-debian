@@ -72,7 +72,9 @@ def set_sparse_tooltip(widget):
                    "but the OS install phase will be quicker. \n\n"
                    "Skipping allocation can also cause space issues on "
                    "the host machine, if the maximum image size exceeds "
-                   "available storage space.")
+                   "available storage space. \n\n"
+                   "Tip: Storage format qcow2 and qed "
+                   "do not support full allocation.")
     util.tooltip_wrapper(widget, sparse_str)
 
 def host_disk_space(conn):
@@ -133,11 +135,11 @@ def check_default_pool_active(topwin, conn):
 # Hardware model list building (for details, addhw) #
 #####################################################
 def build_video_combo(vm, video_dev, no_default=None):
-    video_dev_model = gtk.ListStore(str)
+    video_dev_model = gtk.ListStore(str, str)
     video_dev.set_model(video_dev_model)
     text = gtk.CellRendererText()
     video_dev.pack_start(text, True)
-    video_dev.add_attribute(text, 'text', 0)
+    video_dev.add_attribute(text, 'text', 1)
     video_dev_model.set_sort_column_id(0, gtk.SORT_ASCENDING)
 
     populate_video_combo(vm, video_dev, no_default)
@@ -159,7 +161,7 @@ def populate_video_combo(vm, video_dev, no_default=None):
 
         if m == tmpdev.MODEL_DEFAULT and no_default:
             continue
-        video_dev_model.append([m])
+        video_dev_model.append([m, tmpdev.pretty_model(m)])
 
     if len(video_dev_model) > 0:
         video_dev.set_active(0)
@@ -838,7 +840,7 @@ def mediadev_set_default_selection(widget):
 # Build toolbar shutdown button menu (manager and details toolbar) #
 ####################################################################
 
-def build_shutdown_button_menu(widget, shutdown_cb, reboot_cb,
+def build_shutdown_button_menu(widget, shutdown_cb, reboot_cb, reset_cb,
                                destroy_cb, save_cb):
     icon_name = util.running_config.get_shutdown_icon_name()
     widget.set_icon_name(icon_name)
@@ -847,6 +849,7 @@ def build_shutdown_button_menu(widget, shutdown_cb, reboot_cb,
 
     rebootimg = gtk.image_new_from_icon_name(icon_name, gtk.ICON_SIZE_MENU)
     shutdownimg = gtk.image_new_from_icon_name(icon_name, gtk.ICON_SIZE_MENU)
+    resetimg = gtk.image_new_from_icon_name(icon_name, gtk.ICON_SIZE_MENU)
     destroyimg = gtk.image_new_from_icon_name(icon_name, gtk.ICON_SIZE_MENU)
     saveimg = gtk.image_new_from_icon_name(gtk.STOCK_SAVE, gtk.ICON_SIZE_MENU)
 
@@ -861,6 +864,12 @@ def build_shutdown_button_menu(widget, shutdown_cb, reboot_cb,
     shutdown.show()
     shutdown.connect("activate", shutdown_cb)
     menu.add(shutdown)
+
+    reset = gtk.ImageMenuItem(_("_Force Reset"))
+    reset.set_image(resetimg)
+    reset.show()
+    reset.connect("activate", reset_cb)
+    menu.add(reset)
 
     destroy = gtk.ImageMenuItem(_("_Force Off"))
     destroy.set_image(destroyimg)

@@ -778,9 +778,15 @@ class vmmCreate(vmmGObjectUI):
         filtervars = (not self._rhel6_defaults() and
                       RHEL6_OS_SUPPORT or
                       None)
+
         types = virtinst.FullVirtGuest.list_os_types()
+        types.sort()
         supportl = virtinst.FullVirtGuest.list_os_types(supported=True,
                                                         filtervars=filtervars)
+        if not filtervars:
+            # Kind of a hack, just show linux + windows by default since
+            # that's all 98% of people care about
+            supportl = ["linux", "windows"]
 
         self._add_os_row(model, None, _("Generic"), True)
 
@@ -799,7 +805,7 @@ class vmmCreate(vmmGObjectUI):
     def populate_os_variant_model(self, _type):
         model = self.widget("install-os-version").get_model()
         model.clear()
-        if _type == None:
+        if not _type:
             self._add_os_row(model, None, _("Generic"), True)
             return
 

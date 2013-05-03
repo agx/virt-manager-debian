@@ -208,11 +208,11 @@ def browse_local(parent, dialog_name, conn, start_folder=None,
     if choose_button is None:
         choose_button = gtk.STOCK_OPEN
 
-    fcdialog = gtk.FileChooserDialog(dialog_name, parent,
-                                     dialog_type,
-                                     (gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
-                                      choose_button, gtk.RESPONSE_ACCEPT),
-                                      None)
+    fcdialog = gtk.FileChooserDialog(title=dialog_name,
+                                parent=parent,
+                                action=dialog_type,
+                                buttons=(gtk.STOCK_CANCEL, gtk.RESPONSE_CANCEL,
+                                         choose_button, gtk.RESPONSE_ACCEPT))
     fcdialog.set_default_response(gtk.RESPONSE_ACCEPT)
 
     # If confirm is set, warn about a file overwrite
@@ -245,15 +245,10 @@ def browse_local(parent, dialog_name, conn, start_folder=None,
             fcdialog.set_current_folder(start_folder)
 
     # Run the dialog and parse the response
-    response = fcdialog.run()
-    fcdialog.hide()
-    if (response == gtk.RESPONSE_ACCEPT):
-        filename = fcdialog.get_filename()
-        fcdialog.destroy()
-        ret = filename
-    else:
-        fcdialog.destroy()
-        ret = None
+    ret = None
+    if fcdialog.run() == gtk.RESPONSE_ACCEPT:
+        ret = fcdialog.get_filename()
+    fcdialog.destroy()
 
     # Store the chosen directory in gconf if necessary
     if ret and browse_reason and not ret.startswith("/dev"):
@@ -431,7 +426,7 @@ def sanitize_gtkbuilder(filename):
     xml = file(filename).read()
 
     if (ver[0] > 2 or
-        (ver[0] == 2 and ver[1] > 18)):
+        (ver[0] == 2 and ver[1] > 20)):
         # Skip altering for gtk > 2.18
         return xml
 
