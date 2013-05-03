@@ -23,7 +23,7 @@ index 23f23de..a92c630 100644
  from virtManager.baseclass import vmmGObjectUI
  
 diff --git a/src/virtManager/network.py b/src/virtManager/network.py
-index ae89955..644cb21 100644
+index fa3e6ea..ab5e0a7 100644
 --- a/src/virtManager/network.py
 +++ b/src/virtManager/network.py
 @@ -19,7 +19,7 @@
