@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2006 Red Hat, Inc.
+# Copyright (C) 2006, 2012 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -88,11 +88,12 @@ class vmmConfig(object):
     DEFAULT_VIRT_IMAGE_DIR = "/var/lib/libvirt/images"
     DEFAULT_VIRT_SAVE_DIR = "/var/lib/libvirt"
 
-    def __init__(self, appname, appversion, ui_dir):
+    def __init__(self, appname, appversion, ui_dir, test_first_run=False):
         self.appname = appname
         self.appversion = appversion
         self.conf_dir = "/apps/" + appname
         self.ui_dir = ui_dir
+        self.test_first_run = bool(test_first_run)
 
         self.conf = gconf.client_get_default()
         self.conf.add_dir(self.conf_dir, gconf.CLIENT_PRELOAD_NONE)
@@ -374,6 +375,13 @@ class vmmConfig(object):
         return self.conf.get_bool(self.conf_dir + "/confirm/interface_power")
     def get_confirm_unapplied(self):
         return self.conf.get_bool(self.conf_dir + "/confirm/unapplied_dev")
+    def get_confirm_delstorage(self):
+        # If no schema is installed, we _really_ want this to default to True
+        path = self.conf_dir + "/confirm/delete_storage"
+        ret = self.conf.get(path)
+        if ret == None:
+            return True
+        return self.conf.get_bool(path)
 
 
     def set_confirm_forcepoweroff(self, val):
@@ -388,6 +396,8 @@ class vmmConfig(object):
         self.conf.set_bool(self.conf_dir + "/confirm/interface_power", val)
     def set_confirm_unapplied(self, val):
         self.conf.set_bool(self.conf_dir + "/confirm/unapplied_dev", val)
+    def set_confirm_delstorage(self, val):
+        self.conf.set_bool(self.conf_dir + "/confirm/delete_storage", val)
 
     def on_confirm_forcepoweroff_changed(self, cb):
         return self.conf.notify_add(self.conf_dir + "/confirm/forcepoweroff", cb)
@@ -401,6 +411,8 @@ class vmmConfig(object):
         return self.conf.notify_add(self.conf_dir + "/confirm/interface_power", cb)
     def on_confirm_unapplied_changed(self, cb):
         return self.conf.notify_add(self.conf_dir + "/confirm/unapplied_dev", cb)
+    def on_confirm_delstorage_changed(self, cb):
+        return self.conf.notify_add(self.conf_dir + "/confirm/delete_storage", cb)
 
 
     # System tray visibility
@@ -590,6 +602,9 @@ class vmmConfig(object):
 
     # Manager view connection list
     def add_conn(self, uri):
+        if self.test_first_run:
+            return
+
         uris = self.conf.get_list(self.conf_dir + "/connections/uris",
                                   gconf.VALUE_STRING)
         if uris == None:
@@ -619,6 +634,8 @@ class vmmConfig(object):
                                gconf.VALUE_STRING, uris)
 
     def get_conn_uris(self):
+        if self.test_first_run:
+            return []
         return self.conf.get_list(self.conf_dir + "/connections/uris",
                                   gconf.VALUE_STRING)
 
@@ -638,6 +655,9 @@ class vmmConfig(object):
         return ((uris is not None) and (uri in uris))
 
     def set_conn_autoconnect(self, uri, val):
+        if self.test_first_run:
+            return
+
         uris = self.conf.get_list(self.conf_dir + "/connections/autoconnect",
                                   gconf.VALUE_STRING)
         if uris is None:

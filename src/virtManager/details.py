@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2006-2008 Red Hat, Inc.
+# Copyright (C) 2006-2008, 2013 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -51,7 +51,7 @@ _comboentry_xml = """
 """
 
 # Parameters that can be editted in the details window
-EDIT_TOTAL = 36
+EDIT_TOTAL = 37
 (EDIT_NAME,
 EDIT_ACPI,
 EDIT_APIC,
@@ -80,6 +80,7 @@ EDIT_DISK_IO,
 EDIT_DISK_BUS,
 EDIT_DISK_SERIAL,
 EDIT_DISK_FORMAT,
+EDIT_DISK_IOTUNE,
 
 EDIT_SOUND_MODEL,
 
@@ -389,6 +390,7 @@ class vmmDetails(vmmGObjectUI):
             "on_details_menu_poweroff_activate": self.control_vm_shutdown,
             "on_details_menu_reboot_activate": self.control_vm_reboot,
             "on_details_menu_save_activate": self.control_vm_save,
+            "on_details_menu_reset_activate": self.control_vm_reset,
             "on_details_menu_destroy_activate": self.control_vm_destroy,
             "on_details_menu_pause_activate": self.control_vm_pause,
             "on_details_menu_clone_activate": self.control_vm_clone,
@@ -407,6 +409,7 @@ class vmmDetails(vmmGObjectUI):
             "on_overview_clock_changed": (self.enable_apply, EDIT_CLOCK),
             "on_machine_type_changed": (self.enable_apply, EDIT_MACHTYPE),
             "on_security_label_changed": (self.enable_apply, EDIT_SECURITY),
+            "on_security_relabel_changed": (self.enable_apply, EDIT_SECURITY),
             "on_security_type_changed": self.security_type_changed,
 
             "on_config_vcpus_changed": self.config_vcpus_changed,
@@ -443,6 +446,8 @@ class vmmDetails(vmmGObjectUI):
             "on_disk_bus_combo_changed": (self.enable_apply, EDIT_DISK_BUS),
             "on_disk_format_changed": (self.enable_apply, EDIT_DISK_FORMAT),
             "on_disk_serial_changed": (self.enable_apply, EDIT_DISK_SERIAL),
+
+            "on_disk_iotune_changed": self.iotune_changed,
 
             "on_network_source_combo_changed": (self.enable_apply,
                                                 EDIT_NET_SOURCE),
@@ -610,12 +615,14 @@ class vmmDetails(vmmGObjectUI):
         uihelpers.build_shutdown_button_menu(self.widget("control-shutdown"),
                                              self.control_vm_shutdown,
                                              self.control_vm_reboot,
+                                             self.control_vm_reset,
                                              self.control_vm_destroy,
                                              self.control_vm_save)
 
         icon_name = self.config.get_shutdown_icon_name()
         for name in ["details-menu-shutdown",
                      "details-menu-reboot",
+                     "details-menu-reset",
                      "details-menu-poweroff",
                      "details-menu-destroy"]:
             image = gtk.image_new_from_icon_name(icon_name, gtk.ICON_SIZE_MENU)
@@ -786,7 +793,7 @@ class vmmDetails(vmmGObjectUI):
 
         # Security info tooltips
         util.tooltip_wrapper(self.widget("security-static-info"),
-            _("Static SELinux security type tells libvirt to always start the guest process with the specified label. The administrator is responsible for making sure the images are labeled correctly on disk."))
+            _("Static SELinux security type tells libvirt to always start the guest process with the specified label. Unless 'relabel' is set, the administrator is responsible for making sure the images are labeled correctly on disk."))
         util.tooltip_wrapper(self.widget("security-dynamic-info"),
             _("The dynamic SELinux security type tells libvirt to automatically pick a unique label for the guest process and guest image, ensuring total isolation of the guest. (Default)"))
 
@@ -935,6 +942,10 @@ class vmmDetails(vmmGObjectUI):
         # Disk bus combo
         disk_bus = self.widget("disk-bus-combo")
         uihelpers.build_disk_bus_combo(self.vm, disk_bus)
+
+        # Disk iotune expander
+        if not (self.conn.is_qemu() or self.conn.is_test_conn()):
+            self.widget("iotune-expander").set_property("visible", False)
 
         # Network source
         net_source = self.widget("network-source-combo")
@@ -1198,7 +1209,7 @@ class vmmDetails(vmmGObjectUI):
 
     def set_hw_selection(self, page, disable_apply=True):
         if disable_apply:
-            self.widget("config-apply").set_sensitive(False)
+            self.disable_apply()
 
         hwlist = self.widget("hw-list")
         selection = hwlist.get_selection()
@@ -1347,6 +1358,7 @@ class vmmDetails(vmmGObjectUI):
             if self.has_unapplied_changes(self.get_hw_row()):
                 self.sync_details_console_view(True)
                 return
+            self.disable_apply()
 
         if is_details:
             pages.set_current_page(PAGE_DETAILS)
@@ -1553,6 +1565,10 @@ class vmmDetails(vmmGObjectUI):
         self.emit("action-save-domain",
                   self.vm.conn.get_uri(), self.vm.get_uuid())
 
+    def control_vm_reset(self, src_ignore):
+        self.emit("action-reset-domain",
+                  self.vm.conn.get_uri(), self.vm.get_uuid())
+
     def control_vm_destroy(self, src_ignore):
         self.emit("action-destroy-domain",
                   self.vm.conn.get_uri(), self.vm.get_uuid())
@@ -1739,6 +1755,7 @@ class vmmDetails(vmmGObjectUI):
     def security_type_changed(self, button):
         self.enable_apply(EDIT_SECURITY)
         self.widget("security-label").set_sensitive(not button.get_active())
+        self.widget("security-relabel").set_sensitive(not button.get_active())
 
     # Memory
     def config_get_maxmem(self):
@@ -1866,6 +1883,52 @@ class vmmDetails(vmmGObjectUI):
 
         self.repopulate_boot_list(boot_devs, boot_selection)
         self.enable_apply(EDIT_BOOTORDER)
+
+    # IO Tuning
+    def iotune_changed(self, ignore):
+        iotune_read_bytes_sec = int(self.get_text("disk-iotune-read-bytes-sec") or 0)
+        iotune_read_iops_sec = int(self.get_text("disk-iotune-read-iops-sec") or 0)
+        iotune_total_bytes_sec = int(self.get_text("disk-iotune-total-bytes-sec") or 0)
+        iotune_total_iops_sec = int(self.get_text("disk-iotune-total-iops-sec") or 0)
+        iotune_write_bytes_sec = int(self.get_text("disk-iotune-write-bytes-sec") or 0)
+        iotune_write_iops_sec = int(self.get_text("disk-iotune-write-iops-sec") or 0)
+
+        # libvirt doesn't support having read/write settings along side total
+        # settings, so disable the widgets accordingly.
+
+        if (iotune_read_bytes_sec > 0 or iotune_write_bytes_sec > 0):
+            iotune_total_bytes_sec = int(0)
+            self.widget("disk-iotune-total-bytes-sec").get_adjustment().value = int(0)
+            self.widget("disk-iotune-total-bytes-sec").set_sensitive(False)
+        else:
+            self.widget("disk-iotune-total-bytes-sec").set_sensitive(True)
+
+        if (iotune_total_bytes_sec > 0):
+            self.widget("disk-iotune-read-bytes-sec").get_adjustment().value = int(0)
+            self.widget("disk-iotune-write-bytes-sec").get_adjustment().value = int(0)
+            self.widget("disk-iotune-read-bytes-sec").set_sensitive(False)
+            self.widget("disk-iotune-write-bytes-sec").set_sensitive(False)
+        else:
+            self.widget("disk-iotune-read-bytes-sec").set_sensitive(True)
+            self.widget("disk-iotune-write-bytes-sec").set_sensitive(True)
+
+        if (iotune_read_iops_sec > 0 or iotune_write_iops_sec > 0):
+            iotune_total_iops_sec = int(0)
+            self.widget("disk-iotune-total-iops-sec").get_adjustment().value = int(0)
+            self.widget("disk-iotune-total-iops-sec").set_sensitive(False)
+        else:
+            self.widget("disk-iotune-total-iops-sec").set_sensitive(True)
+
+        if (iotune_total_iops_sec > 0):
+            self.widget("disk-iotune-read-iops-sec").get_adjustment().value = int(0)
+            self.widget("disk-iotune-write-iops-sec").get_adjustment().value = int(0)
+            self.widget("disk-iotune-read-iops-sec").set_sensitive(False)
+            self.widget("disk-iotune-write-iops-sec").set_sensitive(False)
+        else:
+            self.widget("disk-iotune-read-iops-sec").set_sensitive(True)
+            self.widget("disk-iotune-write-iops-sec").set_sensitive(True)
+
+        self.enable_apply(EDIT_DISK_IOTUNE)
 
     # CDROM Eject/Connect
     def toggle_storage_media(self, src_ignore):
@@ -2020,18 +2083,21 @@ class vmmDetails(vmmGObjectUI):
             semodel = None
             setype = "static"
             selabel = self.get_text("security-label")
+            relabel = self.widget("security-relabel").get_active()
 
             if self.widget("security-dynamic").get_active():
                 setype = "dynamic"
+                relabel = True
             if self.widget("security-type-box").get_property("sensitive"):
                 semodel = self.get_text("security-model")
 
-            add_define(self.vm.define_seclabel, semodel, setype, selabel)
+            add_define(self.vm.define_seclabel, semodel, setype, selabel, relabel)
 
         if self.editted(EDIT_DESC):
             desc_widget = self.widget("overview-description")
             desc = desc_widget.get_buffer().get_property("text") or ""
             add_define(self.vm.define_description, desc)
+            add_hotplug(self.vm.hotplug_description, desc)
 
         return self._change_config_helper(df, da, hf, ha)
 
@@ -2209,6 +2275,21 @@ class vmmDetails(vmmGObjectUI):
         if self.editted(EDIT_DISK_SERIAL):
             serial = self.get_text("disk-serial")
             add_define(self.vm.define_disk_serial, dev_id_info, serial)
+
+        if self.editted(EDIT_DISK_IOTUNE):
+            iotune_read_bytes_sec = int(self.widget("disk-iotune-read-bytes-sec").get_adjustment().value * 1024)
+            iotune_read_iops_sec = int(self.widget("disk-iotune-read-iops-sec").get_adjustment().value)
+            iotune_total_bytes_sec = int(self.widget("disk-iotune-total-bytes-sec").get_adjustment().value * 1024)
+            iotune_total_iops_sec = int(self.widget("disk-iotune-total-iops-sec").get_adjustment().value)
+            iotune_write_bytes_sec = int(self.widget("disk-iotune-write-bytes-sec").get_adjustment().value * 1024)
+            iotune_write_iops_sec = int(self.widget("disk-iotune-write-iops-sec").get_adjustment().value)
+
+            add_define(self.vm.define_disk_iotune_read_bytes_sec, dev_id_info, iotune_read_bytes_sec)
+            add_define(self.vm.define_disk_iotune_read_iops_sec, dev_id_info, iotune_read_iops_sec)
+            add_define(self.vm.define_disk_iotune_total_bytes_sec, dev_id_info, iotune_total_bytes_sec)
+            add_define(self.vm.define_disk_iotune_total_iops_sec, dev_id_info, iotune_total_iops_sec)
+            add_define(self.vm.define_disk_iotune_write_bytes_sec, dev_id_info, iotune_write_bytes_sec)
+            add_define(self.vm.define_disk_iotune_write_iops_sec, dev_id_info, iotune_write_iops_sec)
 
         # Do this last since it can change uniqueness info of the dev
         if self.editted(EDIT_DISK_BUS):
@@ -2402,7 +2483,7 @@ class vmmDetails(vmmGObjectUI):
             detach_err = (str(e), "".join(traceback.format_exc()))
 
         if not detach_err:
-            self.widget("config-apply").set_sensitive(False)
+            self.disable_apply()
             return
 
         self.err.show_err(
@@ -2601,7 +2682,7 @@ class vmmDetails(vmmGObjectUI):
                 self.set_combo_label("machine-type", machtype)
 
         # Security details
-        semodel, ignore, vmlabel = self.vm.get_seclabel()
+        semodel, sectype, vmlabel, relabel = self.vm.get_seclabel()
         caps = self.vm.conn.get_capabilities()
 
         if caps.host.secmodel and caps.host.secmodel.model:
@@ -2615,11 +2696,19 @@ class vmmDetails(vmmGObjectUI):
         else:
             self.widget("security-type-box").set_sensitive(bool(semodel))
 
-            if self.vm.get_seclabel()[1] == "static":
+            if sectype == "static":
                 self.widget("security-static").set_active(True)
+                self.widget("security-relabel").set_sensitive(True)
+                # As "no" is default for relabel with 'static' label and
+                # 'dynamic' must have relabel='yes', this will work properly
+                # for both False (relabel='no') and None (relabel not
+                # specified)
+                self.widget("security-relabel").set_active(relabel)
             else:
                 self.widget("security-dynamic").set_active(True)
-
+                # Dynamic label type must use resource labeling
+                self.widget("security-relabel").set_active(True)
+                self.widget("security-relabel").set_sensitive(False)
             self.widget("security-label").set_text(vmlabel)
 
     def refresh_stats_page(self):
@@ -2812,6 +2901,14 @@ class vmmDetails(vmmGObjectUI):
         io = disk.driver_io
         driver_type = disk.driver_type or ""
         serial = disk.serial
+
+        iotune_read_bytes_sec = disk.iotune_read_bytes_sec / 1024
+        iotune_read_iops_sec = disk.iotune_read_iops_sec
+        iotune_total_bytes_sec = disk.iotune_total_bytes_sec / 1024
+        iotune_total_iops_sec = disk.iotune_total_iops_sec
+        iotune_write_bytes_sec = disk.iotune_write_bytes_sec / 1024
+        iotune_write_iops_sec = disk.iotune_write_iops_sec
+
         show_format = (not self.is_customize_dialog or
                        disk.path_exists(disk.conn, disk.path))
 
@@ -2853,6 +2950,13 @@ class vmmDetails(vmmGObjectUI):
         self.populate_disk_bus_combo(devtype, no_default)
         self.set_combo_label("disk-bus", bus)
         self.widget("disk-serial").set_text(serial or "")
+
+        self.widget("disk-iotune-read-bytes-sec").get_adjustment().value = iotune_read_bytes_sec
+        self.widget("disk-iotune-read-iops-sec").get_adjustment().value = iotune_read_iops_sec
+        self.widget("disk-iotune-total-bytes-sec").get_adjustment().value = iotune_total_bytes_sec
+        self.widget("disk-iotune-total-iops-sec").get_adjustment().value = iotune_total_iops_sec
+        self.widget("disk-iotune-write-bytes-sec").get_adjustment().value = iotune_write_bytes_sec
+        self.widget("disk-iotune-write-iops-sec").get_adjustment().value = iotune_write_iops_sec
 
         button = self.widget("config-cdrom-connect")
         if is_cdrom or is_floppy:
@@ -3169,7 +3273,8 @@ class vmmDetails(vmmGObjectUI):
         self.widget("video-ram").set_text(ramlabel)
         self.widget("video-heads").set_text(heads and heads or "-")
 
-        self.set_combo_label("video-model", model)
+        self.set_combo_label("video-model", model,
+                             label=vid.pretty_model(model))
 
     def refresh_watchdog_page(self):
         watch = self.get_hw_selection(HW_LIST_COL_DEVICE)
@@ -3463,7 +3568,9 @@ class vmmDetails(vmmGObjectUI):
 
         # Populate video devices
         for vid in self.vm.get_video_devices():
-            update_hwlist(HW_LIST_TYPE_VIDEO, vid, _("Video"), "video-display")
+            update_hwlist(HW_LIST_TYPE_VIDEO, vid,
+                          _("Video %s") % vid.pretty_model(vid.model_type),
+                          "video-display")
 
         # Populate watchdog devices
         for watch in self.vm.get_watchdog_devices():
@@ -3573,6 +3680,7 @@ class vmmDetails(vmmGObjectUI):
 vmmGObjectUI.type_register(vmmDetails)
 vmmDetails.signal_new(vmmDetails, "action-save-domain", [str, str])
 vmmDetails.signal_new(vmmDetails, "action-destroy-domain", [str, str])
+vmmDetails.signal_new(vmmDetails, "action-reset-domain", [str, str])
 vmmDetails.signal_new(vmmDetails, "action-suspend-domain", [str, str])
 vmmDetails.signal_new(vmmDetails, "action-resume-domain", [str, str])
 vmmDetails.signal_new(vmmDetails, "action-run-domain", [str, str])

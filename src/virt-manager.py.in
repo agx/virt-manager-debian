@@ -117,6 +117,15 @@ def parse_commandline():
     optParser.add_option("--profile", dest="profile",
         help=optparse.SUPPRESS_HELP, metavar="FILE")
 
+    # Trace every libvirt API call to debug output
+    optParser.add_option("--trace-libvirt", dest="tracelibvirt",
+        help=optparse.SUPPRESS_HELP, action="store_true")
+
+    # Don't load any connections on startup to test first run
+    # PackageKit integration
+    optParser.add_option("--test-first-run", dest="testfirstrun",
+        help=optparse.SUPPRESS_HELP, action="store_true")
+
     optParser.add_option("-c", "--connect", dest="uri",
         help="Connect to hypervisor at URI", metavar="URI")
     optParser.add_option("--debug", action="store_true", dest="debug",
@@ -301,9 +310,11 @@ def main():
 
     cli.check_virtinst_version(virtinst_str)
 
-    # Add our icon dir to icon theme
-    icon_theme = gtk.icon_theme_get_default()
-    icon_theme.prepend_search_path(icon_dir)
+    if options.tracelibvirt:
+        logging.debug("Libvirt tracing requested")
+        import virtManager.module_trace
+        import libvirt
+        libvirt = virtManager.module_trace.wrap_module(libvirt)
 
     gobject.threads_init()
 
@@ -318,7 +329,8 @@ def main():
     # display access
     import virtManager.config
     import virtManager.util
-    config = virtManager.config.vmmConfig(appname, appversion, ui_dir)
+    config = virtManager.config.vmmConfig(appname, appversion, ui_dir,
+                                          options.testfirstrun)
     virtManager.util.running_config = config
     config.default_qemu_user = default_qemu_user
     config.rhel6_defaults = rhel_enable_unsupported_opts
@@ -338,6 +350,10 @@ def main():
 
         # Ignore SIGHUP, otherwise a serial console closing drops the whole app
         signal.signal(signal.SIGHUP, signal.SIG_IGN)
+
+    # Add our icon dir to icon theme
+    icon_theme = gtk.icon_theme_get_default()
+    icon_theme.prepend_search_path(icon_dir)
 
     from virtManager.engine import vmmEngine
 
