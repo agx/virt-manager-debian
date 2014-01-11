@@ -1,0 +1,22 @@
+From: Oliver Seufer <debian@seufer.de>
+Date: Sat, 1 Jun 2013 22:41:07 +0200
+Subject: fix path to hvmloader
+
+Closes: #685749
+---
+ virtinst/Installer.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/virtinst/Installer.py b/virtinst/Installer.py
+index eea7c17..d7ffaff 100644
+--- a/virtinst/Installer.py
++++ b/virtinst/Installer.py
+@@ -306,7 +306,7 @@ class Installer(XMLBuilderDomain.XMLBuilderDomain):
+         hvxen = (hvtype == "xen")
+ 
+         if not loader and self.is_hvm() and hvxen:
+-            loader = "/usr/lib/xen/boot/hvmloader"
++            loader = "hvmloader"
+ 
+         # Use older libvirt 'linux' value for back compat
+         if os_type == "xen" and hvxen:

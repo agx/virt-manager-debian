@@ -1,0 +1,27 @@
+From: =?utf-8?q?Guido_G=C3=BCnther?= <agx@sigxcpu.org>
+Date: Sat, 11 Jan 2014 14:05:29 +0100
+Subject: Fix patch to pygrub
+
+Closes: #685749
+---
+ virtinst/Installer.py | 4 ++--
+ 1 file changed, 2 insertions(+), 2 deletions(-)
+
+diff --git a/virtinst/Installer.py b/virtinst/Installer.py
+index d7ffaff..463b9d9 100644
+--- a/virtinst/Installer.py
++++ b/virtinst/Installer.py
+@@ -43,11 +43,11 @@ def _pygrub_path(conn=None):
+         if (cap.host.arch == "i86pc"):
+             return "/usr/lib/xen/bin/pygrub"
+         else:
+-            return "/usr/bin/pygrub"
++            return "pygrub"
+ 
+     if platform.system() == "SunOS":
+         return "/usr/lib/xen/bin/pygrub"
+-    return "/usr/bin/pygrub"
++    return "pygrub"
+ 
+ 
+ class Installer(XMLBuilderDomain.XMLBuilderDomain):
