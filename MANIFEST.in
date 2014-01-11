@@ -1,0 +1,18 @@
+# to be included/excluded from the tarball produced by sdist
+include COPYING HACKING INSTALL NEWS README
+include autobuild.sh
+include MANIFEST.in
+include setup.py
+include todo.txt
+include .tx/config
+include virt-*
+recursive-include data *
+recursive-include man *
+recursive-include po *
+recursive-include tests *
+recursive-include ui *
+recursive-include virtManager *
+recursive-include virtcli *
+recursive-include virtconv *
+recursive-include virtinst *
+global-exclude *.pyc

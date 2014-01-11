@@ -1,14 +1,56 @@
-HACKING
--------
-
-virt-manager is tied very closely with both libvirt and virtinst. If building
-virt-manager from source, it is recommended that you have at least the latest
-libvirt release, and an upstream virtinst checkout.
+  HACKING
+  =======
 
 We use glade-3 for building virt-manager's UI. It is recommended you have
 a fairly recent version of glade-3: if a small UI change seems to rewrite the
 entire glade file, you likely have a too old (or too new :) glade version.
 
-Before submitting any patches, please run 'make check-pylint' to check for
-basic syntax errors/warnings. This command requires the pylint and python-pep8
-packages to be installed.
+The following commands will be useful for anyone writing patches:
+
+    python setup.py test      : Run local unit test suite
+    python setup.py pylint    : Run a pylint script against the codebase
+
+Any patches shouldn't change the output of 'test' or 'pylint'. The
+'pylint' requires pylint and python-pep8 to be installed.
+
+Our pylint script uses a blacklist rather than a whitelist approach,
+so it could throw some false positives or useless messages. If you think
+your patch exposes one of these, bring it up on the mailing list.
+
+If 'python-coverage' is installed, you can run 'coverage -r' after 'test'
+to see a code coverage report.
+
+'test*' have a --debug option if you are hitting problems.
+
+One useful way to manually test virt-manager's UI is using libvirt's
+unit test driver. From the source directory, Launch virt-manager like:
+
+  virt-manager --connect test://$PWD/tests/testdriver.xml
+
+This testdriver has many fake XML definitions that can be used to see
+each bit of virt-manager's UI. It also enables testing the various wizards
+without having to alter your host virt config.
+
+
+  Submitting patches
+  ==================
+
+Patches should be developed against a git checkout and _not_ a source
+release. The git repo is at
+
+  git://git.fedorahosted.org/git/virt-manager.git
+
+For an web view, see:
+
+  https://git.fedorahosted.org/cgit/virt-manager.git/
+
+Patches should be sent to the mailing list (see README for details). Using
+git format-patch/send-email is preferred, but an attachment with
+format-patch output is fine too.
+
+
+  Translations
+  ============
+
+For translations, please sign up for transifex.com and contribute to the
+virt-manager project.

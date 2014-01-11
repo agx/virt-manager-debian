@@ -1,0 +1,311 @@
+#!/usr/bin/python
+
+#
+# Copyright (C) 2006 Red Hat, Inc.
+# Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
+#
+# This program is free software; you can redistribute it and/or modify
+# it under the terms of the GNU General Public License as published by
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
+#
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+#
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the Free Software
+# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
+# MA 02110-1301 USA.
+#
+
+import logging
+import optparse
+import os
+import signal
+import sys
+import traceback
+
+
+# pylint: disable=E0611
+from gi.repository import GObject
+from gi.repository import LibvirtGLib
+# pylint: enable=E0611
+
+from virtcli import cliutils, cliconfig
+
+
+GObject.threads_init()
+
+
+try:
+    # Make sure we have a default '_' implementation, in case something
+    # fails before gettext is set up
+    __builtins__._ = lambda msg: msg
+except:
+    pass
+
+
+logging_setup = False
+
+
+def _show_startup_error(msg, details):
+    if logging_setup:
+        logging.exception("Error starting virt-manager")
+    from virtManager.error import vmmErrorDialog
+    err = vmmErrorDialog()
+    title = _("Error starting Virtual Machine Manager")
+    err.show_err(title + ": " + msg,
+                 details=details,
+                 title=title,
+                 async=False,
+                 debug=False)
+
+
+def drop_tty():
+    # We fork and setsid so that we drop the controlling
+    # tty. This prevents libvirt's SSH tunnels from prompting
+    # for user input if SSH keys/agent aren't configured.
+    if os.fork() != 0:
+        os._exit(0)  # pylint: disable=W0212
+
+    os.setsid()
+
+
+def drop_stdio():
+    # We close STDIN/OUT/ERR since they're generally spewing
+    # junk to console when domains are in process of shutting
+    # down. Real errors will (hopefully) all be logged to the
+    # main log file. This is also again to stop SSH prompting
+    # for input
+    for fd in range(0, 2):
+        try:
+            os.close(fd)
+        except OSError:
+            pass
+
+    os.open(os.devnull, os.O_RDWR)
+    os.dup2(0, 1)
+    os.dup2(0, 2)
+
+
+class PassThroughOptionParser(optparse.OptionParser):
+    # From http://stackoverflow.com/questions/1885161/how-can-i-get-optparses-optionparser-to-ignore-invalid-options
+    def _process_args(self, largs, rargs, values):
+        while rargs:
+            try:
+                optparse.OptionParser._process_args(self, largs, rargs, values)
+            except (optparse.BadOptionError, optparse.AmbiguousOptionError), e:
+                largs.append(e.opt_str)
+
+
+def parse_commandline():
+    optParser = PassThroughOptionParser(version=cliconfig.__version__,
+                                        usage="virt-manager [options]")
+    optParser.set_defaults(uuid=None)
+    optParser.epilog = ("Also accepts standard GTK arguments like "
+                        "--g-fatal-warnings")
+
+    # Generate runtime performance profile stats with hotshot
+    optParser.add_option("--profile", dest="profile",
+        help=optparse.SUPPRESS_HELP, metavar="FILE")
+
+    # Trace every libvirt API call to debug output
+    optParser.add_option("--trace-libvirt", dest="tracelibvirt",
+        help=optparse.SUPPRESS_HELP, action="store_true")
+
+    # Don't load any connections on startup to test first run
+    # PackageKit integration
+    optParser.add_option("--test-first-run", dest="testfirstrun",
+        help=optparse.SUPPRESS_HELP, action="store_true")
+
+    optParser.add_option("-c", "--connect", dest="uri",
+        help="Connect to hypervisor at URI", metavar="URI")
+    optParser.add_option("--debug", action="store_true", dest="debug",
+        help="Print debug output to stdout (implies --no-fork)",
+        default=False)
+    optParser.add_option("--no-fork", action="store_true", dest="nofork",
+        help="Don't fork into background on startup")
+    optParser.add_option("--no-conn-autostart", action="store_true",
+                         dest="no_conn_auto",
+                         help="Do not autostart connections")
+
+    optParser.add_option("--show-domain-creator", action="callback",
+        callback=opt_show_cb, dest="show",
+        help="Show 'New VM' wizard")
+    optParser.add_option("--show-domain-editor", type="string",
+        metavar="UUID", action="callback", callback=opt_show_cb,
+        help="Show domain details window")
+    optParser.add_option("--show-domain-performance", type="string",
+        metavar="UUID", action="callback", callback=opt_show_cb,
+        help="Show domain performance window")
+    optParser.add_option("--show-domain-console", type="string",
+        metavar="UUID", action="callback", callback=opt_show_cb,
+        help="Show domain graphical console window")
+    optParser.add_option("--show-host-summary", action="callback",
+       callback=opt_show_cb, help="Show connection details window")
+
+    return optParser.parse_args()
+
+
+def launch_specific_window(engine, show, uri, uuid):
+    if not show:
+        return
+
+    logging.debug("Launching requested window '%s'", show)
+    if show == 'creator':
+        engine.show_domain_creator(uri)
+    elif show == 'editor':
+        engine.show_domain_editor(uri, uuid)
+    elif show == 'performance':
+        engine.show_domain_performance(uri, uuid)
+    elif show == 'console':
+        engine.show_domain_console(uri, uuid)
+    elif show == 'summary':
+        engine.show_host_summary(uri)
+
+
+def _conn_state_changed(conn, engine, show, uri, uuid):
+    if conn.state == conn.STATE_DISCONNECTED:
+        return True
+    if conn.state != conn.STATE_ACTIVE:
+        return
+
+    launch_specific_window(engine, show, uri, uuid)
+    return True
+
+
+def opt_show_cb(option, opt_str, value, parser):
+    # Generic OptionParser callback for all --show-* options
+    # This routine stores UUID to options.uuid for all --show-* options
+    # where is metavar="UUID" and also sets options.show
+    if option.metavar == "UUID":
+        setattr(parser.values, "uuid", value)
+    s = str(option)
+    show = s[s.rindex('-') + 1:]
+    setattr(parser.values, "show", show)
+
+
+def main():
+    cliutils.setup_i18n()
+    (options, leftovers) = parse_commandline()
+
+    cliutils.setup_logging("virt-manager", options.debug)
+    global logging_setup
+    logging_setup = True
+
+    import virtManager
+    logging.debug("Launched as: %s", sys.argv)
+    logging.debug("virt-manager version: %s", cliconfig.__version__)
+    logging.debug("virtManager import: %s", str(virtManager))
+
+    if options.tracelibvirt:
+        logging.debug("Libvirt tracing requested")
+        import virtManager.module_trace
+        import libvirt
+        virtManager.module_trace.wrap_module(libvirt)
+
+    # Now we've got basic environment up & running we can fork
+    if not options.nofork and not options.debug:
+        drop_tty()
+        drop_stdio()
+
+        # Ignore SIGHUP, otherwise a serial console closing drops the whole app
+        signal.signal(signal.SIGHUP, signal.SIG_IGN)
+
+    # The never ending fork+gconf/gsettings problems now require
+    # us to import Gtk before the fork. This creates a funny race,
+    # since we need to parse the command line arguments to know if
+    # we need to fork, but need to import Gtk before cli processing
+    # so it can handle --g-fatal-args. We strip out our flags first
+    # and pass the left overs to gtk
+    origargv = sys.argv
+    try:
+        sys.argv = origargv[:1] + leftovers[:]
+        from gi.repository import Gtk  # pylint: disable=E0611
+        globals()["Gtk"] = Gtk
+        leftovers = sys.argv[1:]
+
+        import virtManager.config
+        import virtManager.util
+    except:
+        # Don't just let the exception raise here. abrt reports bugs
+        # when users mess up su/sudo and DISPLAY isn't set. Printing
+        # it avoids the issue
+        print "".join(traceback.format_exc())
+        return 1
+    finally:
+        sys.argv = origargv
+
+    if leftovers:
+        raise RuntimeError("Unhandled command line options '%s'" % leftovers)
+
+    logging.debug("GTK version: %d.%d.%d",
+                  Gtk.get_major_version(),
+                  Gtk.get_minor_version(),
+                  Gtk.get_micro_version())
+
+    config = virtManager.config.vmmConfig("virt-manager",
+                                    cliconfig.__version__,
+                                    os.path.join(cliconfig.asset_dir, "ui"),
+                                    options.testfirstrun)
+    virtManager.util.running_config = config
+    config.default_qemu_user = cliconfig.default_qemu_user
+    config.rhel6_defaults = cliconfig.rhel_enable_unsupported_opts
+    config.preferred_distros = cliconfig.preferred_distros
+
+    config.hv_packages = cliconfig.hv_packages
+    config.libvirt_packages = cliconfig.libvirt_packages
+    config.askpass_package = cliconfig.askpass_package
+    config.default_graphics_from_config = cliconfig.default_graphics
+
+    # Add our icon dir to icon theme
+    icon_theme = Gtk.IconTheme.get_default()
+    icon_theme.prepend_search_path(cliconfig.icon_dir)
+
+    from virtManager.engine import vmmEngine
+
+    Gtk.Window.set_default_icon_name("virt-manager")
+
+    if options.show and options.uri is None:
+        raise optparse.OptionValueError("can't use --show-* options "
+                                        "without --connect")
+
+    # Hook libvirt events into glib main loop
+    LibvirtGLib.init(None)
+    LibvirtGLib.event_register()
+
+    engine = vmmEngine()
+    engine.skip_autostart = options.no_conn_auto
+    engine.uri_at_startup = options.uri
+
+    if options.show:
+        def cb(conn):
+            return _conn_state_changed(conn, engine, options.show,
+                                       options.uri, options.uuid)
+        engine.uri_cb = cb
+        engine.show_manager_window = False
+
+
+    # Finally start the app for real
+    if options.profile is not None:
+        import hotshot
+        prof = hotshot.Profile(options.profile)
+        prof.runcall(engine.application.run)
+        prof.close()
+    else:
+        engine.application.run(None)
+
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        logging.debug("Received KeyboardInterrupt. Exiting application.")
+    except SystemExit:
+        raise
+    except Exception, run_e:
+        if "Gtk" not in globals():
+            raise
+        _show_startup_error(str(run_e), "".join(traceback.format_exc()))
