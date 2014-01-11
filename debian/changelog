@@ -1,3 +1,23 @@
+virt-manager (1:0.10.0-1) experimental; urgency=medium
+
+  * [f759996] Remove obsolete DM-Upload-Allowed field
+  * [f1d7e9f] New upstream version 0.10.0
+  * [8ca3378] Drop virt-manager patches.
+        0001-use-usr-share-gconf-for-schema-data.patch - uses gschema now
+        0002-Use-IPy-from-python-ipy.patch - IPy now longer used
+  * [e649c0a] Update virtinst patches.
+    Dropped, fixed upstream:
+        0003-Fix-path-to-keyboard-configuration.patch
+        0004-Fix-location-of-Debian-daily-builds.patch
+        0005-Don-t-fail-if-we-can-t-set-locale-debian-bug-697864.patch
+        0006-virt-clone-Properly-set-image-type.patch
+  * [8c5a765] virtinst sources moved into virt-manager so create the binary
+    package from here too
+  * [ce94668] Drop scrollkeeper build-dep (Closes: #718040)
+  * Use an epoch so the virtinst version >= the separately packaged version.
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 11 Jan 2014 15:56:25 +0100
+
 virt-manager (0.9.5-1) unstable; urgency=low
 
   * [effdbc4] Imported Upstream version 0.9.5
