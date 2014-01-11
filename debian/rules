@@ -1,13 +1,8 @@
 #!/usr/bin/make -f
 
-include /usr/share/cdbs/1/rules/debhelper.mk
-include /usr/share/cdbs/1/rules/patchsys-quilt.mk
-include /usr/share/cdbs/1/class/gnome.mk
+%:
+	dh $@ --with python2 --buildsystem=python_distutils
 
-binary-install/virt-manager::
-	rm debian/virt-manager/usr/share/virt-manager/virtManager/IPy.py
-	rm debian/virt-manager/usr/bin/virt-manager-tui
-	dh_pysupport -p$(cdbs_curpkg)
-
-clean::
-	rm -f $(CURDIR)/debian/pycompat
+override_dh_python2:
+	dh_python2 -O--buildsystem=python_distutils
+	dh_python2 -p virtinst usr/share/virt-manager

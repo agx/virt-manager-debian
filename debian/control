@@ -7,15 +7,21 @@ Standards-Version: 3.9.3
 Vcs-Git: git://git.debian.org/git/pkg-libvirt/virt-manager.git
 Vcs-Browser: http://git.debian.org/?p=pkg-libvirt/virt-manager.git
 Homepage: http://virt-manager.et.redhat.com/
-Build-Depends: debhelper (>= 7), python-all, scrollkeeper,
- python-support (>= 0.5.3), cdbs, quilt, intltool
+X-Python-Version: 2.7
+Build-Depends: debhelper (>= 9), python-all, scrollkeeper,
+ quilt, intltool,
+ libglib2.0-bin
 
 Package: virt-manager
 Architecture: all
-Depends: ${misc:Depends}, ${python:Depends}, python-gtk2,
- python-glade2, python-gnome2, python-dbus, python-urlgrabber, python-vte,
- librsvg2-common, python-libvirt (>= 0.7.1), virtinst (>= 0.600.4),
- python-gtk-vnc (>= 0.3.8), python-ipy (>= 0.70)
+Depends: ${misc:Depends}, ${python:Depends},
+ python-gi,
+ python-dbus,
+ python-ipaddr,
+ python-urlgrabber,
+ librsvg2-common,
+ python-libvirt (>= 0.7.1),
+ virtinst (>= ${binary:Version}),
 Recommends: libvirt-bin (>= 0.4.6), gnome-icon-theme,
  python-spice-client-gtk
 Suggests: virt-viewer, ssh-askpass, gnome-keyring, python-gnomekeyring,
@@ -29,3 +35,17 @@ Description: desktop application for managing virtual machines
  graphical console to the guest domain.
  .
  NOTE: the GUI is still considered experimental.
+
+Package: virtinst
+Architecture: all
+Depends: ${python:Depends}, ${shlibs:Depends}, ${misc:Depends}, python-libvirt (>= 0.4.6),
+ python-libxml2, python-urlgrabber
+Recommends: virt-viewer, qemu
+Description: Programs to create and clone virtual machines
+ Virtinst is a set of commandline tools to create virtual machines using
+ libvirt:
+ .
+ virt-install: provision new virtual machines 
+ virt-clone: clone existing virtual machines
+ virt-image: create virtual machines from an image description
+ virt-convert: convert virtual machines between formats
