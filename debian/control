@@ -16,6 +16,7 @@ Package: virt-manager
 Architecture: all
 Depends: ${misc:Depends}, ${python:Depends},
  python-gi,
+ python-gi-cairo,
  python-dbus,
  python-ipaddr,
  python-urlgrabber,
