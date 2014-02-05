@@ -1,3 +1,13 @@
+virt-manager (1:0.10.0+git20130205.69015c-1) experimental; urgency=medium
+
+  [ Guido Günther ]
+  * [4fa03ba] New upstream version 0.10.0~git20130205.69015c
+    (Closes: #736122)
+  * [a675fa6] Update patches
+  * [59b67a3] Add more missing deps. Thanks to Daniel Schröter
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 05 Feb 2014 22:05:41 +0100
+
 virt-manager (1:0.10.0-2) experimental; urgency=medium
 
   * [3dae30e] Add missing typelib dependencies (Closes: #736547)
