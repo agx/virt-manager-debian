@@ -1,5 +1,4 @@
-<?xml version="1.0"?>
-<volume>
+<volume type="file">
   <name>pool-fs-volclone</name>
   <key>/some/target/path/pool-fs-vol</key>
   <source>
@@ -14,5 +13,9 @@
       <owner>10736</owner>
       <group>10736</group>
     </permissions>
+    <compat>1.1</compat>
+    <features>
+      <lazy_refcounts/>
+    </features>
   </target>
 </volume>

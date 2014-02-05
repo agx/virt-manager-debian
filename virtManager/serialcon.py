@@ -50,6 +50,8 @@ class ConsoleConnection(vmmGObject):
         self.vm = None
         self.conn = None
 
+    def is_open(self):
+        raise NotImplementedError()
     def open(self, dev, terminal):
         raise NotImplementedError()
     def close(self):
@@ -69,6 +71,9 @@ class LocalConsoleConnection(ConsoleConnection):
         self.fd = None
         self.source = None
         self.origtermios = None
+
+    def is_open(self):
+        return self.fd is not None
 
     def open(self, dev, terminal):
         if self.fd is not None:
@@ -192,6 +197,9 @@ class LibvirtConsoleConnection(ConsoleConnection):
                                             libvirt.VIR_STREAM_EVENT_HANGUP)
 
 
+    def is_open(self):
+        return self.stream is not None
+
     def open(self, dev, terminal):
         if self.stream:
             self.close()
@@ -202,9 +210,9 @@ class LibvirtConsoleConnection(ConsoleConnection):
         if not name:
             raise RuntimeError(_("Cannot open a device with no alias name"))
 
-        self.stream = self.conn.vmm.newStream(libvirt.VIR_STREAM_NONBLOCK)
-
-        self.vm.open_console(name, self.stream)
+        stream = self.conn.get_backend().newStream(libvirt.VIR_STREAM_NONBLOCK)
+        self.vm.open_console(name, stream)
+        self.stream = stream
 
         self.stream.eventAddCallback((libvirt.VIR_STREAM_EVENT_READABLE |
                                       libvirt.VIR_STREAM_EVENT_ERROR |
@@ -263,7 +271,7 @@ class vmmSerialConsole(vmmGObject):
         """
         usable_types = ["pty"]
 
-        ctype = dev.char_type
+        ctype = dev.type
         path = dev.source_path
         is_remote = vm.conn.is_remote()
         support_tunnel = vmmSerialConsole.support_remote_console(vm)
@@ -333,10 +341,14 @@ class vmmSerialConsole(vmmGObject):
     def init_popup(self):
         self.serial_popup = Gtk.Menu()
 
-        self.serial_copy = Gtk.ImageMenuItem(Gtk.STOCK_COPY)
+        self.serial_copy = Gtk.ImageMenuItem.new_from_stock(Gtk.STOCK_COPY,
+                                                            None)
+        self.serial_copy.connect("activate", self.serial_copy_text)
         self.serial_popup.add(self.serial_copy)
 
-        self.serial_paste = Gtk.ImageMenuItem(Gtk.STOCK_PASTE)
+        self.serial_paste = Gtk.ImageMenuItem.new_from_stock(Gtk.STOCK_PASTE,
+                                                             None)
+        self.serial_paste.connect("activate", self.serial_paste_text)
         self.serial_popup.add(self.serial_paste)
 
     def init_ui(self):
@@ -374,13 +386,18 @@ class vmmSerialConsole(vmmGObject):
         self.terminal = None
         self.box = None
 
+    def close(self):
+        if self.console:
+            self.console.close()
+
     def show_error(self, msg):
         self.error_label.set_markup("<b>%s</b>" % msg)
         self.box.set_current_page(1)
 
     def open_console(self):
         try:
-            self.console.open(self.lookup_dev(), self.terminal)
+            if not self.console.is_open():
+                self.console.open(self.lookup_dev(), self.terminal)
             self.box.set_current_page(0)
             return True
         except Exception, e:
@@ -426,8 +443,6 @@ class vmmSerialConsole(vmmGObject):
             return
 
         self.serial_popup.show_all()
-        self.serial_copy.connect("activate", self.serial_copy_text, src)
-        self.serial_paste.connect("activate", self.serial_paste_text, src)
 
         if src.get_has_selection():
             self.serial_copy.set_sensitive(True)
@@ -435,8 +450,8 @@ class vmmSerialConsole(vmmGObject):
             self.serial_copy.set_sensitive(False)
         self.serial_popup.popup(None, None, None, None, 0, event.time)
 
-    def serial_copy_text(self, src_ignore, terminal):
-        terminal.copy_clipboard()
+    def serial_copy_text(self, src_ignore):
+        self.terminal.copy_clipboard()
 
-    def serial_paste_text(self, src_ignore, terminal):
-        terminal.paste_clipboard()
+    def serial_paste_text(self, src_ignore):
+        self.terminal.paste_clipboard()

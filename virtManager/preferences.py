@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2006, 2012 Red Hat, Inc.
+# Copyright (C) 2006, 2012-2013 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -25,25 +25,29 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 # pylint: enable=E0611
 
+from virtManager import uiutil
 from virtManager.baseclass import vmmGObjectUI
-
-PREFS_PAGE_STATS    = 0
-PREFS_PAGE_VM_PREFS = 1
 
 
 class vmmPreferences(vmmGObjectUI):
     def __init__(self):
-        vmmGObjectUI.__init__(self, "vmm-preferences.ui", "vmm-preferences")
+        vmmGObjectUI.__init__(self, "preferences.ui", "vmm-preferences")
+
+        self._init_ui()
 
         self.refresh_view_system_tray()
         self.refresh_update_interval()
         self.refresh_console_accels()
         self.refresh_console_scaling()
+        self.refresh_console_resizeguest()
         self.refresh_new_vm_sound()
         self.refresh_graphics_type()
+        self.refresh_add_spice_usbredir()
         self.refresh_storage_format()
+        self.refresh_cpu_default()
         self.refresh_disk_poll()
         self.refresh_net_poll()
+        self.refresh_memory_poll()
         self.refresh_grabkeys_combination()
         self.refresh_confirm_forcepoweroff()
         self.refresh_confirm_poweroff()
@@ -54,15 +58,22 @@ class vmmPreferences(vmmGObjectUI):
         self.refresh_confirm_delstorage()
 
         self.builder.connect_signals({
+            "on_vmm_preferences_delete_event": self.close,
+            "on_prefs_close_clicked": self.close,
+
             "on_prefs_system_tray_toggled" : self.change_view_system_tray,
             "on_prefs_stats_update_interval_changed": self.change_update_interval,
             "on_prefs_console_accels_toggled": self.change_console_accels,
             "on_prefs_console_scaling_changed": self.change_console_scaling,
-            "on_prefs_close_clicked": self.close,
-            "on_vmm_preferences_delete_event": self.close,
+            "on_prefs_console_resizeguest_changed": self.change_console_resizeguest,
             "on_prefs_new_vm_sound_toggled": self.change_new_vm_sound,
+            "on_prefs_graphics_type_changed": self.change_graphics_type,
+            "on_prefs_add_spice_usbredir_changed": self.change_add_spice_usbredir,
+            "on_prefs_storage_format_changed": self.change_storage_format,
+            "on_prefs_cpu_default_changed": self.change_cpu_default,
             "on_prefs_stats_enable_disk_toggled": self.change_disk_poll,
             "on_prefs_stats_enable_net_toggled": self.change_net_poll,
+            "on_prefs_stats_enable_memory_toggled": self.change_memory_poll,
             "on_prefs_confirm_forcepoweroff_toggled": self.change_confirm_forcepoweroff,
             "on_prefs_confirm_poweroff_toggled": self.change_confirm_poweroff,
             "on_prefs_confirm_pause_toggled": self.change_confirm_pause,
@@ -71,9 +82,10 @@ class vmmPreferences(vmmGObjectUI):
             "on_prefs_confirm_unapplied_toggled": self.change_confirm_unapplied,
             "on_prefs_confirm_delstorage_toggled": self.change_confirm_delstorage,
             "on_prefs_btn_keys_define_clicked": self.change_grab_keys,
-            "on_prefs_graphics_type_changed": self.change_graphics_type,
-            "on_prefs_storage_format_changed": self.change_storage_format,
         })
+
+        self.widget("prefs-graphics-type").emit("changed")
+
         self.bind_escape_key_close()
 
     def close(self, ignore1=None, ignore2=None):
@@ -88,6 +100,75 @@ class vmmPreferences(vmmGObjectUI):
 
     def _cleanup(self):
         pass
+
+    def _init_ui(self):
+        combo = self.widget("prefs-console-scaling")
+        # [gsettings value, string]
+        model = Gtk.ListStore(int, str)
+        for row in [[0, _("Never")],
+                    [1, _("Fullscreen only")],
+                    [2, _("Always")]]:
+            model.append(row)
+        combo.set_model(model)
+        uiutil.set_combo_text_column(combo, 1)
+
+        combo = self.widget("prefs-console-resizeguest")
+        # [gsettings value, string]
+        model = Gtk.ListStore(int, str)
+        vals = {
+            0: _("Off"),
+            1: _("On"),
+        }
+        model.append([-1, _("System default (%s)") %
+            vals[self.config.default_console_resizeguest]])
+        for key, val in vals.items():
+            model.append([key, val])
+        combo.set_model(model)
+        uiutil.set_combo_text_column(combo, 1)
+
+        combo = self.widget("prefs-graphics-type")
+        # [gsettings value, string]
+        model = Gtk.ListStore(str, str)
+        for row in [["system", _("System default (%s)") %
+                     self.config.default_graphics_from_config],
+                    ["vnc", "VNC"], ["spice", "Spice"]]:
+            model.append(row)
+        combo.set_model(model)
+        uiutil.set_combo_text_column(combo, 1)
+
+        combo = self.widget("prefs-add-spice-usbredir")
+        # [gsettings value, string]
+        model = Gtk.ListStore(str, str)
+        for row in [["system", _("System default (%s)") %
+                     self.config.default_add_spice_usbredir],
+                    ["yes", "Yes"], ["Yes", "no"]]:
+            model.append(row)
+        combo.set_model(model)
+        uiutil.set_combo_text_column(combo, 1)
+
+        combo = self.widget("prefs-storage-format")
+        # [gsettings value, string]
+        model = Gtk.ListStore(str, str)
+        for row in [["default", _("System default (%s)") %
+                    self.config.default_storage_format_from_config],
+                    ["raw", "Raw"],
+                    ["qcow2", "QCOW2"]]:
+            model.append(row)
+        combo.set_model(model)
+        uiutil.set_combo_text_column(combo, 1)
+
+        combo = self.widget("prefs-cpu-default")
+        # [gsettings value, string]
+        model = Gtk.ListStore(str, str)
+        for row in [["default", _("System default (%s)") %
+                    self.config.cpu_default_from_config],
+                    ["hv-default", _("Hypervisor default")],
+                    ["host-cpu-model", _("Nearest host CPU model")],
+                    ["host-model", _("Copy host CPU definition")]]:
+            model.append(row)
+        combo.set_model(model)
+        uiutil.set_combo_text_column(combo, 1)
+
 
     #########################
     # Config Change Options #
@@ -105,40 +186,33 @@ class vmmPreferences(vmmGObjectUI):
         self.widget("prefs-console-accels").set_active(
             self.config.get_console_accels())
     def refresh_console_scaling(self):
+        combo = self.widget("prefs-console-scaling")
         val = self.config.get_console_scaling()
-        if val is None:
-            val = 0
-        self.widget("prefs-console-scaling").set_active(val)
+        uiutil.set_row_selection(combo, val)
+    def refresh_console_resizeguest(self):
+        combo = self.widget("prefs-console-resizeguest")
+        val = self.config.get_console_resizeguest()
+        uiutil.set_row_selection(combo, val)
 
     def refresh_new_vm_sound(self):
         self.widget("prefs-new-vm-sound").set_active(
             self.config.get_new_vm_sound())
     def refresh_graphics_type(self):
         combo = self.widget("prefs-graphics-type")
-        model = combo.get_model()
-        gtype = self.config.get_graphics_type()
-
-        # Default to row 0 == vnc
-        active = 0
-        for rowidx in range(len(model)):
-            if model[rowidx][0].lower() == gtype:
-                active = rowidx
-                break
-
-        self.widget("prefs-graphics-type").set_active(active)
+        gtype = self.config.get_graphics_type(raw=True)
+        uiutil.set_row_selection(combo, gtype)
+    def refresh_add_spice_usbredir(self):
+        combo = self.widget("prefs-add-spice-usbredir")
+        val = self.config.get_add_spice_usbredir(raw=True)
+        uiutil.set_row_selection(combo, val)
     def refresh_storage_format(self):
         combo = self.widget("prefs-storage-format")
-        model = combo.get_model()
-        gtype = self.config.get_storage_format()
-
-        # Default to row 0 == raw
-        active = 0
-        for rowidx in range(len(model)):
-            if model[rowidx][0].lower() == gtype:
-                active = rowidx
-                break
-
-        self.widget("prefs-storage-format").set_active(active)
+        val = self.config.get_default_storage_format(raw=True)
+        uiutil.set_row_selection(combo, val)
+    def refresh_cpu_default(self):
+        combo = self.widget("prefs-cpu-default")
+        val = self.config.get_default_cpu_setting(raw=True)
+        uiutil.set_row_selection(combo, val)
 
     def refresh_disk_poll(self):
         self.widget("prefs-stats-enable-disk").set_active(
@@ -146,6 +220,9 @@ class vmmPreferences(vmmGObjectUI):
     def refresh_net_poll(self):
         self.widget("prefs-stats-enable-net").set_active(
             self.config.get_stats_enable_net_poll())
+    def refresh_memory_poll(self):
+        self.widget("prefs-stats-enable-memory").set_active(
+            self.config.get_stats_enable_memory_poll())
 
     def refresh_grabkeys_combination(self):
         val = self.config.get_keys_combination()
@@ -257,14 +334,33 @@ class vmmPreferences(vmmGObjectUI):
         self.config.set_console_accels(src.get_active())
     def change_console_scaling(self, box):
         self.config.set_console_scaling(box.get_active())
+    def change_console_resizeguest(self, box):
+        val = uiutil.get_list_selection(box, 0)
+        self.config.set_console_resizeguest(val)
 
     def change_new_vm_sound(self, src):
         self.config.set_new_vm_sound(src.get_active())
+    def change_graphics_type(self, src):
+        val = uiutil.get_list_selection(src, 0)
+        self.config.set_graphics_type(val)
+        uiutil.set_grid_row_visible(
+            self.widget("prefs-add-spice-usbredir"),
+            self.config.get_graphics_type() == "spice")
+    def change_add_spice_usbredir(self, src):
+        self.config.set_add_spice_usbredir(uiutil.get_list_selection(src, 0))
+    def change_storage_format(self, src):
+        typ = uiutil.get_list_selection(src, 0) or "default"
+        self.config.set_storage_format(typ.lower())
+    def change_cpu_default(self, src):
+        typ = uiutil.get_list_selection(src, 0) or "default"
+        self.config.set_default_cpu_setting(typ.lower())
 
     def change_disk_poll(self, src):
         self.config.set_stats_enable_disk_poll(src.get_active())
     def change_net_poll(self, src):
         self.config.set_stats_enable_net_poll(src.get_active())
+    def change_memory_poll(self, src):
+        self.config.set_stats_enable_memory_poll(src.get_active())
 
     def change_confirm_forcepoweroff(self, src):
         self.config.set_confirm_forcepoweroff(src.get_active())
@@ -280,16 +376,3 @@ class vmmPreferences(vmmGObjectUI):
         self.config.set_confirm_unapplied(src.get_active())
     def change_confirm_delstorage(self, src):
         self.config.set_confirm_delstorage(src.get_active())
-
-    def change_graphics_type(self, src):
-        gtype = 'vnc'
-        idx = src.get_active()
-        if idx >= 0:
-            gtype = src.get_model()[idx][0]
-        self.config.set_graphics_type(gtype.lower())
-    def change_storage_format(self, src):
-        typ = 'default'
-        idx = src.get_active()
-        if idx >= 0:
-            typ = src.get_model()[idx][0]
-        self.config.set_storage_format(typ.lower())

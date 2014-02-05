@@ -110,9 +110,7 @@ or C<ppc>.
 
 The I<features> element indicates whether certain platform features should
 be on or off. Currently, the platform features are I<pae>, I<acpi>, and
-I<apic>. They can be turned on or off by giving a I<state> attribute of
-either C<on> or C<off>. When a feature is mentioned in the I<features>
-element, it defaults to C<on>.
+I<apic>. Omitting a togglable feature tag turns it off.
 
 =item The details of booting the image's operating system
 
@@ -222,17 +220,13 @@ To create a virtual machine, save the above XML in F<image.xml> and run:
 
     # virt-image --vnc image.xml
 
-=head1 AUTHOR
-
-Written by David Lutterkort.
-
 =head1 BUGS
 
 Please see C<http://virt-manager.org/page/BugReporting>
 
 =head1 COPYRIGHT
 
-Copyright (C) 2006-2012 Red Hat, Inc, and various contributors.
+Copyright (C) Red Hat, Inc, and various contributors.
 This is free software. You may redistribute copies of it under the terms
 of the GNU General Public License C<http://www.gnu.org/licenses/gpl.html>.
 There is NO WARRANTY, to the extent permitted by law.

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2009 Red Hat, Inc.
+# Copyright (C) 2009, 2013 Red Hat, Inc.
 # Copyright (C) 2009 Cole Robinson <crobinso@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -26,14 +26,13 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 # pylint: enable=E0611
 
+from virtManager import uiutil
 from virtManager.baseclass import vmmGObjectUI
 from virtManager.asyncjob import vmmAsyncJob
 from virtManager.storagebrowse import vmmStorageBrowser
-from virtManager import util
 
 import virtinst
-from virtinst import CloneManager
-from virtinst.CloneManager import CloneDesign
+from virtinst import Cloner
 from virtinst import VirtualNetworkInterface
 
 STORAGE_COMBO_CLONE = 0
@@ -74,7 +73,8 @@ def can_we_clone(conn, vol, path):
 
     elif vol:
         # Managed storage
-        if not virtinst.Storage.is_create_vol_from_supported(conn.vmm):
+        if not conn.check_support(conn.SUPPORT_POOL_CREATEVOLFROM,
+                                  vol.get_parent_pool().get_backend()):
             if conn.is_remote() or not os.access(path, os.R_OK):
                 msg = _("Connection does not support managed storage cloning.")
     else:
@@ -126,7 +126,7 @@ def do_we_default(conn, vol, path, ro, shared, devtype):
 
 class vmmCloneVM(vmmGObjectUI):
     def __init__(self, orig_vm):
-        vmmGObjectUI.__init__(self, "vmm-clone.ui", "vmm-clone")
+        vmmGObjectUI.__init__(self, "clone.ui", "vmm-clone")
         self.orig_vm = orig_vm
 
         self.conn = self.orig_vm.conn
@@ -165,10 +165,6 @@ class vmmCloneVM(vmmGObjectUI):
             "on_change_storage_browse_clicked" : self.change_storage_browse,
         })
         self.bind_escape_key_close()
-
-        finish_img = Gtk.Image.new_from_stock(Gtk.STOCK_NEW,
-                                              Gtk.IconSize.BUTTON)
-        self.widget("clone-ok").set_image(finish_img)
 
         self.set_initial_state()
 
@@ -220,18 +216,13 @@ class vmmCloneVM(vmmGObjectUI):
 
     def set_initial_state(self):
         blue = Gdk.Color.parse("#0072A8")[1]
-        self.widget("clone-header").modify_bg(Gtk.StateType.NORMAL, blue)
+        self.widget("header").modify_bg(Gtk.StateType.NORMAL, blue)
 
         context = self.topwin.get_style_context()
         defcolor = context.get_background_color(Gtk.StateType.NORMAL)
-        self.widget("storage-viewport").override_background_color(Gtk.StateType.NORMAL,
+        self.widget("storage-viewport").override_background_color(
+                                                  Gtk.StateType.NORMAL,
                                                   defcolor)
-
-        box = self.widget("clone-vm-icon-box")
-        image = Gtk.Image.new_from_icon_name("vm_clone_wizard",
-                                             Gtk.IconSize.DIALOG)
-        image.show()
-        box.pack_end(image, False, False, False)
 
     # Populate state
     def reset_state(self):
@@ -243,6 +234,10 @@ class vmmCloneVM(vmmGObjectUI):
         cd = self.clone_design
         self.widget("clone-orig-name").set_text(cd.original_guest)
         self.widget("clone-new-name").set_text(cd.clone_name)
+
+        uiutil.set_grid_row_visible(
+            self.widget("clone-dest-host"), self.conn.is_remote())
+        self.widget("clone-dest-host").set_text(self.conn.get_hostname())
 
         # We need to determine which disks fail (and why).
         self.storage_list, self.target_list = self.check_all_storage()
@@ -256,17 +251,16 @@ class vmmCloneVM(vmmGObjectUI):
         self.clone_design = self.build_new_clone_design()
 
     def build_new_clone_design(self, new_name=None):
-        cd = CloneDesign(self.conn.vmm)
-        cd.original_guest = self.orig_vm.get_name()
+        design = Cloner(self.conn.get_backend())
+        design.original_guest = self.orig_vm.get_name()
         if not new_name:
-            new_name = virtinst.CloneManager.generate_clone_name(cd)
-        cd.clone_name = new_name
+            new_name = design.generate_clone_name()
+        design.clone_name = new_name
 
         # Erase any clone_policy from the original design, so that we
         # get the entire device list.
-        cd.clone_policy = []
-
-        return cd
+        design.clone_policy = []
+        return design
 
     def populate_network_list(self):
         net_box = self.widget("clone-network-box")
@@ -300,15 +294,12 @@ class vmmCloneVM(vmmGObjectUI):
 
         for net in self.orig_vm.get_network_devices():
             mac = net.macaddr
-            net_dev = net.get_source()
+            net_dev = net.source
             net_type = net.type
 
             # Generate a new MAC
-            obj = VirtualNetworkInterface(conn=self.conn.vmm,
-                                          type=VirtualNetworkInterface.TYPE_USER)
-            obj.setup(self.conn.vmm)
-            newmac = obj.macaddr
-
+            newmac = VirtualNetworkInterface.generate_mac(
+                    self.conn.get_backend())
 
             # [ interface type, device name, origmac, newmac, label ]
             if net_type == VirtualNetworkInterface.TYPE_USER:
@@ -335,8 +326,8 @@ class vmmCloneVM(vmmGObjectUI):
             build_net_row(label, mac, newmac)
 
         no_net = bool(len(self.net_list.keys()) == 0)
-        self.widget("clone-network-box").set_property("visible", not no_net)
-        self.widget("clone-no-net").set_property("visible", no_net)
+        self.widget("clone-network-box").set_visible(not no_net)
+        self.widget("clone-no-net").set_visible(no_net)
 
     def check_all_storage(self):
         """
@@ -420,8 +411,8 @@ class vmmCloneVM(vmmGObjectUI):
                 logging.debug("Original path: %s\nGenerated clone path: %s",
                               path, clone_path)
 
-                cd.clone_devices = clone_path
-                size = cd.original_virtual_disks[0].size
+                cd.clone_paths = clone_path
+                size = cd.original_disks[0].get_size()
             except Exception, e:
                 logging.exception("Error setting generated path '%s'",
                                   clone_path)
@@ -438,8 +429,8 @@ class vmmCloneVM(vmmGObjectUI):
         cd = self.clone_design
         if not newname:
             newname = cd.clone_name
-        clone_path = CloneManager.generate_clone_disk_path(origpath, cd,
-                                                           newname=newname)
+        clone_path = cd.generate_clone_disk_path(origpath,
+                                                 newname=newname)
         return clone_path
 
     def set_paths_from_clone_name(self):
@@ -565,10 +556,8 @@ class vmmCloneVM(vmmGObjectUI):
         storage_box.show_all()
 
         no_storage = not bool(len(self.target_list))
-        self.widget("clone-storage-box").set_property("visible",
-                                                      not no_storage)
-        self.widget("clone-no-storage-pass").set_property("visible",
-                                                          no_storage)
+        self.widget("clone-storage-box").set_visible(not no_storage)
+        self.widget("clone-no-storage-pass").set_visible(no_storage)
 
         skip_targets = []
         new_disks = []
@@ -582,7 +571,7 @@ class vmmCloneVM(vmmGObjectUI):
                 skip_targets.append(target)
 
         self.clone_design.skip_target = skip_targets
-        self.clone_design.clone_devices = new_disks
+        self.clone_design.clone_paths = new_disks
 
         # If any storage cannot be cloned or shared, don't allow cloning
         clone = True
@@ -678,9 +667,10 @@ class vmmCloneVM(vmmGObjectUI):
         row = self.net_list[orig]
 
         try:
-            VirtualNetworkInterface(conn=self.conn.vmm,
-                                    type=VirtualNetworkInterface.TYPE_USER,
-                                    macaddr=new)
+            ignore, msg = VirtualNetworkInterface.is_conflict_net(
+                                self.conn.get_backend(), new)
+            if msg:
+                raise RuntimeError(msg)
             row[NETWORK_INFO_NEW_MAC] = new
         except Exception, e:
             self.err.show_err(_("Error changing MAC address: %s") % str(e))
@@ -707,7 +697,7 @@ class vmmCloneVM(vmmGObjectUI):
 
         new_path = self.widget("change-storage-new").get_text()
 
-        if virtinst.VirtualDisk.path_exists(self.clone_design.original_conn,
+        if virtinst.VirtualDisk.path_exists(self.clone_design.conn,
                                             new_path):
             res = self.err.yes_no(_("Cloning will overwrite the existing "
                                     "file"),
@@ -718,7 +708,7 @@ class vmmCloneVM(vmmGObjectUI):
                 return
 
         try:
-            self.clone_design.clone_devices = new_path
+            self.clone_design.clone_paths = new_path
             self.populate_storage_lists()
             row[STORAGE_INFO_NEW_PATH] = new_path
             row[STORAGE_INFO_MANUAL_PATH] = True
@@ -742,10 +732,11 @@ class vmmCloneVM(vmmGObjectUI):
         cd = self.build_new_clone_design(name)
 
         # Set MAC addresses
+        clonemacs = []
         for mac in self.mac_list:
             row = self.net_list[mac]
-            new_mac = row[NETWORK_INFO_NEW_MAC]
-            cd.clone_mac = new_mac
+            clonemacs.append(row[NETWORK_INFO_NEW_MAC])
+        cd.clone_macs = clonemacs
 
         skip_targets = []
         new_paths = []
@@ -770,7 +761,7 @@ class vmmCloneVM(vmmGObjectUI):
 
         cd.skip_target = skip_targets
         cd.setup_original()
-        cd.clone_devices = new_paths
+        cd.clone_paths = new_paths
 
         if warn_str:
             res = self.err.ok_cancel(
@@ -788,6 +779,19 @@ class vmmCloneVM(vmmGObjectUI):
         self.clone_design = cd
         return True
 
+    def _finish_cb(self, error, details):
+        self.topwin.set_sensitive(True)
+        self.topwin.get_window().set_cursor(
+            Gdk.Cursor.new(Gdk.CursorType.TOP_LEFT_ARROW))
+
+        if error is not None:
+            error = (_("Error creating virtual machine clone '%s': %s") %
+                      (self.clone_design.clone_name, error))
+            self.err.show_err(error, details=details)
+        else:
+            self.close()
+            self.conn.schedule_priority_tick(pollvm=True)
+
     def finish(self, src_ignore):
         try:
             if not self.validate():
@@ -797,45 +801,26 @@ class vmmCloneVM(vmmGObjectUI):
             return
 
         self.topwin.set_sensitive(False)
-        self.topwin.get_window().set_cursor(Gdk.Cursor.new(Gdk.CursorType.WATCH))
+        self.topwin.get_window().set_cursor(
+            Gdk.Cursor.new(Gdk.CursorType.WATCH))
 
         title = (_("Creating virtual machine clone '%s'") %
                  self.clone_design.clone_name)
         text = title
-        if self.clone_design.clone_devices:
+        if self.clone_design.clone_disks:
             text = title + _(" and selected storage (this may take a while)")
 
-        progWin = vmmAsyncJob(self._async_clone, [], title, text, self.topwin)
-        error, details = progWin.run()
-
-        self.topwin.set_sensitive(True)
-        self.topwin.get_window().set_cursor(Gdk.Cursor.new(Gdk.CursorType.TOP_LEFT_ARROW))
-
-        if error is not None:
-            error = (_("Error creating virtual machine clone '%s': %s") %
-                      (self.clone_design.clone_name, error))
-            self.err.show_err(error, details=details)
-        else:
-            self.close()
-            self.conn.tick(noStatsUpdate=True)
+        progWin = vmmAsyncJob(self._async_clone, [], self._finish_cb, [],
+                              title, text, self.topwin)
+        progWin.run()
 
     def _async_clone(self, asyncjob):
-        newconn = None
-
         try:
             self.orig_vm.set_cloning(True)
-
-            # Open a seperate connection to install on since this is async
-            logging.debug("Threading off connection to clone VM.")
-            newconn = util.dup_conn(self.conn).vmm
             meter = asyncjob.get_meter()
 
-            self.clone_design.orig_connection = newconn
-            for d in self.clone_design.clone_virtual_disks:
-                d.conn = newconn
-
             self.clone_design.setup()
-            CloneManager.start_duplicate(self.clone_design, meter)
+            self.clone_design.start_duplicate(meter)
         finally:
             self.orig_vm.set_cloning(False)
 

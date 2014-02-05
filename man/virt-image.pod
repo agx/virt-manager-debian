@@ -34,6 +34,10 @@ line option.
 
 Show the help message and exit
 
+=item --version
+
+Show program's version number and exit
+
 =item --connect=URI
 
 Connect to a non-default hypervisor. See L<virt-install(1)> for details
@@ -52,15 +56,11 @@ General configuration parameters that apply to all types of guest installs.
 
 Name of the guest instance
 
-=item -r MEMORY, --ram=MEMORY
+=item --memory=MEMORY
 
-Memory to allocate for guest instance in megabytes. Defaults to
-C</image/devices/memory> in the XML descriptor.
+Memory to allocate for the guest, in megabytes. Defaults to C</image/devices/memory> in the XML descriptor. This deprecates the -r/--ram option.
 
-=item  -u UUID, --uuid=UUID
-
-UUID for the guest; if none is given a random UUID will be generated. If
-you specify UUID, you should use a 32-digit hexadecimal number.
+See L<virt-install(1)> for more details.
 
 =item --vcpus=VCPUS
 
@@ -68,51 +68,18 @@ Number of vcpus to configure for your guest. Defaults to
 C</image/devices/vcpu> in the XML descriptor. This option can also be
 used to set CPU topology, please see L<virt-install(1)> for more info.
 
-=item --cpuset
-
-Set which physical cpus the guest can use. Please see L<virt-install(1)> for
-more info.
-
 =item --cpu
 
 Configure the CPU and CPU features exposed to the guest. Please see
 L<virt-install(1)> for more info.
 
-=item  --check-cpu
-
-Check that vcpus do not exceed physical CPUs and warn if they do.
-
-=item  --os-type=OS_TYPE
-
-Optimize the guest configuration for a type of operating system (ex. 'linux',
-'windows'). This will attempt to pick the most suitable ACPI & APIC settings,
-optimally supported mouse drivers, virtio, and generally accommodate other
-operating system quirks.  See L<virt-install(1)> for valid values.
-
 =item --os-variant=OS_VARIANT
 
-Further optimize the guest configuration for a specific operating system
-variant (ex. 'fedora8', 'winxp'). This parameter is optional, and does not
-require an C<--os-type> to be specified. See L<virt-install(1)> for valid
-values.
-
-=back
-
-
-
-=head2 Full Virtualization specific options
-
-Parameters specific only to fully virtualized guest installs.
-
-=over 2
-
-=item --noapic
-
-Force disable APIC for the guest.
-
-=item --noacpi
-
-Force disable ACPI for the guest.
+Optimize the guest configuration for a specific operating system (ex.
+'fedora18', 'rhel7', 'winxp'). While not requires, specifying this
+options is HIGHLY RECOMMENDED, as it can greatly increase performance
+by specifying virtio among other guest tweaks.
+See L<virt-install(1)> for valid values.
 
 =back
 
@@ -125,15 +92,7 @@ Force disable ACPI for the guest.
 
 =item -w NETWORK, --network=NETWORK
 
-Connect the guest to the host network. See L<virt-install(1)> for details
-
-=item -m MAC, --mac=MAC
-
-This is deprecated in favor of C<--network ...,mac=MAC,...>
-
-=item -b BRIDGE, --bridge=BRIDGE
-
-This is deprecated in favor of C<--network bridge=BRIDGE>
+Connect the guest to the host network. This deprecates the -m/--mac and -b/--bridge options. See L<virt-install(1)> for details.
 
 =back
 
@@ -153,37 +112,18 @@ Specifies the graphical display configuration. This does not configure any
 virtual hardware, just how the guest's graphical display can be accessed.
 See L<virt-install(1)> for details usage info.
 
-=item  --vnc
-
-This option is deprecated in favor of C<--graphics vnc,...>
-
-=item  --vncport=VNCPORT
-
-This option is deprecated in favor of C<--graphics vnc,port=PORT,...>
-
-=item --vnclisten=VNCLISTEN
-
-This option is deprecated in favor of C<--graphics vnc,listen=LISTEN,...>
-
-=item  -k KEYMAP, --keymap=KEYMAP
-
-This option is deprecated in favor of C<--graphics vnc,keymap=KEYMAP,...>
-
-=item  --sdl
-
-This option is deprecated in favor of C<--graphics sdl,...>
-
-=item  --nographics
-
-This option is deprecated in favor of C<--graphics none>
+This deprecates the following options: --vnc, --vncport, --vnclisten, -k/--keymap, --sdl, --nographics
 
 =back
+
+
+
 
 =head2 Miscellaneous Options
 
 =over 2
 
-=item -p, --print
+=item --print-xml
 
 Print the libvirt XML, but do not start the guest.
 
@@ -226,17 +166,13 @@ do not create or start a virtual machine:
 
   # virt-image --print --name example --nographics image.xml
 
-=head1 AUTHOR
-
-Written by David Lutterkort and Cole Robinson.
-
 =head1 BUGS
 
 Please see http://virt-manager.org/page/BugReporting
 
 =head1 COPYRIGHT
 
-Copyright (C) 2006-2012 Red Hat, Inc, and various contributors.
+Copyright (C) Red Hat, Inc, and various contributors.
 This is free software. You may redistribute copies of it under the terms
 of the GNU General Public License C<http://www.gnu.org/licenses/gpl.html>.
 There is NO WARRANTY, to the extent permitted by law.

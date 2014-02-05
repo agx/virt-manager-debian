@@ -1,11 +1,11 @@
 #
-# Copyright 2006, 2013  Red Hat, Inc.
+# Copyright 2006, 2013 Red Hat, Inc.
 # Jeremy Katz <katzj@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free  Software Foundation; either version 2 of the License, or
-# (at your option)  any later version.
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,19 +18,17 @@
 # MA 02110-1301 USA.
 #
 
-import commands
 import logging
 import os
-import platform
 import random
 import re
 import stat
-import subprocess
 
 import libvirt
 import libxml2
 
-from virtinst import uriutil
+
+_host_blktap_capable = None
 
 
 def listify(l):
@@ -42,26 +40,19 @@ def listify(l):
         return l
 
 
-def is_vdisk(path):
-    if not os.path.exists("/usr/sbin/vdiskadm"):
-        return False
-    if not os.path.exists(path):
-        return True
-    if os.path.isdir(path) and \
-       os.path.exists(path + "/vdisk.xml"):
-        return True
-    return False
+def xml_indent(xmlstr, level):
+    xml = ""
+    if not xmlstr:
+        return xml
+    if not level:
+        return xmlstr
+    return "\n".join((" " * level + l) for l in xmlstr.splitlines())
 
 
 def stat_disk(path):
     """Returns the tuple (isreg, size)."""
     if not os.path.exists(path):
         return True, 0
-
-    if is_vdisk(path):
-        size = int(commands.getoutput(
-            "vdiskadm prop-get -p max-size " + path))
-        return True, size
 
     mode = os.stat(path)[stat.ST_MODE]
 
@@ -148,20 +139,17 @@ def validate_uuid(val):
     return val
 
 
-def validate_name(name_type, val, lencheck=False):
-    if type(val) is not str or len(val) == 0:
-        raise ValueError(_("%s name must be a string") % name_type)
-
-    if lencheck:
-        if len(val) > 50:
-            raise ValueError(_("%s name must be less than 50 characters") %
-                             name_type)
+def validate_name(name_type, val):
     if re.match("^[0-9]+$", val):
         raise ValueError(_("%s name can not be only numeric characters") %
                           name_type)
-    if re.match("^[a-zA-Z0-9._-]+$", val) is None:
-        raise ValueError(_("%s name can only contain alphanumeric, '_', '.', "
-                           "or '-' characters") % name_type)
+
+    # Rather than try and match libvirt's regex, just forbid things we
+    # know don't work
+    forbid = [" "]
+    for c in forbid:
+        if c in val:
+            raise ValueError(_("%s name can not contain '%s' character.") % c)
 
 
 def validate_macaddr(val):
@@ -177,78 +165,8 @@ def validate_macaddr(val):
                            "AA:BB:CC:DD:EE:FF"))
 
 
-def xml_append(orig, new):
-    """
-    Little function that helps generate consistent xml
-    """
-    if not new:
-        return orig
-    if orig:
-        orig += "\n"
-    return orig + new
-
-
-def fetch_all_guests(conn):
-    """
-    Return 2 lists: ([all_running_vms], [all_nonrunning_vms])
-    """
-    active = []
-    inactive = []
-
-    # Get all active VMs
-    ids = conn.listDomainsID()
-    for i in ids:
-        try:
-            vm = conn.lookupByID(i)
-            active.append(vm)
-        except libvirt.libvirtError:
-            # guest probably in process of dieing
-            logging.warn("Failed to lookup active domain id %d", i)
-
-    # Get all inactive VMs
-    names = conn.listDefinedDomains()
-    for name in names:
-        try:
-            vm = conn.lookupByName(name)
-            inactive.append(vm)
-        except:
-            # guest probably in process of dieing
-            logging.warn("Failed to lookup inactive domain %d", name)
-
-    return (active, inactive)
-
-
-def set_xml_path(xml, path, newval):
-    """
-    Set the passed xml xpath to the new value
-    """
-    doc = None
-    ctx = None
-    result = None
-
-    try:
-        doc = libxml2.parseDoc(xml)
-        ctx = doc.xpathNewContext()
-
-        ret = ctx.xpathEval(path)
-        if ret is not None:
-            if type(ret) == list:
-                if len(ret) == 1:
-                    ret[0].setContent(newval)
-            else:
-                ret.setContent(newval)
-
-        result = doc.serialize()
-    finally:
-        if doc:
-            doc.freeDoc()
-        if ctx:
-            ctx.xpathFreeContext()
-    return result
-
-
 def generate_name(base, collision_cb, suffix="", lib_collision=True,
-                  start_num=0, sep="-", force_num=False, collidelist=None):
+                  start_num=1, sep="-", force_num=False, collidelist=None):
     """
     Generate a new name from the passed base string, verifying it doesn't
     collide with the collision callback.
@@ -264,12 +182,12 @@ def generate_name(base, collision_cb, suffix="", lib_collision=True,
 
     @param base: The base string to use for the name (e.g. "my-orig-vm-clone")
     @param collision_cb: A callback function to check for collision,
-                         receives the generated name as its only arg
+        receives the generated name as its only arg
     @param lib_collision: If true, the collision_cb is not a boolean function,
-                          and instead throws a libvirt error on failure
+        and instead throws a libvirt error on failure
     @param start_num: The number to start at for generating non colliding names
-    @param sep: The seperator to use between the basename and the generated number
-                (default is "-")
+    @param sep: The seperator to use between the basename and the
+        generated number (default is "-")
     @param force_num: Force the generated name to always end with a number
     @param collidelist: An extra list of names to check for collision
     """
@@ -283,9 +201,13 @@ def generate_name(base, collision_cb, suffix="", lib_collision=True,
         else:
             return collision_cb(tryname)
 
-    for i in range(start_num, start_num + 100000):
+    numrange = range(start_num, start_num + 100000)
+    if not force_num:
+        numrange = [None] + numrange
+
+    for i in numrange:
         tryname = base
-        if i != 0 or force_num:
+        if i is not None:
             tryname += ("%s%d" % (sep, i))
         tryname += suffix
 
@@ -295,50 +217,29 @@ def generate_name(base, collision_cb, suffix="", lib_collision=True,
     raise ValueError(_("Name generation range exceeded."))
 
 
-def default_nic():
-    """
-    Return the default NIC to use, if one is specified.
-    """
-
-    dev = ''
-
-    if platform.system() != 'SunOS':
-        return dev
-
-    proc = subprocess.Popen(['/usr/lib/xen/bin/xenstore-read',
-        'device-misc/vif/default-nic'], stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE)
-    out = proc.stdout.readlines()
-    if len(out) > 0:
-        dev = out[0].rstrip()
-
-    return dev
-
-
-def default_bridge(conn=None):
-    if platform.system() == 'SunOS':
-        return ["bridge", default_nic()]
+def default_bridge(conn):
+    if conn.is_remote():
+        return None
 
     dev = default_route()
+    if not dev:
+        return None
 
-    if (dev is not None and
-        (not conn or not uriutil.is_uri_remote(conn.getURI(), conn=conn))):
-        # New style peth0 == phys dev, eth0 == bridge, eth0 == default route
-        if os.path.exists("/sys/class/net/%s/bridge" % dev):
-            return ["bridge", dev]
+    # New style peth0 == phys dev, eth0 == bridge, eth0 == default route
+    if os.path.exists("/sys/class/net/%s/bridge" % dev):
+        return ["bridge", dev]
 
-        # Old style, peth0 == phys dev, eth0 == netloop, xenbr0 == bridge,
-        # vif0.0 == netloop enslaved, eth0 == default route
-        try:
-            defn = int(dev[-1])
-        except:
-            defn = -1
+    # Old style, peth0 == phys dev, eth0 == netloop, xenbr0 == bridge,
+    # vif0.0 == netloop enslaved, eth0 == default route
+    try:
+        defn = int(dev[-1])
+    except:
+        defn = -1
 
-        if (defn >= 0 and
-            os.path.exists("/sys/class/net/peth%d/brport" % defn) and
-            os.path.exists("/sys/class/net/xenbr%d/bridge" % defn)):
-            return ["bridge", "xenbr%d" % defn]
-
+    if (defn >= 0 and
+        os.path.exists("/sys/class/net/peth%d/brport" % defn) and
+        os.path.exists("/sys/class/net/xenbr%d/bridge" % defn)):
+        return ["bridge", "xenbr%d" % defn]
     return None
 
 
@@ -347,7 +248,7 @@ def parse_node_helper(xml, root_name, callback, exec_class=ValueError):
     Parse the passed XML, expecting root as root_name, and pass the
     root node to callback
     """
-    class ErrorHandler:
+    class ErrorHandler(object):
         def __init__(self):
             self.msg = ""
         def handler(self, ignore, s):
@@ -378,6 +279,30 @@ def parse_node_helper(xml, root_name, callback, exec_class=ValueError):
     return ret
 
 
+def xml_parse_wrapper(xml, parse_func, *args, **kwargs):
+    """
+    Parse the passed xml string into an xpath context, which is passed
+    to parse_func, along with any extra arguments.
+    """
+    doc = None
+    ctx = None
+    ret = None
+    register_namespace = kwargs.pop("register_namespace", None)
+
+    try:
+        doc = libxml2.parseDoc(xml)
+        ctx = doc.xpathNewContext()
+        if register_namespace:
+            register_namespace(ctx)
+        ret = parse_func(doc, ctx, *args, **kwargs)
+    finally:
+        if ctx is not None:
+            ctx.xpathFreeContext()
+        if doc is not None:
+            doc.freeDoc()
+    return ret
+
+
 def generate_uuid(conn):
     for ignore in range(256):
         uuid = randomUUID(conn=conn)
@@ -388,19 +313,7 @@ def generate_uuid(conn):
 
 
 
-def default_route(nic=None):
-    if platform.system() == 'SunOS':
-        cmd = ['/usr/bin/netstat', '-rn']
-        if nic:
-            cmd += ['-I', nic]
-        proc = subprocess.Popen(cmd, stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE)
-        for line in proc.stdout.readlines():
-            vals = line.split()
-            if len(vals) > 1 and vals[0] == 'default':
-                return vals[1]
-        return None
-
+def default_route():
     route_file = "/proc/net/route"
     d = file(route_file)
 
@@ -430,106 +343,36 @@ def default_network(conn):
     return ret
 
 
-def default_connection():
-    if os.path.exists('/var/lib/xend'):
-        if os.path.exists('/dev/xen/evtchn'):
-            return 'xen'
-        if os.path.exists("/proc/xen"):
-            return 'xen'
-
-    from virtinst import User
-
-    if os.path.exists("/usr/bin/qemu") or \
-        os.path.exists("/usr/bin/qemu-kvm") or \
-        os.path.exists("/usr/bin/kvm") or \
-        os.path.exists("/usr/bin/xenner"):
-        if User.current().has_priv(User.PRIV_QEMU_SYSTEM):
-            return "qemu:///system"
-        else:
-            return "qemu:///session"
-    return None
-
-
-def is_blktap_capable():
-    if platform.system() == 'SunOS':
+def is_blktap_capable(conn):
+    # Ideally we would get this from libvirt capabilities XML
+    if conn.is_remote():
         return False
 
-    # return os.path.exists("/dev/xen/blktapctrl")
-    f = open("/proc/modules")
-    lines = f.readlines()
-    f.close()
+    global _host_blktap_capable
+    if _host_blktap_capable is not None:
+        return _host_blktap_capable
+
+    lines = file("/proc/modules").readlines()
     for line in lines:
         if line.startswith("blktap ") or line.startswith("xenblktap "):
-            return True
-    return False
+            _host_blktap_capable = True
+            break
 
-
-# this function is directly from xend/server/netif.py and is thus
-# available under the LGPL,
-# Copyright 2004, 2005 Mike Wray <mike.wray@hp.com>
-# Copyright 2005 XenSource Ltd
-def randomMAC(typ, conn=None):
-    """Generate a random MAC address.
-
-    00-16-3E allocated to xensource
-    52-54-00 used by qemu/kvm
-
-    The OUI list is available at http://standards.ieee.org/regauth/oui/oui.txt.
-
-    The remaining 3 fields are random, with the first bit of the first
-    random field set 0.
-
-    >>> randomMAC().startswith("00:16:3E")
-    True
-    >>> randomMAC("foobar").startswith("00:16:3E")
-    True
-    >>> randomMAC("xen").startswith("00:16:3E")
-    True
-    >>> randomMAC("qemu").startswith("52:54:00")
-    True
-
-    @return: MAC address string
-    """
-    if conn and hasattr(conn, "_virtinst__fake_conn_predictable"):
-        # Testing hack
-        return "00:11:22:33:44:55"
-
-    ouis = {'xen': [0x00, 0x16, 0x3E], 'qemu': [0x52, 0x54, 0x00]}
-
-    try:
-        oui = ouis[typ]
-    except KeyError:
-        oui = ouis['xen']
-
-    mac = oui + [
-            random.randint(0x00, 0xff),
-            random.randint(0x00, 0xff),
-            random.randint(0x00, 0xff)]
-    return ':'.join(["%02x" % x for x in mac])
+    if not _host_blktap_capable:
+        _host_blktap_capable = False
+    return _host_blktap_capable
 
 
 def randomUUID(conn):
-    if conn and hasattr(conn, "_virtinst__fake_conn_predictable"):
+    if hasattr(conn, "_virtinst__fake_conn_predictable"):
         # Testing hack
         return "00000000-1111-2222-3333-444444444444"
 
     u = [random.randint(0, 255) for ignore in range(0, 16)]
-    u[7] = (u[7] & 0x0F) | (4 << 4)
-    u[9] = (u[9] & 0x3F) | (2 << 6)
+    u[6] = (u[6] & 0x0F) | (4 << 4)
+    u[8] = (u[8] & 0x3F) | (2 << 6)
     return "-".join(["%02x" * 4, "%02x" * 2, "%02x" * 2, "%02x" * 2,
                      "%02x" * 6]) % tuple(u)
-
-
-def get_max_vcpus(conn, typ):
-    """@param conn: libvirt connection to poll for max possible vcpus
-       @type type: optional guest type (kvm, etc.)"""
-    if typ is None:
-        typ = conn.getType()
-    try:
-        m = conn.getMaxVcpus(typ.lower())
-    except libvirt.libvirtError:
-        m = 32
-    return m
 
 
 def xml_escape(xml):
@@ -547,78 +390,170 @@ def xml_escape(xml):
     return xml
 
 
-def is_storage_capable(conn):
-    """check if virConnectPtr passed has storage API support"""
-    from virtinst import support
-
-    return support.check_conn_support(conn, support.SUPPORT_CONN_STORAGE)
-
-
-def get_xml_path(xml, path=None, func=None):
+def uri_split(uri):
     """
-    Return the content from the passed xml xpath, or return the result
-    of a passed function (receives xpathContext as its only arg)
+    Parse a libvirt hypervisor uri into it's individual parts
+    @returns: tuple of the form (scheme (ex. 'qemu', 'xen+ssh'), username,
+                                 hostname, path (ex. '/system'), query,
+                                 fragment)
     """
-    doc = None
-    ctx = None
-    result = None
-
-    try:
-        doc = libxml2.parseDoc(xml)
-        ctx = doc.xpathNewContext()
-
-        if path:
-            ret = ctx.xpathEval(path)
-            if ret is not None:
-                if type(ret) == list:
-                    if len(ret) >= 1:
-                        result = ret[0].content
-                else:
-                    result = ret
-
-        elif func:
-            result = func(ctx)
-
+    def splitnetloc(url, start=0):
+        for c in '/?#':  # the order is important!
+            delim = url.find(c, start)
+            if delim >= 0:
+                break
         else:
-            raise ValueError(_("'path' or 'func' is required."))
-    finally:
-        if doc:
-            doc.freeDoc()
-        if ctx:
-            ctx.xpathFreeContext()
-    return result
+            delim = len(url)
+        return url[start:delim], url[delim:]
+
+    username = netloc = query = fragment = ''
+    i = uri.find(":")
+    if i > 0:
+        scheme, uri = uri[:i].lower(), uri[i + 1:]
+        if uri[:2] == '//':
+            netloc, uri = splitnetloc(uri, 2)
+            offset = netloc.find("@")
+            if offset > 0:
+                username = netloc[0:offset]
+                netloc = netloc[offset + 1:]
+        if '#' in uri:
+            uri, fragment = uri.split('#', 1)
+        if '?' in uri:
+            uri, query = uri.split('?', 1)
+    else:
+        scheme = uri.lower()
+    return scheme, username, netloc, uri, query, fragment
 
 
-def lookup_pool_by_path(conn, path):
+def is_error_nosupport(err):
     """
-    Return the first pool with matching matching target path.
-    return the first we find, active or inactive. This iterates over
-    all pools and dumps their xml, so it is NOT quick.
-    Favor running pools over inactive pools.
-    @returns: virStoragePool object if found, None otherwise
+    Check if passed exception indicates that the called libvirt command isn't
+    supported
+
+    @param err: Exception raised from command call
+    @returns: True if command isn't supported, False if we can't determine
     """
-    if not is_storage_capable(conn):
-        return None
+    if not isinstance(err, libvirt.libvirtError):
+        return False
 
-    def check_pool(poolname, path):
-        pool = conn.storagePoolLookupByName(poolname)
-        xml_path = get_xml_path(pool.XMLDesc(0), "/pool/target/path")
-        if xml_path is not None and os.path.abspath(xml_path) == path:
-            return pool
+    if (err.get_error_code() == libvirt.VIR_ERR_RPC or
+        err.get_error_code() == libvirt.VIR_ERR_NO_SUPPORT):
+        return True
 
-    running_list = conn.listStoragePools()
-    inactive_list = conn.listDefinedStoragePools()
-    for plist in [running_list, inactive_list]:
-        for name in plist:
-            p = check_pool(name, path)
-            if p:
-                return p
-    return None
+    return False
 
 
-def _test():
-    import doctest
-    doctest.testmod()
+def exception_is_libvirt_error(e, error):
+    return (hasattr(libvirt, error) and
+            e.get_error_code() == getattr(libvirt, error))
 
-if __name__ == "__main__":
-    _test()
+
+def local_libvirt_version():
+    """
+    Lookup the local libvirt library version, but cache the value since
+    it never changes.
+    """
+    key = "__virtinst_cached_getVersion"
+    if not hasattr(libvirt, key):
+        setattr(libvirt, key, libvirt.getVersion())
+    return getattr(libvirt, key)
+
+
+def uuidstr(rawuuid):
+    hx = ['0', '1', '2', '3', '4', '5', '6', '7',
+          '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
+    uuid = []
+    for i in range(16):
+        uuid.append(hx[((ord(rawuuid[i]) >> 4) & 0xf)])
+        uuid.append(hx[(ord(rawuuid[i]) & 0xf)])
+        if i == 3 or i == 5 or i == 7 or i == 9:
+            uuid.append('-')
+    return "".join(uuid)
+
+
+
+
+def get_system_scratchdir(hvtype):
+    scratchdir = os.environ.get("VIRTINST_TEST_SCRATCHDIR", None)
+    if scratchdir:
+        return scratchdir
+
+    if hvtype == "test":
+        return "/tmp"
+    elif hvtype == "xen":
+        return "/var/lib/xen"
+    else:
+        return "/var/lib/libvirt/boot"
+
+
+def make_scratchdir(conn, hvtype):
+    scratch = None
+    if not conn.is_session_uri():
+        scratch = get_system_scratchdir(hvtype)
+
+    if (not scratch or
+        not os.path.exists(scratch) or
+        not os.access(scratch, os.W_OK)):
+        scratch = os.path.join(get_cache_dir(), "boot")
+        if not os.path.exists(scratch):
+            os.makedirs(scratch, 0751)
+
+    return scratch
+
+
+def pretty_mem(val):
+    val = int(val)
+    if val > (10 * 1024 * 1024):
+        return "%2.2f GB" % (val / (1024.0 * 1024.0))
+    else:
+        return "%2.0f MB" % (val / 1024.0)
+
+
+def pretty_bytes(val):
+    val = int(val)
+    if val > (1024 * 1024 * 1024):
+        return "%2.2f GB" % (val / (1024.0 * 1024.0 * 1024.0))
+    else:
+        return "%2.2f MB" % (val / (1024.0 * 1024.0))
+
+
+def get_cache_dir():
+    ret = ""
+    try:
+        # We don't want to depend on glib for virt-install
+        from gi.repository import GLib  # pylint: disable=E0611
+        ret = GLib.get_user_cache_dir()
+    except ImportError:
+        pass
+
+    if not ret:
+        ret = os.environ.get("XDG_CACHE_HOME")
+    if not ret:
+        ret = os.path.expanduser("~/.cache")
+    return os.path.join(ret, "virt-manager")
+
+
+def convert_units(value, old_unit, new_unit):
+    def get_factor(unit):
+        factor = 1000
+        if unit[-2:] == 'ib':
+            factor = 1024
+        return factor
+
+    def get_power(unit):
+        powers = ('k', 'm', 'g', 't', 'p', 'e')
+        power = 0
+        if unit[0] in powers:
+            power = powers.index(unit[0]) + 1
+        return power
+
+    # First convert it all into bytes
+    factor = get_factor(old_unit)
+    power = get_power(old_unit)
+    in_bytes = value * pow(factor, power)
+
+    # Then convert it to the target unit
+    factor = get_factor(new_unit)
+    power = get_power(new_unit)
+
+    return in_bytes / pow(factor, power)

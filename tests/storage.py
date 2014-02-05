@@ -1,8 +1,9 @@
+# Copyright (C) 2013 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free  Software Foundation; either version 2 of the License, or
-# (at your option)  any later version.
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,14 +15,13 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
+import logging
 import os
 import unittest
 
-import virtinst.Storage
-from virtinst.Storage import StoragePool, StorageVolume
-from tests import utils
+from virtinst import StoragePool, StorageVolume
 
-import libvirt
+from tests import utils
 
 # pylint: disable=W0212
 # Access to protected member, needed to unittest stuff
@@ -30,7 +30,6 @@ basepath = os.path.join(os.getcwd(), "tests", "storage-xml")
 
 
 def generate_uuid_from_string(msg):
-
     res = msg.split("-", 1)
     if len(res) > 1:
         # Split off common prefix
@@ -41,18 +40,16 @@ def generate_uuid_from_string(msg):
         numstr += str(ord(c))
 
     numstr *= 32
-    numstr = numstr[0:32]
-
-    return numstr
+    return "-".join([numstr[0:8], numstr[8:12], numstr[12:16], numstr[16:20],
+                     numstr[20:32]])
 
 
 def _findFreePoolName(conn, namebase):
-
     i = 0
     while True:
         poolname = namebase + "-%d" % i
         try:
-            StorageVolume.lookup_pool_by_name(conn=conn, pool_name=poolname)
+            conn.storagePoolLookupByName(poolname)
             i += 1
         except:
             return poolname
@@ -60,7 +57,6 @@ def _findFreePoolName(conn, namebase):
 
 def createPool(conn, ptype, poolname=None, fmt=None, target_path=None,
                source_path=None, source_name=None, uuid=None, iqn=None):
-    poolclass = StoragePool.get_pool_class(ptype)
 
     if poolname is None:
         poolname = _findFreePoolName(conn, str(ptype) + "-pool")
@@ -68,21 +64,25 @@ def createPool(conn, ptype, poolname=None, fmt=None, target_path=None,
     if uuid is None:
         uuid = generate_uuid_from_string(poolname)
 
-    pool_inst = poolclass(conn=conn, name=poolname, uuid=uuid)
+    pool_inst = StoragePool(conn)
+    pool_inst.name = poolname
+    pool_inst.type = ptype
+    pool_inst.uuid = uuid
 
-    if hasattr(pool_inst, "host"):
+    if pool_inst.supports_property("host"):
         pool_inst.host = "some.random.hostname"
-    if hasattr(pool_inst, "source_path"):
+    if pool_inst.supports_property("source_path"):
         pool_inst.source_path = source_path or "/some/source/path"
-    if hasattr(pool_inst, "target_path"):
+    if pool_inst.supports_property("target_path"):
         pool_inst.target_path = target_path or "/some/target/path"
-    if fmt and hasattr(pool_inst, "format"):
+    if fmt and pool_inst.supports_property("format"):
         pool_inst.format = fmt
-    if source_name and hasattr(pool_inst, "source_name"):
+    if source_name and pool_inst.supports_property("source_name"):
         pool_inst.source_name = source_name
-    if iqn and hasattr(pool_inst, "iqn"):
+    if iqn and pool_inst.supports_property("iqn"):
         pool_inst.iqn = iqn
 
+    pool_inst.validate()
     return poolCompare(pool_inst)
 
 
@@ -97,69 +97,84 @@ def poolCompare(pool_inst):
     return pool_inst.install(build=True, meter=None, create=True)
 
 
-def createVol(poolobj, volname=None, input_vol=None, clone_vol=None):
-    volclass = StorageVolume.get_volume_for_pool(pool_object=poolobj)
-
+def createVol(conn, poolobj, volname=None, input_vol=None, clone_vol=None):
     if volname is None:
         volname = poolobj.name() + "-vol"
 
+    # Format here depends on libvirt-1.2.0 and later
+    if clone_vol and conn.local_libvirt_version() < 1002000:
+        logging.debug("skip clone compare")
+        return
+
     alloc = 5 * 1024 * 1024 * 1024
     cap = 10 * 1024 * 1024 * 1024
-    vol_inst = volclass(name=volname, capacity=cap, allocation=alloc,
-                        pool=poolobj)
+    vol_inst = StorageVolume(conn)
+    vol_inst.pool = poolobj
+    vol_inst.name = volname
+    vol_inst.capacity = cap
+    vol_inst.allocation = alloc
 
-    perms = {}
-    perms["mode"] = 0700
-    perms["owner"] = 10736
-    perms["group"] = 10736
-
-    vol_inst.perms = perms
-    if input_vol or clone_vol:
-        if not virtinst.Storage.is_create_vol_from_supported(poolobj._conn):
-            return
+    vol_inst.permissions.mode = "0700"
+    vol_inst.permissions.owner = "10736"
+    vol_inst.permissions.group = "10736"
 
     if input_vol:
         vol_inst.input_vol = input_vol
+        vol_inst.sync_input_vol()
     elif clone_vol:
-        vol_inst = virtinst.Storage.CloneVolume(volname, clone_vol)
+        vol_inst = StorageVolume(conn, parsexml=clone_vol.XMLDesc(0))
+        vol_inst.input_vol = clone_vol
+        vol_inst.sync_input_vol()
+        vol_inst.name = volname
 
+    vol_inst.validate()
     filename = os.path.join(basepath, vol_inst.name + ".xml")
-
-    # Make sure permissions are properly set
     utils.diff_compare(vol_inst.get_xml_config(), filename)
-
     return vol_inst.install(meter=False)
 
 
 class TestStorage(unittest.TestCase):
 
     def setUp(self):
-        self.conn = libvirt.open("test:///default")
+        self.conn = utils.open_testdefault()
 
     def testDirPool(self):
-        poolobj = createPool(self.conn, StoragePool.TYPE_DIR, "pool-dir")
-        invol = createVol(poolobj)
-        createVol(poolobj, volname=invol.name() + "input", input_vol=invol)
-        createVol(poolobj, volname=invol.name() + "clone", clone_vol=invol)
+        poolobj = createPool(self.conn,
+                             StoragePool.TYPE_DIR, "pool-dir")
+        invol = createVol(self.conn, poolobj)
+        createVol(self.conn, poolobj,
+                  volname=invol.name() + "input", input_vol=invol)
+        createVol(self.conn, poolobj,
+                  volname=invol.name() + "clone", clone_vol=invol)
 
     def testFSPool(self):
-        poolobj = createPool(self.conn, StoragePool.TYPE_FS, "pool-fs")
-        invol = createVol(poolobj)
-        createVol(poolobj, volname=invol.name() + "input", input_vol=invol)
-        createVol(poolobj, volname=invol.name() + "clone", clone_vol=invol)
+        poolobj = createPool(self.conn,
+                             StoragePool.TYPE_FS, "pool-fs")
+        invol = createVol(self.conn, poolobj)
+        createVol(self.conn, poolobj,
+                  volname=invol.name() + "input", input_vol=invol)
+        createVol(self.conn, poolobj,
+                  volname=invol.name() + "clone", clone_vol=invol)
 
     def testNetFSPool(self):
-        poolobj = createPool(self.conn, StoragePool.TYPE_NETFS, "pool-netfs")
-        invol = createVol(poolobj)
-        createVol(poolobj, volname=invol.name() + "input", input_vol=invol)
-        createVol(poolobj, volname=invol.name() + "clone", clone_vol=invol)
+        poolobj = createPool(self.conn,
+                             StoragePool.TYPE_NETFS, "pool-netfs")
+        invol = createVol(self.conn, poolobj)
+        createVol(self.conn, poolobj,
+                  volname=invol.name() + "input", input_vol=invol)
+        createVol(self.conn, poolobj,
+                  volname=invol.name() + "clone", clone_vol=invol)
 
     def testLVPool(self):
-        poolobj = createPool(self.conn, StoragePool.TYPE_LOGICAL,
-                             "pool-logical")
-        invol = createVol(poolobj)
-        createVol(poolobj, volname=invol.name() + "input", input_vol=invol)
-        createVol(poolobj, volname=invol.name() + "clone", clone_vol=invol)
+        poolobj = createPool(self.conn,
+                             StoragePool.TYPE_LOGICAL,
+                             "pool-logical",
+                             target_path="/dev/pool-logical")
+        invol = createVol(self.conn, poolobj)
+        createVol(self.conn, poolobj,
+                  volname=invol.name() + "input", input_vol=invol)
+        createVol(self.conn,
+                  poolobj, volname=invol.name() + "clone", clone_vol=invol)
 
         # Test parsing source name for target path
         createPool(self.conn, StoragePool.TYPE_LOGICAL,
@@ -167,69 +182,61 @@ class TestStorage(unittest.TestCase):
                    target_path="/dev/vgfoobar")
 
         # Test with source name
-        createPool(self.conn, StoragePool.TYPE_LOGICAL, "pool-logical-srcname",
+        createPool(self.conn,
+                   StoragePool.TYPE_LOGICAL, "pool-logical-srcname",
                    source_name="vgname")
 
         # Test creating with many devices
-        createPool(self.conn, StoragePool.TYPE_LOGICAL, "pool-logical-manydev",
-                   source_path=["/tmp/path1", "/tmp/path2", "/tmp/path3"],
-                   target_path=None)
+        # XXX: Need to wire this up
+        #createPool(self.conn,
+        #           StoragePool.TYPE_LOGICAL, "pool-logical-manydev",
+        #           source_path=["/tmp/path1", "/tmp/path2", "/tmp/path3"],
+        #           target_path=None)
 
     def testDiskPool(self):
-        poolobj = createPool(self.conn, StoragePool.TYPE_DISK,
+        poolobj = createPool(self.conn,
+                             StoragePool.TYPE_DISK,
                              "pool-disk", fmt="dos")
-        invol = createVol(poolobj)
-        createVol(poolobj, volname=invol.name() + "input", input_vol=invol)
-        createVol(poolobj, volname=invol.name() + "clone", clone_vol=invol)
+        invol = createVol(self.conn, poolobj)
+        createVol(self.conn, poolobj,
+                  volname=invol.name() + "input", input_vol=invol)
+        createVol(self.conn, poolobj,
+                  volname=invol.name() + "clone", clone_vol=invol)
 
     def testISCSIPool(self):
-        poolobj = createPool(self.conn, StoragePool.TYPE_ISCSI, "pool-iscsi")
-        # Not supported
-        #volobj = createVol(poolobj)
-        self.assertRaises(RuntimeError, createVol, poolobj)
-
-        createPool(self.conn, StoragePool.TYPE_ISCSI, "pool-iscsi-iqn",
+        createPool(self.conn,
+                   StoragePool.TYPE_ISCSI, "pool-iscsi",
                    iqn="foo.bar.baz.iqn")
 
     def testSCSIPool(self):
-        poolobj = createPool(self.conn, StoragePool.TYPE_SCSI, "pool-scsi")
-        # Not supported
-        #volobj = createVol(poolobj)
-        self.assertRaises(RuntimeError, createVol, poolobj)
+        createPool(self.conn, StoragePool.TYPE_SCSI, "pool-scsi")
 
     def testMpathPool(self):
-        poolobj = createPool(self.conn, StoragePool.TYPE_MPATH, "pool-mpath")
-        # Not supported
-        #volobj = createVol(poolobj)
-        self.assertRaises(RuntimeError, createVol, poolobj)
+        createPool(self.conn, StoragePool.TYPE_MPATH, "pool-mpath")
 
-    def _enumerateCompare(self, pool_list):
+    def _enumerateCompare(self, name, pool_list):
         for pool in pool_list:
-            pool.name = pool.name + str(pool_list.index(pool))
+            pool.name = name + str(pool_list.index(pool))
             pool.uuid = generate_uuid_from_string(pool.name)
             poolCompare(pool)
 
     def testEnumerateLogical(self):
         name = "pool-logical-list"
-
-        lst = StoragePool.pool_list_from_sources(self.conn, name,
+        lst = StoragePool.pool_list_from_sources(self.conn,
                                                  StoragePool.TYPE_LOGICAL)
-        self._enumerateCompare(lst)
+        self._enumerateCompare(name, lst)
 
     def testEnumerateNetFS(self):
         name = "pool-netfs-list"
         host = "example.com"
-
-        lst = StoragePool.pool_list_from_sources(self.conn, name,
+        lst = StoragePool.pool_list_from_sources(self.conn,
                                                  StoragePool.TYPE_NETFS,
                                                  host=host)
-        self._enumerateCompare(lst)
+        self._enumerateCompare(name, lst)
 
     def testEnumerateiSCSI(self):
-        name = "pool-iscsi-list"
         host = "example.com"
-
-        lst = StoragePool.pool_list_from_sources(self.conn, name,
+        lst = StoragePool.pool_list_from_sources(self.conn,
                                                  StoragePool.TYPE_ISCSI,
                                                  host=host)
         self.assertTrue(len(lst) == 0)

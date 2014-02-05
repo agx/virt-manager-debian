@@ -22,59 +22,74 @@ The following options are accepted when running C<virt-manager>:
 
 =over 4
 
-=item -h, -help
+=item -h, --help
 
 Display command line help summary
 
+=item --version
+
+Show virt-manager's version number and exit
+
 =item -c URI, --connect=URI
 
-Specify the hypervisor connection URI
+Specify the hypervisor connection C<URI>
 
 =item --debug
 
 List debugging output to the console (normally this is only logged in
-~/.virt-manager/virt-manager.log). This function implies --no-fork.
+~/.cache/virt-manager/virt-manager.log). This function implies --no-fork.
 
 =item --no-fork
 
-Don't fork C<virt-manager> off into the backround: run it blocking the
+Don't fork C<virt-manager> off into the background: run it blocking the
 current terminal. Useful for seeing possible errors dumped to stdout/stderr.
 
 =item --no-conn-autostart
 
 Don't autostart any libvirt connections when launching C<virt-manager>.
 
+=item --show-DIALOG-WINDOW
+
+Display the corresponding C<DIALOG-WINDOW> when launching C<virt-manager>. This
+function implies --no-conn-autostart and the manager window will not be shown
+at startup in this case.
+
+The following C<DIALOG-WINDOW> options are currently available:
+
+=over 4
+
 =item --show-domain-creator
 
 Display the wizard for creating new virtual machines
 
-=item --show-domain-editor=UUID
+=item --show-domain-editor=NAME|ID|UUID
 
 Display the dialog for editing properties of the virtual machine with
-unique ID matching C<UUID>
+unique ID matching either the domain name, ID, or UUID
 
-=item --show-domain-performance=UUID
+=item --show-domain-performance=NAME|ID|UUID
 
 Display the dialog for monitoring performance of the virtual machine with
-unique ID matching C<UUID>
+unique ID matching either the domain name, ID, or UUID
 
-=item --show-domain-console=UUID
+=item --show-domain-console=NAME|ID|UUID
 
 Display the virtual console of the virtual machine with
-unique ID matching C<UUID>
+unique ID matching either the domain name, ID, or UUID
 
 =item --show-host-summary
 
 Display the main window summarizing performance for all virtual machines
 on the host.
 
+=item --spice-disable-auto-usbredir
+Auto USB redirection is supported by default. This option switches off it.
+
+=back
+
 =back
 
 Standard GTK options like --g-fatal-warnings are also accepted.
-
-=head1 AUTHOR
-
-Written by Daniel P. Berrange and Cole Robinson.
 
 =head1 BUGS
 
@@ -82,7 +97,7 @@ Please see L<http://virt-manager.org/page/BugReporting>
 
 =head1 COPYRIGHT
 
-Copyright (C) 2006-2013 Red Hat, Inc, and various contributors.
+Copyright (C) Red Hat, Inc, and various contributors.
 This is free software. You may redistribute copies of it under the terms of the GNU General
 Public License C<http://www.gnu.org/licenses/gpl.html>. There is NO WARRANTY, to the extent
 permitted by law.

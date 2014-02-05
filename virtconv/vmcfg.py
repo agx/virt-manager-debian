@@ -1,11 +1,12 @@
+# Copyright (C) 2013 Red Hat, Inc.
 #
 # Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
 # Use is subject to license terms.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free  Software Foundation; either version 2 of the License, or
-# (at your option)  any later version.
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -18,9 +19,7 @@
 # MA 02110-1301 USA.
 #
 
-import platform
 from virtconv import diskcfg
-from virtinst import CapabilitiesParser
 
 VM_TYPE_UNKNOWN = 0
 VM_TYPE_PV = 1
@@ -58,7 +57,6 @@ class vm(object):
         self.arch = "i686"
         self.noacpi = None
         self.noapic = None
-        self.os_type = None
         self.os_variant = None
 
     def validate(self):
@@ -82,21 +80,3 @@ class vm(object):
             if disk.type == diskcfg.DISK_TYPE_DISK and not disk.path:
                 raise ValueError(_("Disk %s:%s storage does not exist")
                     % (bus, inst))
-
-
-def host(conn=None):
-    """
-    Return the host, as seen in platform.system(), but possibly from a
-    hypervisor connection.  Note: use default_arch() in almost all
-    cases, unless you need to detect the OS.  In particular, this value
-    gives no indication of 32 vs 64 bitness.
-    """
-    if conn:
-        cap = CapabilitiesParser.parse(conn.getCapabilities())
-        if cap.host.arch == "i86pc":
-            return "SunOS"
-        else:
-            # or Linux-alike. Hmm.
-            return "Linux"
-
-    return platform.system()

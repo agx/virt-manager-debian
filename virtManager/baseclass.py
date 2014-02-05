@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2010 Red Hat, Inc.
+# Copyright (C) 2010, 2013 Red Hat, Inc.
 # Copyright (C) 2010 Cole Robinson <crobinso@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -23,7 +23,7 @@ import os
 import sys
 import traceback
 
-import virtManager
+from virtManager import config
 
 # pylint: disable=E0611
 from gi.repository import Gdk
@@ -36,9 +36,22 @@ from gi.repository import Gtk
 class vmmGObject(GObject.GObject):
     _leak_check = True
 
+    @staticmethod
+    def idle_add(func, *args, **kwargs):
+        """
+        Make sure idle functions are run thread safe
+        """
+        def cb():
+            try:
+                return func(*args, **kwargs)
+            except:
+                print traceback.format_exc()
+            return False
+        return GLib.idle_add(cb)
+
     def __init__(self):
         GObject.GObject.__init__(self)
-        self.config = virtManager.util.running_config
+        self.config = config.running_config
 
         self._gobject_handles = []
         self._gobject_timeouts = []
@@ -60,7 +73,8 @@ class vmmGObject(GObject.GObject):
             for h in self._gconf_handles[:]:
                 self.remove_gconf_handle(h)
             for h in self._gobject_handles[:]:
-                self.disconnect(h)
+                if GObject.GObject.handler_is_connected(self, h):
+                    self.disconnect(h)
             for h in self._gobject_timeouts[:]:
                 self.remove_gobject_timeout(h)
 
@@ -141,18 +155,6 @@ class vmmGObject(GObject.GObject):
 
         self.idle_add(emitwrap, signal, *args)
 
-    def idle_add(self, func, *args):
-        """
-        Make sure idle functions are run thread safe
-        """
-        def cb():
-            try:
-                return func(*args)
-            except:
-                print traceback.format_exc()
-            return False
-        return GLib.idle_add(cb)
-
     def timeout_add(self, timeout, func, *args):
         """
         Make sure timeout functions are run thread safe
@@ -179,8 +181,16 @@ class vmmGObject(GObject.GObject):
 
 
 class vmmGObjectUI(vmmGObject):
+    @staticmethod
+    def bind_escape_key_close_helper(topwin, close_cb):
+        def close_on_escape(src_ignore, event):
+            if Gdk.keyval_name(event.keyval) == "Escape":
+                close_cb()
+        topwin.connect("key-press-event", close_on_escape)
+
     def __init__(self, filename, windowname, builder=None, topwin=None):
         vmmGObject.__init__(self)
+        self._external_topwin = bool(topwin)
 
         if filename:
             uifile = os.path.join(self.config.get_ui_dir(), filename)
@@ -189,13 +199,23 @@ class vmmGObjectUI(vmmGObject):
             self.builder.set_translation_domain("virt-manager")
             self.builder.add_from_string(file(uifile).read())
 
-            self.topwin = self.widget(windowname)
-            self.topwin.hide()
+            if not topwin:
+                self.topwin = self.widget(windowname)
+                self.topwin.hide()
+            else:
+                self.topwin = topwin
         else:
             self.builder = builder
             self.topwin = topwin
 
-        self.err = virtManager.error.vmmErrorDialog(self.topwin)
+        self._err = None
+
+    def _get_err(self):
+        if self._err is None:
+            from virtManager import error
+            self._err = error.vmmErrorDialog(self.topwin)
+        return self._err
+    err = property(_get_err)
 
     def widget(self, name):
         return self.builder.get_object(name)
@@ -204,9 +224,10 @@ class vmmGObjectUI(vmmGObject):
         self.close()
         vmmGObject.cleanup(self)
         self.builder = None
-        self.topwin.destroy()
+        if not self._external_topwin:
+            self.topwin.destroy()
         self.topwin = None
-        self.err = None
+        self._err = None
 
     def _cleanup(self):
         raise NotImplementedError("_cleanup must be implemented in subclass")
@@ -215,8 +236,4 @@ class vmmGObjectUI(vmmGObject):
         pass
 
     def bind_escape_key_close(self):
-        def close_on_escape(src_ignore, event):
-            if Gdk.keyval_name(event.keyval) == "Escape":
-                self.close()
-
-        self.topwin.connect("key-press-event", close_on_escape)
+        self.bind_escape_key_close_helper(self.topwin, self.close)

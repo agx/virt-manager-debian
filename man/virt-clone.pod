@@ -18,9 +18,9 @@ uniqueness will be updated to avoid a clash between old and new guests.
 
 By default, virt-clone will show an error if the necessary information to
 clone the guest is not provided. The --auto-clone option will generate
-all needed input, aside from the source guest to clone. An interactive mode
-is available with the --prompt option, but this will only ask for the
-minimum required options.
+all needed input, aside from the source guest to clone.
+
+Please note, virt-clone does not change anything _inside_ the guest OS, it only duplicates disks and does host side changes. So things like changing passwords, changing static IP address, etc are outside the scope of this tool. For these types of changes, please see B<virt-sysprep>.
 
 =head1 OPTIONS
 
@@ -33,6 +33,10 @@ storage options via -file.
 =item -h, --help
 
 Show the help message and exit
+
+=item --version
+
+Show program's version number and exit
 
 =item  --connect=URI
 
@@ -146,18 +150,8 @@ cloning the original guest.
 =item -d, --debug
 
 Print debugging information to the terminal when running the install process.
-The debugging information is also stored in C<$HOME/.virtinst/virt-clone.log>
-even if this parameter is omitted.
-
-=item --force
-
-Prevent interactive prompts. If the intended prompt was a yes/no prompt, always
-say yes. For any other prompts, the application will exit.
-
-=item --prompt
-
-Specifically enable prompting for required information. Default prompting
-is off.
+The debugging information is also stored in
+C<~/.cache/virt-manager/virt-clone.log> even if this parameter is omitted.
 
 =back
 
@@ -197,25 +191,21 @@ new guest can do a filesystem resize when it boots.
        --file /dev/HostVG/DemoVM \
        --mac 52:54:00:34:11:54
 
-=head1 AUTHOR
-
-Written by Kazuki Mizushima, Cole Robinson, and a team of many other
-contributors.
-
 =head1 BUGS
 
 Please see http://virt-manager.org/page/BugReporting
 
 =head1 COPYRIGHT
 
-Copyright (C) Fujitsu Limited, and various contributors.
+Copyright (C) Fujitsu Limited, Copyright (C) Red Hat, Inc,
+and various contributors.
 This is free software. You may redistribute copies of it under the terms
 of the GNU General Public License C<http://www.gnu.org/licenses/gpl.html>.
 There is NO WARRANTY, to the extent permitted by law.
 
 =head1 SEE ALSO
 
-C<virsh(1)>, C<virt-install(1)>, C<virt-manager(1)>, the project website C<http://virt-manager.org>
+C<virt-sysprep(1)>, C<virsh(1)>, C<virt-install(1)>, C<virt-manager(1)>, the project website C<http://virt-manager.org>
 
 =cut
 

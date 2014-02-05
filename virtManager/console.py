@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# Copyright (C) 2006-2008 Red Hat, Inc.
+# Copyright (C) 2006-2008, 2013 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 # Copyright (C) 2010 Marc-André Lureau <marcandre.lureau@redhat.com>
 #
@@ -31,19 +31,23 @@ from gi.repository import SpiceClientGLib
 
 import libvirt
 
+import logging
 import os
+import Queue
 import signal
 import socket
-import logging
+import threading
 
-import virtManager.uihelpers as uihelpers
 from virtManager.autodrawer import AutoDrawer
 from virtManager.baseclass import vmmGObjectUI, vmmGObject
+from virtManager.serialcon import vmmSerialConsole
+from virtManager.details import DETAILS_PAGE_CONSOLE
 
 # Console pages
-PAGE_UNAVAILABLE = 0
-PAGE_AUTHENTICATE = 1
-PAGE_VIEWER = 2
+(CONSOLE_PAGE_UNAVAILABLE,
+ CONSOLE_PAGE_AUTHENTICATE,
+ CONSOLE_PAGE_VIEWER,
+ CONSOLE_PAGE_OFFSET) = range(4)
 
 
 def has_property(obj, setting):
@@ -52,6 +56,7 @@ def has_property(obj, setting):
     except TypeError:
         return False
     return True
+
 
 
 class ConnectionInfo(object):
@@ -63,55 +68,165 @@ class ConnectionInfo(object):
         self.gport      = gdev.port and str(gdev.port) or None
         self.gsocket    = gdev.socket
         self.gaddr      = gdev.listen or "127.0.0.1"
+        self.gtlsport   = gdev.tlsPort or None
 
         self.transport, self.connuser = conn.get_transport()
-        self._connhost = conn.get_uri_hostname() or "127.0.0.1"
 
-        self._connport = None
-        if self._connhost.count(":"):
-            self._connhost, self._connport = self._connhost.split(":", 1)
+        (self._connhost,
+         self._connport) = conn.get_backend().get_uri_host_port()
+        if self._connhost == "localhost":
+            self._connhost = "127.0.0.1"
+
+    def _is_listen_localhost(self, host=None):
+        return (host or self.gaddr) in ["127.0.0.1", "::1"]
+
+    def _is_listen_any(self):
+        return self.gaddr in ["0.0.0.0", "::"]
 
     def need_tunnel(self):
-        if self.gaddr != "127.0.0.1":
+        if not self._is_listen_localhost():
             return False
-
         return self.transport in ["ssh", "ext"]
+
+    def is_bad_localhost(self):
+        """
+        Return True if the guest is listening on localhost, but the libvirt
+        URI doesn't give us any way to tunnel the connection
+        """
+        host = self.get_conn_host()[0]
+        if self.need_tunnel():
+            return False
+        return self.transport and self._is_listen_localhost(host)
 
     def get_conn_host(self):
         host = self._connhost
         port = self._connport
+        tlsport = None
 
         if not self.need_tunnel():
             port = self.gport
-            if self.gaddr != "0.0.0.0":
+            tlsport = self.gtlsport
+            if not self._is_listen_any():
                 host = self.gaddr
 
-        return host, port
+        return host, port, tlsport
 
     def logstring(self):
         return ("proto=%s trans=%s connhost=%s connuser=%s "
-                "connport=%s gaddr=%s gport=%s gsocket=%s" %
+                "connport=%s gaddr=%s gport=%s gtlsport=%s gsocket=%s" %
                 (self.gtype, self.transport, self._connhost, self.connuser,
-                 self._connport, self.gaddr, self.gport, self.gsocket))
+                 self._connport, self.gaddr, self.gport, self.gtlsport,
+                 self.gsocket))
     def console_active(self):
         if self.gsocket:
             return True
-        if not self.gport:
+        if (self.gport in [None, -1] and self.gtlsport in [None, -1]):
             return False
-        return int(self.gport) == -1
+        return True
 
 
-class Tunnel(object):
+class _TunnelScheduler(object):
+    """
+    If the user is using Spice + SSH URI + no SSH keys, we need to
+    serialize connection opening otherwise ssh-askpass gets all angry.
+    This handles the locking and scheduling.
+
+    It's only instantiated once for the whole app, because we serialize
+    independent of connection, vm, etc.
+    """
+    def __init__(self):
+        self._thread = threading.Thread(name="Tunnel thread",
+                                        target=self._handle_queue,
+                                        args=())
+        self._thread.daemon = True
+        self._queue = Queue.Queue()
+        self._lock = threading.Lock()
+
+    def _handle_queue(self):
+        while True:
+            cb, args, = self._queue.get()
+            self.lock()
+            vmmGObject.idle_add(cb, *args)
+
+    def schedule(self, cb, *args):
+        if not self._thread.is_alive():
+            self._thread.start()
+        self._queue.put((cb, args))
+
+    def lock(self):
+        self._lock.acquire()
+    def unlock(self):
+        self._lock.release()
+
+_tunnel_sched = _TunnelScheduler()
+
+
+class _Tunnel(object):
     def __init__(self):
         self.outfd = None
         self.errfd = None
         self.pid = None
+        self._outfds = None
+        self._errfds = None
+        self.closed = False
 
     def open(self, ginfo):
-        if self.outfd is not None:
+        self._outfds = socket.socketpair()
+        self._errfds = socket.socketpair()
+
+        return self._outfds[0].fileno(), self._launch_tunnel, ginfo
+
+    def close(self):
+        if self.closed:
+            return
+        self.closed = True
+
+        logging.debug("Close tunnel PID=%s OUTFD=%s ERRFD=%s",
+                      self.pid,
+                      self.outfd and self.outfd.fileno() or self._outfds,
+                      self.errfd and self.errfd.fileno() or self._errfds)
+
+        if self.outfd:
+            self.outfd.close()
+        elif self._outfds:
+            self._outfds[0].close()
+            self._outfds[1].close()
+        self.outfd = None
+        self._outfds = None
+
+        if self.errfd:
+            self.errfd.close()
+        elif self._errfds:
+            self._errfds[0].close()
+            self._errfds[1].close()
+        self.errfd = None
+        self._errfds = None
+
+        if self.pid:
+            os.kill(self.pid, signal.SIGKILL)
+            os.waitpid(self.pid, 0)
+        self.pid = None
+
+    def get_err_output(self):
+        errout = ""
+        while True:
+            try:
+                new = self.errfd.recv(1024)
+            except:
+                break
+
+            if not new:
+                break
+
+            errout += new
+
+        return errout
+
+    def _launch_tunnel(self, ginfo):
+        if self.closed:
             return -1
 
-        host, port = ginfo.get_conn_host()
+        host, port, ignore = ginfo.get_conn_host()
 
         # Build SSH cmd
         argv = ["ssh", "ssh"]
@@ -155,69 +270,32 @@ class Tunnel(object):
         argv_str = reduce(lambda x, y: x + " " + y, argv[1:])
         logging.debug("Creating SSH tunnel: %s", argv_str)
 
-        fds      = socket.socketpair()
-        errorfds = socket.socketpair()
-
         pid = os.fork()
         if pid == 0:
-            fds[0].close()
-            errorfds[0].close()
+            self._outfds[0].close()
+            self._errfds[0].close()
 
             os.close(0)
             os.close(1)
             os.close(2)
-            os.dup(fds[1].fileno())
-            os.dup(fds[1].fileno())
-            os.dup(errorfds[1].fileno())
+            os.dup(self._outfds[1].fileno())
+            os.dup(self._outfds[1].fileno())
+            os.dup(self._errfds[1].fileno())
             os.execlp(*argv)
             os._exit(1)  # pylint: disable=W0212
         else:
-            fds[1].close()
-            errorfds[1].close()
+            self._outfds[1].close()
+            self._errfds[1].close()
 
-        logging.debug("Tunnel PID=%d OUTFD=%d ERRFD=%d",
-                      pid, fds[0].fileno(), errorfds[0].fileno())
-        errorfds[0].setblocking(0)
+        logging.debug("Open  tunnel PID=%d OUTFD=%d ERRFD=%d",
+                      pid, self._outfds[0].fileno(), self._errfds[0].fileno())
+        self._errfds[0].setblocking(0)
 
-        self.outfd = fds[0]
-        self.errfd = errorfds[0]
+        self.outfd = self._outfds[0]
+        self.errfd = self._errfds[0]
+        self._outfds = None
+        self._errfds = None
         self.pid = pid
-
-        fd = fds[0].fileno()
-        if fd < 0:
-            raise SystemError("can't open a new tunnel: fd=%d" % fd)
-        return fd
-
-    def close(self):
-        if self.outfd is None:
-            return
-
-        logging.debug("Shutting down tunnel PID=%d OUTFD=%d ERRFD=%d",
-                      self.pid, self.outfd.fileno(),
-                      self.errfd.fileno())
-        self.outfd.close()
-        self.outfd = None
-        self.errfd.close()
-        self.errfd = None
-
-        os.kill(self.pid, signal.SIGKILL)
-        os.waitpid(self.pid, 0)
-        self.pid = None
-
-    def get_err_output(self):
-        errout = ""
-        while True:
-            try:
-                new = self.errfd.recv(1024)
-            except:
-                break
-
-            if not new:
-                break
-
-            errout += new
-
-        return errout
 
 
 class Tunnels(object):
@@ -226,9 +304,11 @@ class Tunnels(object):
         self._tunnels = []
 
     def open_new(self):
-        t = Tunnel()
-        fd = t.open(self.ginfo)
+        t = _Tunnel()
+        fd, cb, args = t.open(self.ginfo)
         self._tunnels.append(t)
+        _tunnel_sched.schedule(cb, args)
+
         return fd
 
     def close_all(self):
@@ -240,6 +320,9 @@ class Tunnels(object):
         for l in self._tunnels:
             errout += l.get_err_output()
         return errout
+
+    lock = _tunnel_sched.lock
+    unlock = _tunnel_sched.unlock
 
 
 class Viewer(vmmGObject):
@@ -262,6 +345,12 @@ class Viewer(vmmGObject):
     def get_pixbuf(self):
         return self.display.get_pixbuf()
 
+    def open_ginfo(self, ginfo):
+        if ginfo.need_tunnel():
+            self.open_fd(self.console.tunnels.open_new())
+        else:
+            self.open_host(ginfo)
+
     def get_grab_keys(self):
         raise NotImplementedError()
 
@@ -271,17 +360,26 @@ class Viewer(vmmGObject):
     def send_keys(self, keys):
         raise NotImplementedError()
 
-    def open_host(self, ginfo, password=None):
+    def open_host(self, ginfo):
         raise NotImplementedError()
 
-    def open_fd(self, fd, password=None):
+    def open_fd(self, fd):
         raise NotImplementedError()
 
     def get_desktop_resolution(self):
         raise NotImplementedError()
 
+    def has_usb_redirection(self):
+        return False
+    def has_agent(self):
+        return False
+    def set_resizeguest(self, val):
+        ignore = val
+
 
 class VNCViewer(Viewer):
+    viewer_type = "vnc"
+
     def __init__(self, console):
         Viewer.__init__(self, console)
         self.display = GtkVnc.Display.new()
@@ -289,6 +387,8 @@ class VNCViewer(Viewer):
 
         # Last noticed desktop resolution
         self.desktop_resolution = None
+
+        self._tunnel_unlocked = False
 
     def init_widget(self):
         self.set_grab_keys()
@@ -298,23 +398,41 @@ class VNCViewer(Viewer):
         # Make sure viewer doesn't force resize itself
         self.display.set_force_size(False)
 
-        self.console.refresh_scaling()
+        self.console.sync_scaling_with_display()
+        self.console.refresh_resizeguest_from_settings()
 
         self.display.set_keyboard_grab(True)
         self.display.set_pointer_grab(True)
 
+        self.display.connect("size-allocate",
+                             self.console.viewer_allocate_cb)
+
         self.display.connect("vnc-pointer-grab", self.console.pointer_grabbed)
-        self.display.connect("vnc-pointer-ungrab", self.console.pointer_ungrabbed)
+        self.display.connect("vnc-pointer-ungrab",
+                             self.console.pointer_ungrabbed)
         self.display.connect("vnc-auth-credential", self._auth_credential)
-        self.display.connect("vnc-initialized",
-                             lambda src: self.console.connected())
-        self.display.connect("vnc-disconnected",
-                             lambda src: self.console.disconnected())
+        self.display.connect("vnc-initialized", self._connected_cb)
+        self.display.connect("vnc-disconnected", self._disconnected_cb)
         self.display.connect("vnc-desktop-resize", self._desktop_resize)
-        self.display.connect("focus-in-event", self.console.viewer_focus_changed)
-        self.display.connect("focus-out-event", self.console.viewer_focus_changed)
+        self.display.connect("focus-in-event",
+                             self.console.viewer_focus_changed)
+        self.display.connect("focus-out-event",
+                             self.console.viewer_focus_changed)
 
         self.display.show()
+
+    def _unlock_tunnel(self):
+        if self.console.tunnels and not self._tunnel_unlocked:
+            self.console.tunnels.unlock()
+            self._tunnel_unlocked = True
+
+    def _connected_cb(self, ignore):
+        self._unlock_tunnel()
+        self.console.connected()
+
+    def _disconnected_cb(self, ignore):
+        self._unlock_tunnel()
+        self.console.disconnected()
 
     def get_grab_keys(self):
         return self.display.get_grab_keys().as_string()
@@ -364,8 +482,7 @@ class VNCViewer(Viewer):
                           "the VNC server"),
                 details=(_("The credential type %s is not supported") %
                          (str(cred))),
-                title=_("Unable to authenticate"),
-                async=True)
+                title=_("Unable to authenticate"))
 
             # schedule_retry will error out
             self.console.viewerRetriesScheduled = 10
@@ -405,8 +522,8 @@ class VNCViewer(Viewer):
     def is_open(self):
         return self.display.is_open()
 
-    def open_host(self, ginfo, password=None):
-        host, port = ginfo.get_conn_host()
+    def open_host(self, ginfo):
+        host, port, ignore = ginfo.get_conn_host()
 
         if not ginfo.gsocket:
             logging.debug("VNC connection to %s:%s", host, port)
@@ -428,8 +545,7 @@ class VNCViewer(Viewer):
                                 ginfo.gsocket) + " fd=%s" % fd)
         self.open_fd(fd)
 
-    def open_fd(self, fd, password=None):
-        ignore = password
+    def open_fd(self, fd):
         self.display.open_fd(fd)
 
     def set_credential_username(self, cred):
@@ -440,20 +556,31 @@ class VNCViewer(Viewer):
 
 
 class SpiceViewer(Viewer):
+    viewer_type = "spice"
+
     def __init__(self, console):
         Viewer.__init__(self, console)
         self.spice_session = None
         self.display = None
         self.audio = None
+        self.main_channel = None
         self.display_channel = None
+        self.usbdev_manager = None
 
     def _init_widget(self):
         self.set_grab_keys()
-        self.console.refresh_scaling()
+        self.console.sync_scaling_with_display()
+        self.console.refresh_resizeguest_from_settings()
 
         self.display.realize()
-        self.display.connect("mouse-grab", lambda src, g: g and self.console.pointer_grabbed(src))
-        self.display.connect("mouse-grab", lambda src, g: g or self.console.pointer_ungrabbed(src))
+
+        self.display.connect("size-allocate",
+                             self.console.viewer_allocate_cb)
+
+        self.display.connect("mouse-grab",
+            lambda src, g: g and self.console.pointer_grabbed(src))
+        self.display.connect("mouse-grab",
+            lambda src, g: g or self.console.pointer_ungrabbed(src))
 
         self.display.connect("focus-in-event",
                              self.console.viewer_focus_changed)
@@ -497,23 +624,40 @@ class SpiceViewer(Viewer):
             self.display.destroy()
         self.display = None
         self.display_channel = None
+        self.main_channel = None
+        self.usbdev_manager = None
 
     def is_open(self):
         return self.spice_session is not None
 
     def _main_channel_event_cb(self, channel, event):
+        if not self.console:
+            return
+
         if event == SpiceClientGLib.ChannelEvent.CLOSED:
-            if self.console:
-                self.console.disconnected()
+            self.console.disconnected()
         elif event == SpiceClientGLib.ChannelEvent.ERROR_AUTH:
-            if self.console:
-                self.console.activate_auth_page()
+            self.console.activate_auth_page()
+        elif event in [SpiceClientGLib.ChannelEvent.ERROR_CONNECT,
+                       SpiceClientGLib.ChannelEvent.ERROR_IO,
+                       SpiceClientGLib.ChannelEvent.ERROR_LINK,
+                       SpiceClientGLib.ChannelEvent.ERROR_TLS]:
+            logging.debug("Spice channel event error: %s", event)
+            self.console.disconnected()
+
+    def _fd_channel_event_cb(self, channel, event):
+        # When we see any event from the channel, release the
+        # associated tunnel lock
+        channel.disconnect_by_func(self._fd_channel_event_cb)
+        self.console.tunnels.unlock()
 
     def _channel_open_fd_request(self, channel, tls_ignore):
         if not self.console.tunnels:
             raise SystemError("Got fd request with no configured tunnel!")
 
         logging.debug("Opening tunnel for channel: %s", channel)
+        channel.connect_after("channel-event", self._fd_channel_event_cb)
+
         fd = self.console.tunnels.open_new()
         channel.open_fd(fd)
 
@@ -521,11 +665,18 @@ class SpiceViewer(Viewer):
         GObject.GObject.connect(channel, "open-fd",
                                 self._channel_open_fd_request)
 
-        if type(channel) == SpiceClientGLib.MainChannel:
-            channel.connect_after("channel-event", self._main_channel_event_cb)
-            return
+        if (type(channel) == SpiceClientGLib.MainChannel and
+            not self.main_channel):
+            if self.console.tunnels:
+                self.console.tunnels.unlock()
+            self.main_channel = channel
+            self.main_channel.connect_after("channel-event",
+                self._main_channel_event_cb)
+            self.main_channel.connect_after("notify::agent-connected",
+                self._agent_connected_cb)
 
-        if type(channel) == SpiceClientGLib.DisplayChannel:
+        elif (type(channel) == SpiceClientGLib.DisplayChannel and
+            not self.display):
             channel_id = channel.get_property("channel-id")
 
             if channel_id != 0:
@@ -538,13 +689,11 @@ class SpiceViewer(Viewer):
             self.console.widget("console-gfx-viewport").add(self.display)
             self._init_widget()
             self.console.connected()
-            return
 
-        if (type(channel) in [SpiceClientGLib.PlaybackChannel,
-                              SpiceClientGLib.RecordChannel] and
+        elif (type(channel) in [SpiceClientGLib.PlaybackChannel,
+                                SpiceClientGLib.RecordChannel] and
             not self.audio):
             self.audio = SpiceClientGLib.Audio.get(self.spice_session, None)
-            return
 
     def get_desktop_resolution(self):
         if (not self.display_channel or
@@ -552,27 +701,50 @@ class SpiceViewer(Viewer):
             return None
         return self.display_channel.get_properties("width", "height")
 
-    def open_host(self, ginfo, password=None):
-        host, port = ginfo.get_conn_host()
+    def has_agent(self):
+        if (not self.main_channel or
+            not has_property(self.main_channel, "agent-connected")):
+            return False
+        ret = self.main_channel.get_property("agent-connected")
+        return ret
 
-        uri = "spice://"
-        uri += str(host) + "?port=" + str(port)
-        logging.debug("spice uri: %s", uri)
+    def _agent_connected_cb(self, src, val):
+        self.console.refresh_resizeguest_from_settings()
 
+    def _create_spice_session(self):
         self.spice_session = SpiceClientGLib.Session()
-        self.spice_session.set_property("uri", uri)
-        if password:
-            self.spice_session.set_property("password", password)
+        SpiceClientGLib.set_session_option(self.spice_session)
+        gtk_session = SpiceClientGtk.GtkSession.get(self.spice_session)
+        gtk_session.set_property("auto-clipboard", True)
+
         GObject.GObject.connect(self.spice_session, "channel-new",
                                 self._channel_new_cb)
+
+        self.usbdev_manager = SpiceClientGLib.UsbDeviceManager.get(
+                                    self.spice_session)
+        self.usbdev_manager.connect("auto-connect-failed",
+                                    self._usbdev_redirect_error)
+        self.usbdev_manager.connect("device-error",
+                                    self._usbdev_redirect_error)
+
+        autoredir = self.config.get_auto_redirection()
+        if autoredir:
+            gtk_session.set_property("auto-usbredir", True)
+
+    def open_host(self, ginfo):
+        host, port, tlsport = ginfo.get_conn_host()
+        self._create_spice_session()
+
+        self.spice_session.set_property("host", str(host))
+        if port:
+            self.spice_session.set_property("port", str(port))
+        if tlsport:
+            self.spice_session.set_property("tls-port", str(tlsport))
+
         self.spice_session.connect()
 
-    def open_fd(self, fd, password=None):
-        self.spice_session = SpiceClientGLib.Session()
-        if password:
-            self.spice_session.set_property("password", password)
-        GObject.GObject.connect(self.spice_session, "channel-new",
-                                self._channel_new_cb)
+    def open_fd(self, fd):
+        self._create_spice_session()
         self.spice_session.open_fd(fd)
 
     def set_credential_password(self, cred):
@@ -594,6 +766,50 @@ class SpiceViewer(Viewer):
             return
         self.display.set_property("scaling", scaling)
 
+    def set_resizeguest(self, val):
+        if self.display:
+            self.display.set_property("resize-guest", val)
+
+    def _usbdev_redirect_error(self,
+                             spice_usbdev_widget, spice_usb_device,
+                             errstr):
+        ignore_widget = spice_usbdev_widget
+        ignore_device = spice_usb_device
+
+        error = self.console.err
+        error.show_err(_("USB redirection error"),
+                         text2=str(errstr),
+                         modal=True)
+
+    def get_usb_widget(self):
+
+        # The @format positional parameters are the following:
+        # 1 '%s' manufacturer
+        # 2 '%s' product
+        # 3 '%s' descriptor (a [vendor_id:product_id] string)
+        # 4 '%d' bus
+        # 5 '%d' address
+
+        usb_device_description_fmt = _("%s %s %s at %d-%d")
+
+        if not self.spice_session:
+            return
+
+        usbwidget = SpiceClientGtk.UsbDeviceWidget.new(
+                                                self.spice_session,
+                                                usb_device_description_fmt)
+        usbwidget.connect("connect-failed", self._usbdev_redirect_error)
+        return usbwidget
+
+    def has_usb_redirection(self):
+        if not self.spice_session or not self.usbdev_manager:
+            return False
+
+        for c in self.spice_session.get_channels():
+            if c.__class__ is SpiceClientGLib.UsbredirChannel:
+                return True
+        return False
+
 
 class vmmConsolePages(vmmGObjectUI):
     def __init__(self, vm, builder, topwin):
@@ -603,6 +819,7 @@ class vmmConsolePages(vmmGObjectUI):
         self.pointer_is_grabbed = False
         self.change_title()
         self.vm.connect("config-changed", self.change_title)
+        self.force_resize = False
 
         # State for disabling modifiers when keyboard is grabbed
         self.accel_groups = Gtk.accel_groups_from_object(self.topwin)
@@ -616,30 +833,34 @@ class vmmConsolePages(vmmGObjectUI):
         self.viewerRetryDelay = 125
         self._viewer_connected = False
         self.viewer_connecting = False
-        self.scale_type = self.vm.get_console_scaling()
 
         # Fullscreen toolbar
         self.send_key_button = None
         self.fs_toolbar = None
         self.fs_drawer = None
-        self.keycombo_menu = uihelpers.build_keycombo_menu(self.send_key)
+        self.keycombo_menu = self.build_keycombo_menu(self.send_key)
         self.init_fs_toolbar()
-
-        finish_img = Gtk.Image.new_from_stock(Gtk.STOCK_YES,
-                                              Gtk.IconSize.BUTTON)
-        self.widget("console-auth-login").set_image(finish_img)
 
         # Make viewer widget background always be black
         black = Gdk.Color(0, 0, 0)
         self.widget("console-gfx-viewport").modify_bg(Gtk.StateType.NORMAL,
                                                       black)
 
+        self.serial_tabs = []
+        self.last_gfx_page = 0
+        self._init_menus()
+
         # Signals are added by vmmDetails. Don't use connect_signals here
         # or it changes will be overwritten
 
-        self.refresh_scaling()
+        self.refresh_scaling_from_settings()
         self.add_gconf_handle(
-            self.vm.on_console_scaling_changed(self.refresh_scaling))
+            self.vm.on_console_scaling_changed(
+                self.refresh_scaling_from_settings))
+        self.refresh_resizeguest_from_settings()
+        self.add_gconf_handle(
+            self.vm.on_console_resizeguest_changed(
+                self.refresh_resizeguest_from_settings))
 
         scroll = self.widget("console-gfx-scroll")
         scroll.connect("size-allocate", self.scroll_size_allocate)
@@ -649,6 +870,7 @@ class vmmConsolePages(vmmGObjectUI):
             self.config.on_keys_combination_changed(self.grab_keys_changed))
 
         self.page_changed()
+
 
     def is_visible(self):
         if self.topwin:
@@ -670,9 +892,38 @@ class vmmConsolePages(vmmGObjectUI):
         self.fs_toolbar.destroy()
         self.fs_toolbar = None
 
+        for serial in self.serial_tabs:
+            serial.cleanup()
+        self.serial_tabs = []
+
+
     ##########################
     # Initialization helpers #
     ##########################
+
+    @staticmethod
+    def build_keycombo_menu(cb):
+        # Shared with vmmDetails
+        menu = Gtk.Menu()
+
+        def make_item(name, combo):
+            item = Gtk.MenuItem.new_with_mnemonic(name)
+            item.connect("activate", cb, combo)
+
+            menu.add(item)
+
+        make_item("Ctrl+Alt+_Backspace", ["Control_L", "Alt_L", "BackSpace"])
+        make_item("Ctrl+Alt+_Delete", ["Control_L", "Alt_L", "Delete"])
+        menu.add(Gtk.SeparatorMenuItem())
+
+        for i in range(1, 13):
+            make_item("Ctrl+Alt+F_%d" % i, ["Control_L", "Alt_L", "F%d" % i])
+        menu.add(Gtk.SeparatorMenuItem())
+
+        make_item("_Printscreen", ["Print"])
+
+        menu.show_all()
+        return menu
 
     def init_fs_toolbar(self):
         scroll = self.widget("console-gfx-scroll")
@@ -720,9 +971,18 @@ class vmmConsolePages(vmmGObjectUI):
         self.fs_drawer.set_fill(False)
         self.fs_drawer.set_overlap_pixels(1)
         self.fs_drawer.set_nooverlap_pixels(0)
+        self.fs_drawer.period = 20
+        self.fs_drawer.step = .1
+
         self.fs_drawer.show_all()
 
         pages.add(self.fs_drawer)
+
+    def _init_menus(self):
+        # Serial list menu
+        smenu = Gtk.Menu()
+        smenu.connect("show", self.populate_serial_menu)
+        self.widget("details-menu-view-serial-list").set_submenu(smenu)
 
     def change_title(self, ignore1=None):
         title = self.vm.get_name() + " " + _("Virtual Machine")
@@ -735,15 +995,24 @@ class vmmConsolePages(vmmGObjectUI):
 
         self.topwin.set_title(title)
 
+    def someone_has_focus(self):
+        if (self.viewer and
+            self.viewer.display and
+            self.viewer.display.get_property("has-focus") and
+            self.viewer_connected):
+            return True
+
+        for serial in self.serial_tabs:
+            if (serial.terminal and
+                serial.terminal.get_property("has-focus")):
+                return True
+
     def viewer_focus_changed(self, ignore1=None, ignore2=None):
-        has_focus = (self.viewer and
-                     self.viewer.display and
-                     self.viewer.display.get_property("has-focus"))
         force_accel = self.config.get_console_accels()
 
         if force_accel:
             self._enable_modifiers()
-        elif has_focus and self.viewer_connected:
+        elif self.someone_has_focus():
             self._disable_modifiers()
         else:
             self._enable_modifiers()
@@ -788,57 +1057,96 @@ class vmmConsolePages(vmmGObjectUI):
             self.topwin.add_accel_group(g)
 
     def grab_keys_changed(self):
-        self.viewer.set_grab_keys()
+        if self.viewer:
+            self.viewer.set_grab_keys()
 
     def set_enable_accel(self):
         # Make sure modifiers are up to date
         self.viewer_focus_changed()
 
-    def refresh_scaling(self):
-        self.scale_type = self.vm.get_console_scaling()
-        self.widget("details-menu-view-scale-always").set_active(
-            self.scale_type == self.config.CONSOLE_SCALE_ALWAYS)
-        self.widget("details-menu-view-scale-never").set_active(
-            self.scale_type == self.config.CONSOLE_SCALE_NEVER)
-        self.widget("details-menu-view-scale-fullscreen").set_active(
-            self.scale_type == self.config.CONSOLE_SCALE_FULLSCREEN)
+    def refresh_resizeguest_from_settings(self):
+        tooltip = ""
+        if self.viewer:
+            if self.viewer.viewer_type != "spice":
+                tooltip = (
+                    _("Graphics type '%s' does not support auto resize.") %
+                    self.viewer.viewer_type)
+            elif not self.viewer.has_agent():
+                tooltip = _("Guest agent is not available.")
 
-        self.update_scaling()
+        val = self.vm.get_console_resizeguest()
+        widget = self.widget("details-menu-view-resizeguest")
+        widget.set_tooltip_text(tooltip)
+        widget.set_sensitive(not bool(tooltip))
+        if not tooltip:
+            self.widget("details-menu-view-resizeguest").set_active(bool(val))
 
-    def set_scale_type(self, src):
+        self.sync_resizeguest_with_display()
+
+    def resizeguest_ui_changed_cb(self, src):
+        # Called from details.py
         if not src.get_active():
             return
 
+        val = int(self.widget("details-menu-view-resizeguest").get_active())
+        self.vm.set_console_resizeguest(val)
+        self.sync_resizeguest_with_display()
+
+    def sync_resizeguest_with_display(self):
+        if not self.viewer:
+            return
+
+        val = bool(self.vm.get_console_resizeguest())
+        self.viewer.set_resizeguest(val)
+        self.widget("console-gfx-scroll").queue_resize()
+
+    def refresh_scaling_from_settings(self):
+        scale_type = self.vm.get_console_scaling()
+        self.widget("details-menu-view-scale-always").set_active(
+            scale_type == self.config.CONSOLE_SCALE_ALWAYS)
+        self.widget("details-menu-view-scale-never").set_active(
+            scale_type == self.config.CONSOLE_SCALE_NEVER)
+        self.widget("details-menu-view-scale-fullscreen").set_active(
+            scale_type == self.config.CONSOLE_SCALE_FULLSCREEN)
+
+        self.sync_scaling_with_display()
+
+    def scaling_ui_changed_cb(self, src):
+        # Called from details.py
+        if not src.get_active():
+            return
+
+        scale_type = 0
         if src == self.widget("details-menu-view-scale-always"):
-            self.scale_type = self.config.CONSOLE_SCALE_ALWAYS
+            scale_type = self.config.CONSOLE_SCALE_ALWAYS
         elif src == self.widget("details-menu-view-scale-fullscreen"):
-            self.scale_type = self.config.CONSOLE_SCALE_FULLSCREEN
+            scale_type = self.config.CONSOLE_SCALE_FULLSCREEN
         elif src == self.widget("details-menu-view-scale-never"):
-            self.scale_type = self.config.CONSOLE_SCALE_NEVER
+            scale_type = self.config.CONSOLE_SCALE_NEVER
 
-        self.vm.set_console_scaling(self.scale_type)
-        self.update_scaling()
+        self.vm.set_console_scaling(scale_type)
+        self.sync_scaling_with_display()
 
-    def update_scaling(self):
+    def sync_scaling_with_display(self):
         if not self.viewer:
             return
 
         curscale = self.viewer.get_scaling()
         fs = self.widget("control-fullscreen").get_active()
-        vnc_scroll = self.widget("console-gfx-scroll")
+        scale_type = self.vm.get_console_scaling()
 
-        if (self.scale_type == self.config.CONSOLE_SCALE_NEVER
+        if (scale_type == self.config.CONSOLE_SCALE_NEVER
             and curscale is True):
             self.viewer.set_scaling(False)
-        elif (self.scale_type == self.config.CONSOLE_SCALE_ALWAYS
+        elif (scale_type == self.config.CONSOLE_SCALE_ALWAYS
               and curscale is False):
             self.viewer.set_scaling(True)
-        elif (self.scale_type == self.config.CONSOLE_SCALE_FULLSCREEN
+        elif (scale_type == self.config.CONSOLE_SCALE_FULLSCREEN
               and curscale != fs):
             self.viewer.set_scaling(fs)
 
         # Refresh viewer size
-        vnc_scroll.queue_resize()
+        self.widget("console-gfx-scroll").queue_resize()
 
     def auth_login(self, ignore):
         self.set_credentials()
@@ -869,7 +1177,10 @@ class vmmConsolePages(vmmGObjectUI):
                 self.widget("toolbar-box").show()
             self.widget("details-menubar").show()
 
-        self.update_scaling()
+        self.sync_scaling_with_display()
+
+    def viewer_allocate_cb(self, src, req):
+        self.widget("console-gfx-scroll").queue_resize()
 
     def size_to_vm(self, src_ignore):
         # Resize the console to best fit the VM resolution
@@ -878,10 +1189,10 @@ class vmmConsolePages(vmmGObjectUI):
         if not self.viewer.get_desktop_resolution():
             return
 
-        w, h = self.viewer.get_desktop_resolution()
         self.topwin.unmaximize()
         self.topwin.resize(1, 1)
-        self.queue_scroll_resize_helper(w, h)
+        self.force_resize = True
+        self.widget("console-gfx-scroll").queue_resize()
 
     def send_key(self, src, keys):
         ignore = src
@@ -909,9 +1220,9 @@ class vmmConsolePages(vmmGObjectUI):
         if self.viewer is None:
             return
 
-        v = self.viewer  # close_viewer() can be reentered
-        self.viewer = None
+        v = self.viewer
         w = v.display
+        self.viewer = None
 
         viewport = self.widget("console-gfx-viewport")
         if w and w in viewport.get_children():
@@ -921,19 +1232,21 @@ class vmmConsolePages(vmmGObjectUI):
         self.viewer_connected = False
         self.leave_fullscreen()
 
+        for serial in self.serial_tabs:
+            serial.close()
+
     def update_widget_states(self, vm, status_ignore):
         runable = vm.is_runable()
         pages   = self.widget("console-pages")
         page    = pages.get_current_page()
 
         if runable:
-            if page != PAGE_UNAVAILABLE:
-                pages.set_current_page(PAGE_UNAVAILABLE)
+            if page != CONSOLE_PAGE_UNAVAILABLE:
+                pages.set_current_page(CONSOLE_PAGE_UNAVAILABLE)
 
             self.view_vm_status()
-            return
 
-        elif page in [PAGE_UNAVAILABLE, PAGE_VIEWER]:
+        elif page in [CONSOLE_PAGE_UNAVAILABLE, CONSOLE_PAGE_VIEWER]:
             if self.viewer and self.viewer.is_open():
                 self.activate_viewer_page()
             else:
@@ -942,6 +1255,7 @@ class vmmConsolePages(vmmGObjectUI):
                 self.try_login()
 
         return
+
 
     ###################
     # Page Navigation #
@@ -953,61 +1267,63 @@ class vmmConsolePages(vmmGObjectUI):
         with care
         """
         self.close_viewer()
-        self.widget("console-pages").set_current_page(PAGE_UNAVAILABLE)
+        self.widget("console-pages").set_current_page(CONSOLE_PAGE_UNAVAILABLE)
         self.widget("details-menu-vm-screenshot").set_sensitive(False)
+        self.widget("details-menu-usb-redirection").set_sensitive(False)
         self.widget("console-unavailable").set_label("<b>" + msg + "</b>")
 
     def activate_auth_page(self, withPassword=True, withUsername=False):
         (pw, username) = self.config.get_console_password(self.vm)
         self.widget("details-menu-vm-screenshot").set_sensitive(False)
+        self.widget("details-menu-usb-redirection").set_sensitive(False)
 
-        if withPassword:
-            self.widget("console-auth-password").show()
-            self.widget("label-auth-password").show()
-        else:
-            self.widget("console-auth-password").hide()
-            self.widget("label-auth-password").hide()
+        self.widget("console-auth-password").set_visible(withPassword)
+        self.widget("label-auth-password").set_visible(withPassword)
 
-        if withUsername:
-            self.widget("console-auth-username").show()
-            self.widget("label-auth-username").show()
-        else:
-            self.widget("console-auth-username").hide()
-            self.widget("label-auth-username").hide()
+        self.widget("console-auth-username").set_visible(withUsername)
+        self.widget("label-auth-username").set_visible(withUsername)
 
-        self.widget("console-auth-username").set_text(username)
-        self.widget("console-auth-password").set_text(pw)
-
-        if self.config.has_keyring():
-            self.widget("console-auth-remember").set_sensitive(True)
-            if pw != "" or username != "":
-                self.widget("console-auth-remember").set_active(True)
-            else:
-                self.widget("console-auth-remember").set_active(False)
-        else:
-            self.widget("console-auth-remember").set_sensitive(False)
-        self.widget("console-pages").set_current_page(PAGE_AUTHENTICATE)
         if withUsername:
             self.widget("console-auth-username").grab_focus()
         else:
             self.widget("console-auth-password").grab_focus()
 
+        self.widget("console-auth-username").set_text(username)
+        self.widget("console-auth-password").set_text(pw)
+
+        self.widget("console-auth-remember").set_sensitive(
+                bool(self.config.has_keyring()))
+        if self.config.has_keyring():
+            self.widget("console-auth-remember").set_active(bool(pw and
+                                                                 username))
+
+        self.widget("console-pages").set_current_page(
+            CONSOLE_PAGE_AUTHENTICATE)
+
 
     def activate_viewer_page(self):
-        self.widget("console-pages").set_current_page(PAGE_VIEWER)
+        self.widget("console-pages").set_current_page(CONSOLE_PAGE_VIEWER)
         self.widget("details-menu-vm-screenshot").set_sensitive(True)
         if self.viewer and self.viewer.display:
             self.viewer.display.grab_focus()
 
+        if (self.viewer.has_usb_redirection() and
+            self.vm.has_spicevmc_type_redirdev()):
+            self.widget("details-menu-usb-redirection").set_sensitive(True)
+            return
+
     def page_changed(self, ignore1=None, ignore2=None, ignore3=None):
+        pagenum = self.widget("console-pages").get_current_page()
+        if pagenum < CONSOLE_PAGE_OFFSET:
+            self.last_gfx_page = pagenum
         self.set_allow_fullscreen()
 
     def set_allow_fullscreen(self):
         cpage = self.widget("console-pages").get_current_page()
         dpage = self.widget("details-pages").get_current_page()
 
-        allow_fullscreen = (dpage == 0 and
-                            cpage == PAGE_VIEWER and
+        allow_fullscreen = (dpage == DETAILS_PAGE_CONSOLE and
+                            cpage == CONSOLE_PAGE_VIEWER and
                             self.viewer_connected)
 
         self.widget("control-fullscreen").set_sensitive(allow_fullscreen)
@@ -1020,14 +1336,14 @@ class vmmConsolePages(vmmGObjectUI):
             self.tunnels.close_all()
             self.tunnels = None
 
+        self.widget("console-pages").set_current_page(CONSOLE_PAGE_UNAVAILABLE)
         self.close_viewer()
         logging.debug("Viewer disconnected")
 
         # Make sure modifiers are set correctly
         self.viewer_focus_changed()
 
-        if (self.skip_connect_attempt() or
-            self.guest_not_avail()):
+        if self.guest_not_avail():
             # Exit was probably for legitimate reasons
             self.view_vm_status()
             return
@@ -1039,6 +1355,7 @@ class vmmConsolePages(vmmGObjectUI):
             error += "\n\nError: %s" % errout
 
         self.activate_unavailable_page(error)
+        self.refresh_resizeguest_from_settings()
 
     def _set_viewer_connected(self, val):
         self._viewer_connected = val
@@ -1125,7 +1442,15 @@ class vmmConsolePages(vmmGObjectUI):
             self.activate_unavailable_page(msg)
             return
 
-        if ginfo.console_active():
+        if ginfo.is_bad_localhost():
+            self.activate_unavailable_page(
+                        _("Guest is on a remote host with transport '%s'\n"
+                          "but is only configured to listen on locally.\n"
+                          "Connect using 'ssh' transport or change the\n"
+                          "guest's listen address." % ginfo.transport))
+            return
+
+        if not ginfo.console_active():
             self.activate_unavailable_page(
                             _("Graphical console is not yet active for guest"))
             self.schedule_retry()
@@ -1146,15 +1471,8 @@ class vmmConsolePages(vmmGObjectUI):
             self.set_enable_accel()
 
             if ginfo.need_tunnel():
-                if self.tunnels:
-                    # Tunnel already open, no need to continue
-                    return
-
                 self.tunnels = Tunnels(ginfo)
-                self.viewer.open_fd(self.tunnels.open_new())
-            else:
-                self.viewer.open_host(ginfo)
-
+            self.viewer.open_ginfo(ginfo)
         except Exception, e:
             logging.exception("Error connection to graphical console")
             self.activate_unavailable_page(
@@ -1172,52 +1490,6 @@ class vmmConsolePages(vmmGObjectUI):
             self.config.set_console_password(self.vm, passwd.get_text(),
                                              username.get_text())
 
-    def queue_scroll_resize_helper(self, w, h):
-        """
-        Resize the VNC container widget to the requested size. The new size
-        isn't a hard requirment so the user can still shrink the window
-        again, as opposed to set_size_request
-        """
-        widget = self.widget("console-gfx-scroll")
-        signal_holder = []
-
-        def restore_scroll(src):
-            is_scale = self.viewer.get_scaling()
-
-            if is_scale:
-                w_policy = Gtk.PolicyType.NEVER
-                h_policy = Gtk.PolicyType.NEVER
-            else:
-                w_policy = Gtk.PolicyType.AUTOMATIC
-                h_policy = Gtk.PolicyType.AUTOMATIC
-
-            src.set_policy(w_policy, h_policy)
-            return False
-
-        def unset_cb(src):
-            src.queue_resize_no_redraw()
-            self.idle_add(restore_scroll, src)
-            return False
-
-        def request_cb(src, req):
-            signal_id = signal_holder[0]
-            req.width = w
-            req.height = h
-
-            src.disconnect(signal_id)
-
-            self.idle_add(unset_cb, widget)
-            return False
-
-        # Disable scroll bars while we resize, since resizing to the VM's
-        # dimensions can erroneously show scroll bars when they aren't needed
-        widget.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.NEVER)
-
-        signal_id = widget.connect("size-allocate", request_cb)
-        signal_holder.append(signal_id)
-
-        widget.queue_resize()
-
     def scroll_size_allocate(self, src_ignore, req):
         if not self.viewer or not self.viewer.get_desktop_resolution():
             return
@@ -1234,15 +1506,19 @@ class vmmConsolePages(vmmGObjectUI):
             return
         desktop_ratio = float(desktop_w) / float(desktop_h)
 
-        if not is_scale:
+        if is_scale or self.force_resize:
+            # Make sure we never show scrollbars when scaling
+            scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.NEVER)
+        else:
+            scroll.set_policy(Gtk.PolicyType.AUTOMATIC,
+                              Gtk.PolicyType.AUTOMATIC)
+
+        if not is_scale or self.force_resize:
             # Scaling disabled is easy, just force the VNC widget size. Since
             # we are inside a scrollwindow, it shouldn't cause issues.
-            scroll.set_policy(Gtk.PolicyType.AUTOMATIC, Gtk.PolicyType.AUTOMATIC)
+            self.force_resize = False
             self.viewer.display.set_size_request(desktop_w, desktop_h)
             return
-
-        # Make sure we never show scrollbars when scaling
-        scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.NEVER)
 
         # Make sure there is no hard size requirement so we can scale down
         self.viewer.display.set_size_request(-1, -1)
@@ -1264,3 +1540,152 @@ class vmmConsolePages(vmmGObjectUI):
         viewer_alloc.width = desktop_w
         viewer_alloc.height = desktop_h
         self.viewer.display.size_allocate(viewer_alloc)
+
+
+    ###########################
+    # Serial console handling #
+    ###########################
+
+    def activate_default_console_page(self):
+        if self.vm.get_graphics_devices() or not self.vm.get_serial_devs():
+            return
+
+        # Show serial console
+        devs = self.build_serial_list()
+        for name, ignore, sensitive, ignore, cb, serialidx in devs:
+            if not sensitive or not cb:
+                continue
+
+            self._show_serial_tab(name, serialidx)
+            break
+
+    def build_serial_list(self):
+        ret = []
+
+        def add_row(text, err, sensitive, do_radio, cb, serialidx):
+            ret.append([text, err, sensitive, do_radio, cb, serialidx])
+
+        devs = self.vm.get_serial_devs()
+        if len(devs) == 0:
+            add_row(_("No text console available"),
+                    None, False, False, None, None)
+
+        def build_desc(dev):
+            if dev.virtual_device_type == "console":
+                return "Text Console %d" % (dev.vmmindex + 1)
+            return "Serial %d" % (dev.vmmindex + 1)
+
+        for dev in devs:
+            desc = build_desc(dev)
+            idx = dev.vmmindex
+
+            err = vmmSerialConsole.can_connect(self.vm, dev)
+            sensitive = not bool(err)
+
+            def cb(src):
+                return self.control_serial_tab(src, desc, idx)
+
+            add_row(desc, err, sensitive, True, cb, idx)
+
+        return ret
+
+    def current_serial_dev(self):
+        current_page = self.widget("console-pages").get_current_page()
+        if not current_page >= CONSOLE_PAGE_OFFSET:
+            return
+
+        serial_idx = current_page - CONSOLE_PAGE_OFFSET
+        if len(self.serial_tabs) < serial_idx:
+            return
+
+        return self.serial_tabs[serial_idx]
+
+    def control_serial_tab(self, src_ignore, name, target_port):
+        self.widget("details-pages").set_current_page(DETAILS_PAGE_CONSOLE)
+        if name == "graphics":
+            self.widget("console-pages").set_current_page(self.last_gfx_page)
+        else:
+            self._show_serial_tab(name, target_port)
+
+    def _show_serial_tab(self, name, target_port):
+        serial = None
+        for s in self.serial_tabs:
+            if s.name == name:
+                serial = s
+                break
+
+        if not serial:
+            serial = vmmSerialConsole(self.vm, target_port, name)
+            serial.terminal.connect("focus-in-event",
+                                    self.viewer_focus_changed)
+            serial.terminal.connect("focus-out-event",
+                                    self.viewer_focus_changed)
+
+            title = Gtk.Label(label=name)
+            self.widget("console-pages").append_page(serial.box, title)
+            self.serial_tabs.append(serial)
+
+        serial.open_console()
+        page_idx = self.serial_tabs.index(serial) + CONSOLE_PAGE_OFFSET
+        self.widget("console-pages").set_current_page(page_idx)
+
+    def populate_serial_menu(self, src):
+        for ent in src:
+            src.remove(ent)
+
+        serial_page_dev = self.current_serial_dev()
+        showing_graphics = (
+            self.widget("console-pages").get_current_page() ==
+            CONSOLE_PAGE_VIEWER)
+
+        # Populate serial devices
+        group = None
+        itemlist = self.build_serial_list()
+        for msg, err, sensitive, do_radio, cb, ignore in itemlist:
+            if do_radio:
+                item = Gtk.RadioMenuItem(group)
+                item.set_label(msg)
+                if group is None:
+                    group = item
+            else:
+                item = Gtk.MenuItem(msg)
+
+            item.set_sensitive(sensitive)
+
+            if err and not sensitive:
+                item.set_tooltip_text(err)
+
+            if cb:
+                item.connect("toggled", cb)
+
+            # Tab is already open, make sure marked as such
+            if (sensitive and
+                serial_page_dev and
+                serial_page_dev.name == msg):
+                item.set_active(True)
+
+            src.add(item)
+
+        src.add(Gtk.SeparatorMenuItem())
+
+        # Populate graphical devices
+        devs = self.vm.get_graphics_devices()
+        if len(devs) == 0:
+            item = Gtk.MenuItem(_("No graphical console available"))
+            item.set_sensitive(False)
+            src.add(item)
+        else:
+            dev = devs[0]
+            item = Gtk.RadioMenuItem(group)
+            item.set_label(_("Graphical Console %s") %
+                           dev.pretty_type_simple(dev.type))
+            if group is None:
+                group = item
+
+            if showing_graphics:
+                item.set_active(True)
+            item.connect("toggled", self.control_serial_tab,
+                         dev.virtual_device_type, dev.type)
+            src.add(item)
+
+        src.show_all()

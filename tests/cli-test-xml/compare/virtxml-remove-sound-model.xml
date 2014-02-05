@@ -1,0 +1,10 @@
+     </graphics>
+     <sound model="sb16"/>
+     <sound model="es1370"/>
+-    <sound model="ich6"/>
+     <video>
+       <model type="vmvga" vram="9216" heads="1"/>
+     </video>
+
+Domain 'test-many-devices' defined successfully.
+Changes will take effect after the next domain shutdown.

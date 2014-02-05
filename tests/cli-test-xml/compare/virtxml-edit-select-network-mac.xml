@@ -1,0 +1,11 @@
+     <interface type="ethernet">
+       <mac address="00:11:7f:33:44:55"/>
+       <script path="/etc/qemu-ifup"/>
+-      <target dev="nic02"/>
++      <target dev="nic55"/>
+     </interface>
+     <interface type="direct">
+       <mac address="f0:11:22:33:44:5f"/>
+
+Domain 'test-many-devices' defined successfully.
+Changes will take effect after the next domain shutdown.

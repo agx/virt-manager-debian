@@ -29,9 +29,9 @@ from gi.repository import Gtk
 # pylint: enable=E0611
 
 import libvirt
-from virtinst import uriutil
+from virtinst import util
 
-from virtManager import util
+from virtManager import uiutil
 from virtManager.baseclass import vmmGObjectUI
 from virtManager.asyncjob import vmmAsyncJob
 from virtManager.domain import vmmDomain
@@ -51,7 +51,7 @@ def uri_join(uri_tuple):
 
 class vmmMigrateDialog(vmmGObjectUI):
     def __init__(self, vm, engine):
-        vmmGObjectUI.__init__(self, "vmm-migrate.ui", "vmm-migrate")
+        vmmGObjectUI.__init__(self, "migrate.ui", "vmm-migrate")
         self.vm = vm
         self.conn = vm.conn
         self.engine = engine
@@ -71,14 +71,6 @@ class vmmMigrateDialog(vmmGObjectUI):
             "on_migrate_set_maxdowntime_toggled" : self.toggle_set_maxdowntime,
         })
         self.bind_escape_key_close()
-
-        blue = Gdk.color_parse("#0072A8")
-        self.widget("migrate-header").modify_bg(Gtk.StateType.NORMAL,
-                                                           blue)
-        image = Gtk.Image.new_from_icon_name("vm_clone_wizard",
-                                             Gtk.IconSize.DIALOG)
-        image.show()
-        self.widget("migrate-vm-icon-box").pack_end(image, False, False, False)
 
         self.init_state()
 
@@ -107,6 +99,9 @@ class vmmMigrateDialog(vmmGObjectUI):
         self.widget("migrate-dest").get_model().clear()
 
     def init_state(self):
+        blue = Gdk.color_parse("#0072A8")
+        self.widget("header").modify_bg(Gtk.StateType.NORMAL, blue)
+
         # [hostname, conn, can_migrate, tooltip]
         dest_model = Gtk.ListStore(str, object, bool, str)
         dest_combo = self.widget("migrate-dest")
@@ -125,7 +120,7 @@ class vmmMigrateDialog(vmmGObjectUI):
     def reset_state(self):
         title_str = ("<span size='large' color='white'>%s '%s'</span>" %
                      (_("Migrate"), util.xml_escape(self.vm.get_name())))
-        self.widget("migrate-main-label").set_markup(title_str)
+        self.widget("header-label").set_markup(title_str)
 
         self.widget("migrate-cancel").grab_focus()
 
@@ -141,12 +136,9 @@ class vmmMigrateDialog(vmmGObjectUI):
         self.widget("migrate-set-maxdowntime").set_active(False)
         self.widget("migrate-max-downtime").set_value(30)
 
-        running = self.vm.is_active()
-        self.widget("migrate-offline").set_active(not running)
-        self.widget("migrate-offline").set_sensitive(running)
-
         self.widget("migrate-rate").set_value(0)
         self.widget("migrate-secure").set_active(False)
+        self.widget("migrate-unsafe").set_active(False)
 
         downtime_box = self.widget("migrate-maxdowntime-box")
         support_downtime = self.vm.support_downtime()
@@ -174,6 +166,16 @@ class vmmMigrateDialog(vmmGObjectUI):
         secure_box.set_sensitive(support_secure)
         secure_box.set_tooltip_text(secure_tooltip)
 
+        unsafe_box = self.widget("migrate-unsafe-box")
+        support_unsafe = hasattr(libvirt, "VIR_MIGRATE_UNSAFE")
+        unsafe_tooltip = ""
+        if not support_unsafe:
+            unsafe_tooltip = _("Libvirt version does not support unsafe "
+                               "migration.")
+
+        unsafe_box.set_sensitive(support_unsafe)
+        unsafe_box.set_tooltip_text(unsafe_tooltip)
+
         self.rebuild_dest_rows()
 
     def set_state(self, vm):
@@ -182,12 +184,12 @@ class vmmMigrateDialog(vmmGObjectUI):
         self.reset_state()
 
     def destconn_changed(self, src):
-        active = src.get_active()
+        row = uiutil.get_list_selection(src)
         tooltip = ""
-        if active == -1:
+        if row:
             tooltip = _("A valid destination connection must be selected.")
 
-        self.widget("migrate-finish").set_sensitive(active != -1)
+        self.widget("migrate-finish").set_sensitive(bool(row))
         self.widget("migrate-finish").set_tooltip_text(tooltip)
 
     def toggle_set_rate(self, src):
@@ -210,21 +212,10 @@ class vmmMigrateDialog(vmmGObjectUI):
         self.widget("migrate-port").set_sensitive(enable)
 
     def get_config_destconn(self):
-        combo = self.widget("migrate-dest")
-        model = combo.get_model()
-
-        idx = combo.get_active()
-        if idx == -1:
+        row = uiutil.get_list_selection(self.widget("migrate-dest"))
+        if not row or not row[2]:
             return None
-
-        row = model[idx]
-        if not row[2]:
-            return None
-
         return row[1]
-
-    def get_config_offline(self):
-        return self.widget("migrate-offline").get_active()
 
     def get_config_max_downtime(self):
         if not self.get_config_max_downtime_enabled():
@@ -233,6 +224,9 @@ class vmmMigrateDialog(vmmGObjectUI):
 
     def get_config_secure(self):
         return self.widget("migrate-secure").get_active()
+
+    def get_config_unsafe(self):
+        return self.widget("migrate-unsafe").get_active()
 
     def get_config_max_downtime_enabled(self):
         return self.widget("migrate-max-downtime").get_sensitive()
@@ -275,7 +269,7 @@ class vmmMigrateDialog(vmmGObjectUI):
         return self.edit_uri(srcuri, desthost, None)
 
     def edit_uri(self, uri, hostname, port):
-        split = list(uriutil.uri_split(uri))
+        split = list(util.uri_split(uri))
 
         hostname = hostname or split[2]
         if port:
@@ -303,7 +297,7 @@ class vmmMigrateDialog(vmmGObjectUI):
             # For secure migration, we need to make sure we aren't migrating
             # to the local connection, because libvirt will pull try to use
             # 'qemu:///system' as the migrate URI which will deadlock
-            if destconn.is_local():
+            if destconn.get_uri_hostname() == "localhost":
                 uri = self.build_localhost_uri(destconn, srcuri)
             else:
                 uri = destconn.get_uri()
@@ -444,18 +438,33 @@ class vmmMigrateDialog(vmmGObjectUI):
 
         return True
 
+    def _finish_cb(self, error, details, destconn):
+        self.topwin.set_sensitive(True)
+        self.topwin.get_window().set_cursor(
+            Gdk.Cursor.new(Gdk.CursorType.TOP_LEFT_ARROW))
+
+        if error:
+            error = _("Unable to migrate guest: %s") % error
+            self.err.show_err(error,
+                              details=details)
+        else:
+            self.conn.schedule_priority_tick(pollvm=True)
+            destconn.schedule_priority_tick(pollvm=True)
+            self.close()
+
     def finish(self, src_ignore):
         try:
             if not self.validate():
                 return
 
+            live = True
             destconn = self.get_config_destconn()
             srcuri = self.vm.conn.get_uri()
             srchost = self.vm.conn.get_hostname()
             dsthost = destconn.get_qualified_hostname()
             max_downtime = self.get_config_max_downtime()
-            live = not self.get_config_offline()
             secure = self.get_config_secure()
+            unsafe = self.get_config_unsafe()
             uri = self.build_migrate_uri(destconn, srcuri)
             rate = self.get_config_rate()
             if rate:
@@ -468,33 +477,22 @@ class vmmMigrateDialog(vmmGObjectUI):
             return
 
         self.topwin.set_sensitive(False)
-        self.topwin.get_window().set_cursor(Gdk.Cursor.new(Gdk.CursorType.WATCH))
+        self.topwin.get_window().set_cursor(
+            Gdk.Cursor.new(Gdk.CursorType.WATCH))
 
         cancel_cb = None
         if self.vm.getjobinfo_supported:
             cancel_cb = (self.cancel_migration, self.vm)
 
-        progWin = vmmAsyncJob(self._async_migrate,
-                              [self.vm, destconn, uri, rate, live, secure,
-                               max_downtime],
-                              _("Migrating VM '%s'" % self.vm.get_name()),
-                              (_("Migrating VM '%s' from %s to %s. "
-                                 "This may take a while.") %
-                                (self.vm.get_name(), srchost, dsthost)),
-                              self.topwin, cancel_cb=cancel_cb)
-        error, details = progWin.run()
-
-        self.topwin.set_sensitive(True)
-        self.topwin.get_window().set_cursor(Gdk.Cursor.new(Gdk.CursorType.TOP_LEFT_ARROW))
-
-        if error:
-            error = _("Unable to migrate guest: %s") % error
-            self.err.show_err(error,
-                              details=details)
-        else:
-            self.conn.tick(noStatsUpdate=True)
-            destconn.tick(noStatsUpdate=True)
-            self.close()
+        progWin = vmmAsyncJob(
+            self._async_migrate,
+            [self.vm, destconn, uri, rate, live, secure, unsafe, max_downtime],
+            self._finish_cb, [destconn],
+            _("Migrating VM '%s'" % self.vm.get_name()),
+            (_("Migrating VM '%s' from %s to %s. This may take a while.") %
+             (self.vm.get_name(), srchost, dsthost)),
+            self.topwin, cancel_cb=cancel_cb)
+        progWin.run()
 
     def _async_set_max_downtime(self, vm, max_downtime, migrate_thread):
         if not migrate_thread.isAlive():
@@ -528,13 +526,13 @@ class vmmMigrateDialog(vmmGObjectUI):
 
     def _async_migrate(self, asyncjob,
                        origvm, origdconn, migrate_uri, rate, live,
-                       secure, max_downtime):
+                       secure, unsafe, max_downtime):
         meter = asyncjob.get_meter()
 
-        srcconn = util.dup_conn(origvm.conn)
-        dstconn = util.dup_conn(origdconn)
+        srcconn = origvm.conn
+        dstconn = origdconn
 
-        vminst = srcconn.vmm.lookupByName(origvm.get_name())
+        vminst = srcconn.get_backend().lookupByName(origvm.get_name())
         vm = vmmDomain(srcconn, vminst, vminst.UUID())
 
         logging.debug("Migrating vm=%s from %s to %s", vm.get_name(),
@@ -548,6 +546,6 @@ class vmmMigrateDialog(vmmGObjectUI):
             timer = self.timeout_add(100, self._async_set_max_downtime,
                                      vm, max_downtime, current_thread)
 
-        vm.migrate(dstconn, migrate_uri, rate, live, secure, meter=meter)
+        vm.migrate(dstconn, migrate_uri, rate, live, secure, unsafe, meter=meter)
         if timer:
             self.idle_add(GLib.source_remove, timer)

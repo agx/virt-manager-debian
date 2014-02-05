@@ -19,13 +19,13 @@
   <devices>
     <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
     <disk type="file" device="disk">
-      <source file="/dev/loop0"/>
-      <target dev="hda" bus="ide"/>
+      <source file="/dev/null"/>
+      <target dev="hda" bus="usb" removable="on"/>
       <serial>frob</serial>
       <driver name="test" type="raw"/>
     </disk>
     <disk type="block" device="disk">
-      <source dev="/dev/loop0"/>
+      <source dev="/dev/null"/>
       <target dev="hdb" bus="ide"/>
     </disk>
     <disk type="block" device="floppy">
@@ -33,7 +33,7 @@
     </disk>
     <disk type="block" device="disk">
       <driver name="qemu" type="qcow2"/>
-      <source dev="/dev/loop0"/>
+      <source dev="/dev/null"/>
       <target dev="hdd" bus="ide"/>
     </disk>
     <disk type="block" device="cdrom">
@@ -42,18 +42,26 @@
     </disk>
     <disk type="file" device="floppy">
       <target dev="fda" bus="fdc"/>
-      <source file="/default-pool/default-vol"/>
-      <shareable/>
+      <iotune>
+        <read_iops_sec>0</read_iops_sec>
+        <read_bytes_sec>0</read_bytes_sec>
+        <write_iops_sec>0</write_iops_sec>
+        <write_bytes_sec>0</write_bytes_sec>
+        <total_iops_sec>5</total_iops_sec>
+        <total_bytes_sec>6</total_bytes_sec>
+      </iotune>
       <driver cache="writeback" io="native"/>
+      <source file="/dev/default-pool/default-vol" startupPolicy="optional"/>
+      <shareable/>
     </disk>
     <disk type="block" device="floppy">
       <driver name="phy" cache="none"/>
-      <source dev="/dev/loop0"/>
+      <source dev="/dev/null"/>
       <target dev="fdb" bus="fdc"/>
     </disk>
     <disk type="block" device="disk">
       <driver name="qemu" type="qcow2" cache="none"/>
-      <source dev="/dev/loop0"/>
+      <source dev="/dev/null"/>
       <target dev="vda" bus="virtio"/>
     </disk>
     <input type="mouse" bus="ps2"/>

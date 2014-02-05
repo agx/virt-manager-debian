@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2013 Red Hat, Inc.
+# Copyright (C) 2013, 2014 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@ cfg = ConfigParser.ConfigParser()
 _filepath = os.path.abspath(__file__)
 _srcdir = os.path.abspath(os.path.join(os.path.dirname(_filepath), ".."))
 cfgpath = os.path.join(os.path.dirname(_filepath), "cli.cfg")
+_istest = "VIRTINST_TEST_SUITE" in os.environ
 if os.path.exists(cfgpath):
     cfg.read(cfgpath)
 
@@ -38,9 +39,12 @@ def _split_list(commastr):
 
 
 def _get_param(name, default):
-    if not cfg.sections():
+    if _istest:
         return default
-    return cfg.get("config", name)
+    try:
+        return cfg.get("config", name)
+    except (ConfigParser.NoOptionError, ConfigParser.NoSectionError):
+        return default
 
 
 def _setup_gsettings_path(schemadir):
@@ -77,11 +81,10 @@ else:
     icon_dir = os.path.join(asset_dir, "icons")
 
 default_qemu_user = _get_param("default_qemu_user", "root")
-rhel_enable_unsupported_opts = not bool(int(
-    _get_param("hide_unsupported_rhel_options", "0")))
+stable_defaults = bool(int(_get_param("stable_defaults", "0")))
 
 preferred_distros = _split_list(_get_param("preferred_distros", ""))
 hv_packages = _split_list(_get_param("hv_packages", ""))
 askpass_package = _split_list(_get_param("askpass_packages", ""))
 libvirt_packages = _split_list(_get_param("libvirt_packages", ""))
-default_graphics = _get_param("default_graphics", "vnc")
+default_graphics = _get_param("default_graphics", "spice")

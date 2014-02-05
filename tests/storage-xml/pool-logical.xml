@@ -1,11 +1,11 @@
-<pool type='logical'>
+<pool type="logical">
   <name>pool-logical</name>
   <uuid>10811110-3105-9997-1081-081111031059</uuid>
   <source>
-    <device path='/some/source/path'/>
+    <device path="/some/source/path"/>
     <name>pool-logical</name>
   </source>
   <target>
-    <path>/some/target/path</path>
+    <path>/dev/pool-logical</path>
   </target>
 </pool>

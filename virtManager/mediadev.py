@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2009 Red Hat, Inc.
+# Copyright (C) 2009, 2013 Red Hat, Inc.
 # Copyright (C) 2009 Cole Robinson <crobinso@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -23,16 +23,13 @@ from gi.repository import GObject
 # pylint: enable=E0611
 
 import logging
-import time
 
-import virtinst
+from virtinst import NodeDevice
 
 from virtManager.baseclass import vmmGObject
 
 MEDIA_FLOPPY = "floppy"
 MEDIA_CDROM = "cdrom"
-
-MEDIA_TIMEOUT = 3
 
 
 class vmmMediaDevice(vmmGObject):
@@ -43,7 +40,7 @@ class vmmMediaDevice(vmmGObject):
 
     @staticmethod
     def mediadev_from_nodedev(dev):
-        nodedev = dev.get_virtinst_obj()
+        nodedev = dev.get_xmlobj()
 
         if nodedev.device_type != "storage":
             return None
@@ -123,13 +120,8 @@ class vmmMediaDevice(vmmGObject):
     def tick(self):
         if not self.nodedev_obj:
             return
-
         if not self.nodedev_obj.conn.is_active():
             return
-
-        if (time.time() - self.last_tick) < MEDIA_TIMEOUT:
-            return
-        self.last_tick = time.time()
 
         try:
             self.nodedev_obj.refresh_xml()
@@ -139,8 +131,8 @@ class vmmMediaDevice(vmmGObject):
             return
 
         try:
-            vobj = virtinst.NodeDeviceParser.parse(xml)
-            has_media = vobj.media_available
+            vobj = NodeDevice.parse(self.nodedev_obj.conn.get_backend(), xml)
+            has_media = vobj.media_available or False
         except:
             logging.exception("Node device CDROM polling failed")
             return

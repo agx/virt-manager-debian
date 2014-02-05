@@ -1,10 +1,6 @@
 #!/usr/bin/python -tt
 #
-# Script to set up a Xen guest and kick off an install
-#
-# Copyright 2005-2006  Red Hat, Inc.
-# Jeremy Katz <katzj@redhat.com>
-# Option handling added by Andrew Puch <apuch@redhat.com>
+# Copyright 2005-2013 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,23 +17,19 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
+import argparse
+import logging
 import os
+import re
 import sys
 import time
-import re
-import logging
-import optparse
 
+import libvirt
 import urlgrabber.progress as progress
 
 import virtinst
-import virtinst.CapabilitiesParser
 import virtinst.cli as cli
-import virtinst.util as util
-from virtinst import uriutil
-from virtinst import VirtualCharDevice
 from virtinst.cli import fail, print_stdout, print_stderr
-
 
 
 ##############################
@@ -54,7 +46,7 @@ def install_specified(location, cdpath, pxe, import_install):
     return bool(pxe or cdpath or location or import_install)
 
 
-def cdrom_specified(guest, diskopts=None):
+def cdrom_specified(guest, disk=None):
     disks = guest.get_devices("disk")
 
     for disk in disks:
@@ -62,16 +54,16 @@ def cdrom_specified(guest, diskopts=None):
             return True
 
     # Probably haven't set up disks yet
-    if not disks and diskopts:
-        for opts in diskopts:
+    if not disks and disk:
+        for opts in disk:
             if opts.count("device=cdrom"):
                 return True
 
     return False
 
 
-def storage_specified(files, disks, nodisks, filesystems):
-    return bool(files or disks or nodisks or filesystems)
+def storage_specified(disks, nodisks, filesystems):
+    return bool(disks or nodisks or filesystems)
 
 
 def supports_pxe(guest):
@@ -85,12 +77,9 @@ def supports_pxe(guest):
             return True
 
         try:
-            xml = nic.conn.networkLookupByName(nic.network).XMLDesc(0)
-            if util.get_xml_path(xml, "/network/ip/dhcp/bootp/@file"):
-                return True
-
-            forward = util.get_xml_path(xml, "/network/forward/@mode")
-            if forward and forward != "nat":
+            netobj = nic.conn.networkLookupByName(nic.source)
+            xmlobj = virtinst.Network(nic.conn, parsexml=netobj.XMLDesc(0))
+            if xmlobj.can_pxe():
                 return True
         except:
             logging.debug("Error checking if PXE supported", exc_info=True)
@@ -124,149 +113,70 @@ def check_cdrom_option_error(options):
 # Device validation wrappers #
 ##############################
 
-def get_graphics(guest, options):
-    graphics = cli.digest_graphics(guest, options)
-    cli.get_graphics(guest, graphics)
+def convert_old_sound(options):
+    if options.soundhw:
+        return
+    if not options.old_sound_bool:
+        return
+    options.soundhw = "default"
 
 
-def get_chardevs(char_type, opts, guest, cb):
-    for optstr in cli.listify(opts):
-        try:
-            dev = cb(guest, optstr)
-            guest.add_device(dev)
-        except Exception, e:
-            fail(_("Error in %(chartype)s device parameters: %(err)s") %
-                 {"chartype": char_type, "err": str(e)})
+def convert_old_init(options):
+    if not options.init:
+        return
+    if not options.boot:
+        options.boot = ""
+    options.boot += ",init=%s" % options.init
+    logging.debug("Converted old --init to --boot %s", options.boot)
 
 
-def get_watchdog(watchdogs, guest):
-    for optstr in cli.listify(watchdogs):
-        try:
-            dev = cli.parse_watchdog(guest, optstr)
-            guest.add_device(dev)
-        except Exception, e:
-            fail(_("Error in watchdog device parameters: %s") % str(e))
+def convert_old_disks(options):
+    if options.disk or options.nodisks:
+        return
 
-
-def get_filesystems(filesystems, guest):
-    for optstr in cli.listify(filesystems):
-        try:
-            dev = cli.parse_filesystem(guest, optstr)
-            guest.add_device(dev)
-        except Exception, e:
-            fail(_("Error in filesystem device parameters: %s") % str(e))
-
-
-def get_disk(diskopts, size, sparse, guest, is_file_path):
-    try:
-        dev = None
-
-        if is_file_path:
-            path = diskopts
-        else:
-            dev, size = cli.parse_disk(guest, diskopts)
-            path = dev.path
-            sparse = dev.sparse
-
-        d = cli.disk_prompt(guest.conn, path, size, sparse,
-                            origdev=dev)
-
-    except ValueError, e:
-        fail(_("Error with storage parameters: %s" % str(e)))
-
-    guest.add_device(d)
-
-
-def get_disks(guest, file_paths, disk_paths, size, sparse, need_storage):
-    is_file_path = (file_paths or (not disk_paths and cli.is_prompt()))
-    disks = (file_paths or disk_paths)
-    if not disks and need_storage and cli.is_prompt():
-        disks = [None]
+    paths = virtinst.util.listify(options.file_paths)
+    sizes = virtinst.util.listify(options.disksize)
 
     def padlist(l, padsize):
-        l = cli.listify(l)
+        l = virtinst.util.listify(l)
         l.extend((padsize - len(l)) * [None])
         return l
 
-    disklist = padlist(disks, 0)
-    sizelist = padlist(size, len(disklist))
+    disklist = padlist(paths, max(0, len(sizes)))
+    sizelist = padlist(sizes, len(disklist))
 
+    opts = []
     for idx in range(len(disklist)):
-        get_disk(disklist[idx], sizelist[idx], sparse, guest, is_file_path)
+        optstr = ""
+        if disklist[idx]:
+            optstr += "path=%s" % disklist[idx]
+        if sizelist[idx]:
+            if optstr:
+                optstr += ","
+            optstr += "size=%s" % sizelist[idx]
+        if options.sparse is False:
+            if optstr:
+                optstr += ","
+            optstr += "sparse=no"
+        logging.debug("Converted to new style: --disk %s", optstr)
+        opts.append(optstr)
 
-
-def get_networks(guest, options):
-    networks, macs = cli.digest_networks(guest, options)
-    cli.get_networks(guest, networks, macs)
+    options.disk = opts
+    options.file_paths = []
+    options.disksize = None
+    options.sparse = True
 
 
 ########################
 # Virt type validation #
 ########################
 
-def prompt_virt(caps, arch, req_virt_type, req_accel):
-
-    supports_hvm   = False
-    supports_pv    = False
-    supports_accel = False
-    for guest in caps.guests:
-        if guest.os_type == "hvm":
-            supports_hvm = True
-
-        elif guest.os_type == "xen":
-            if (len(guest.domains) and
-                guest.domains[0].hypervisor_type == "kvm"):
-                # Don't prompt user for PV w/ xenner
-                continue
-            supports_pv = True
-
-    if not arch:
-        arch = caps.host.arch
-
-    if not req_virt_type:
-        if supports_hvm and supports_pv:
-            prompt_txt = _("Would you like a fully virtualized guest "
-                           "(yes or no)? This will allow you to run "
-                           "unmodified operating systems.")
-
-            if cli.prompt_for_yes_or_no(prompt_txt, ""):
-                req_virt_type = "hvm"
-            else:
-                req_virt_type = "xen"
-
-        elif supports_hvm:
-            req_virt_type = "hvm"
-
-        elif supports_pv:
-            req_virt_type = "xen"
-
-    # See if that domain supports acceleration
-    accel_type = ""
-    for guest in caps.guests:
-        if guest.os_type == req_virt_type and guest.arch == arch:
-            for dom in guest.domains:
-                if dom.is_accelerated():
-                    supports_accel = True
-                    accel_type = dom.hypervisor_type.upper()
-
-    if supports_accel and not req_accel:
-        prompt_txt = (_("Would you like to use %s acceleration? "
-                        "(yes or no)") % accel_type)
-
-        req_accel = cli.prompt_for_yes_or_no(prompt_txt, "")
-
-    return (req_virt_type, req_accel)
-
-
-def get_virt_type(conn, options):
-
+def get_guest(conn, options):
     # Set up all virt/hypervisor parameters
     if sum([bool(f) for f in [options.fullvirt,
                               options.paravirt,
                               options.container]]) > 1:
         fail(_("Can't do more than one of --hvm, --paravirt, or --container"))
-
-    capabilities = virtinst.CapabilitiesParser.parse(conn.getCapabilities())
 
     req_accel = True
     req_hv_type = options.hv_type and options.hv_type.lower() or None
@@ -280,12 +190,6 @@ def get_virt_type(conn, options):
         # This should force capabilities to give us the most sensible default
         req_virt_type = None
 
-    if cli.is_prompt():
-        # User requested prompting but passed no virt type flag, ask for
-        # needed info
-        req_virt_type, req_accel = prompt_virt(capabilities, options.arch,
-                                               req_virt_type, req_accel)
-
     logging.debug("Requesting virt method '%s', hv type '%s'.",
                   (req_virt_type and req_virt_type or _("default")),
                   (req_hv_type and req_hv_type or _("default")))
@@ -296,74 +200,44 @@ def get_virt_type(conn, options):
 
     try:
         (capsguest,
-         capsdomain) = virtinst.CapabilitiesParser.guest_lookup(
-                        conn=conn,
-                        caps=capabilities,
+         capsdomain) = conn.caps.guest_lookup(
                         os_type=req_virt_type,
                         arch=arch,
                         typ=req_hv_type,
                         accelerated=req_accel,
                         machine=options.machine)
+        guest = conn.caps.build_virtinst_guest(conn, capsguest, capsdomain)
+        guest.os.machine = options.machine
     except Exception, e:
         fail(e)
 
     if (not req_virt_type and
         not req_hv_type and
         req_accel and
-        uriutil.is_qemu(conn) and
+        conn.is_qemu() and
         capsguest.arch in ["i686", "x86_64"] and
         not capsdomain.is_accelerated()):
         logging.warn("KVM acceleration not available, using '%s'",
                      capsdomain.hypervisor_type)
 
-    return (capsguest, capsdomain)
+    return guest
 
 
 ##################################
 # Install media setup/validation #
 ##################################
 
-def get_install_media(guest, location, cdpath, need_install):
+def get_install_media(guest, location, cdpath):
     manual_cdrom = cdrom_specified(guest)
     cdinstall = bool(not location and (cdpath or cdrom_specified(guest)))
 
-    if not (location or cdpath or manual_cdrom or need_install):
+    if not (location or cdpath or manual_cdrom):
         return
 
     try:
-        if not location and not cdinstall and cli.is_prompt():
-            media_prompt(guest)
-        else:
-            validate_install_media(guest, location, cdpath, cdinstall)
+        validate_install_media(guest, location, cdpath, cdinstall)
     except ValueError, e:
         fail(_("Error validating install location: %s" % str(e)))
-
-
-def media_prompt(guest):
-    if guest.installer.is_hvm():
-        prompt_txt = _("What is the install CD-ROM/ISO or URL?")
-    else:
-        prompt_txt = _("What is the install URL?")
-
-    while 1:
-        location = None
-        cdpath = None
-        media = cli.prompt_for_input("", prompt_txt, None)
-
-        if not len(media):
-            continue
-
-        if not guest.installer.is_hvm() or media.count(":/"):
-            location = media
-        else:
-            cdpath = media
-
-        try:
-            validate_install_media(guest, location, cdpath)
-        except Exception, e:
-            logging.error(str(e))
-            continue
-        break
 
 
 def validate_install_media(guest, location, cdpath, cdinstall=False):
@@ -371,9 +245,7 @@ def validate_install_media(guest, location, cdpath, cdinstall=False):
         guest.installer.cdrom = True
     if location or cdpath:
         guest.installer.location = (location or cdpath)
-
-    if hasattr(guest.installer, "check_location"):
-        guest.installer.check_location()
+    guest.installer.check_location(guest)
 
 
 #############################
@@ -384,43 +256,38 @@ def validate_required_options(options, guest):
     # Required config. Don't error right away if nothing is specified,
     # aggregate the errors to help first time users get it right
     msg = ""
-    need_storage = False
-    need_install = False
 
     if not options.name:
         msg += "\n" + cli.name_missing
 
     if not options.memory:
-        msg += "\n" + cli.ram_missing
+        msg += "\n" + _("--memory amount in MB is required")
 
-    if (not guest.installer.is_container() and
-        not storage_specified(options.file_paths, options.diskopts,
-                             options.nodisks, options.filesystems)):
+    if (not guest.os.is_container() and
+        not storage_specified(options.disk,
+                              options.nodisks,
+                              options.filesystem)):
         msg += "\n" + disk_missing
-        need_storage = True
 
-    if (not guest.installer.is_container() and
+    if (not guest.os.is_container() and
         (not install_specified(options.location, options.cdrom,
                                options.pxe, options.import_install)) and
-        (not cdrom_specified(guest, options.diskopts))):
+        (not cdrom_specified(guest, options.disk))):
         msg += "\n" + install_missing
-        need_install = True
 
-    if msg and not cli.is_prompt():
+    if msg:
         fail(msg)
-
-    return need_storage, need_install
 
 
 def check_option_collisions(options, guest):
     # Disk collisions
     if options.nodisks and (options.file_paths or
-                            options.diskopts or
+                            options.disk or
                             options.disksize):
         fail(_("Cannot specify storage and use --nodisks"))
 
     if ((options.file_paths or options.disksize or not options.sparse) and
-        options.diskopts):
+        options.disk):
         fail(_("Cannot mix --file, --nonsparse, or --file-size with --disk "
                "options. Use --disk PATH[,size=SIZE][,sparse=yes|no]"))
 
@@ -440,13 +307,13 @@ def check_option_collisions(options, guest):
         fail(_("Only one install method can be used (%(methods)s)") %
              {"methods" : install_methods})
 
-    if (guest.installer.is_container() and
+    if (guest.os.is_container() and
         install_specified(options.location, options.cdrom,
                           options.pxe, options.import_install)):
         fail(_("Install methods (%s) cannot be specified for "
                "container guests") % install_methods)
 
-    if guest.installer.is_xenpv():
+    if guest.os.is_xenpv():
         if options.pxe:
             fail(_("Network PXE boot is not supported for paravirtualized "
                    "guests"))
@@ -454,21 +321,88 @@ def check_option_collisions(options, guest):
             fail(_("Paravirtualized guests cannot install off cdrom media."))
 
     if (options.location and
-        guest.is_remote() and not
-        guest.installer.support_remote_url_install()):
+        guest.conn.is_remote() and not
+        guest.conn.support_remote_url_install()):
         fail(_("Libvirt version does not support remote --location installs"))
 
-    if not options.location and options.extra:
-        fail(_("--extra-args only work if specified with --location."))
-    if not options.location and options.initrd_injections:
-        fail(_("--initrd-inject only works if specified with --location."))
+    cdrom_err = ""
+    if guest.installer.cdrom:
+        cdrom_err = " " + _("See the man page for examples of "
+            "using --location with CDROM media")
+    if not options.location and options.extra_args:
+        fail(_("--extra-args only work if specified with --location.") +
+             cdrom_err)
+    if not options.location and options.initrd_inject:
+        fail(_("--initrd-inject only works if specified with --location.") +
+             cdrom_err)
+
+
+def _show_nographics_warnings(options, guest):
+    if guest.get_devices("graphics"):
+        return
+    if not options.autoconsole:
+        return
+
+    if guest.installer.cdrom:
+        logging.warn(_("CDROM media does not print to the text console "
+            "by default, so you likely will not see text install output. "
+            "You might want to use --location."))
+        return
+
+    if not options.location:
+        return
+
+    # Trying --location --nographics with console connect. Warn if
+    # they likely won't see any output.
+
+    if not guest.get_devices("console"):
+        logging.warn(_("No --console device added, you likely will not "
+            "see text install output from the guest."))
+        return
+
+    serial_arg = "console=ttyS0"
+    virtio_arg = "console=hvc0"
+    console_type = None
+    if guest.conn.is_test() or guest.conn.is_qemu():
+        console_type = serial_arg
+        if guest.get_devices("console")[0].target_type == "virtio":
+            console_type = virtio_arg
+
+    if not options.extra_args or "console=" not in options.extra_args:
+        logging.warn(_("No 'console' seen in --extra-args, a '%s' kernel "
+            "argument is likely required to see text install output from "
+            "the guest."), console_type or "console=")
+        return
+
+    if console_type in options.extra_args:
+        return
+    if (serial_arg not in options.extra_args and
+        virtio_arg not in options.extra_args):
+        return
+
+    has = (serial_arg in options.extra_args) and serial_arg or virtio_arg
+    need = (serial_arg in options.extra_args) and virtio_arg or serial_arg
+    logging.warn(_("'%s' found in --extra-args, but the device attached "
+        "to the guest likely requires '%s'. You may not see text install "
+        "output from the guest."), has, need)
+    if has == serial_arg:
+        logging.warn(_("To make '--extra-args %s' work, you can force a "
+            "plain serial device with '--console pty'"), serial_arg)
+
+
+def show_warnings(options, guest):
+    if options.pxe and not supports_pxe(guest):
+        logging.warn(_("The guest's network configuration does not support "
+                       "PXE"))
+
+    _show_nographics_warnings(options, guest)
 
 
 ##########################
 # Guest building helpers #
 ##########################
 
-def build_installer(options, conn, virt_type, hv_name, arch, machine):
+def build_installer(options, conn, virt_type):
     # Build the Installer instance
     if options.livecd:
         instclass = virtinst.LiveCDInstaller
@@ -479,104 +413,76 @@ def build_installer(options, conn, virt_type, hv_name, arch, machine):
         instclass = virtinst.PXEInstaller
     elif options.cdrom or options.location:
         instclass = virtinst.DistroInstaller
-    elif options.import_install or options.bootopts:
+    elif virt_type == "exe":
+        instclass = virtinst.ContainerInstaller
+    elif options.import_install or options.boot:
         if options.import_install and options.nodisks:
             fail(_("A disk device must be specified with --import."))
         options.import_install = True
         instclass = virtinst.ImportInstaller
-    elif virt_type == "exe":
-        instclass = virtinst.ContainerInstaller
     else:
         instclass = virtinst.DistroInstaller
 
     # Only set installer params here that impact the hw config, not
     # anything to do with install media
-    installer = instclass(type=hv_name, os_type=virt_type, conn=conn)
-    installer.arch = arch
-    installer.machine = machine
+    installer = instclass(conn)
 
     return installer
 
 
-def build_guest_instance(conn, options):
-    capsguest, capsdomain = get_virt_type(conn, options)
+def build_guest_instance(conn, options, parsermap):
+    guest = get_guest(conn, options)
 
-    virt_type = capsguest.os_type
-    hv_name = capsdomain.hypervisor_type
-    logging.debug("Received virt method '%s'", virt_type)
-    logging.debug("Hypervisor name is '%s'", hv_name)
+    logging.debug("Received virt method '%s'", guest.type)
+    logging.debug("Hypervisor name is '%s'", guest.os.os_type)
 
-    # Get Guest instance from installer parameters.
-    installer = build_installer(options, conn, virt_type, hv_name,
-                                capsguest.arch, options.machine)
-    guest = installer.guest_from_installer()
+    guest.installer = build_installer(options, conn, guest.os.os_type)
 
+    cli.convert_old_memory(options)
+    convert_old_sound(options)
+    cli.convert_old_networks(guest, options, not options.nonetworks and 1 or 0)
+    cli.convert_old_graphics(guest, options)
+    convert_old_disks(options)
+    cli.convert_old_features(options)
+    cli.convert_old_cpuset(options)
+    convert_old_init(options)
 
-    # Guest configuration
-    cli.get_uuid(options.uuid, guest)
-    cli.get_vcpus(guest, options.vcpus, options.check_cpu)
-    cli.parse_numatune(guest, options.numatune)
-    cli.parse_cpu(guest, options.cpu)
-    cli.parse_security(guest, options.security)
-    cli.parse_boot(guest, options.bootopts)
-    guest.autostart = options.autostart
-    guest.description = options.description
-    guest.features["acpi"] = not options.noacpi
-    guest.features["apic"] = not options.noapic
-
-
-    # Non-default devices
-    cli.get_controller(guest, options.controller)
-    cli.get_redirdev(guest, options.redirdev)
-    cli.get_memballoon(guest, options.memballoon)
-    if not options.nonetworks:
-        get_networks(guest, options)
-    get_graphics(guest, options)
-    cli.get_video(guest, options.video)
-    get_watchdog(options.watchdog, guest)
-    get_filesystems(options.filesystems, guest)
-    cli.get_sound(options.sound, options.soundhw, guest)
-    get_chardevs(VirtualCharDevice.VIRTUAL_DEV_SERIAL, options.serials,
-                 guest, cli.parse_serial)
-    get_chardevs(VirtualCharDevice.VIRTUAL_DEV_PARALLEL, options.parallels,
-                 guest, cli.parse_parallel)
-    get_chardevs(VirtualCharDevice.VIRTUAL_DEV_CHANNEL, options.channels,
-                 guest, cli.parse_channel)
-    get_chardevs(VirtualCharDevice.VIRTUAL_DEV_CONSOLE, options.consoles,
-                 guest, cli.parse_console)
-    cli.get_hostdevs(options.hostdevs, guest)
-    cli.get_smartcard(guest, options.smartcard)
-
-
-    # Install options
+    # non-xml install options
+    guest.installer.extraargs = options.extra_args
+    guest.installer.initrd_injections = options.initrd_inject
     cli.set_os_variant(guest, options.distro_type, options.distro_variant)
-    guest.extraargs = options.extra
-    guest.installer.initrd_injections = options.initrd_injections
-    guest.installer.init = options.init
+    guest.autostart = options.autostart
 
-    # Do this after setting up all optional parameters, so we report error
-    # about those first.
-    need_storage, need_install = validate_required_options(options, guest)
+    if options.name:
+        guest.name = options.name
+    if options.uuid:
+        guest.uuid = options.uuid
+    if options.description:
+        guest.description = options.description
 
-    # Actually set required options
-    cli.get_name(options.name, guest)
-    cli.get_memory(options.memory, guest)
-    if not options.nodisks:
-        get_disks(guest, options.file_paths, options.diskopts,
-                  options.disksize, options.sparse, need_storage)
-    get_install_media(guest, options.location, options.cdrom, need_install)
+    validate_required_options(options, guest)
+
+    # We don't want to auto-parse --disk, but we wanted it for earlier
+    # parameter introspection
+    cli.parse_option_strings(parsermap, options, guest, None)
+
+    # Extra disk validation
+    for disk in guest.get_devices("disk"):
+        cli.validate_disk(disk)
+
+    guest.add_default_input_device()
+    guest.add_default_console_device()
+    guest.add_default_video_device()
+    guest.add_default_usb_controller()
+    guest.add_default_channels()
+
+    get_install_media(guest, options.location, options.cdrom)
 
     # Various little validations about option collisions. Need to do
     # this after setting guest.installer at least
     check_option_collisions(options, guest)
 
-    # Needs to come after setting memory
-    cli.get_cpuset(guest, options.cpuset, guest.memory)
-
-    # Warnings
-    if options.pxe and not supports_pxe(guest):
-        logging.warn(_("The guest's network configuration does not support "
-                       "PXE"))
+    show_warnings(options, guest)
 
     return guest
 
@@ -617,23 +523,78 @@ def txt_console(dom, uri):
     return _run_console(args)
 
 
+def domain_is_crashed(domain):
+    """
+    Return True if the created domain object is in a crashed state
+    """
+    if not domain:
+        return False
+
+    dominfo = domain.info()
+    state = dominfo[0]
+
+    return state == libvirt.VIR_DOMAIN_CRASHED
+
+
+def domain_is_shutdown(domain):
+    """
+    Return True if the created domain object is shutdown
+    """
+    if not domain:
+        return False
+
+    dominfo = domain.info()
+
+    state    = dominfo[0]
+    cpu_time = dominfo[4]
+
+    if state == libvirt.VIR_DOMAIN_SHUTOFF:
+        return True
+
+    # If 'wait' was specified, the dom object we have was looked up
+    # before initially shutting down, which seems to bogus up the
+    # info data (all 0's). So, if it is bogus, assume the domain is
+    # shutdown. We will catch the error later.
+    return state == libvirt.VIR_DOMAIN_NOSTATE and cpu_time == 0
+
+
+def connect_console(domain, consolecb, wait):
+    """
+    Launched the passed console callback for the already defined
+    domain. If domain isn't running, return an error.
+    """
+    child = None
+    if consolecb:
+        child = consolecb(domain)
+
+    if not child or not wait:
+        return
+
+    # If we connected the console, wait for it to finish
+    try:
+        os.waitpid(child, 0)
+    except OSError, e:
+        logging.debug("waitpid: %s: %s", e.errno, e.message)
+
+
 def start_install(guest, continue_inst, options):
     def show_console(dom):
-        gdev = guest.get_devices("graphics")
+        xmlobj = virtinst.Guest(guest.conn, parsexml=dom.XMLDesc(0))
+        gdev = xmlobj.get_devices("graphics")
         if not gdev:
             logging.debug("Connecting to text console")
-            return txt_console(dom, guest.get_uri())
+            return txt_console(dom, guest.conn.getURI())
 
         gtype = gdev[0].type
         if gtype in [virtinst.VirtualGraphics.TYPE_VNC,
                      virtinst.VirtualGraphics.TYPE_SPICE]:
             logging.debug("Launching virt-viewer for graphics type '%s'",
                           gtype)
-            return vnc_console(dom, guest.get_uri())
+            return vnc_console(dom, guest.conn.getURI())
         else:
             logging.debug("No viewer to launch for graphics type '%s'",
                           gtype)
-            return None  # SDL needs no viewer app
+            return None
 
     # There are two main cases we care about:
     #
@@ -673,13 +634,14 @@ def start_install(guest, continue_inst, options):
         start_time = time.time()
 
         # Do first install phase
-        dom = guest.start_install(conscb, meter, wait=wait_on_console,
-                                  noboot=options.noreboot)
+        dom = guest.start_install(meter=meter, noboot=options.noreboot)
+        connect_console(dom, conscb, wait_on_console)
         dom = check_domain(guest, dom, conscb,
                            wait_on_install, wait_time, start_time)
 
         if continue_inst:
-            dom = guest.continue_install(conscb, meter, wait=wait_on_console)
+            dom = guest.continue_install(meter=meter)
+            connect_console(dom, conscb, wait_on_console)
             dom = check_domain(guest, dom, conscb,
                                wait_on_install, wait_time, start_time)
 
@@ -691,11 +653,10 @@ def start_install(guest, continue_inst, options):
             print_stdout(
                 _("Guest installation complete... restarting guest."))
             dom.create()
-            guest.connect_console(conscb)
+            connect_console(dom, conscb, wait=True)
 
     except KeyboardInterrupt:
         logging.debug("", exc_info=True)
-        guest.terminate_console()
         print_stderr(_("Domain install interrupted."))
         raise
     except RuntimeError, e:
@@ -717,10 +678,10 @@ def check_domain(guest, dom, conscb, wait_for_install, wait_time, start_time):
         dominfo = dom.info()
         state = dominfo[0]
 
-        if guest.domain_is_crashed():
+        if domain_is_crashed(guest.domain):
             fail(_("Domain has crashed."))
 
-        if guest.domain_is_shutdown():
+        if domain_is_shutdown(guest.domain):
             return dom, state
 
         return None, state
@@ -762,17 +723,18 @@ def check_domain(guest, dom, conscb, wait_for_install, wait_time, start_time):
     timestr = (not wait_forever and
                _("%d minutes ") % (int(wait_time) / 60) or "")
     print_stdout(
-        _("Domain installation still in progress. Waiting %s"
-          "for installation to complete.") % timestr)
+        _("Domain installation still in progress. Waiting "
+          "%(time_string)s for installation to complete.") %
+        {"time_string": timestr})
 
     # Wait loop
     while True:
-        if guest.domain_is_shutdown():
+        if domain_is_shutdown(guest.domain):
             print_stdout(_("Domain has shutdown. Continuing."))
             try:
                 # Lookup a new domain object incase current
                 # one returned bogus data (see comment in
-                # domain_is_shutdown
+                # domain_is_shutdown)
                 dom = guest.conn.lookupByName(guest.name)
             except Exception, e:
                 raise RuntimeError(_("Could not lookup domain after "
@@ -844,165 +806,106 @@ def xml_to_print(guest, continue_inst, xmlonly, xmlstep, dry):
 #######################
 
 def parse_args():
-    usage = "%prog --name NAME --ram RAM STORAGE INSTALL [options]"
-    parser = cli.setupParser(usage)
+    parser = cli.setupParser(
+        "%(prog)s --name NAME --ram RAM STORAGE INSTALL [options]",
+        _("Create a new virtual machine from specified install media."),
+        introspection_epilog=True)
     cli.add_connect_option(parser)
 
-    geng = optparse.OptionGroup(parser, _("General Options"))
-    geng.add_option("-n", "--name", dest="name",
+    geng = parser.add_argument_group(_("General Options"))
+    geng.add_argument("-n", "--name",
                     help=_("Name of the guest instance"))
-    geng.add_option("-r", "--ram", type="int", dest="memory",
-                    help=_("Memory to allocate for guest instance in "
-                           "megabytes"))
+    cli.add_memory_option(geng, backcompat=True)
     cli.vcpu_cli_options(geng)
-    geng.add_option("", "--description", dest="description",
-                    help=_("Human readable description of the VM to store in "
-                           "the generated XML."))
-    geng.add_option("", "--security", dest="security",
-                    help=_("Set domain security driver configuration."))
-    geng.add_option("", "--numatune", dest="numatune",
-                    help=_("Tune NUMA policy for the domain process."))
-    parser.add_option_group(geng)
+    cli.add_metadata_option(geng)
+    geng.add_argument("-u", "--uuid", help=argparse.SUPPRESS)
+    geng.add_argument("--description", help=argparse.SUPPRESS)
+    cli.add_guest_xml_options(geng)
 
-    insg = optparse.OptionGroup(parser, _("Installation Method Options"))
-    insg.add_option("-c", dest="cdrom_short", help=optparse.SUPPRESS_HELP)
-    insg.add_option("", "--cdrom", dest="cdrom",
-                    help=_("CD-ROM installation media"))
-    insg.add_option("-l", "--location", dest="location",
+    insg = parser.add_argument_group(_("Installation Method Options"))
+    insg.add_argument("-c", dest="cdrom_short", help=argparse.SUPPRESS)
+    insg.add_argument("--cdrom", help=_("CD-ROM installation media"))
+    insg.add_argument("-l", "--location",
                     help=_("Installation source (eg, nfs:host:/path, "
                            "http://host/path, ftp://host/path)"))
-    insg.add_option("", "--pxe", action="store_true", dest="pxe",
+    insg.add_argument("--pxe", action="store_true",
                     help=_("Boot from the network using the PXE protocol"))
-    insg.add_option("", "--import", action="store_true", dest="import_install",
+    insg.add_argument("--import", action="store_true", dest="import_install",
                     help=_("Build guest around an existing disk image"))
-    insg.add_option("", "--init", dest="init",
-                    help=_("Path to init binary for container guest. Ex:\n"
-                           "--init /path/to/app (to contain an application)\n"
-                           "--init /sbin/init (for a full OS container)"))
-    insg.add_option("", "--livecd", action="store_true", dest="livecd",
+    insg.add_argument("--livecd", action="store_true",
                     help=_("Treat the CD-ROM media as a Live CD"))
-    insg.add_option("-x", "--extra-args", dest="extra",
-                    default="",
+    insg.add_argument("-x", "--extra-args",
                     help=_("Additional arguments to pass to the install kernel "
                            "booted from --location"))
-    insg.add_option("", "--initrd-inject", dest="initrd_injections",
-                    action="append",
+    insg.add_argument("--initrd-inject", action="append",
                     help=_("Add given file to root of initrd from --location"))
-    insg.add_option("", "--os-type", dest="distro_type",
-                    help=_("The OS type being installed, e.g. "
-                           "'linux', 'unix', 'windows'"))
-    insg.add_option("", "--os-variant", dest="distro_variant",
-                    help=_("The OS variant being installed guests, "
-                           "e.g. 'fedora6', 'rhel5', 'solaris10', 'win2k'"))
-    insg.add_option("", "--boot", dest="bootopts", default="",
-                    help=_("Optionally configure post-install boot order, "
-                           "menu, permanent kernel boot, etc."))
-    parser.add_option_group(insg)
+    cli.add_distro_options(insg)
+    cli.add_boot_option(insg)
+    insg.add_argument("--init", help=argparse.SUPPRESS)
 
-    stog = optparse.OptionGroup(parser, _("Storage Configuration"))
-    stog.add_option("", "--disk", dest="diskopts", action="append",
-        help=_("Specify storage with various options. Ex.\n"
-               "--disk path=/my/existing/disk\n"
-               "--disk path=/my/new/disk,size=5 (in gigabytes)\n"
-               "--disk vol=poolname/volname,device=cdrom,bus=scsi,..."))
-    stog.add_option("", "--nodisks", action="store_true",
+    stog = parser.add_argument_group(_("Storage Configuration"))
+    cli.add_disk_option(stog)
+    stog.add_argument("--nodisks", action="store_true",
                     help=_("Don't set up any disks for the guest."))
     cli.add_fs_option(stog)
 
     # Deprecated storage options
-    stog.add_option("-f", "--file", dest="file_paths", action="append",
-                    help=optparse.SUPPRESS_HELP)
-    stog.add_option("-s", "--file-size", type="float",
+    stog.add_argument("-f", "--file", dest="file_paths", action="append",
+                    help=argparse.SUPPRESS)
+    stog.add_argument("-s", "--file-size", type=float,
                     action="append", dest="disksize",
-                    help=optparse.SUPPRESS_HELP)
-    stog.add_option("", "--nonsparse", action="store_false",
+                    help=argparse.SUPPRESS)
+    stog.add_argument("--nonsparse", action="store_false",
                     default=True, dest="sparse",
-                    help=optparse.SUPPRESS_HELP)
-    parser.add_option_group(stog)
+                    help=argparse.SUPPRESS)
 
     netg = cli.network_option_group(parser)
 
-    netg.add_option("", "--nonetworks", action="store_true",
+    netg.add_argument("--nonetworks", action="store_true",
                     help=_("Don't create network interfaces for the guest."))
-    parser.add_option_group(netg)
 
     vncg = cli.graphics_option_group(parser)
-    vncg.add_option("", "--noautoconsole", action="store_false",
+    vncg.add_argument("--noautoconsole", action="store_false",
                     dest="autoconsole", default=True,
                     help=_("Don't automatically try to connect to the guest "
                            "console"))
-    parser.add_option_group(vncg)
 
-    devg = optparse.OptionGroup(parser, _("Device Options"))
+    devg = parser.add_argument_group(_("Device Options"))
     cli.add_device_options(devg)
 
     # Deprecated
-    devg.add_option("", "--sound", action="store_true", dest="sound",
-                    default=False,
-                    help=optparse.SUPPRESS_HELP)
-    parser.add_option_group(devg)
+    devg.add_argument("--sound", action="store_true", dest="old_sound_bool",
+                    default=False, help=argparse.SUPPRESS)
 
-    virg = optparse.OptionGroup(parser, _("Virtualization Platform Options"))
-    virg.add_option("-v", "--hvm", action="store_true", dest="fullvirt",
+    virg = parser.add_argument_group(_("Virtualization Platform Options"))
+    virg.add_argument("-v", "--hvm", action="store_true", dest="fullvirt",
                       help=_("This guest should be a fully virtualized guest"))
-    virg.add_option("-p", "--paravirt", action="store_true", dest="paravirt",
+    virg.add_argument("-p", "--paravirt", action="store_true",
                     help=_("This guest should be a paravirtualized guest"))
-    virg.add_option("", "--container", action="store_true", default=False,
-                    dest="container",
+    virg.add_argument("--container", action="store_true", default=False,
                     help=_("This guest should be a container guest"))
-    virg.add_option("", "--virt-type", dest="hv_type",
+    virg.add_argument("--virt-type", dest="hv_type",
                     default="",
                     help=_("Hypervisor name to use (kvm, qemu, xen, ...)"))
-    virg.add_option("", "--accelerate", action="store_true", default=False,
-                    dest="accelerate", help=optparse.SUPPRESS_HELP)
-    virg.add_option("", "--arch", dest="arch",
+    virg.add_argument("--accelerate", action="store_true", default=False,
+                     help=argparse.SUPPRESS)
+    virg.add_argument("--arch",
                     help=_("The CPU architecture to simulate"))
-    virg.add_option("", "--machine", dest="machine",
+    virg.add_argument("--machine",
                     help=_("The machine type to emulate"))
-    virg.add_option("", "--noapic", action="store_true", dest="noapic",
-                    default=False,
-                    help=_("Disables APIC for fully virtualized guest "
-                           "(overrides value in os-type/os-variant db)"))
-    virg.add_option("", "--noacpi", action="store_true", dest="noacpi",
-                    default=False,
-                    help=_("Disables ACPI for fully virtualized guest "
-                           "(overrides value in os-type/os-variant db)"))
-    virg.add_option("-u", "--uuid", dest="uuid",
-                    help=_("UUID for the guest."))
-    parser.add_option_group(virg)
+    cli.add_old_feature_options(virg)
 
-    misc = optparse.OptionGroup(parser, _("Miscellaneous Options"))
-    misc.add_option("", "--autostart", action="store_true", dest="autostart",
+    misc = parser.add_argument_group(_("Miscellaneous Options"))
+    misc.add_argument("--autostart", action="store_true", dest="autostart",
                     default=False,
                     help=_("Have domain autostart on host boot up."))
-    misc.add_option("", "--print-xml", action="store_true", dest="xmlonly",
-                    help=_("Print the generated domain XML rather than define "
-                           "the guest."))
-    misc.add_option("", "--print-step", type="str", dest="xmlstep",
-                    help=_("Print XML of a specific install step "
-                           "(1, 2, 3, all) rather than define the guest."))
-    misc.add_option("", "--noreboot", action="store_true", dest="noreboot",
-                    help=_("Don't boot guest after completing install."))
-    misc.add_option("", "--wait", type="int", dest="wait",
-                    help=_("Time to wait (in minutes)"))
-    misc.add_option("", "--dry-run", action="store_true", dest="dry",
-                    help=_("Run through install process, but do not "
-                           "create devices or define the guest."))
-    misc.add_option("", "--force", action="store_true", dest="force",
-                    help=_("Forces 'yes' for any applicable prompts, "
-                           "terminates for all others"))
-    misc.add_option("-q", "--quiet", action="store_true", dest="quiet",
-                    help=_("Suppress non-error output"))
-    misc.add_option("", "--prompt", action="store_true", dest="prompt",
-                    default=False,
-                    help=_("Request user input for ambiguous situations or "
-                           "required options."))
-    misc.add_option("-d", "--debug", action="store_true", dest="debug",
-                    help=_("Print debugging information"))
-    parser.add_option_group(misc)
+    misc.add_argument("--wait", type=int, dest="wait",
+                    help=_("Minutes to wait for install to complete."))
 
-    (options, cliargs) = parser.parse_args()
-    return options, cliargs
+    cli.add_misc_options(misc, prompt=True, printxml=True, printstep=True,
+                         noreboot=True, dryrun=True)
+
+    return parser.parse_args()
 
 
 ###################
@@ -1011,24 +914,28 @@ def parse_args():
 
 def main(conn=None):
     cli.earlyLogging()
-    options, cliargs = parse_args()
+    options = parse_args()
 
     # Default setup options
     options.quiet = options.xmlstep or options.xmlonly or options.quiet
 
     cli.setupLogging("virt-install", options.debug, options.quiet)
 
-    if cliargs:
-        fail(_("Unknown argument '%s'") % cliargs[0])
     check_cdrom_option_error(options)
 
     if options.distro_variant == "list":
         logging.debug("OS list requested")
-        print virtinst.Guest.pretty_os_list()
+        for t in virtinst.osdict.list_os(list_types=True):
+            for v in virtinst.osdict.list_os(typename=t.name):
+                print "%-20s : %s" % (v.name, v.label)
         return 0
 
     cli.set_force(options.force)
     cli.set_prompt(options.prompt)
+
+    parsermap = cli.build_parser_map(options)
+    if cli.check_option_introspection(options, parsermap):
+        return 0
 
     if conn is None:
         conn = cli.getConnection(options.connect)
@@ -1036,7 +943,7 @@ def main(conn=None):
     if options.xmlstep not in [None, "1", "2", "3", "all"]:
         fail(_("--print-step must be 1, 2, 3, or all"))
 
-    guest = build_guest_instance(conn, options)
+    guest = build_guest_instance(conn, options, parsermap)
     continue_inst = guest.get_continue_inst()
 
     if options.xmlstep or options.xmlonly or options.dry:

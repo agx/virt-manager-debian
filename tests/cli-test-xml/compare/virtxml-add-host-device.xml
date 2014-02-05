@@ -1,0 +1,13 @@
+     <panic>
+       <address type="isa" iobase="0x505"/>
+     </panic>
++    <hostdev mode="subsystem" type="pci" managed="yes">
++      <source>
++        <address domain="0" bus="0" slot="25" function="0"/>
++      </source>
++    </hostdev>
+   </devices>
+ </domain>
+
+Domain 'test-many-devices' defined successfully.
+Changes will take effect after the next domain shutdown.

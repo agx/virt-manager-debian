@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2006 Red Hat, Inc.
+# Copyright (C) 2006, 2013 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,6 +18,7 @@
 # MA 02110-1301 USA.
 #
 
+import os
 import logging
 import socket
 
@@ -27,17 +28,17 @@ from gi.repository import GObject
 from gi.repository import Gtk
 # pylint: enable=E0611
 
-import virtinst
-
+from virtManager import uiutil
 from virtManager.baseclass import vmmGObjectUI
 
-HV_XEN = 0
-HV_QEMU = 1
-HV_LXC = 2
+(HV_QEMU,
+HV_XEN,
+HV_LXC,
+HV_QEMU_SESSION) = range(4)
 
-CONN_SSH = 0
-CONN_TCP = 1
-CONN_TLS = 2
+(CONN_SSH,
+CONN_TCP,
+CONN_TLS) = range(3)
 
 
 def current_user():
@@ -61,16 +62,15 @@ class vmmConnect(vmmGObjectUI):
     }
 
     def __init__(self):
-        vmmGObjectUI.__init__(self,
-                              "vmm-open-connection.ui",
-                              "vmm-open-connection")
+        vmmGObjectUI.__init__(self, "connect.ui", "vmm-open-connection")
 
         self.builder.connect_signals({
             "on_hypervisor_changed": self.hypervisor_changed,
-            "on_connection_changed": self.conn_changed,
+            "on_transport_changed": self.transport_changed,
             "on_hostname_combo_changed": self.hostname_combo_changed,
             "on_connect_remote_toggled": self.connect_remote_toggled,
             "on_username_entry_changed": self.username_changed,
+            "on_hostname_changed": self.hostname_changed,
 
             "on_cancel_clicked": self.cancel,
             "on_connect_clicked": self.open_conn,
@@ -101,6 +101,23 @@ class vmmConnect(vmmGObjectUI):
 
         self.reset_state()
 
+    @staticmethod
+    def default_uri(always_system=False):
+        if os.path.exists('/var/lib/xen'):
+            if (os.path.exists('/dev/xen/evtchn') or
+                os.path.exists("/proc/xen")):
+                return 'xen:///'
+
+        if (os.path.exists("/usr/bin/qemu") or
+            os.path.exists("/usr/bin/qemu-kvm") or
+            os.path.exists("/usr/bin/kvm") or
+            os.path.exists("/usr/libexec/qemu-kvm")):
+            if always_system or os.geteuid() == 0:
+                return "qemu:///system"
+            else:
+                return "qemu:///session"
+        return None
+
     def cancel(self, ignore1=None, ignore2=None):
         logging.debug("Cancelling open connection")
         self.close()
@@ -110,22 +127,44 @@ class vmmConnect(vmmGObjectUI):
     def close(self, ignore1=None, ignore2=None):
         logging.debug("Closing open connection")
         self.topwin.hide()
-        self.stop_browse()
 
-    def show(self, parent):
+        if self.browser:
+            for obj, sig in self.browser_sigs:
+                obj.disconnect(sig)
+            self.browser_sigs = []
+            self.browser = None
+
+
+    def show(self, parent, reset_state=True):
         logging.debug("Showing open connection")
-        self.reset_state()
+        if reset_state:
+            self.reset_state()
         self.topwin.set_transient_for(parent)
         self.topwin.present()
+        self.start_browse()
 
     def _cleanup(self):
         pass
 
     def set_initial_state(self):
-        stock_img = Gtk.Image.new_from_stock(Gtk.STOCK_CONNECT,
-                                             Gtk.IconSize.BUTTON)
-        self.widget("connect").set_image(stock_img)
         self.widget("connect").grab_default()
+
+        combo = self.widget("hypervisor")
+        model = Gtk.ListStore(str)
+        model.append(["QEMU/KVM"])
+        model.append(["Xen"])
+        model.append(["LXC (Linux Containers)"])
+        model.append(["QEMU/KVM user session"])
+        combo.set_model(model)
+        uiutil.set_combo_text_column(combo, 0)
+
+        combo = self.widget("transport")
+        model = Gtk.ListStore(str)
+        model.append(["SSH"])
+        model.append(["TCP (SASL, Kerberos)"])
+        model.append(["SSL/TLS with certificates"])
+        combo.set_model(model)
+        uiutil.set_combo_text_column(combo, 0)
 
         # Hostname combo box entry
         hostListModel = Gtk.ListStore(str, str, str)
@@ -133,18 +172,16 @@ class vmmConnect(vmmGObjectUI):
         host.set_model(hostListModel)
         host.set_entry_text_column(2)
         hostListModel.set_sort_column_id(2, Gtk.SortType.ASCENDING)
-        self.widget("hostname").get_child().connect("changed", self.hostname_changed)
 
     def reset_state(self):
         self.set_default_hypervisor()
-        self.widget("connection").set_active(0)
+        self.widget("transport").set_active(0)
         self.widget("autoconnect").set_sensitive(True)
         self.widget("autoconnect").set_active(True)
         self.widget("hostname").get_model().clear()
         self.widget("hostname").get_child().set_text("")
         self.widget("connect-remote").set_active(False)
         self.widget("username-entry").set_text("")
-        self.stop_browse()
         self.connect_remote_toggled(self.widget("connect-remote"))
         self.populate_uri()
 
@@ -153,11 +190,11 @@ class vmmConnect(vmmGObjectUI):
         return self.widget("connect-remote").get_active()
 
     def set_default_hypervisor(self):
-        default = virtinst.util.default_connection()
+        default = self.default_uri(always_system=True)
         if not default or default.startswith("qemu"):
-            self.widget("hypervisor").set_active(1)
+            self.widget("hypervisor").set_active(HV_QEMU)
         elif default.startswith("xen"):
-            self.widget("hypervisor").set_active(0)
+            self.widget("hypervisor").set_active(HV_XEN)
 
     def add_service(self, interface, protocol, name, typ, domain, flags):
         ignore = flags
@@ -251,13 +288,6 @@ class vmmConnect(vmmGObjectUI):
         self.browser_sigs.append((self.browser,
                                   self.browser.connect("g-signal", cb)))
 
-    def stop_browse(self):
-        if self.browser:
-            for obj, sig in self.browser_sigs:
-                obj.disconnect(sig)
-            self.browser_sigs = []
-            self.browser = None
-
     def hostname_combo_changed(self, src):
         model = src.get_model()
         txt = src.get_child().get_text()
@@ -282,7 +312,20 @@ class vmmConnect(vmmGObjectUI):
     def hostname_changed(self, src_ignore):
         self.populate_uri()
 
-    def hypervisor_changed(self, src_ignore):
+    def hypervisor_changed(self, src):
+        is_session = (src.get_active() == HV_QEMU_SESSION)
+        uiutil.set_grid_row_visible(
+            self.widget("session-warning-box"), is_session)
+        uiutil.set_grid_row_visible(
+            self.widget("connect-remote"), not is_session)
+        uiutil.set_grid_row_visible(
+            self.widget("username-entry"), not is_session)
+        uiutil.set_grid_row_visible(
+            self.widget("hostname"), not is_session)
+        uiutil.set_grid_row_visible(
+            self.widget("transport"), not is_session)
+        if is_session:
+            self.widget("connect-remote").set_active(False)
         self.populate_uri()
 
     def username_changed(self, src_ignore):
@@ -291,18 +334,14 @@ class vmmConnect(vmmGObjectUI):
     def connect_remote_toggled(self, src_ignore):
         is_remote = self.is_remote()
         self.widget("hostname").set_sensitive(is_remote)
-        self.widget("connection").set_sensitive(is_remote)
+        self.widget("transport").set_sensitive(is_remote)
         self.widget("autoconnect").set_active(not is_remote)
         self.widget("username-entry").set_sensitive(is_remote)
-        if is_remote and self.avahiserver:
-            self.start_browse()
-        else:
-            self.stop_browse()
 
         self.populate_default_user()
         self.populate_uri()
 
-    def conn_changed(self, src_ignore):
+    def transport_changed(self, src_ignore):
         self.populate_default_user()
         self.populate_uri()
 
@@ -311,13 +350,13 @@ class vmmConnect(vmmGObjectUI):
         self.widget("uri-entry").set_text(uri)
 
     def populate_default_user(self):
-        conn = self.widget("connection").get_active()
+        conn = self.widget("transport").get_active()
         default_user = default_conn_user(conn)
         self.widget("username-entry").set_text(default_user)
 
     def generate_uri(self):
         hv = self.widget("hypervisor").get_active()
-        conn = self.widget("connection").get_active()
+        conn = self.widget("transport").get_active()
         host = self.widget("hostname").get_child().get_text().strip()
         user = self.widget("username-entry").get_text()
         is_remote = self.is_remote()
@@ -325,7 +364,7 @@ class vmmConnect(vmmGObjectUI):
         hvstr = ""
         if hv == HV_XEN:
             hvstr = "xen"
-        elif hv == HV_QEMU:
+        elif hv == HV_QEMU or HV_QEMU_SESSION:
             hvstr = "qemu"
         else:
             hvstr = "lxc"
@@ -350,6 +389,8 @@ class vmmConnect(vmmGObjectUI):
         uri = hvstr + hoststr
         if hv == HV_QEMU:
             uri += "system"
+        elif hv == HV_QEMU_SESSION:
+            uri += "session"
 
         return uri
 

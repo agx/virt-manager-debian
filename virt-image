@@ -20,126 +20,74 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
+import argparse
 import sys
+
 import urlgrabber.progress as progress
 
 import virtinst
-import virtinst.ImageParser
-import virtinst.CapabilitiesParser
 import virtinst.cli as cli
 from virtinst.cli import fail, print_stdout, print_stderr
+from virtinst import virtimage
 
-import optparse
-from optparse import OptionGroup
-
-
-### General input gathering functions
-
-def get_networks(domain, guest, options):
-    nnics = domain.interface
-    networks, macs = cli.digest_networks(guest, options, numnics=nnics)
-
-    if nnics > len(networks):
-        fail(_("The image requires %i network interface.") % nnics)
-
-    cli.get_networks(guest, networks, macs)
-
-
-def get_graphics(image, guest, options):
-    graphics = cli.digest_graphics(guest, options,
-                                   default_override=bool(image.graphics))
-    cli.get_graphics(guest, graphics)
 
 ### Option parsing
-
-
 def parse_args():
-    usage = "%prog [options] image.xml"
-    parser = cli.setupParser(usage)
+    parser = cli.setupParser(
+        "%(prog)s image.xml [OPTIONS]",
+        _("Create a virtual machine from a virt-image(5) image descriptor."),
+        introspection_epilog=True)
     cli.add_connect_option(parser)
 
-    geng = OptionGroup(parser, _("General Options"))
-    geng.add_option("-n", "--name", dest="name",
-                    help=_("Name of the guest instance"))
-    geng.add_option("-r", "--ram", type="int", dest="memory",
-                    help=_("Memory to allocate for guest instance in "
-                           "megabytes"))
-    geng.add_option("-u", "--uuid", dest="uuid",
-                    help=_("UUID for the guest."))
+    parser.add_argument("image", metavar="image.xml", nargs='?',
+                        help=_("virt-image(5) image descriptor"))
+
+    geng = parser.add_argument_group(_("General Options"))
+    geng.add_argument("-n", "--name", help=_("Name of the guest instance"))
+    geng.add_argument("-u", "--uuid", help=argparse.SUPPRESS)
+    cli.add_memory_option(geng, backcompat=True)
     cli.vcpu_cli_options(geng)
-    geng.add_option("", "--os-type", dest="distro_type",
-                    help=_("The OS type being installed, e.g. "
-                           "'linux', 'unix', 'windows'"))
-    geng.add_option("", "--os-variant", dest="distro_variant",
-                      help=_("The OS variant being installed, "
-                             "e.g. 'fedora6', 'rhel5', 'solaris10', 'win2k'"))
-    parser.add_option_group(geng)
+    cli.add_distro_options(geng)
+    cli.add_old_feature_options(geng)
 
-    fulg = OptionGroup(parser, _("Full Virtualization specific options"))
-    fulg.add_option("", "--noapic", action="store_true", dest="noapic",
-                    default=False,
-                    help=_("Disables APIC for fully virtualized guest"))
-    fulg.add_option("", "--noacpi", action="store_true", dest="noacpi",
-                    default=False,
-                    help=_("Disables ACPI for fully virtualized guest"))
-    parser.add_option_group(fulg)
+    cli.network_option_group(parser)
+    cli.graphics_option_group(parser)
 
-    netg = cli.network_option_group(parser)
-    parser.add_option_group(netg)
-
-    vncg = cli.graphics_option_group(parser)
-    parser.add_option_group(vncg)
-
-    misc = OptionGroup(parser, _("Miscellaneous Options"))
-    misc.add_option("-p", "--print", action="store_true", dest="print_only",
-                    help=_("Print the libvirt XML, but do not start the "
-                           "domain"))
-    misc.add_option("", "--boot", type="int", dest="boot",
+    misc = parser.add_argument_group(_("Miscellaneous Options"))
+    misc.add_argument("--boot", type=int,
                     help=_("The zero-based index of the boot record to use"))
-    misc.add_option("", "--replace", action="store_true", dest="replace",
-                    default=False,
-                    help=_("Overwrite, or destroy, an existing image with "
-                           "the same name"))
-    misc.add_option("", "--noreboot", action="store_true", dest="noreboot",
-                    help=_("Don't boot guest after completing install."))
-    misc.add_option("", "--skip-checksum", action="store_true",
-                    dest="skipchecksum",
+    misc.add_argument("--skip-checksum", action="store_true",
                     help=_("Skip disk checksum verification process"))
-    misc.add_option("-d", "--debug", action="store_true", dest="debug",
-                    help=_("Print debugging information"))
-    misc.add_option("", "--prompt", action="store_true", dest="prompt",
-                    default=False,
-                    help=optparse.SUPPRESS_HELP)
-    misc.add_option("", "--force", action="store_true", dest="force",
-                    default=False,
-                    help=optparse.SUPPRESS_HELP)
-    misc.add_option("-q", "--quiet", action="store_true", dest="quiet",
-                    help=_("Suppress non-error output"))
-    parser.add_option_group(misc)
 
-    (options, args) = parser.parse_args()
+    cli.add_misc_options(misc, prompt=True, replace=True, printxml=True,
+                         noreboot=True)
 
-    if len(args) < 1:
-        parser.error(_("You need to provide an image XML descriptor"))
-    options.image = args[0]
-
-    return options
+    return parser.parse_args()
 
 
 def main(conn=None):
     cli.earlyLogging()
     options = parse_args()
 
-    options.quiet = options.print_only or options.quiet
+    options.quiet = options.xmlonly or options.quiet
     cli.setupLogging("virt-image", options.debug, options.quiet)
-    cli.set_prompt(False)
+    cli.set_prompt(options.prompt)
+
+    cli.convert_old_features(options)
+    parsermap = cli.build_parser_map(options,
+        only=["memory", "vcpus", "cpu", "network", "graphics", "features"])
+    if cli.check_option_introspection(options, parsermap):
+        return 0
+
+    if not options.image:
+        fail(_("You need to provide an image XML descriptor"))
 
     if conn is None:
         conn = cli.getConnection(options.connect)
 
     try:
-        image = virtinst.ImageParser.parse_file(options.image)
-    except virtinst.ImageParser.ParserException, msg:
+        image = virtimage.parse_file(options.image)
+    except RuntimeError, msg:
         fail("%s '%s': %s" % (_("Cannot parse"),  options.image, msg))
 
     if options.boot is not None:
@@ -150,46 +98,48 @@ def main(conn=None):
 
 
     # Build the Installer instance
-    installer = virtinst.ImageInstaller(boot_index=options.boot,
-                                        image=image,
-                                        conn=conn)
+    installer = virtimage.ImageInstaller(conn, image, boot_index=options.boot)
+    guest = conn.caps.build_virtinst_guest(conn, *installer.get_caps_guest())
+    guest.installer = installer
 
+    cli.convert_old_memory(options)
+    cli.convert_old_networks(guest, options, image.domain.interface)
+    cli.convert_old_graphics(guest, options,
+        default_override=bool(image.domain.graphics))
+    cli.convert_old_cpuset(options)
+    if not options.vcpus:
+        options.vcpus = image.domain.vcpu or ""
+    if not options.memory and image.domain.memory:
+        options.memory = image.domain.memory
 
-    # Get Guest instance from installer parameters.
-    guest = installer.guest_from_installer()
-
-
-    # now let's get some of the common questions out of the way
     guest.replace = options.replace
-    cli.get_name(options.name, guest, image.name)
-    cli.get_memory(options.memory, guest, image.domain.memory)
-    cli.get_uuid(options.uuid, guest)
-    cli.get_vcpus(guest, options.vcpus, options.check_cpu, image.domain.vcpu)
-    cli.get_cpuset(guest, options.cpuset, guest.memory)
-    cli.parse_cpu(guest, options.cpu)
-    get_networks(image.domain, guest, options)
-
-    get_graphics(image.domain, guest, options)
-    cli.get_video(guest)
-
     cli.set_os_variant(guest, options.distro_type, options.distro_variant)
 
-    if installer.is_hvm():
-        if options.noacpi:
-            guest.features["acpi"] = False
-        if options.noapic:
-            guest.features["apic"] = False
+    name = options.name or image.name
+    if not name:
+        fail(cli.name_missing)
+    guest.name = name
+    if options.uuid:
+        guest.uuid = options.uuid
 
+    cli.parse_option_strings(parsermap, options, guest, None)
+
+    if not guest.get_devices("input"):
+        guest.add_default_input_device()
+    if not guest.get_devices("console") and not guest.get_devices("serial"):
+        guest.add_default_console_device()
+    if not guest.get_devices("video") and guest.get_devices("graphics"):
+        guest.add_device(virtinst.VirtualVideoDevice(guest.conn))
 
     # we've got everything -- try to start the install
-    if options.print_only:
+    if options.xmlonly:
         start_xml, final_xml = guest.start_install(return_xml=True)
         print_stdout(start_xml or final_xml, do_force=True)
         return 0
 
     meter = progress.TextMeter(fo=sys.stdout)
 
-    if not options.skipchecksum:
+    if not options.skip_checksum:
         for disk in image.storage.values():
             disk.check_disk_signature(meter=meter)
 
@@ -197,7 +147,7 @@ def main(conn=None):
         print_stdout("\n")
         print_stdout(_("Creating guest %s...") % guest.name)
 
-        guest.start_install(None, meter, noboot=options.noreboot)
+        guest.start_install(meter=meter, noboot=options.noreboot)
     except RuntimeError:
         raise
     except Exception, e:

@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2009, 2012 Red Hat, Inc.
+# Copyright (C) 2009, 2012-2013 Red Hat, Inc.
 # Copyright (C) 2009 Cole Robinson <crobinso@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -29,10 +29,11 @@ import traceback
 import logging
 
 import virtinst
+from virtinst import util
 
-from virtManager import util
-from virtManager.baseclass import vmmGObjectUI
 from virtManager.asyncjob import vmmAsyncJob
+from virtManager.baseclass import vmmGObjectUI
+from virtManager import uiutil
 
 STORAGE_ROW_CONFIRM = 0
 STORAGE_ROW_CANT_DELETE = 1
@@ -46,7 +47,7 @@ STORAGE_ROW_TOOLTIP = 7
 
 class vmmDeleteDialog(vmmGObjectUI):
     def __init__(self):
-        vmmGObjectUI.__init__(self, "vmm-delete.ui", "vmm-delete")
+        vmmGObjectUI.__init__(self, "delete.ui", "vmm-delete")
         self.vm = None
         self.conn = None
 
@@ -58,17 +59,13 @@ class vmmDeleteDialog(vmmGObjectUI):
         })
         self.bind_escape_key_close()
 
-        image = Gtk.Image.new_from_icon_name("vm_delete_wizard",
-                                             Gtk.IconSize.DIALOG)
-        image.show()
-        self.widget("icon-box").pack_end(image, False, False, False)
+        self._init_state()
+
+    def _init_state(self):
+        blue = Gdk.Color.parse("#0072A8")[1]
+        self.widget("header").modify_bg(Gtk.StateType.NORMAL, blue)
 
         prepare_storage_list(self.widget("delete-storage-list"))
-
-    def toggle_remove_storage(self, src):
-        dodel = src.get_active()
-        self.widget("delete-storage-list").set_sensitive(dodel)
-
 
     def show(self, vm, parent):
         logging.debug("Showing delete wizard")
@@ -91,17 +88,17 @@ class vmmDeleteDialog(vmmGObjectUI):
         self.conn = None
 
     def reset_state(self):
-
         # Set VM name in title'
-        title_str = ("<span size='x-large'>%s '%s'</span>" %
+        title_str = ("<span size='large' color='white'>%s '%s'</span>" %
                      (_("Delete"), util.xml_escape(self.vm.get_name())))
-        self.widget("delete-main-label").set_markup(title_str)
+        self.widget("header-label").set_markup(title_str)
 
         self.widget("delete-cancel").grab_focus()
 
         # Show warning message if VM is running
         vm_active = self.vm.is_active()
-        self.widget("delete-warn-running-vm-box").set_visible(vm_active)
+        uiutil.set_grid_row_visible(
+            self.widget("delete-warn-running-vm-box"), vm_active)
 
         # Disable storage removal by default
         self.widget("delete-remove-storage").set_active(True)
@@ -110,13 +107,10 @@ class vmmDeleteDialog(vmmGObjectUI):
         populate_storage_list(self.widget("delete-storage-list"),
                               self.vm, self.conn)
 
-    def get_config_format(self):
-        format_combo = self.widget("vol-format")
-        model = format_combo.get_model()
-        if format_combo.get_active_iter() is not None:
-            model = format_combo.get_model()
-            return model.get_value(format_combo.get_active_iter(), 0)
-        return None
+    def toggle_remove_storage(self, src):
+        dodel = src.get_active()
+        uiutil.set_grid_row_visible(
+            self.widget("delete-storage-scroll"), dodel)
 
     def get_paths_to_delete(self):
         del_list = self.widget("delete-storage-list")
@@ -130,22 +124,34 @@ class vmmDeleteDialog(vmmGObjectUI):
                     paths.append(row[STORAGE_ROW_PATH])
         return paths
 
+    def _finish_cb(self, error, details):
+        self.topwin.set_sensitive(True)
+        self.topwin.get_window().set_cursor(
+            Gdk.Cursor.new(Gdk.CursorType.TOP_LEFT_ARROW))
+
+        if error is not None:
+            self.err.show_err(error, details=details)
+
+        self.conn.schedule_priority_tick(pollvm=True)
+        self.close()
+
     def finish(self, src_ignore):
         devs = self.get_paths_to_delete()
 
         if devs:
-            ret = util.chkbox_helper(self,
-                                     self.config.get_confirm_delstorage,
-                                     self.config.set_confirm_delstorage,
-                                     text1=_("Are you sure you want to delete "
-                                             "the storage?"),
-                                     text2=_("All selected storage will "
-                                             "be deleted."))
+            title = _("Are you sure you want to delete the storage?")
+            message = (_("The following paths will be deleted:\n\n%s") %
+                       "\n".join(devs))
+            ret = self.err.chkbox_helper(
+                self.config.get_confirm_delstorage,
+                self.config.set_confirm_delstorage,
+                text1=title, text2=message)
             if not ret:
                 return
 
         self.topwin.set_sensitive(False)
-        self.topwin.get_window().set_cursor(Gdk.Cursor.new(Gdk.CursorType.WATCH))
+        self.topwin.get_window().set_cursor(
+            Gdk.Cursor.new(Gdk.CursorType.WATCH))
 
         title = _("Deleting virtual machine '%s'") % self.vm.get_name()
         text = title
@@ -153,22 +159,11 @@ class vmmDeleteDialog(vmmGObjectUI):
             text = title + _(" and selected storage (this may take a while)")
 
         progWin = vmmAsyncJob(self._async_delete, [devs],
+                              self._finish_cb, [],
                               title, text, self.topwin)
-        error, details = progWin.run()
-
-        self.topwin.set_sensitive(True)
-        self.topwin.get_window().set_cursor(Gdk.Cursor.new(Gdk.CursorType.TOP_LEFT_ARROW))
-        conn = self.conn
-
-        if error is not None:
-            self.err.show_err(error, details=details)
-
-        conn.tick(noStatsUpdate=True)
-
-        self.close()
+        progWin.run()
 
     def _async_delete(self, asyncjob, paths):
-        newconn = None
         storage_errors = []
         details = ""
 
@@ -177,16 +172,14 @@ class vmmDeleteDialog(vmmGObjectUI):
                 logging.debug("Forcing VM '%s' power off.", self.vm.get_name())
                 self.vm.destroy()
 
-            # Open a seperate connection to install on since this is async
-            logging.debug("Threading off connection to delete vol.")
-            newconn = util.dup_conn(self.conn).vmm
+            conn = self.conn.get_backend()
             meter = asyncjob.get_meter()
 
             for path in paths:
                 try:
                     logging.debug("Deleting path: %s", path)
                     meter.start(text=_("Deleting path '%s'") % path)
-                    self._async_delete_path(newconn, path, meter)
+                    self._async_delete_path(conn, path, meter)
                 except Exception, e:
                     storage_errors.append((str(e),
                                           "".join(traceback.format_exc())))
@@ -241,13 +234,16 @@ def populate_storage_list(storage_list, vm, conn):
     model = storage_list.get_model()
     model.clear()
 
-    for disk in vm.get_disk_devices():
-        vol = None
+    diskdata = [(disk.target, disk.path, disk.read_only, disk.shareable) for
+                disk in vm.get_disk_devices()]
 
-        target = disk.target
-        path = disk.path
-        ro = disk.read_only
-        shared = disk.shareable
+    diskdata.append(("kernel", vm.get_xmlobj().os.kernel, True, False))
+    diskdata.append(("initrd", vm.get_xmlobj().os.initrd, True, False))
+    diskdata.append(("dtb", vm.get_xmlobj().os.dtb, True, False))
+
+    for target, path, ro, shared in diskdata:
+        if not path:
+            continue
 
         # There are a few pieces here
         # 1) Can we even delete the storage? If not, make the checkbox
@@ -258,9 +254,6 @@ def populate_storage_list(storage_list, vm, conn):
         # 2) If we can delete, do we want to delete this storage by
         #    default? Reasons not to, are if the storage is marked
         #    readonly or sharable, or is in use by another VM.
-
-        if not path:
-            continue
 
         default = False
         definfo = None
@@ -342,8 +335,8 @@ def can_delete(conn, vol, path):
 
     if vol:
         # Managed storage
-        if (vol.get_pool().get_type() ==
-            virtinst.Storage.StoragePool.TYPE_ISCSI):
+        if (vol.get_parent_pool().get_type() ==
+            virtinst.StoragePool.TYPE_ISCSI):
             msg = _("Cannot delete iscsi share.")
     else:
         if conn.is_remote():
@@ -382,7 +375,7 @@ def do_we_default(conn, vm_name, vol, path, ro, shared):
         info = append_str(info, _("Storage is marked as shareable."))
 
     try:
-        names = virtinst.VirtualDisk.path_in_use_by(conn.vmm, path)
+        names = virtinst.VirtualDisk.path_in_use_by(conn.get_backend(), path)
 
         if len(names) > 1:
             namestr = ""

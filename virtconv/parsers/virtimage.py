@@ -5,8 +5,8 @@
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free  Software Foundation; either version 2 of the License, or
-# (at your option)  any later version.
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -23,8 +23,8 @@ import virtconv.formats as formats
 import virtconv.vmcfg as vmcfg
 import virtconv.diskcfg as diskcfg
 import virtconv.netdevcfg as netdevcfg
-from virtinst import Guest
-from virtinst import ImageParser
+
+from virtinst import virtimage
 
 from xml.sax.saxutils import escape
 import re
@@ -82,22 +82,14 @@ def export_os_params(vm):
     """
     Export OS-specific parameters.
     """
-    ostype = None
-    osvariant = None
-
-    # TODO: Shouldn't be directly using _OS_TYPES here. virt-image libs (
-    # ImageParser?) should handle this info
-    ostype = Guest._OS_TYPES.get(vm.os_type)  # pylint: disable=W0212
-    if ostype:
-        osvariant = ostype.get('variants').get(vm.os_variant)
+    from virtinst import osdict
+    os = osdict.lookup_os(vm.os_variant)
 
     def get_os_val(key, default):
         val = None
-        if osvariant:
-            val = osvariant.get(key)
-        if not val and ostype:
-            val = ostype.get(key)
-        if not val:
+        if os:
+            val = os.to_dict().get(key)
+        if val is None:
             val = default
         return val
 
@@ -204,8 +196,8 @@ class virtimage_parser(formats.parser):
             output = f.read()
             f.close()
 
-            ImageParser.parse(output, input_file)
-        except ImageParser.ParserException:
+            virtimage.parse(output, input_file)
+        except RuntimeError:
             return False
         return True
 
@@ -222,7 +214,7 @@ class virtimage_parser(formats.parser):
             f.close()
 
             logging.debug("Importing virt-image XML:\n%s", output)
-            config = ImageParser.parse(output, input_file)
+            config = virtimage.parse(output, input_file)
         except Exception, e:
             raise ValueError(_("Couldn't import file '%s': %s") %
                              (input_file, e))
@@ -245,11 +237,11 @@ class virtimage_parser(formats.parser):
         for d in boot.drives:
             disk = d.disk
             format_mappings = {
-                ImageParser.Disk.FORMAT_RAW: diskcfg.DISK_FORMAT_RAW,
-                ImageParser.Disk.FORMAT_VMDK: diskcfg.DISK_FORMAT_VMDK,
-                ImageParser.Disk.FORMAT_QCOW: diskcfg.DISK_FORMAT_QCOW,
-                ImageParser.Disk.FORMAT_QCOW2: diskcfg.DISK_FORMAT_QCOW2,
-                ImageParser.Disk.FORMAT_VDI: diskcfg.DISK_FORMAT_VDI,
+                virtimage.Disk.FORMAT_RAW: diskcfg.DISK_FORMAT_RAW,
+                virtimage.Disk.FORMAT_VMDK: diskcfg.DISK_FORMAT_VMDK,
+                virtimage.Disk.FORMAT_QCOW: diskcfg.DISK_FORMAT_QCOW,
+                virtimage.Disk.FORMAT_QCOW2: diskcfg.DISK_FORMAT_QCOW2,
+                virtimage.Disk.FORMAT_VDI: diskcfg.DISK_FORMAT_VDI,
            }
 
             fmt = None

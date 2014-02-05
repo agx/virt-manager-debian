@@ -1,0 +1,11 @@
+       <address type="drive" controller="0" bus="0" target="0" unit="1"/>
+     </disk>
+     <disk type="file" device="disk">
+-      <source file="/tmp/foobar"/>
++      <source file="/dev/null"/>
+       <target dev="hda" bus="ide"/>
+       <iotune>
+         <read_bytes_sec>5242880</read_bytes_sec>
+
+Domain 'test-many-devices' defined successfully.
+Changes will take effect after the next domain shutdown.

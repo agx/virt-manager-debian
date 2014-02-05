@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2006 Red Hat, Inc.
+# Copyright (C) 2006, 2013 Red Hat, Inc.
 # Copyright (C) 2006 Hugh O. Brock <hbrock@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -86,15 +86,6 @@ class vmmMeter(urlgrabber.progress.BaseMeter):
         self.started = False
 
 
-# This thin wrapper only exists so we can put debugging
-# code in the run() method every now & then
-class asyncJobWorker(threading.Thread):
-    def __init__(self, callback, args):
-        args = [callback] + args
-        threading.Thread.__init__(self, target=cb_wrapper, args=args)
-        self.daemon = True
-
-
 def cb_wrapper(callback, asyncjob, *args, **kwargs):
     try:
         callback(asyncjob, *args, **kwargs)
@@ -108,8 +99,22 @@ def cb_wrapper(callback, asyncjob, *args, **kwargs):
         asyncjob.set_error(str(e), "".join(traceback.format_exc()))
 
 
-def _simple_async(callback, args, title, text, parent, errorintro,
-                  show_progress, simplecb, errorcb):
+def _simple_async_done_cb(error, details,
+                          parent, errorintro, errorcb, finish_cb):
+    if error:
+        if errorcb:
+            errorcb(error, details)
+        else:
+            error = errorintro + ": " + error
+            parent.err.show_err(error,
+                                details=details)
+
+    if finish_cb:
+        finish_cb()
+
+
+def _simple_async(callback, args, parent, title, text, errorintro,
+                  show_progress, simplecb, errorcb, finish_cb):
     """
     @show_progress: Whether to actually show a progress dialog
     @simplecb: If true, build a callback wrapper that ignores the asyncjob
@@ -122,19 +127,12 @@ def _simple_async(callback, args, title, text, parent, errorintro,
             callback(*args, **kwargs)
         docb = tmpcb
 
-    asyncjob = vmmAsyncJob(docb, args, title, text, parent.topwin,
-                           show_progress=show_progress,
-                           async=parent.config.support_threading)
-    error, details = asyncjob.run()
-    if error is None:
-        return
-
-    if errorcb:
-        errorcb(error, details)
-    else:
-        error = errorintro + ": " + error
-        parent.err.show_err(error,
-                            details=details)
+    asyncjob = vmmAsyncJob(docb, args,
+                           _simple_async_done_cb,
+                           (parent, errorintro, errorcb, finish_cb),
+                           title, text, parent.topwin,
+                           show_progress=show_progress)
+    asyncjob.run()
 
 
 def idle_wrapper(fn):
@@ -142,51 +140,57 @@ def idle_wrapper(fn):
         return self.idle_add(fn, self, *args, **kwargs)
     return wrapped
 
-# Displays a progress bar while executing the "callback" method.
-
 
 class vmmAsyncJob(vmmGObjectUI):
-
+    """
+    Displays a progress bar while executing the "callback" method.
+    """
     @staticmethod
-    def simple_async(callback, args, title, text, parent, errorintro,
-                     simplecb=True, errorcb=None):
-        _simple_async(callback, args, title, text, parent, errorintro, True,
-                      simplecb, errorcb)
+    def simple_async(callback, args, parent, title, text, errorintro,
+                     simplecb=True, errorcb=None, finish_cb=None):
+        _simple_async(callback, args, parent,
+                      title, text, errorintro, True,
+                      simplecb, errorcb, finish_cb)
 
     @staticmethod
     def simple_async_noshow(callback, args, parent, errorintro,
-                            simplecb=True, errorcb=None):
-        _simple_async(callback, args, "", "", parent, errorintro, False,
-                      simplecb, errorcb)
+                            simplecb=True, errorcb=None, finish_cb=None):
+        _simple_async(callback, args, parent,
+                      "", "", errorintro, False,
+                      simplecb, errorcb, finish_cb)
 
 
-    def __init__(self, callback, args, title, text, parent,
-                 async=True, show_progress=True, cancel_cb=None):
+    def __init__(self,
+                 callback, args, finish_cb, finish_args,
+                 title, text, parent,
+                 show_progress=True, cancel_cb=None):
         """
-        @async: If False, run synchronously without a separate thread
         @show_progress: If False, don't actually show a progress dialog
         @cancel_cb: Cancel callback if operation supports it.
             (cb, arg1, arg2, ...)
         """
-        vmmGObjectUI.__init__(self, "vmm-progress.ui", "vmm-progress")
+        vmmGObjectUI.__init__(self, "asyncjob.ui", "vmm-progress")
         self.topwin.set_transient_for(parent)
 
-        self.async = bool(async)
         self.show_progress = bool(show_progress)
 
         cancel_cb = cancel_cb or (None, [])
         self.cancel_cb = cancel_cb[0]
         self.cancel_args = [self] + list(cancel_cb[1:])
         self.job_canceled = False
+        self._finish_cb = finish_cb
+        self._finish_args = finish_args or ()
 
+        self._timer = None
         self._error_info = None
         self._data = None
 
         self._is_pulsing = True
         self._meter = None
 
-        args = [self] + args
-        self._bg_thread = asyncJobWorker(callback, args)
+        self._bg_thread = threading.Thread(target=cb_wrapper,
+                                           args=[callback, self] + args)
+        self._bg_thread.daemon = True
         logging.debug("Creating async job for function cb=%s", callback)
 
         self.builder.connect_signals({
@@ -221,17 +225,13 @@ class vmmAsyncJob(vmmGObjectUI):
     def _hide_warning(self):
         self.widget("warning-box").hide()
 
-    def _is_thread_active(self):
-        return (self._bg_thread.isAlive() or not self.async)
-
 
     ################
     # UI listeners #
     ################
 
     def _on_window_delete(self, ignore1=None, ignore2=None):
-        thread_active = (self._bg_thread.isAlive() or not self.async)
-        if not self.cancel_cb or not thread_active:
+        if not self.cancel_cb or not self._bg_thread.is_alive():
             logging.debug("User closed progress window, but thread "
                           "still running and process isn't cancellable, "
                           "ignoring.")
@@ -248,7 +248,7 @@ class vmmAsyncJob(vmmGObjectUI):
         self._on_cancel()
 
     def _on_cancel(self, ignore1=None, ignore2=None):
-        if not self.cancel_cb or not self._is_thread_active():
+        if not self.cancel_cb or not self._bg_thread.is_alive():
             return
 
         self.cancel_cb(*self.cancel_args)
@@ -285,8 +285,19 @@ class vmmAsyncJob(vmmGObjectUI):
         self.widget("warning-box").show()
         self.widget("warning-text").set_markup(markup)
 
+    def _thread_finished(self):
+        GLib.source_remove(self._timer)
+        self.topwin.destroy()
+        self.cleanup()
+
+        error = None
+        details = None
+        if self._error_info:
+            error, details = self._error_info
+        self._finish_cb(error, details, *self._finish_args)
+
     def run(self):
-        timer = GLib.timeout_add(100, self._exit_if_necessary)
+        self._timer = GLib.timeout_add(100, self._exit_if_necessary)
 
         if self.show_progress:
             self.topwin.present()
@@ -294,18 +305,7 @@ class vmmAsyncJob(vmmGObjectUI):
         if not self.cancel_cb and self.show_progress:
             self.topwin.get_window().set_cursor(
                             Gdk.Cursor.new(Gdk.CursorType.WATCH))
-
-        if self.async:
-            self._bg_thread.start()
-            Gtk.main()
-        else:
-            self._bg_thread.run()
-
-        GLib.source_remove(timer)
-
-        self.topwin.destroy()
-        self.cleanup()
-        return self._error_info or (None, None)
+        self._bg_thread.start()
 
 
     ####################################################################
@@ -315,9 +315,8 @@ class vmmAsyncJob(vmmGObjectUI):
     ####################################################################
 
     def _exit_if_necessary(self):
-        if not self._is_thread_active():
-            if self.async:
-                Gtk.main_quit()
+        if not self._bg_thread.is_alive():
+            self._thread_finished()
             return False
 
         if not self._is_pulsing or not self.show_progress:

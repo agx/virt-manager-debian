@@ -19,6 +19,12 @@
       <summary>Username and secrets ID for graphical password</summary>
       <description>Username and secrets ID for graphical password</description>
     </key>
+
+    <key name="resize-guest" type="i">
+      <default>-1</default>
+      <summary>Automatically resize guest when window size changes</summary>
+      <description>Automatically change guest resolution along with virt-manager window. Only works with spice with a vdagent set up. -1 = global default, 0 = off, 1 = on.</description>
+    </key>
   </schema>
 
   <schema id="org.virt-manager.virt-manager"
@@ -94,6 +100,12 @@
       <description>Show the host cpu usage field in the domain list summary view</description>
     </key>
 
+    <key name="memory-usage" type="b">
+      <default>false</default>
+      <summary>Show memory usage in summary</summary>
+      <description>Show memory usage field in the domain list summary view</description>
+    </key>
+
   </schema>
 
   <schema id="org.virt-manager.virt-manager.stats" path="/org/virt-manager/virt-manager/stats/">
@@ -114,6 +126,11 @@
       <default>false</default>
       <summary>Poll net i/o stats</summary>
       <description>Whether or not the app will poll VM network i/o statistics</description>
+    </key>
+    <key name="enable-memory-poll" type="b">
+      <default>true</default>
+      <summary>Poll memory stats</summary>
+      <description>Whether or not the app will poll VM memory statistics</description>
     </key>
 
   </schema>
@@ -155,10 +172,22 @@
       <description>When to scale the VM graphical console. 0 = never, 1 = only when in full screen mode, 2 = Always</description>
     </key>
 
+    <key name="resize-guest" type="i">
+      <default>-1</default>
+      <summary>Automatically resize guest when window size changes</summary>
+      <description>Automatically change guest resolution along with virt-manager window. Only works with spice with a vdagent set up. -1 = global default, 0 = off, 1 = on.</description>
+    </key>
+
     <key name="grab-keys" type="s">
       <default>''</default>
       <summary>Grab keyboard sequence for the graphical console</summary>
       <description>Grab keyboard sequence for the graphical console</description>
+    </key>
+
+    <key name="auto-redirect" type="b">
+      <default>true</default>
+      <summary>Enable SPICE Auto USB redirection in console window</summary>
+      <description>Whether to enable SPICE Auto USB redirection while connected to the guest console.</description>
     </key>
   </schema>
 
@@ -185,11 +214,24 @@
       <description>Install selected graphics type for new VM. vnc or spice, system for software configured default</description>
     </key>
 
+    <key name="add-spice-usbredir" type="s">
+      <default>'system'</default>
+      <summary>Add spice usbredir HW for new VMs</summary>
+      <description>Add spice usbredir HW for new VMs. yes, no, or system for software configured default</description>
+    </key>
+
     <key name="storage-format" type="s">
       <default>'default'</default>
       <summary>Use selected format for new VM storage</summary>
       <description>Use selected format when creating new disk images in new VM wizard</description>
     </key>
+
+    <key name="cpu-default" type="s">
+      <default>'default'</default>
+      <summary>CPU setting to use for new VMs</summary>
+      <description>CPU setting to use for new VMs. Limited to VMs matching the host architecture. Possible values: default (virt-manager default), hv-default (qemu's default), host-cpu-model (just the model, not the additional features), host-model (libvirt's host-model setting).</description>
+    </key>
+
   </schema>
 
   <schema id="org.virt-manager.virt-manager.paths"

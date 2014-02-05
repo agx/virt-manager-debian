@@ -1,8 +1,9 @@
+# Copyright (C) 2013 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free  Software Foundation; either version 2 of the License, or
-# (at your option)  any later version.
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -20,8 +21,7 @@ import logging
 
 from tests import utils
 
-from virtinst import CloneManager
-CloneDesign = CloneManager.CloneDesign
+from virtinst import Cloner
 
 ORIG_NAME  = "clone-orig"
 CLONE_NAME = "clone-new"
@@ -29,14 +29,14 @@ CLONE_NAME = "clone-new"
 # Create some files to use as test images
 FILE1 = "/tmp/virtinst-test1.img"
 FILE2 = "/tmp/virtinst-test2.img"
-P1_VOL1  = "/default-pool/testvol1.img"
-P1_VOL2  = "/default-pool/testvol2.img"
-P2_VOL1  = "/cross-pool/testvol1.img"
-P2_VOL2  = "/cross-pool/testvol2.img"
+P1_VOL1  = "/dev/default-pool/testvol1.img"
+P1_VOL2  = "/dev/default-pool/testvol2.img"
+P2_VOL1  = "/dev/cross-pool/testvol1.img"
+P2_VOL2  = "/dev/cross-pool/testvol2.img"
 
-POOL1 = "/default-pool"
-POOL2 = "/cross-pool"
-DISKPOOL = "/disk-pool"
+POOL1 = "/dev/default-pool"
+POOL2 = "/dev/cross-pool"
+DISKPOOL = "/dev/disk-pool"
 
 local_files = [FILE1, FILE2]
 
@@ -70,7 +70,7 @@ class TestClone(unittest.TestCase):
         infile = os.path.join(clonexml_dir, filebase + "-in.xml")
         in_content = utils.read_file(infile)
 
-        cloneobj = CloneDesign(conn=useconn or conn)
+        cloneobj = Cloner(useconn or conn)
         cloneobj.original_xml = in_content
         for force in force_list or []:
             cloneobj.force_target = force
@@ -90,20 +90,14 @@ class TestClone(unittest.TestCase):
         cloneobj.clone_name = "clone-new"
         cloneobj.clone_uuid = "12345678-1234-1234-1234-123456789012"
 
-        cloneobj.clone_mac = "22:23:45:67:89:00"
-        cloneobj.clone_mac = "22:23:45:67:89:01"
+        cloneobj.clone_macs = ["22:23:45:67:89:00", "22:23:45:67:89:01"]
 
-        if disks is not None:
-            for disk in disks:
-                cloneobj.clone_devices = disk
-        else:
-            cloneobj.clone_devices = "/dev/loop0"
-            cloneobj.clone_devices = "/tmp/clone2.img"
-            cloneobj.clone_devices = "/tmp/clone3.img"
-            cloneobj.clone_devices = "/tmp/clone4.img"
-            cloneobj.clone_devices = "/tmp/clone5.img"
-            cloneobj.clone_devices = None
+        if disks is None:
+            disks = ["/dev/disk-pool/disk-vol1", "/tmp/clone2.img",
+                     "/tmp/clone3.img", "/tmp/clone4.img",
+                     "/tmp/clone5.img", None]
 
+        cloneobj.clone_paths = disks
         return cloneobj
 
     def _clone_compare(self, cloneobj, outbase):
@@ -133,7 +127,7 @@ class TestClone(unittest.TestCase):
             try:
                 vm = conn.defineXML(utils.read_file(infile))
 
-                cloneobj = CloneDesign(conn=conn)
+                cloneobj = Cloner(conn)
                 cloneobj.original_guest = ORIG_NAME
 
                 cloneobj = self._default_clone_values(cloneobj)
@@ -173,7 +167,7 @@ class TestClone(unittest.TestCase):
                 # Exception expected
                 logging.debug("Received expected exception: %s", str(e))
 
-    def testCloneStorage(self):
+    def testCloneStorageManaged(self):
         base = "managed-storage"
         self._clone_helper(base, ["%s/new1.img" % POOL1,
                                   "%s/new2.img" % DISKPOOL])
@@ -186,13 +180,15 @@ class TestClone(unittest.TestCase):
     def testCloneStorageForce(self):
         base = "force"
         self._clone_helper(base,
-                           disks=["/dev/loop0", None, "/tmp/clone2.img"],
+                           disks=["/dev/default-pool/1234.img",
+                                  None, "/tmp/clone2.img"],
                            force_list=["hda", "fdb", "sdb"])
 
     def testCloneStorageSkip(self):
         base = "skip"
         self._clone_helper(base,
-                           disks=["/dev/loop0", None, "/tmp/clone2.img"],
+                           disks=["/dev/default-pool/1234.img",
+                                  None, "/tmp/clone2.img"],
                            skip_list=["hda", "fdb"])
 
     def testCloneFullPool(self):
@@ -208,12 +204,13 @@ class TestClone(unittest.TestCase):
     def testCloneManagedToUnmanaged(self):
         base = "managed-storage"
 
-        # We are trying to clone from a pool (/default-pool) to unmanaged
+        # We are trying to clone from a pool (/dev/default-pool) to unmanaged
         # storage. For this case, the cloning needs to fail back to manual
-        # operation (no libvirt calls), but since /default-pool doesn't exist,
+        # operation (no libvirt calls), but since /dev/default-pool doesn't exist,
         # this should fail.
         try:
-            self._clone_helper(base, ["/tmp/new1.img", "/tmp/new2.img"])
+            self._clone_helper(base, ["/tmp/new1.img", "/tmp/new2.img"],
+                               compare=False)
 
             raise AssertionError("Managed to unmanaged succeeded, expected "
                                  "failure.")

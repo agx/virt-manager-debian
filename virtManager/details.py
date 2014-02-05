@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2006-2008, 2013 Red Hat, Inc.
+# Copyright (C) 2006-2008, 2013, 2014 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -29,27 +29,27 @@ from gi.repository import Gdk
 
 import libvirt
 
-import virtManager.uihelpers as uihelpers
-from virtManager.storagebrowse import vmmStorageBrowser
+from virtManager import vmmenu
+from virtManager import uiutil
 from virtManager.baseclass import vmmGObjectUI
 from virtManager.addhardware import vmmAddHardware
 from virtManager.choosecd import vmmChooseCD
-from virtManager.console import vmmConsolePages
-from virtManager.serialcon import vmmSerialConsole
+from virtManager.fsdetails import vmmFSDetails
+from virtManager.gfxdetails import vmmGraphicsDetails
+from virtManager.netlist import vmmNetworkList
+from virtManager.snapshots import vmmSnapshotPage
+from virtManager.storagebrowse import vmmStorageBrowser
 from virtManager.graphwidgets import Sparkline
-from virtManager import util as util
 
 import virtinst
+from virtinst import util
+from virtinst import VirtualRNGDevice
 
 
-# Parameters that can be editted in the details window
-EDIT_TOTAL = 37
+# Parameters that can be edited in the details window
 (EDIT_NAME,
-EDIT_ACPI,
-EDIT_APIC,
-EDIT_CLOCK,
+EDIT_TITLE,
 EDIT_MACHTYPE,
-EDIT_SECURITY,
 EDIT_DESC,
 
 EDIT_VCPUS,
@@ -67,6 +67,7 @@ EDIT_INIT,
 
 EDIT_DISK_RO,
 EDIT_DISK_SHARE,
+EDIT_DISK_REMOVABLE,
 EDIT_DISK_CACHE,
 EDIT_DISK_IO,
 EDIT_DISK_BUS,
@@ -85,64 +86,76 @@ EDIT_NET_SOURCE,
 EDIT_GFX_PASSWD,
 EDIT_GFX_TYPE,
 EDIT_GFX_KEYMAP,
+EDIT_GFX_ADDRESS,
+EDIT_GFX_TLSPORT,
+EDIT_GFX_PORT,
 
 EDIT_VIDEO_MODEL,
 
 EDIT_WATCHDOG_MODEL,
 EDIT_WATCHDOG_ACTION,
 
-EDIT_CONTROLLER_MODEL
-) = range(EDIT_TOTAL)
+EDIT_CONTROLLER_MODEL,
+
+EDIT_TPM_TYPE,
+
+EDIT_FS,
+) = range(1, 41)
 
 
 # Columns in hw list model
-HW_LIST_COL_LABEL = 0
-HW_LIST_COL_ICON_NAME = 1
-HW_LIST_COL_ICON_SIZE = 2
-HW_LIST_COL_TYPE = 3
-HW_LIST_COL_DEVICE = 4
+(HW_LIST_COL_LABEL,
+ HW_LIST_COL_ICON_NAME,
+ HW_LIST_COL_ICON_SIZE,
+ HW_LIST_COL_TYPE,
+ HW_LIST_COL_DEVICE) = range(5)
 
 # Types for the hw list model: numbers specify what order they will be listed
-HW_LIST_TYPE_GENERAL = 0
-HW_LIST_TYPE_STATS = 1
-HW_LIST_TYPE_CPU = 2
-HW_LIST_TYPE_MEMORY = 3
-HW_LIST_TYPE_BOOT = 4
-HW_LIST_TYPE_DISK = 5
-HW_LIST_TYPE_NIC = 6
-HW_LIST_TYPE_INPUT = 7
-HW_LIST_TYPE_GRAPHICS = 8
-HW_LIST_TYPE_SOUND = 9
-HW_LIST_TYPE_CHAR = 10
-HW_LIST_TYPE_HOSTDEV = 11
-HW_LIST_TYPE_VIDEO = 12
-HW_LIST_TYPE_WATCHDOG = 13
-HW_LIST_TYPE_CONTROLLER = 14
-HW_LIST_TYPE_FILESYSTEM = 15
-HW_LIST_TYPE_SMARTCARD = 16
-HW_LIST_TYPE_REDIRDEV = 17
+(HW_LIST_TYPE_GENERAL,
+ HW_LIST_TYPE_INSPECTION,
+ HW_LIST_TYPE_STATS,
+ HW_LIST_TYPE_CPU,
+ HW_LIST_TYPE_MEMORY,
+ HW_LIST_TYPE_BOOT,
+ HW_LIST_TYPE_DISK,
+ HW_LIST_TYPE_NIC,
+ HW_LIST_TYPE_INPUT,
+ HW_LIST_TYPE_GRAPHICS,
+ HW_LIST_TYPE_SOUND,
+ HW_LIST_TYPE_CHAR,
+ HW_LIST_TYPE_HOSTDEV,
+ HW_LIST_TYPE_VIDEO,
+ HW_LIST_TYPE_WATCHDOG,
+ HW_LIST_TYPE_CONTROLLER,
+ HW_LIST_TYPE_FILESYSTEM,
+ HW_LIST_TYPE_SMARTCARD,
+ HW_LIST_TYPE_REDIRDEV,
+ HW_LIST_TYPE_TPM,
+ HW_LIST_TYPE_RNG,
+ HW_LIST_TYPE_PANIC) = range(22)
 
 remove_pages = [HW_LIST_TYPE_NIC, HW_LIST_TYPE_INPUT,
                 HW_LIST_TYPE_GRAPHICS, HW_LIST_TYPE_SOUND, HW_LIST_TYPE_CHAR,
                 HW_LIST_TYPE_HOSTDEV, HW_LIST_TYPE_DISK, HW_LIST_TYPE_VIDEO,
                 HW_LIST_TYPE_WATCHDOG, HW_LIST_TYPE_CONTROLLER,
                 HW_LIST_TYPE_FILESYSTEM, HW_LIST_TYPE_SMARTCARD,
-                HW_LIST_TYPE_REDIRDEV]
+                HW_LIST_TYPE_REDIRDEV, HW_LIST_TYPE_TPM,
+                HW_LIST_TYPE_RNG, HW_LIST_TYPE_PANIC]
 
 # Boot device columns
-BOOT_DEV_TYPE = 0
-BOOT_LABEL = 1
-BOOT_ICON = 2
-BOOT_ACTIVE = 3
+(BOOT_DEV_TYPE,
+ BOOT_LABEL,
+ BOOT_ICON,
+ BOOT_ACTIVE) = range(4)
 
 # Main tab pages
-PAGE_CONSOLE = 0
-PAGE_DETAILS = 1
-PAGE_DYNAMIC_OFFSET = 2
+(DETAILS_PAGE_DETAILS,
+ DETAILS_PAGE_CONSOLE,
+ DETAILS_PAGE_SNAPSHOTS) = range(3)
 
 
 def prettyify_disk_bus(bus):
-    if bus in ["ide", "sata", "scsi", "usb"]:
+    if bus in ["ide", "sata", "scsi", "usb", "sd"]:
         return bus.upper()
 
     if bus in ["xen"]:
@@ -273,8 +286,7 @@ def lookup_nodedev(vmmconn, hostdev):
     devtype = hostdev.type
     found_dev = None
 
-    vendor_id = product_id = bus = device = \
-        domain = slot = func = None
+    vendor_id = product_id = bus = device = domain = slot = func = None
 
     # For USB we want a device, not a bus
     if devtype == 'usb':
@@ -293,12 +305,11 @@ def lookup_nodedev(vmmconn, hostdev):
     devs = vmmconn.get_nodedevs(devtype, None)
     for dev in devs:
         # Try to match with product_id|vendor_id|bus|device
-        if (attrVal(dev, "product_id") == product_id and
-            attrVal(dev, "vendor_id") == vendor_id and
-            attrVal(dev, "bus") == bus and
-            attrVal(dev, "device") == device):
+        if ((attrVal(dev, "product_id") == product_id or product_id == -1) and
+            (attrVal(dev, "vendor_id") == vendor_id or vendor_id == -1) and
+            (attrVal(dev, "bus") == bus or bus == -1) and
+            (attrVal(dev, "device") == device or device == -1)):
             found_dev = dev
-            break
         else:
             # Try to get info from bus/addr
             dev_id = intify(attrVal(dev, "device"))
@@ -311,7 +322,9 @@ def lookup_nodedev(vmmconn, hostdev):
                 (dom_id == domain and func_id == func and
                  bus_id == bus and slot_id == slot)):
                 found_dev = dev
-                break
+
+        if found_dev:
+            break
 
     return found_dev
 
@@ -337,7 +350,7 @@ class vmmDetails(vmmGObjectUI):
     }
 
     def __init__(self, vm, parent=None):
-        vmmGObjectUI.__init__(self, "vmm-details.ui", "vmm-details")
+        vmmGObjectUI.__init__(self, "details.ui", "vmm-details")
         self.vm = vm
         self.conn = self.vm.conn
 
@@ -354,22 +367,52 @@ class vmmDetails(vmmGObjectUI):
             self.widget("details-toolbar").hide()
             self.widget("details-menubar").hide()
             pages = self.widget("details-pages")
-            pages.set_current_page(PAGE_DETAILS)
+            pages.set_current_page(DETAILS_PAGE_DETAILS)
 
 
         self.active_edits = []
 
-        self.serial_tabs = []
-        self.last_console_page = PAGE_CONSOLE
         self.addhw = None
         self.media_choosers = {"cdrom": None, "floppy": None}
         self.storage_browser = None
 
         self.ignorePause = False
         self.ignoreDetails = False
-        self._cpu_copy_host = False
 
+        from virtManager.console import vmmConsolePages
         self.console = vmmConsolePages(self.vm, self.builder, self.topwin)
+        self.snapshots = vmmSnapshotPage(self.vm, self.builder, self.topwin)
+        self.widget("snapshot-placeholder").add(self.snapshots.top_box)
+
+        self.fsDetails = vmmFSDetails(self.vm, self.builder, self.topwin)
+        self.widget("fs-alignment").add(self.fsDetails.top_box)
+        self.fsDetails.connect("changed",
+                               lambda *x: self.enable_apply(x, EDIT_FS))
+
+        self.gfxdetails = vmmGraphicsDetails(
+            self.vm, self.builder, self.topwin)
+        self.widget("graphics-align").add(self.gfxdetails.top_box)
+        self.gfxdetails.connect("changed-type",
+            lambda *x: self.enable_apply(x, EDIT_GFX_TYPE))
+        self.gfxdetails.connect("changed-port",
+            lambda *x: self.enable_apply(x, EDIT_GFX_PORT))
+        self.gfxdetails.connect("changed-tlsport",
+            lambda *x: self.enable_apply(x, EDIT_GFX_TLSPORT))
+        self.gfxdetails.connect("changed-address",
+            lambda *x: self.enable_apply(x, EDIT_GFX_ADDRESS))
+        self.gfxdetails.connect("changed-keymap",
+            lambda *x: self.enable_apply(x, EDIT_GFX_KEYMAP))
+        self.gfxdetails.connect("changed-password",
+            lambda *x: self.enable_apply(x, EDIT_GFX_PASSWD))
+
+        self.netlist = vmmNetworkList(self.conn, self.builder, self.topwin)
+        self.widget("network-source-label-align").add(self.netlist.top_label)
+        self.widget("network-source-ui-align").add(self.netlist.top_box)
+        self.widget("network-vport-align").add(self.netlist.top_vport)
+        self.netlist.connect("changed",
+            lambda x: self.enable_apply(x, EDIT_NET_SOURCE))
+        self.netlist.connect("changed-vport",
+            lambda x: self.enable_apply(x, EDIT_NET_VPORT))
 
         # Set default window size
         w, h = self.vm.get_details_window_size()
@@ -393,9 +436,12 @@ class vmmDetails(vmmGObjectUI):
             "on_vmm_details_delete_event": self.close,
             "on_vmm_details_configure_event": self.window_resized,
             "on_details_menu_quit_activate": self.exit_app,
+            "on_hw_list_changed": self.hw_changed,
+            "on_config_boot_list_changed": self.config_bootdev_selected,
 
             "on_control_vm_details_toggled": self.details_console_changed,
             "on_control_vm_console_toggled": self.details_console_changed,
+            "on_control_snapshots_toggled": self.details_console_changed,
             "on_control_run_clicked": self.control_vm_run,
             "on_control_shutdown_clicked": self.control_vm_shutdown,
             "on_control_pause_toggled": self.control_vm_pause,
@@ -404,6 +450,7 @@ class vmmDetails(vmmGObjectUI):
             "on_details_customize_finish_clicked": self.customize_finish,
             "on_details_cancel_customize_clicked": self.close,
 
+            "on_details_menu_virtual_manager_activate": self.control_vm_menu,
             "on_details_menu_run_activate": self.control_vm_run,
             "on_details_menu_poweroff_activate": self.control_vm_shutdown,
             "on_details_menu_reboot_activate": self.control_vm_reboot,
@@ -415,49 +462,51 @@ class vmmDetails(vmmGObjectUI):
             "on_details_menu_migrate_activate": self.control_vm_migrate,
             "on_details_menu_delete_activate": self.control_vm_delete,
             "on_details_menu_screenshot_activate": self.control_vm_screenshot,
+            "on_details_menu_usb_redirection": self.control_vm_usb_redirection,
             "on_details_menu_view_toolbar_activate": self.toggle_toolbar,
             "on_details_menu_view_manager_activate": self.view_manager,
             "on_details_menu_view_details_toggled": self.details_console_changed,
             "on_details_menu_view_console_toggled": self.details_console_changed,
+            "on_details_menu_view_snapshots_toggled": self.details_console_changed,
 
             "on_details_pages_switch_page": self.switch_page,
 
             "on_overview_name_changed": lambda *x: self.enable_apply(x, EDIT_NAME),
-            "on_overview_acpi_changed": self.config_acpi_changed,
-            "on_overview_apic_changed": self.config_apic_changed,
-            "on_overview_clock_changed": lambda *x: self.enable_apply(x, EDIT_CLOCK),
+            "on_overview_title_changed": lambda *x: self.enable_apply(x, EDIT_TITLE),
             "on_machine_type_changed": lambda *x: self.enable_apply(x, EDIT_MACHTYPE),
-            "on_security_label_changed": lambda *x: self.enable_apply(x, EDIT_SECURITY),
-            "on_security_relabel_changed": lambda *x: self.enable_apply(x, EDIT_SECURITY),
-            "on_security_type_changed": self.security_type_changed,
 
             "on_config_vcpus_changed": self.config_vcpus_changed,
             "on_config_maxvcpus_changed": self.config_maxvcpus_changed,
             "on_config_vcpupin_changed": lambda *x: self.enable_apply(x, EDIT_CPUSET),
             "on_config_vcpupin_generate_clicked": self.config_vcpupin_generate,
             "on_cpu_model_changed": lambda *x: self.enable_apply(x, EDIT_CPU),
-            "on_cpu_cores_changed": lambda *x: self.enable_apply(x, EDIT_TOPOLOGY),
-            "on_cpu_sockets_changed": lambda *x: self.enable_apply(x, EDIT_TOPOLOGY),
-            "on_cpu_threads_changed": lambda *x: self.enable_apply(x, EDIT_TOPOLOGY),
-            "on_cpu_copy_host_clicked": self.config_cpu_copy_host,
+            "on_cpu_copy_host_clicked": self.on_cpu_copy_host_clicked,
+            "on_cpu_cores_changed": self.config_cpu_topology_changed,
+            "on_cpu_sockets_changed": self.config_cpu_topology_changed,
+            "on_cpu_threads_changed": self.config_cpu_topology_changed,
             "on_cpu_topology_enable_toggled": self.config_cpu_topology_enable,
 
             "on_config_memory_changed": self.config_memory_changed,
             "on_config_maxmem_changed": self.config_maxmem_changed,
 
+
             "on_config_boot_moveup_clicked" : lambda *x: self.config_boot_move(x, True),
             "on_config_boot_movedown_clicked" : lambda *x: self.config_boot_move(x, False),
             "on_config_autostart_changed": lambda *x: self.enable_apply(x, x, EDIT_AUTOSTART),
             "on_boot_menu_changed": lambda *x: self.enable_apply(x, EDIT_BOOTMENU),
+            "on_boot_kernel_enable_toggled": self.boot_kernel_toggled,
             "on_boot_kernel_changed": lambda *x: self.enable_apply(x, EDIT_KERNEL),
-            "on_boot_kernel_initrd_changed": lambda *x: self.enable_apply(x, EDIT_KERNEL),
+            "on_boot_initrd_changed": lambda *x: self.enable_apply(x, EDIT_KERNEL),
+            "on_boot_dtb_changed": lambda *x: self.enable_apply(x, EDIT_KERNEL),
             "on_boot_kernel_args_changed": lambda *x: self.enable_apply(x, EDIT_KERNEL),
             "on_boot_kernel_browse_clicked": self.browse_kernel,
-            "on_boot_kernel_initrd_browse_clicked": self.browse_initrd,
+            "on_boot_initrd_browse_clicked": self.browse_initrd,
+            "on_boot_dtb_browse_clicked": self.browse_dtb,
             "on_boot_init_path_changed": lambda *x: self.enable_apply(x, EDIT_INIT),
 
             "on_disk_readonly_changed": lambda *x: self.enable_apply(x, EDIT_DISK_RO),
             "on_disk_shareable_changed": lambda *x: self.enable_apply(x, EDIT_DISK_SHARE),
+            "on_disk_removable_changed": lambda *x: self.enable_apply(x, EDIT_DISK_REMOVABLE),
             "on_disk_cache_combo_changed": lambda *x: self.enable_apply(x, EDIT_DISK_CACHE),
             "on_disk_io_combo_changed": lambda *x: self.enable_apply(x, EDIT_DISK_IO),
             "on_disk_bus_combo_changed": lambda *x: self.enable_apply(x, EDIT_DISK_BUS),
@@ -465,25 +514,7 @@ class vmmDetails(vmmGObjectUI):
             "on_disk_serial_changed": lambda *x: self.enable_apply(x, EDIT_DISK_SERIAL),
             "on_disk_iotune_changed": self.iotune_changed,
 
-            "on_network_source_combo_changed": lambda *x: self.enable_apply(x, EDIT_NET_SOURCE),
-            "on_network_bridge_changed": lambda *x: self.enable_apply(x, EDIT_NET_SOURCE),
-            "on_network-source-mode-combo_changed": lambda *x: self.enable_apply(x, EDIT_NET_SOURCE),
             "on_network_model_combo_changed": lambda *x: self.enable_apply(x, EDIT_NET_MODEL),
-
-            "on_vport_type_changed": lambda *x: self.enable_apply(x, EDIT_NET_VPORT),
-            "on_vport_managerid_changed": lambda *x: self.enable_apply(x,
-                                           EDIT_NET_VPORT),
-            "on_vport_typeid_changed": lambda *x: self.enable_apply(x,
-                                        EDIT_NET_VPORT),
-            "on_vport_typeidversion_changed": lambda *x: self.enable_apply(x,
-                                               EDIT_NET_VPORT),
-            "on_vport_instanceid_changed": lambda *x: self.enable_apply(x,
-                                            EDIT_NET_VPORT),
-
-            "on_gfx_type_combo_changed": lambda *x: self.enable_apply(x, EDIT_GFX_TYPE),
-            "on_vnc_keymap_combo_changed": lambda *x: self.enable_apply(x,
-                                            EDIT_GFX_KEYMAP),
-            "on_vnc_password_changed": lambda *x: self.enable_apply(x, EDIT_GFX_PASSWD),
 
             "on_sound_model_combo_changed": lambda *x: self.enable_apply(x,
                                              EDIT_SOUND_MODEL),
@@ -511,9 +542,10 @@ class vmmDetails(vmmGObjectUI):
             # Listeners stored in vmmConsolePages
             "on_details_menu_view_fullscreen_activate": self.console.toggle_fullscreen,
             "on_details_menu_view_size_to_vm_activate": self.console.size_to_vm,
-            "on_details_menu_view_scale_always_toggled": self.console.set_scale_type,
-            "on_details_menu_view_scale_fullscreen_toggled": self.console.set_scale_type,
-            "on_details_menu_view_scale_never_toggled": self.console.set_scale_type,
+            "on_details_menu_view_scale_always_toggled": self.console.scaling_ui_changed_cb,
+            "on_details_menu_view_scale_fullscreen_toggled": self.console.scaling_ui_changed_cb,
+            "on_details_menu_view_scale_never_toggled": self.console.scaling_ui_changed_cb,
+            "on_details_menu_view_resizeguest_toggled": self.console.resizeguest_ui_changed_cb,
 
             "on_console_pages_switch_page": self.console.page_changed,
             "on_console_auth_password_activate": self.console.auth_login,
@@ -526,15 +558,6 @@ class vmmDetails(vmmGObjectUI):
         self.vm.connect("status-changed", self.refresh_vm_state)
         self.vm.connect("config-changed", self.refresh_vm_state)
         self.vm.connect("resources-sampled", self.refresh_resources)
-        self.widget("hw-list").get_selection().connect("changed",
-                                                       self.hw_changed)
-        self.widget("config-boot-list").get_selection().connect(
-                                            "changed",
-                                            self.config_bootdev_selected)
-
-        finish_img = Gtk.Image.new_from_stock(Gtk.STOCK_ADD,
-                                              Gtk.IconSize.BUTTON)
-        self.widget("add-hardware-button").set_image(finish_img)
 
         self.populate_hw_list()
         self.repopulate_boot_list()
@@ -558,15 +581,21 @@ class vmmDetails(vmmGObjectUI):
                 self.media_choosers[key].cleanup()
         self.media_choosers = {}
 
-        for serial in self.serial_tabs:
-            self._close_serial_tab(serial)
-
         self.console.cleanup()
         self.console = None
+        self.snapshots.cleanup()
+        self.snapshots = None
 
         self.vm = None
         self.conn = None
         self.addhwmenu = None
+
+        self.gfxdetails.cleanup()
+        self.gfxdetails = None
+        self.fsDetails.cleanup()
+        self.fsDetails = None
+        self.netlist.cleanup()
+        self.netlist = None
 
     def show(self):
         logging.debug("Showing VM details: %s", self.vm)
@@ -621,22 +650,20 @@ class vmmDetails(vmmGObjectUI):
     ##########################
 
     def init_menus(self):
-        # Shutdown button menu
-        uihelpers.build_shutdown_button_menu(self.widget("control-shutdown"),
-                                             self.control_vm_shutdown,
-                                             self.control_vm_reboot,
-                                             self.control_vm_reset,
-                                             self.control_vm_destroy,
-                                             self.control_vm_save)
+        # Virtual Machine menu
+        menu = vmmenu.VMShutdownMenu(self, lambda: self.vm)
+        self.widget("control-shutdown").set_menu(menu)
+        self.widget("control-shutdown").set_icon_name("system-shutdown")
 
-        for name in ["details-menu-shutdown",
-                     "details-menu-reboot",
-                     "details-menu-reset",
-                     "details-menu-poweroff",
-                     "details-menu-destroy"]:
-            image = Gtk.Image.new_from_icon_name("system-shutdown",
-                                                 Gtk.IconSize.MENU)
-            self.widget(name).set_image(image)
+        topmenu = self.widget("details-vm-menu")
+        submenu = topmenu.get_submenu()
+        newmenu = vmmenu.VMActionMenu(self, lambda: self.vm,
+                                        show_open=False)
+        for child in submenu.get_children():
+            submenu.remove(child)
+            newmenu.add(child)  # pylint: disable=E1101
+        topmenu.set_submenu(newmenu)
+        topmenu.show_all()
 
         # Add HW popup menu
         self.addhwmenu = Gtk.Menu()
@@ -660,11 +687,6 @@ class vmmDetails(vmmGObjectUI):
         self.addhwmenu.add(addHW)
         self.addhwmenu.add(rmHW)
 
-        # Serial list menu
-        smenu = Gtk.Menu()
-        smenu.connect("show", self.populate_serial_menu)
-        self.widget("details-menu-view-serial-list").set_submenu(smenu)
-
         # Don't allowing changing network/disks for Dom0
         dom0 = self.vm.is_management_domain()
         self.widget("add-hardware-button").set_sensitive(not dom0)
@@ -676,40 +698,39 @@ class vmmDetails(vmmGObjectUI):
                                     self.config.get_details_show_toolbar())
 
         # Keycombo menu (ctrl+alt+del etc.)
-        self.keycombo_menu = uihelpers.build_keycombo_menu(
-                                                    self.console.send_key)
+        self.keycombo_menu = self.console.build_keycombo_menu(
+            self.console.send_key)
         self.widget("details-menu-send-key").set_submenu(self.keycombo_menu)
 
 
     def init_graphs(self):
-        graph_table = self.widget("graph-table")
+        def _make_graph():
+            g = Sparkline()
+            g.set_property("reversed", True)
+            g.show()
+            return g
 
-        self.cpu_usage_graph = Sparkline()
-        self.cpu_usage_graph.set_property("reversed", True)
-        graph_table.attach(self.cpu_usage_graph, 1, 2, 0, 1)
+        self.cpu_usage_graph = _make_graph()
+        self.widget("overview-cpu-usage-align").add(self.cpu_usage_graph)
 
-        self.memory_usage_graph = Sparkline()
-        self.memory_usage_graph.set_property("reversed", True)
-        graph_table.attach(self.memory_usage_graph, 1, 2, 1, 2)
+        self.memory_usage_graph = _make_graph()
+        self.widget("overview-memory-usage-align").add(self.memory_usage_graph)
 
-        self.disk_io_graph = Sparkline()
-        self.disk_io_graph.set_property("reversed", True)
+        self.disk_io_graph = _make_graph()
         self.disk_io_graph.set_property("filled", False)
         self.disk_io_graph.set_property("num_sets", 2)
         self.disk_io_graph.set_property("rgb", [x / 255.0 for x in
                                         [0x82, 0x00, 0x3B, 0x29, 0x5C, 0x45]])
-        graph_table.attach(self.disk_io_graph, 1, 2, 2, 3)
+        self.widget("overview-disk-usage-align").add(self.disk_io_graph)
 
-        self.network_traffic_graph = Sparkline()
-        self.network_traffic_graph.set_property("reversed", True)
+        self.network_traffic_graph = _make_graph()
         self.network_traffic_graph.set_property("filled", False)
         self.network_traffic_graph.set_property("num_sets", 2)
         self.network_traffic_graph.set_property("rgb", [x / 255.0 for x in
                                                     [0x82, 0x00, 0x3B,
                                                      0x29, 0x5C, 0x45]])
-        graph_table.attach(self.network_traffic_graph, 1, 2, 3, 4)
-
-        graph_table.show_all()
+        self.widget("overview-network-traffic-align").add(
+            self.network_traffic_graph)
 
     def init_details(self):
         # Hardware list
@@ -735,7 +756,40 @@ class vmmDetails(vmmGObjectUI):
         buf.connect("changed", self.enable_apply, EDIT_DESC)
         desc.set_buffer(buf)
 
-        # List of applications.
+        arch = self.vm.get_arch()
+        caps = self.vm.conn.caps
+
+        # Machine type
+        machtype_combo = self.widget("machine-type")
+        machtype_model = Gtk.ListStore(str)
+        machtype_combo.set_model(machtype_model)
+        uiutil.set_combo_text_column(machtype_combo, 0)
+        machtype_model.set_sort_column_id(0, Gtk.SortType.ASCENDING)
+
+        show_machine = (arch not in ["i686", "x86_64"])
+        uiutil.set_grid_row_visible(self.widget("machine-type"),
+                                       show_machine)
+
+        if show_machine:
+            machines = []
+
+            try:
+                ignore, domain = caps.guest_lookup(
+                    os_type=self.vm.get_abi_type(),
+                    arch=self.vm.get_arch(),
+                    typ=self.vm.get_hv_type(),
+                    machine=self.vm.get_machtype())
+
+                machines = domain.machines[:]
+            except:
+                logging.exception("Error determining machine list")
+
+            for machine in machines:
+                if machine == "none":
+                    continue
+                machtype_model.append([machine])
+
+        # Inspection page
         apps_list = self.widget("inspection-apps")
         apps_model = Gtk.ListStore(str, str, str)
         apps_list.set_model(apps_model)
@@ -763,86 +817,16 @@ class vmmDetails(vmmGObjectUI):
         summary_col.add_attribute(summary_text, 'text', 2)
         summary_col.set_sort_column_id(2)
 
-        # Clock combo
-        clock_combo = self.widget("overview-clock-combo")
-        clock_model = Gtk.ListStore(str)
-        clock_combo.set_model(clock_model)
-        text = Gtk.CellRendererText()
-        clock_combo.pack_start(text, True)
-        clock_combo.add_attribute(text, 'text', 0)
-        clock_model.set_sort_column_id(0, Gtk.SortType.ASCENDING)
-        for offset in ["localtime", "utc"]:
-            clock_model.append([offset])
-
-        arch = self.vm.get_arch()
-        caps = self.vm.conn.get_capabilities()
-        machines = []
-
-        if len(caps.guests) > 0:
-            for guest in caps.guests:
-                if len(guest.domains) > 0:
-                    for domain in guest.domains:
-                        machines = list(set(machines + domain.machines))
-
-        if arch in ["i686", "x86_64"]:
-            self.widget("label81").hide()
-            self.widget("hbox30").hide()
-        else:
-            machtype_combo = self.widget("machine-type-combo")
-            machtype_model = Gtk.ListStore(str)
-            machtype_combo.set_model(machtype_model)
-            text = Gtk.CellRendererText()
-            machtype_combo.pack_start(text, True)
-            machtype_combo.add_attribute(text, 'text', 0)
-            machtype_model.set_sort_column_id(0, Gtk.SortType.ASCENDING)
-
-            if len(machines) > 0:
-                for machine in machines:
-                    machtype_model.append([machine])
-
-        # Security info tooltips
-        self.widget("security-static-info").set_tooltip_text(
-            _("Static SELinux security type tells libvirt to always start the guest process with the specified label. Unless 'relabel' is set, the administrator is responsible for making sure the images are labeled correctly on disk."))
-        self.widget("security-dynamic-info").set_tooltip_text(
-            _("The dynamic SELinux security type tells libvirt to automatically pick a unique label for the guest process and guest image, ensuring total isolation of the guest. (Default)"))
 
         # VCPU Pinning list
         generate_cpuset = self.widget("config-vcpupin-generate")
         generate_warn = self.widget("config-vcpupin-generate-err")
-        if not self.conn.get_capabilities().host.topology:
+        if not self.conn.caps.host.topology:
             generate_cpuset.set_sensitive(False)
             generate_warn.show()
-            generate_warn.set_tooltip_text(_("Libvirt did not detect NUMA capabilities."))
+            generate_warn.set_tooltip_text(
+                _("Libvirt did not detect NUMA capabilities."))
 
-
-        # [ VCPU #, Currently running on Phys CPU #, CPU Pinning list ]
-        vcpu_list = self.widget("config-vcpu-list")
-        vcpu_model = Gtk.ListStore(str, str, str)
-        vcpu_list.set_model(vcpu_model)
-
-        vcpuCol = Gtk.TreeViewColumn(_("VCPU"))
-        physCol = Gtk.TreeViewColumn(_("On CPU"))
-        pinCol  = Gtk.TreeViewColumn(_("Pinning"))
-
-        vcpu_list.append_column(vcpuCol)
-        vcpu_list.append_column(physCol)
-        vcpu_list.append_column(pinCol)
-
-        vcpu_text = Gtk.CellRendererText()
-        vcpuCol.pack_start(vcpu_text, True)
-        vcpuCol.add_attribute(vcpu_text, 'text', 0)
-        vcpuCol.set_sort_column_id(0)
-
-        phys_text = Gtk.CellRendererText()
-        physCol.pack_start(phys_text, True)
-        physCol.add_attribute(phys_text, 'text', 1)
-        physCol.set_sort_column_id(1)
-
-        pin_text = Gtk.CellRendererText()
-        pin_text.set_property("editable", True)
-        pin_text.connect("edited", self.config_vcpu_pin)
-        pinCol.pack_start(pin_text, True)
-        pinCol.add_attribute(pin_text, 'text', 2)
 
         # Boot device list
         boot_list = self.widget("config-boot-list")
@@ -872,204 +856,85 @@ class vmmDetails(vmmGObjectUI):
 
         no_default = not self.is_customize_dialog
 
-        # CPU features
-        caps = self.vm.conn.get_capabilities()
-        cpu_values = None
-        cpu_names = []
-        all_features = []
-
         try:
             cpu_values = caps.get_cpu_values(self.vm.get_arch())
-            cpu_names = sorted([c.model for c in cpu_values.cpus],
-                               key=str.lower)
-            all_features = cpu_values.features
         except:
             logging.exception("Error populating CPU model list")
-
-        # [ feature name, mode]
-        feat_list = self.widget("cpu-features")
-        feat_model = Gtk.ListStore(str, str)
-        feat_list.set_model(feat_model)
-
-        nameCol = Gtk.TreeViewColumn()
-        polCol = Gtk.TreeViewColumn()
-        polCol.set_min_width(80)
-
-        feat_list.append_column(nameCol)
-        feat_list.append_column(polCol)
-
-        # Feature name col
-        name_text = Gtk.CellRendererText()
-        nameCol.pack_start(name_text, True)
-        nameCol.add_attribute(name_text, 'text', 0)
-        nameCol.set_sort_column_id(0)
-
-        # Feature policy col
-        feat_combo = Gtk.CellRendererCombo()
-        m = Gtk.ListStore(str)
-        for p in virtinst.CPUFeature.POLICIES:
-            m.append([p])
-        m.append(["default"])
-        feat_combo.set_property("model", m)
-        feat_combo.set_property("text-column", 0)
-        feat_combo.set_property("editable", True)
-        polCol.pack_start(feat_combo, False)
-        polCol.add_attribute(feat_combo, 'text', 1)
-        polCol.set_sort_column_id(1)
-
-        def feature_changed(src, index, treeiter, model):
-            model[index][1] = src.get_property("model")[treeiter][0]
-            self.enable_apply(EDIT_CPU)
-
-        feat_combo.connect("changed", feature_changed, feat_model)
-        for name in all_features:
-            feat_model.append([name, "default"])
 
         # CPU model combo
         cpu_model = self.widget("cpu-model")
 
-        model = Gtk.ListStore(str, object)
+        def sep_func(model, it, ignore):
+            return model[it][3]
+
+        # [label, sortkey, idstring, is sep]
+        model = Gtk.ListStore(str, str, str, bool)
         cpu_model.set_model(model)
         cpu_model.set_entry_text_column(0)
-        model.set_sort_column_id(0, Gtk.SortType.ASCENDING)
-        for name in cpu_names:
-            model.append([name, cpu_values.get_cpu(name)])
+        cpu_model.set_row_separator_func(sep_func, None)
+        model.set_sort_column_id(1, Gtk.SortType.ASCENDING)
+        model.append([_("Application Default"), "1", "appdefault", False])
+        model.append([_("Hypervisor Default"), "2", "hypdefault", False])
+        model.append([_("Clear CPU configuration"), "3", "clearcpu", False])
+        model.append([None, None, None, True])
+        for name in [c.model for c in cpu_values.cpus]:
+            model.append([name, name, name, False])
 
         # Disk cache combo
-        disk_cache = self.widget("disk-cache-combo")
-        uihelpers.build_cache_combo(self.vm, disk_cache)
+        disk_cache = self.widget("disk-cache")
+        vmmAddHardware.build_disk_cache_combo(self.vm, disk_cache)
 
         # Disk io combo
-        disk_io = self.widget("disk-io-combo")
-        uihelpers.build_io_combo(self.vm, disk_io)
+        disk_io = self.widget("disk-io")
+        vmmAddHardware.build_disk_io_combo(self.vm, disk_io)
 
         # Disk format combo
         format_list = self.widget("disk-format")
-        uihelpers.build_storage_format_combo(self.vm, format_list)
+        vmmAddHardware.populate_disk_format_combo(self.vm, format_list, False)
 
         # Disk bus combo
-        disk_bus = self.widget("disk-bus-combo")
-        uihelpers.build_disk_bus_combo(self.vm, disk_bus)
+        disk_bus = self.widget("disk-bus")
+        vmmAddHardware.build_disk_bus_combo(self.vm, disk_bus)
 
         # Disk iotune expander
         if not (self.conn.is_qemu() or self.conn.is_test_conn()):
-            self.widget("iotune-expander").set_property("visible", False)
-
-        # Network source
-        net_source = self.widget("network-source-combo")
-        net_bridge = self.widget("network-bridge-box")
-        source_mode_box   = self.widget("network-source-mode-box")
-        source_mode_label = self.widget("network-source-mode")
-        vport_expander = self.widget("vport-expander")
-        uihelpers.init_network_list(net_source, net_bridge, source_mode_box,
-                                    source_mode_label, vport_expander)
-
-        # source mode
-        source_mode = self.widget("network-source-mode-combo")
-        uihelpers.build_source_mode_combo(self.vm, source_mode)
+            self.widget("iotune-expander").set_visible(False)
 
         # Network model
-        net_model = self.widget("network-model-combo")
-        uihelpers.build_netmodel_combo(self.vm, net_model)
-
-        # Graphics type
-        gfx_type = self.widget("gfx-type-combo")
-        model = Gtk.ListStore(str, str)
-        gfx_type.set_model(model)
-        text = Gtk.CellRendererText()
-        gfx_type.pack_start(text, True)
-        gfx_type.add_attribute(text, 'text', 1)
-        model.append([virtinst.VirtualGraphics.TYPE_VNC,
-                      "VNC"])
-        model.append([virtinst.VirtualGraphics.TYPE_SPICE,
-                      "Spice"])
-        gfx_type.set_active(-1)
-
-        # Graphics keymap
-        gfx_keymap = self.widget("gfx-keymap-combo")
-        uihelpers.build_vnc_keymap_combo(self.vm, gfx_keymap,
-                                         no_default=no_default)
+        net_model = self.widget("network-model")
+        vmmAddHardware.build_network_model_combo(self.vm, net_model)
 
         # Sound model
-        sound_dev = self.widget("sound-model-combo")
-        uihelpers.build_sound_combo(self.vm, sound_dev, no_default=no_default)
+        sound_dev = self.widget("sound-model")
+        vmmAddHardware.build_sound_combo(self.vm, sound_dev,
+            no_default=no_default)
 
         # Video model combo
-        video_dev = self.widget("video-model-combo")
-        uihelpers.build_video_combo(self.vm, video_dev, no_default=no_default)
+        video_dev = self.widget("video-model")
+        vmmAddHardware.build_video_combo(self.vm, video_dev,
+            no_default=no_default)
 
         # Watchdog model combo
-        combo = self.widget("watchdog-model-combo")
-        uihelpers.build_watchdogmodel_combo(self.vm, combo,
+        combo = self.widget("watchdog-model")
+        vmmAddHardware.build_watchdogmodel_combo(self.vm, combo,
                                             no_default=no_default)
 
         # Watchdog action combo
-        combo = self.widget("watchdog-action-combo")
-        uihelpers.build_watchdogaction_combo(self.vm, combo,
+        combo = self.widget("watchdog-action")
+        vmmAddHardware.build_watchdogaction_combo(self.vm, combo,
                                              no_default=no_default)
 
         # Smartcard mode
-        sc_mode = self.widget("smartcard-mode-combo")
-        uihelpers.build_smartcard_mode_combo(self.vm, sc_mode)
-
-        # Redirection type
-        combo = self.widget("redir-type-combo")
-        uihelpers.build_redir_type_combo(self.vm, combo)
+        sc_mode = self.widget("smartcard-mode")
+        vmmAddHardware.build_smartcard_mode_combo(self.vm, sc_mode)
 
         # Controller model
-        combo = self.widget("controller-model-combo")
+        combo = self.widget("controller-model")
         model = Gtk.ListStore(str, str)
         combo.set_model(model)
-        text = Gtk.CellRendererText()
-        combo.pack_start(text, True)
-        combo.add_attribute(text, 'text', 1)
+        uiutil.set_combo_text_column(combo, 1)
         combo.set_active(-1)
 
-
-    # Helper function to handle the combo/label pattern used for
-    # video model, sound model, network model, etc.
-    def set_combo_label(self, prefix, value, model_idx=0, label="",
-                        comparefunc=None):
-        label = label or value
-        model_label = self.widget(prefix + "-label")
-        model_combo = self.widget(prefix + "-combo")
-
-        idx = -1
-        if comparefunc:
-            model_in_list, idx = comparefunc(model_combo.get_model(), value)
-        else:
-            model_list = [x[model_idx] for x in model_combo.get_model()]
-            model_in_list = (value in model_list)
-            if model_in_list:
-                idx = model_list.index(value)
-
-        model_label.set_property("visible", not model_in_list)
-        model_combo.set_property("visible", model_in_list)
-        model_label.set_text(label or "")
-
-        if model_in_list:
-            model_combo.set_active(idx)
-        else:
-            model_combo.set_active(-1)
-
-    # Helper for accessing value of combo/label pattern
-    def get_combo_value(self, widgetname, model_idx=0):
-        combo = self.widget(widgetname)
-        if combo.get_active() < 0:
-            return None
-        return combo.get_model()[combo.get_active()][model_idx]
-
-    def get_combo_label_value(self, prefix, model_idx=0):
-        comboname = prefix + "-combo"
-        label = self.widget(prefix + "-label")
-        value = None
-
-        if label.get_property("visible"):
-            value = label.get_text()
-        else:
-            value = self.get_combo_value(comboname, model_idx)
-
-        return value
 
     ##########################
     # Window state listeners #
@@ -1089,106 +954,6 @@ class vmmDetails(vmmGObjectUI):
 
         self.addhwmenu.popup(None, None, None, None, 0, event.time)
 
-    def build_serial_list(self):
-        ret = []
-
-        def add_row(text, err, sensitive, do_radio, cb, serialidx):
-            ret.append([text, err, sensitive, do_radio, cb, serialidx])
-
-        devs = self.vm.get_serial_devs()
-        if len(devs) == 0:
-            add_row(_("No text console available"),
-                    None, False, False, None, None)
-
-        def build_desc(dev):
-            if dev.virtual_device_type == "console":
-                return "Text Console %d" % (dev.vmmindex + 1)
-            return "Serial %d" % (dev.vmmindex + 1)
-
-        for dev in devs:
-            desc = build_desc(dev)
-            idx = dev.vmmindex
-
-            err = vmmSerialConsole.can_connect(self.vm, dev)
-            sensitive = not bool(err)
-
-            def cb(src):
-                return self.control_serial_tab(src, desc, idx)
-
-            add_row(desc, err, sensitive, True, cb, idx)
-
-        return ret
-
-    def current_serial_dev(self):
-        showing_serial = (self.last_console_page >= PAGE_DYNAMIC_OFFSET)
-        if not showing_serial:
-            return
-
-        serial_idx = self.last_console_page - PAGE_DYNAMIC_OFFSET
-        if len(self.serial_tabs) < serial_idx:
-            return
-
-        return self.serial_tabs[serial_idx]
-
-    def populate_serial_menu(self, src):
-        for ent in src:
-            src.remove(ent)
-
-        serial_page_dev = self.current_serial_dev()
-        showing_graphics = (self.last_console_page == PAGE_CONSOLE)
-
-        # Populate serial devices
-        group = None
-        itemlist = self.build_serial_list()
-        for msg, err, sensitive, do_radio, cb, ignore in itemlist:
-            if do_radio:
-                item = Gtk.RadioMenuItem(group)
-                item.set_label(msg)
-                if group is None:
-                    group = item
-            else:
-                item = Gtk.MenuItem(msg)
-
-            item.set_sensitive(sensitive)
-
-            if err and not sensitive:
-                item.set_tooltip_text(err)
-
-            if cb:
-                item.connect("toggled", cb)
-
-            # Tab is already open, make sure marked as such
-            if (sensitive and
-                serial_page_dev and
-                serial_page_dev.name == msg):
-                item.set_active(True)
-
-            src.add(item)
-
-        src.add(Gtk.SeparatorMenuItem())
-
-        # Populate graphical devices
-        devs = self.vm.get_graphics_devices()
-        if len(devs) == 0:
-            item = Gtk.MenuItem(_("No graphical console available"))
-            item.set_sensitive(False)
-            src.add(item)
-        else:
-            dev = devs[0]
-            item = Gtk.RadioMenuItem(group)
-            item.set_label(_("Graphical Console %s") %
-                           dev.pretty_type_simple(dev.type))
-            if group is None:
-                group = item
-
-            if showing_graphics:
-                item.set_active(True)
-            item.connect("toggled", self.control_serial_tab,
-                         dev.virtual_device_type, dev.type)
-            src.add(item)
-
-        src.show_all()
-
     def control_fullscreen(self, src):
         menu = self.widget("details-menu-view-fullscreen")
         if src.get_active() != menu.get_active():
@@ -1207,26 +972,16 @@ class vmmDetails(vmmGObjectUI):
         else:
             self.widget("toolbar-box").hide()
 
-    def get_selected_row(self, widget):
-        selection = widget.get_selection()
-        model, treepath = selection.get_selected()
-        if treepath is None:
-            return None
-        return model[treepath]
-
     def get_boot_selection(self):
-        return self.get_selected_row(self.widget("config-boot-list"))
+        return uiutil.get_list_selection(self.widget("config-boot-list"))
 
     def set_hw_selection(self, page, disable_apply=True):
         if disable_apply:
             self.disable_apply()
-
-        hwlist = self.widget("hw-list")
-        selection = hwlist.get_selection()
-        selection.select_path(str(page))
+        uiutil.set_list_selection(self.widget("hw-list"), page)
 
     def get_hw_row(self):
-        return self.get_selected_row(self.widget("hw-list"))
+        return uiutil.get_list_selection(self.widget("hw-list"))
 
     def get_hw_selection(self, field):
         row = self.get_hw_row()
@@ -1252,7 +1007,7 @@ class vmmDetails(vmmGObjectUI):
         if not self.widget("config-apply").get_sensitive():
             return False
 
-        if not util.chkbox_helper(self,
+        if not self.err.chkbox_helper(
             self.config.get_confirm_unapplied,
             self.config.set_confirm_unapplied,
             text1=(_("There are unapplied changes. Would you like to apply "
@@ -1268,7 +1023,7 @@ class vmmDetails(vmmGObjectUI):
         newrow = self.get_hw_row()
         model = self.widget("hw-list").get_model()
 
-        if newrow[HW_LIST_COL_DEVICE] == self.oldhwkey:
+        if not newrow or newrow[HW_LIST_COL_DEVICE] == self.oldhwkey:
             return
 
         oldhwrow = None
@@ -1299,6 +1054,8 @@ class vmmDetails(vmmGObjectUI):
         try:
             if pagetype == HW_LIST_TYPE_GENERAL:
                 self.refresh_overview_page()
+            elif pagetype == HW_LIST_TYPE_INSPECTION:
+                self.refresh_inspection_page()
             elif pagetype == HW_LIST_TYPE_STATS:
                 self.refresh_stats_page()
             elif pagetype == HW_LIST_TYPE_CPU:
@@ -1333,15 +1090,21 @@ class vmmDetails(vmmGObjectUI):
                 self.refresh_smartcard_page()
             elif pagetype == HW_LIST_TYPE_REDIRDEV:
                 self.refresh_redir_page()
+            elif pagetype == HW_LIST_TYPE_TPM:
+                self.refresh_tpm_page()
+            elif pagetype == HW_LIST_TYPE_RNG:
+                self.refresh_rng_page()
+            elif pagetype == HW_LIST_TYPE_PANIC:
+                self.refresh_panic_page()
             else:
                 pagetype = -1
         except Exception, e:
             self.err.show_err(_("Error refreshing hardware page: %s") % str(e))
-            return
+            # Don't return, we want the rest of the bits to run regardless
 
-        rem = pagetype in remove_pages
         self.disable_apply()
-        self.widget("config-remove").set_property("visible", rem)
+        rem = pagetype in remove_pages
+        self.widget("config-remove").set_visible(rem)
 
         self.widget("hw-panel").set_current_page(pagetype)
 
@@ -1352,47 +1115,55 @@ class vmmDetails(vmmGObjectUI):
         if not src.get_active():
             return
 
-        is_details = False
-        if (src == self.widget("control-vm-details") or
-            src == self.widget("details-menu-view-details")):
-            is_details = True
+        is_details = (src == self.widget("control-vm-details") or
+                      src == self.widget("details-menu-view-details"))
+        is_snapshot = (src == self.widget("control-snapshots") or
+                       src == self.widget("details-menu-view-snapshots"))
 
         pages = self.widget("details-pages")
-        if pages.get_current_page() == PAGE_DETAILS:
+        if pages.get_current_page() == DETAILS_PAGE_DETAILS:
             if self.has_unapplied_changes(self.get_hw_row()):
                 self.sync_details_console_view(True)
                 return
             self.disable_apply()
 
         if is_details:
-            pages.set_current_page(PAGE_DETAILS)
+            pages.set_current_page(DETAILS_PAGE_DETAILS)
+        elif is_snapshot:
+            self.snapshots.show_page()
+            pages.set_current_page(DETAILS_PAGE_SNAPSHOTS)
         else:
-            pages.set_current_page(self.last_console_page)
+            pages.set_current_page(DETAILS_PAGE_CONSOLE)
 
-    def sync_details_console_view(self, is_details):
+    def sync_details_console_view(self, newpage):
         details = self.widget("control-vm-details")
         details_menu = self.widget("details-menu-view-details")
         console = self.widget("control-vm-console")
         console_menu = self.widget("details-menu-view-console")
+        snapshot = self.widget("control-snapshots")
+        snapshot_menu = self.widget("details-menu-view-snapshots")
+
+        is_details = newpage == DETAILS_PAGE_DETAILS
+        is_snapshot = newpage == DETAILS_PAGE_SNAPSHOTS
+        is_console = not is_details and not is_snapshot
 
         try:
             self.ignoreDetails = True
 
             details.set_active(is_details)
             details_menu.set_active(is_details)
-            console.set_active(not is_details)
-            console_menu.set_active(not is_details)
+            snapshot.set_active(is_snapshot)
+            snapshot_menu.set_active(is_snapshot)
+            console.set_active(is_console)
+            console_menu.set_active(is_console)
         finally:
             self.ignoreDetails = False
 
     def switch_page(self, ignore1=None, ignore2=None, newpage=None):
         self.page_refresh(newpage)
 
-        self.sync_details_console_view(newpage == PAGE_DETAILS)
+        self.sync_details_console_view(newpage)
         self.console.set_allow_fullscreen()
-
-        if newpage == PAGE_CONSOLE or newpage >= PAGE_DYNAMIC_OFFSET:
-            self.last_console_page = newpage
 
     def change_run_text(self, can_restore):
         if can_restore:
@@ -1401,36 +1172,32 @@ class vmmDetails(vmmGObjectUI):
             text = _("_Run")
         strip_text = text.replace("_", "")
 
-        self.widget("details-menu-run").get_child().set_label(text)
+        self.widget("details-vm-menu").get_submenu().change_run_text(text)
         self.widget("control-run").set_label(strip_text)
 
     def refresh_vm_state(self, ignore1=None, ignore2=None, ignore3=None):
         vm = self.vm
         status = self.vm.status()
 
+        self.widget("details-menu-view-toolbar").set_active(
+            self.config.get_details_show_toolbar())
         self.toggle_toolbar(self.widget("details-menu-view-toolbar"))
 
-        active  = vm.is_active()
-        destroy = vm.is_destroyable()
-        run     = vm.is_runable()
-        stop    = vm.is_stoppable()
-        paused  = vm.is_paused()
-        ro      = vm.is_read_only()
+        active = vm.is_active()
+        run = vm.is_runable()
+        stop = vm.is_stoppable()
+        paused = vm.is_paused()
+        ro = vm.is_read_only()
 
         if vm.managedsave_supported:
             self.change_run_text(vm.hasSavedImage())
 
-        self.widget("details-menu-destroy").set_sensitive(destroy)
         self.widget("control-run").set_sensitive(run)
-        self.widget("details-menu-run").set_sensitive(run)
-
-        self.widget("details-menu-migrate").set_sensitive(stop)
         self.widget("control-shutdown").set_sensitive(stop)
-        self.widget("details-menu-shutdown").set_sensitive(stop)
-        self.widget("details-menu-save").set_sensitive(stop)
+        self.widget("control-shutdown").get_menu().update_widget_states(vm)
         self.widget("control-pause").set_sensitive(stop)
-        self.widget("details-menu-pause").set_sensitive(stop)
 
+        self.widget("details-vm-menu").get_submenu().update_widget_states(vm)
         self.set_pause_state(paused)
 
         self.widget("overview-name").set_editable(not active)
@@ -1450,16 +1217,21 @@ class vmmDetails(vmmGObjectUI):
         if not run:
             self.activate_default_console_page()
 
-        self.widget("overview-status-text").set_text(
-                                                    self.vm.run_status())
+        self.widget("overview-status-text").set_text(self.vm.run_status())
         self.widget("overview-status-icon").set_from_icon_name(
-                            self.vm.run_status_icon_name(), Gtk.IconSize.MENU)
+                            self.vm.run_status_icon_name(), Gtk.IconSize.BUTTON)
 
         details = self.widget("details-pages")
         self.page_refresh(details.get_current_page())
 
-        # This is safe to refresh, and is dependent on domain state
-        self._refresh_runtime_pinning()
+        errmsg = self.vm.snapshots_supported()
+        cansnap = not bool(errmsg)
+        self.widget("control-snapshots").set_sensitive(cansnap)
+        self.widget("details-menu-view-snapshots").set_sensitive(cansnap)
+        tooltip = _("Manage VM snapshots")
+        if not cansnap:
+            tooltip += "\n" + errmsg
+        self.widget("control-snapshots").set_tooltip_text(tooltip)
 
 
     #############################
@@ -1473,43 +1245,32 @@ class vmmDetails(vmmGObjectUI):
         self.emit("action-exit-app")
 
     def activate_default_console_page(self):
-        if self.vm.get_graphics_devices() or not self.vm.get_serial_devs():
-            return
-
-        # Only show serial page if we are already on console view
         pages = self.widget("details-pages")
-        if pages.get_current_page() != PAGE_CONSOLE:
+        if pages.get_current_page() != DETAILS_PAGE_CONSOLE:
             return
+        self.console.activate_default_console_page()
 
-        # Show serial console
-        devs = self.build_serial_list()
-        for name, ignore, sensitive, ignore, cb, serialidx in devs:
-            if not sensitive or not cb:
-                continue
-
-            self._show_serial_tab(name, serialidx)
-            break
-
+    # activate_* are called from engine.py via CLI options
     def activate_default_page(self):
         pages = self.widget("details-pages")
-        pages.set_current_page(PAGE_CONSOLE)
+        pages.set_current_page(DETAILS_PAGE_CONSOLE)
         self.activate_default_console_page()
 
     def activate_console_page(self):
         pages = self.widget("details-pages")
-        pages.set_current_page(PAGE_CONSOLE)
+        pages.set_current_page(DETAILS_PAGE_CONSOLE)
 
     def activate_performance_page(self):
-        self.widget("details-pages").set_current_page(PAGE_DETAILS)
+        self.widget("details-pages").set_current_page(DETAILS_PAGE_DETAILS)
         self.set_hw_selection(HW_LIST_TYPE_STATS)
 
     def activate_config_page(self):
-        self.widget("details-pages").set_current_page(PAGE_DETAILS)
+        self.widget("details-pages").set_current_page(DETAILS_PAGE_DETAILS)
 
     def add_hardware(self, src_ignore):
         try:
             if self.addhw is None:
-                self.addhw = vmmAddHardware(self.vm)
+                self.addhw = vmmAddHardware(self.vm, self.is_customize_dialog)
 
             self.addhw.show(self.topwin)
         except Exception, e:
@@ -1528,8 +1289,7 @@ class vmmDetails(vmmGObjectUI):
         # Set pause widget states
         try:
             self.ignorePause = True
-            self.widget("control-pause").set_active(paused)
-            self.widget("details-menu-pause").set_active(paused)
+            self.widget("control-pause").set_property("active", paused)
         finally:
             self.ignorePause = False
 
@@ -1537,7 +1297,7 @@ class vmmDetails(vmmGObjectUI):
         if self.ignorePause:
             return
 
-        # Let state handler listener change things if necc.
+        # Let state handler listener change things if nec.
         self.set_pause_state(not src.get_active())
 
         if not self.vm.is_paused():
@@ -1549,6 +1309,11 @@ class vmmDetails(vmmGObjectUI):
                       self.vm.conn.get_uri(),
                       self.vm.get_uuid())
 
+    def control_vm_menu(self, src_ignore):
+        can_usb = bool(self.console.viewer and
+                       self.console.viewer.has_usb_redirection() and
+                       self.vm.has_spicevmc_type_redirdev())
+        self.widget("details-menu-usb-redirection").set_sensitive(can_usb)
 
     def control_vm_run(self, src_ignore):
         self.emit("action-run-domain",
@@ -1593,6 +1358,19 @@ class vmmDetails(vmmGObjectUI):
         except Exception, e:
             self.err.show_err(_("Error taking screenshot: %s") % str(e))
 
+    def control_vm_usb_redirection(self, src):
+        ignore = src
+        spice_usbdev_dialog = self.err
+
+        spice_usbdev_widget = self.console.viewer.get_usb_widget()
+        if not spice_usbdev_widget:
+            self.err.show_err(_("Error initializing spice USB device widget"))
+            return
+
+        spice_usbdev_widget.show()
+        spice_usbdev_dialog.show_info(_("Select USB devices for redirection"),
+                                      widget=spice_usbdev_widget)
+
     def _take_screenshot(self):
         image = self.console.viewer.get_pixbuf()
 
@@ -1615,14 +1393,12 @@ class vmmDetails(vmmGObjectUI):
         now = str(datetime.datetime.now()).split(".")[0].replace(" ", "_")
         default = "Screenshot_%s_%s.png" % (self.vm.get_name(), now)
 
-        path = util.browse_local(
-                        self.topwin,
-                        _("Save Virtual Machine Screenshot"),
-                        self.vm.conn,
-                        _type=("png", "PNG files"),
-                        dialog_type=Gtk.FileChooserAction.SAVE,
-                        browse_reason=self.config.CONFIG_DIR_SCREENSHOT,
-                        default_name=default)
+        path = self.err.browse_local(
+            self.vm.conn, _("Save Virtual Machine Screenshot"),
+            _type=("png", "PNG files"),
+            dialog_type=Gtk.FileChooserAction.SAVE,
+            browse_reason=self.config.CONFIG_DIR_SCREENSHOT,
+            default_name=default)
         if not path:
             logging.debug("No screenshot path given, skipping save.")
             return
@@ -1631,49 +1407,6 @@ class vmmDetails(vmmGObjectUI):
         if not filename.endswith(".png"):
             filename += ".png"
         file(filename, "wb").write(ret)
-
-
-    #########################
-    # Serial Console pieces #
-    #########################
-
-    def control_serial_tab(self, src_ignore, name, target_port):
-        pages = self.widget("details-pages")
-        is_graphics = (name == "graphics")
-        is_serial = not is_graphics
-
-        if is_graphics:
-            pages.set_current_page(PAGE_CONSOLE)
-        elif is_serial:
-            self._show_serial_tab(name, target_port)
-
-    def _show_serial_tab(self, name, target_port):
-        serial = None
-        for s in self.serial_tabs:
-            if s.name == name:
-                serial = s
-                break
-
-        if not serial:
-            serial = vmmSerialConsole(self.vm, target_port, name)
-
-            title = Gtk.Label(label=name)
-            self.widget("details-pages").append_page(serial.box, title)
-            self.serial_tabs.append(serial)
-            serial.open_console()
-
-        page_idx = self.serial_tabs.index(serial) + PAGE_DYNAMIC_OFFSET
-        self.widget("details-pages").set_current_page(page_idx)
-
-    def _close_serial_tab(self, serial):
-        if not serial in self.serial_tabs:
-            return
-
-        page_idx = self.serial_tabs.index(serial) + PAGE_DYNAMIC_OFFSET
-        self.widget("details-pages").remove_page(page_idx)
-
-        serial.cleanup()
-        self.serial_tabs.remove(serial)
 
 
     ############################
@@ -1692,24 +1425,45 @@ class vmmDetails(vmmGObjectUI):
 
     def get_config_cpu_model(self):
         cpu_list = self.widget("cpu-model")
-        model = cpu_list.get_child().get_text()
+        text = cpu_list.get_child().get_text()
+        model = None
+        mode = None
+        copy_host = bool(self.widget("cpu-copy-host").get_active())
+        key = None
 
-        for row in cpu_list.get_model():
-            if model == row[0]:
-                return model, row[1].vendor
+        row = None
+        for r in cpu_list.get_model():
+            if text == r[0]:
+                row = r
+                break
 
-        return model, None
+        if row:
+            key = row[2]
+        elif text == "host-model" or text == "host-passthrough":
+            mode = text
+        else:
+            model = text
 
-    def get_config_cpu_features(self):
-        feature_list = self.widget("cpu-features")
-        ret = []
+        if key == "hypdefault" or key == "clearcpu":
+            # Clear the whole CPU
+            pass
+        elif key == "appdefault":
+            cpu_type = self.config.get_default_cpu_setting()
 
-        for row in feature_list.get_model():
-            if row[1] in ["off", "model"]:
-                continue
-            ret.append(row)
+            if cpu_type == "hv-default":
+                pass
+            elif cpu_type == "host-cpu-model":
+                if self.vm.conn.caps.host.cpu.model:
+                    model = self.vm.conn.caps.host.cpu.model
+            elif cpu_type == "host-model":
+                copy_host = True
+            else:
+                raise RuntimeError("Unknown cpu default '%s'" % cpu_type)
+        elif key:
+            model = key
 
-        return ret
+        return model, mode, copy_host
+
 
     ##############################
     # Details/Hardware listeners #
@@ -1728,13 +1482,21 @@ class vmmDetails(vmmGObjectUI):
         self.storage_browser.set_browse_reason(reason)
         self.storage_browser.show(self.topwin, self.conn)
 
+    def boot_kernel_toggled(self, src):
+        self.widget("boot-kernel-box").set_sensitive(src.get_active())
+        self.enable_apply(EDIT_KERNEL)
+
     def browse_kernel(self, src_ignore):
         def cb(ignore, path):
             self.widget("boot-kernel").set_text(path)
         self._browse_file(cb)
     def browse_initrd(self, src_ignore):
         def cb(ignore, path):
-            self.widget("boot-kernel-initrd").set_text(path)
+            self.widget("boot-initrd").set_text(path)
+        self._browse_file(cb)
+    def browse_dtb(self, src_ignore):
+        def cb(ignore, path):
+            self.widget("boot-dtb").set_text(path)
         self._browse_file(cb)
 
     def disable_apply(self):
@@ -1749,33 +1511,11 @@ class vmmDetails(vmmGObjectUI):
         if edittype not in self.active_edits:
             self.active_edits.append(edittype)
 
-    # Overview -> Machine settings
-    def config_acpi_changed(self, ignore):
-        widget = self.widget("overview-acpi")
-        incon = widget.get_inconsistent()
-        widget.set_inconsistent(False)
-        if incon:
-            widget.set_active(True)
-        self.enable_apply(EDIT_ACPI)
-    def config_apic_changed(self, ignore):
-        widget = self.widget("overview-apic")
-        incon = widget.get_inconsistent()
-        widget.set_inconsistent(False)
-        if incon:
-            widget.set_active(True)
-        self.enable_apply(EDIT_APIC)
-
-    # Overview -> Security
-    def security_type_changed(self, button):
-        self.enable_apply(EDIT_SECURITY)
-        self.widget("security-label").set_sensitive(not button.get_active())
-        self.widget("security-relabel").set_sensitive(not button.get_active())
-
     # Memory
     def config_get_maxmem(self):
-        return uihelpers.spin_get_helper(self.widget("config-maxmem"))
+        return uiutil.spin_get_helper(self.widget("config-maxmem"))
     def config_get_memory(self):
-        return uihelpers.spin_get_helper(self.widget("config-memory"))
+        return uiutil.spin_get_helper(self.widget("config-memory"))
 
     def config_maxmem_changed(self, src_ignore):
         self.enable_apply(EDIT_MEM)
@@ -1793,14 +1533,15 @@ class vmmDetails(vmmGObjectUI):
         maxadj.set_range(mem, upper)
 
     def generate_cpuset(self):
-        mem = int(self.vm.get_memory()) / 1024 / 1024
-        return virtinst.Guest.generate_cpuset(self.conn.vmm, mem)
+        mem = int(self.vm.get_memory()) / 1024
+        return virtinst.DomainNumatune.generate_cpuset(self.conn.get_backend(),
+                                                       mem)
 
     # VCPUS
     def config_get_vcpus(self):
-        return uihelpers.spin_get_helper(self.widget("config-vcpus"))
+        return uiutil.spin_get_helper(self.widget("config-vcpus"))
     def config_get_maxvcpus(self):
-        return uihelpers.spin_get_helper(self.widget("config-maxvcpus"))
+        return uiutil.spin_get_helper(self.widget("config-maxvcpus"))
 
     def config_vcpupin_generate(self, ignore):
         try:
@@ -1812,7 +1553,7 @@ class vmmDetails(vmmGObjectUI):
         self.widget("config-vcpupin").set_text("")
         self.widget("config-vcpupin").set_text(pinstr)
 
-    def config_vcpus_changed(self, ignore):
+    def config_vcpus_changed(self, src):
         self.enable_apply(EDIT_VCPUS)
 
         conn = self.vm.conn
@@ -1821,34 +1562,53 @@ class vmmDetails(vmmGObjectUI):
 
         # Warn about overcommit
         warn = bool(cur > host_active_count)
-        self.widget("config-vcpus-warn-box").set_property("visible", warn)
+        self.widget("config-vcpus-warn-box").set_visible(warn)
 
         maxadj = self.widget("config-maxvcpus")
         maxval = self.config_get_maxvcpus()
         if maxval < cur:
-            maxadj.set_value(cur)
+            if maxadj.get_sensitive():
+                maxadj.set_value(cur)
+            else:
+                src.set_value(maxval)
+                cur = maxval
         ignore, upper = maxadj.get_range()
         maxadj.set_range(cur, upper)
 
     def config_maxvcpus_changed(self, ignore):
+        if self.widget("config-maxvcpus").get_sensitive():
+            self.config_cpu_topology_changed()
         self.enable_apply(EDIT_VCPUS)
 
-    def config_cpu_copy_host(self, src_ignore):
-        # Update UI with output copied from host
-        try:
-            CPU = virtinst.CPU(self.vm.conn.vmm)
-            CPU.copy_host_cpu()
+    def on_cpu_copy_host_clicked(self, src):
+        uiutil.set_grid_row_visible(
+            self.widget("cpu-model"), not src.get_active())
+        self.enable_apply(EDIT_CPU)
 
-            self._refresh_cpu_config(CPU)
-            self._cpu_copy_host = True
-        except Exception, e:
-            self.err.show_err(_("Error copying host CPU: %s") % str(e))
-            return
+    def config_cpu_topology_changed(self, ignore=None):
+        manual_top = self.widget("cpu-topology-table").is_sensitive()
+        self.widget("config-maxvcpus").set_sensitive(not manual_top)
+
+        if manual_top:
+            cores = uiutil.spin_get_helper(self.widget("cpu-cores")) or 1
+            sockets = uiutil.spin_get_helper(self.widget("cpu-sockets")) or 1
+            threads = uiutil.spin_get_helper(self.widget("cpu-threads")) or 1
+            total = cores * sockets * threads
+            if uiutil.spin_get_helper(self.widget("config-vcpus")) > total:
+                self.widget("config-vcpus").set_value(total)
+            self.widget("config-maxvcpus").set_value(total)
+        else:
+            maxvcpus = uiutil.spin_get_helper(self.widget("config-maxvcpus"))
+            self.widget("cpu-sockets").set_value(maxvcpus or 1)
+            self.widget("cpu-cores").set_value(1)
+            self.widget("cpu-threads").set_value(1)
+
+        self.enable_apply(EDIT_TOPOLOGY)
 
     def config_cpu_topology_enable(self, src):
         do_enable = src.get_active()
         self.widget("cpu-topology-table").set_sensitive(do_enable)
-        self.enable_apply(EDIT_TOPOLOGY)
+        self.config_cpu_topology_changed()
 
     # Boot device / Autostart
     def config_bootdev_selected(self, ignore):
@@ -1956,32 +1716,31 @@ class vmmDetails(vmmGObjectUI):
         if not disk:
             return
 
-        dev_id_info = disk
         curpath = disk.path
         devtype = disk.device
 
         try:
             if curpath:
                 # Disconnect cdrom
-                self.change_storage_media(dev_id_info, None)
+                self.change_storage_media(disk, None)
                 return
         except Exception, e:
             self.err.show_err((_("Error disconnecting media: %s") % e))
             return
 
         try:
-            def change_cdrom_wrapper(src_ignore, dev_id_info, newpath):
-                return self.change_storage_media(dev_id_info, newpath)
+            def change_cdrom_wrapper(src_ignore, disk, newpath):
+                return self.change_storage_media(disk, newpath)
 
             # Launch 'Choose CD' dialog
             if self.media_choosers[devtype] is None:
-                ret = vmmChooseCD(self.vm, dev_id_info)
+                ret = vmmChooseCD(self.vm, disk)
 
                 ret.connect("cdrom-chosen", change_cdrom_wrapper)
                 self.media_choosers[devtype] = ret
 
             dialog = self.media_choosers[devtype]
-            dialog.dev_id_info = dev_id_info
+            dialog.disk = disk
 
             dialog.show(self.topwin)
         except Exception, e:
@@ -2034,6 +1793,8 @@ class vmmDetails(vmmGObjectUI):
                 ret = self.config_smartcard_apply(key)
             elif pagetype is HW_LIST_TYPE_CONTROLLER:
                 ret = self.config_controller_apply(key)
+            elif pagetype is HW_LIST_TYPE_FILESYSTEM:
+                ret = self.config_filesystem_apply(key)
             else:
                 ret = False
         except Exception, e:
@@ -2043,15 +1804,18 @@ class vmmDetails(vmmGObjectUI):
             self.disable_apply()
         return True
 
-    def get_text(self, widgetname, strip=True):
-        ret = self.widget(widgetname).get_text()
+    def get_text(self, widgetname, strip=True, checksens=False):
+        widget = self.widget(widgetname)
+        if (checksens and
+            (not widget.is_sensitive() or not widget.is_visible())):
+            return ""
+
+        ret = widget.get_text()
         if strip:
             ret = ret.strip()
         return ret
 
-    def editted(self, pagetype):
-        if pagetype not in range(EDIT_TOTAL):
-            raise RuntimeError("crap! %s" % pagetype)
+    def edited(self, pagetype):
         return pagetype in self.active_edits
 
     def make_apply_data(self):
@@ -2075,45 +1839,20 @@ class vmmDetails(vmmGObjectUI):
         df, da, add_define, hf, ha, add_hotplug = self.make_apply_data()
         ignore = add_hotplug
 
-        if self.editted(EDIT_NAME):
+        if self.edited(EDIT_NAME):
             name = self.widget("overview-name").get_text()
             add_define(self.vm.define_name, name)
 
-        if self.editted(EDIT_ACPI):
-            enable_acpi = self.widget("overview-acpi").get_active()
-            if self.widget("overview-acpi").get_inconsistent():
-                enable_acpi = None
-            add_define(self.vm.define_acpi, enable_acpi)
+        if self.edited(EDIT_TITLE):
+            title = self.widget("overview-title").get_text()
+            add_define(self.vm.define_title, title)
+            add_hotplug(self.vm.hotplug_title, title)
 
-        if self.editted(EDIT_APIC):
-            enable_apic = self.widget("overview-apic").get_active()
-            if self.widget("overview-apic").get_inconsistent():
-                enable_apic = None
-            add_define(self.vm.define_apic, enable_apic)
-
-        if self.editted(EDIT_CLOCK):
-            clock = self.get_combo_label_value("overview-clock")
-            add_define(self.vm.define_clock, clock)
-
-        if self.editted(EDIT_MACHTYPE):
-            machtype = self.get_combo_label_value("machine-type")
+        if self.edited(EDIT_MACHTYPE):
+            machtype = uiutil.get_combo_entry(self.widget("machine-type"))
             add_define(self.vm.define_machtype, machtype)
 
-        if self.editted(EDIT_SECURITY):
-            semodel = None
-            setype = "static"
-            selabel = self.get_text("security-label")
-            relabel = self.widget("security-relabel").get_active()
-
-            if self.widget("security-dynamic").get_active():
-                setype = "dynamic"
-                relabel = True
-            if self.widget("security-type-box").get_sensitive():
-                semodel = self.get_text("security-model")
-
-            add_define(self.vm.define_seclabel, semodel, setype, selabel, relabel)
-
-        if self.editted(EDIT_DESC):
+        if self.edited(EDIT_DESC):
             desc_widget = self.widget("overview-description")
             desc = desc_widget.get_buffer().get_property("text") or ""
             add_define(self.vm.define_description, desc)
@@ -2125,25 +1864,22 @@ class vmmDetails(vmmGObjectUI):
     def config_vcpus_apply(self):
         df, da, add_define, hf, ha, add_hotplug = self.make_apply_data()
 
-        if self.editted(EDIT_VCPUS):
+        if self.edited(EDIT_VCPUS):
             vcpus = self.config_get_vcpus()
             maxv = self.config_get_maxvcpus()
             add_define(self.vm.define_vcpus, vcpus, maxv)
             add_hotplug(self.vm.hotplug_vcpus, vcpus)
 
-        if self.editted(EDIT_CPUSET):
+        if self.edited(EDIT_CPUSET):
             cpuset = self.get_text("config-vcpupin")
-            print cpuset
             add_define(self.vm.define_cpuset, cpuset)
-            add_hotplug(self.config_vcpu_pin_cpuset, cpuset)
 
-        if self.editted(EDIT_CPU):
-            model, vendor = self.get_config_cpu_model()
-            features = self.get_config_cpu_features()
+        if self.edited(EDIT_CPU):
+            model, mode, copy_host = self.get_config_cpu_model()
             add_define(self.vm.define_cpu,
-                       model, vendor, self._cpu_copy_host, features)
+                       model, mode, copy_host)
 
-        if self.editted(EDIT_TOPOLOGY):
+        if self.edited(EDIT_TOPOLOGY):
             do_top = self.widget("cpu-topology-enable").get_active()
             sockets = self.widget("cpu-sockets").get_value()
             cores = self.widget("cpu-cores").get_value()
@@ -2155,51 +1891,13 @@ class vmmDetails(vmmGObjectUI):
 
             add_define(self.vm.define_cpu_topology, sockets, cores, threads)
 
-        ret = self._change_config_helper(df, da, hf, ha)
-        if ret:
-            self._cpu_copy_host = False
-        return ret
-
-    def config_vcpu_pin(self, src_ignore, path, new_text):
-        vcpu_list = self.widget("config-vcpu-list")
-        vcpu_model = vcpu_list.get_model()
-        row = vcpu_model[path]
-        conn = self.vm.conn
-
-        try:
-            new_text = new_text.strip()
-            vcpu_num = int(row[0])
-            pinlist = virtinst.Guest.cpuset_str_to_tuple(conn.vmm, new_text)
-        except Exception, e:
-            self.err.val_err(_("Error building pin list"), e)
-            return
-
-        try:
-            self.vm.pin_vcpu(vcpu_num, pinlist)
-        except Exception, e:
-            self.err.show_err(_("Error pinning vcpus"), e)
-            return
-
-        self._refresh_runtime_pinning()
-
-    def config_vcpu_pin_cpuset(self, cpuset):
-        conn = self.vm.conn
-        vcpu_list = self.widget("config-vcpu-list")
-        vcpu_model = vcpu_list.get_model()
-
-        if self.vm.vcpu_pinning() == cpuset:
-            return
-
-        pinlist = virtinst.Guest.cpuset_str_to_tuple(conn.vmm, cpuset)
-        for row in vcpu_model:
-            vcpu_num = row[0]
-            self.vm.pin_vcpu(int(vcpu_num), pinlist)
+        return self._change_config_helper(df, da, hf, ha)
 
     # Memory
     def config_memory_apply(self):
         df, da, add_define, hf, ha, add_hotplug = self.make_apply_data()
 
-        if self.editted(EDIT_MEM):
+        if self.edited(EDIT_MEM):
             curmem = None
             maxmem = self.config_get_maxmem()
             if self.widget("config-memory").get_sensitive():
@@ -2220,7 +1918,7 @@ class vmmDetails(vmmGObjectUI):
         df, da, add_define, hf, ha, add_hotplug = self.make_apply_data()
         ignore = add_hotplug
 
-        if self.editted(EDIT_AUTOSTART):
+        if self.edited(EDIT_AUTOSTART):
             auto = self.widget("config-autostart")
             try:
                 self.vm.set_autostart(auto.get_active())
@@ -2229,18 +1927,19 @@ class vmmDetails(vmmGObjectUI):
                     (_("Error changing autostart value: %s") % str(e)))
                 return False
 
-        if self.editted(EDIT_BOOTORDER):
+        if self.edited(EDIT_BOOTORDER):
             bootdevs = self.get_config_boot_devs()
             add_define(self.vm.set_boot_device, bootdevs)
 
-        if self.editted(EDIT_BOOTMENU):
+        if self.edited(EDIT_BOOTMENU):
             bootmenu = self.widget("boot-menu").get_active()
             add_define(self.vm.set_boot_menu, bootmenu)
 
-        if self.editted(EDIT_KERNEL):
-            kernel = self.get_text("boot-kernel")
-            initrd = self.get_text("boot-kernel-initrd")
-            args = self.get_text("boot-kernel-args")
+        if self.edited(EDIT_KERNEL):
+            kernel = self.get_text("boot-kernel", checksens=True)
+            initrd = self.get_text("boot-initrd", checksens=True)
+            dtb = self.get_text("boot-dtb", checksens=True)
+            args = self.get_text("boot-kernel-args", checksens=True)
 
             if initrd and not kernel:
                 return self.err.val_err(
@@ -2249,9 +1948,9 @@ class vmmDetails(vmmGObjectUI):
                 return self.err.val_err(
                     _("Cannot set kernel arguments without specifying a kernel path"))
 
-            add_define(self.vm.set_boot_kernel, kernel, initrd, args)
+            add_define(self.vm.set_boot_kernel, kernel, initrd, dtb, args)
 
-        if self.editted(EDIT_INIT):
+        if self.edited(EDIT_INIT):
             init = self.get_text("boot-init-path")
             if not init:
                 return self.err.val_err(_("An init path must be specified"))
@@ -2271,32 +1970,36 @@ class vmmDetails(vmmGObjectUI):
         df, da, add_define, hf, ha, add_hotplug = self.make_apply_data()
         ignore = add_hotplug
 
-        if self.editted(EDIT_DISK_RO):
+        if self.edited(EDIT_DISK_RO):
             do_readonly = self.widget("disk-readonly").get_active()
             add_define(self.vm.define_disk_readonly, dev_id_info, do_readonly)
 
-        if self.editted(EDIT_DISK_SHARE):
+        if self.edited(EDIT_DISK_SHARE):
             do_shareable = self.widget("disk-shareable").get_active()
             add_define(self.vm.define_disk_shareable,
                        dev_id_info, do_shareable)
 
-        if self.editted(EDIT_DISK_CACHE):
-            cache = self.get_combo_label_value("disk-cache")
+        if self.edited(EDIT_DISK_REMOVABLE):
+            do_removable = bool(self.widget("disk-removable").get_active())
+            add_define(self.vm.define_disk_removable, dev_id_info, do_removable)
+
+        if self.edited(EDIT_DISK_CACHE):
+            cache = uiutil.get_combo_entry(self.widget("disk-cache"))
             add_define(self.vm.define_disk_cache, dev_id_info, cache)
 
-        if self.editted(EDIT_DISK_IO):
-            io = self.get_combo_label_value("disk-io")
+        if self.edited(EDIT_DISK_IO):
+            io = uiutil.get_combo_entry(self.widget("disk-io"))
             add_define(self.vm.define_disk_io, dev_id_info, io)
 
-        if self.editted(EDIT_DISK_FORMAT):
-            fmt = self.widget("disk-format").get_child().get_text().strip()
+        if self.edited(EDIT_DISK_FORMAT):
+            fmt = uiutil.get_combo_entry(self.widget("disk-format"))
             add_define(self.vm.define_disk_driver_type, dev_id_info, fmt)
 
-        if self.editted(EDIT_DISK_SERIAL):
+        if self.edited(EDIT_DISK_SERIAL):
             serial = self.get_text("disk-serial")
             add_define(self.vm.define_disk_serial, dev_id_info, serial)
 
-        if self.editted(EDIT_DISK_IOTUNE):
+        if self.edited(EDIT_DISK_IOTUNE):
             iotune_rbs = int(self.widget("disk-iotune-rbs").get_value() * 1024)
             iotune_ris = int(self.widget("disk-iotune-ris").get_value())
             iotune_tbs = int(self.widget("disk-iotune-tbs").get_value() * 1024)
@@ -2312,8 +2015,8 @@ class vmmDetails(vmmGObjectUI):
             add_define(self.vm.define_disk_iotune_wis, dev_id_info, iotune_wis)
 
         # Do this last since it can change uniqueness info of the dev
-        if self.editted(EDIT_DISK_BUS):
-            bus = self.get_combo_label_value("disk-bus")
+        if self.edited(EDIT_DISK_BUS):
+            bus = uiutil.get_combo_entry(self.widget("disk-bus"))
             addr = None
             if bus == "spapr-vscsi":
                 bus = "scsi"
@@ -2327,8 +2030,8 @@ class vmmDetails(vmmGObjectUI):
         df, da, add_define, hf, ha, add_hotplug = self.make_apply_data()
         ignore = add_hotplug
 
-        if self.editted(EDIT_SOUND_MODEL):
-            model = self.get_combo_label_value("sound-model")
+        if self.edited(EDIT_SOUND_MODEL):
+            model = uiutil.get_combo_entry(self.widget("sound-model"))
             if model:
                 add_define(self.vm.define_sound_model, dev_id_info, model)
 
@@ -2339,8 +2042,8 @@ class vmmDetails(vmmGObjectUI):
         df, da, add_define, hf, ha, add_hotplug = self.make_apply_data()
         ignore = add_hotplug
 
-        if self.editted(EDIT_SMARTCARD_MODE):
-            model = self.get_combo_label_value("smartcard-mode")
+        if self.edited(EDIT_SMARTCARD_MODE):
+            model = uiutil.get_combo_entry(self.widget("smartcard-mode"))
             if model:
                 add_define(self.vm.define_smartcard_mode, dev_id_info, model)
 
@@ -2351,31 +2054,21 @@ class vmmDetails(vmmGObjectUI):
         df, da, add_define, hf, ha, add_hotplug = self.make_apply_data()
         ignore = add_hotplug
 
-        if self.editted(EDIT_NET_MODEL):
-            model = self.get_combo_label_value("network-model")
+        if self.edited(EDIT_NET_MODEL):
+            model = uiutil.get_combo_entry(self.widget("network-model"))
             addr = None
             if model == "spapr-vlan":
                 addr = "spapr-vio"
             add_define(self.vm.define_network_model, dev_id_info, model, addr)
 
-        if self.editted(EDIT_NET_SOURCE):
-            mode = None
-            net_list = self.widget("network-source-combo")
-            net_bridge = self.widget("network-bridge")
-            nettype, source = uihelpers.get_network_selection(net_list,
-                                                              net_bridge)
-            if nettype == "direct":
-                mode = self.get_combo_label_value("network-source-mode")
-
+        if self.edited(EDIT_NET_SOURCE):
+            nettype, source, mode = self.netlist.get_network_selection()
             add_define(self.vm.define_network_source, dev_id_info,
                        nettype, source, mode)
 
-        if self.editted(EDIT_NET_VPORT):
-            vport_type = self.get_text("vport-type")
-            vport_managerid = self.get_text("vport-managerid")
-            vport_typeid = self.get_text("vport-typeid")
-            vport_idver = self.get_text("vport-typeidversion")
-            vport_instid = self.get_text("vport-instanceid")
+        if self.edited(EDIT_NET_VPORT):
+            (vport_type, vport_managerid, vport_typeid,
+             vport_idver, vport_instid) = self.netlist.get_vport()
 
             add_define(self.vm.define_virtualport, dev_id_info,
                        vport_type, vport_managerid, vport_typeid,
@@ -2384,54 +2077,29 @@ class vmmDetails(vmmGObjectUI):
         return self._change_config_helper(df, da, hf, ha)
 
     # Graphics options
-    def _do_change_spicevmc(self, gdev, newgtype):
-        has_multi_spice = (len([d for d in self.vm.get_graphics_devices() if
-                                d.type == d.TYPE_SPICE]) > 1)
-        has_spicevmc = bool([d for d in self.vm.get_char_devices() if
-                             (d.dev_type == d.DEV_CHANNEL and
-                              d.char_type == d.CHAR_SPICEVMC)])
-        fromspice = (gdev.type == "spice")
-        tospice = (newgtype == "spice")
-
-        if fromspice and tospice:
-            return False
-        if not fromspice and not tospice:
-            return False
-
-        if tospice and has_spicevmc:
-            return False
-        if fromspice and not has_spicevmc:
-            return False
-
-        if fromspice and has_multi_spice:
-            # Don't offer to remove if there are other spice displays
-            return False
-
-        msg = (_("You are switching graphics type to %(gtype)s, "
-                 "would you like to %(action)s Spice agent channels?") %
-                {"gtype": newgtype,
-                 "action": fromspice and "remove" or "add"})
-        return self.err.yes_no(msg)
-
     def config_graphics_apply(self, dev_id_info):
         df, da, add_define, hf, ha, add_hotplug = self.make_apply_data()
 
-        if self.editted(EDIT_GFX_PASSWD):
-            passwd = self.get_text("gfx-password", strip=False) or None
+        (gtype, port,
+         tlsport, addr, passwd, keymap) = self.gfxdetails.get_values()
+
+        if self.edited(EDIT_GFX_PASSWD):
             add_define(self.vm.define_graphics_password, dev_id_info, passwd)
             add_hotplug(self.vm.hotplug_graphics_password, dev_id_info,
                         passwd)
 
-        if self.editted(EDIT_GFX_KEYMAP):
-            keymap = self.get_combo_label_value("gfx-keymap")
+        if self.edited(EDIT_GFX_ADDRESS):
+            add_define(self.vm.define_graphics_address, dev_id_info, addr)
+        if self.edited(EDIT_GFX_KEYMAP):
             add_define(self.vm.define_graphics_keymap, dev_id_info, keymap)
+        if self.edited(EDIT_GFX_PORT):
+            add_define(self.vm.define_graphics_port, dev_id_info, port)
+        if self.edited(EDIT_GFX_TLSPORT):
+            add_define(self.vm.define_graphics_tlsport, dev_id_info, tlsport)
 
         # Do this last since it can change graphics unique ID
-        if self.editted(EDIT_GFX_TYPE):
-            gtype = self.get_combo_label_value("gfx-type")
-            change_spicevmc = self._do_change_spicevmc(dev_id_info, gtype)
-            add_define(self.vm.define_graphics_type, dev_id_info,
-                       gtype, change_spicevmc)
+        if self.edited(EDIT_GFX_TYPE):
+            add_define(self.vm.define_graphics_type, dev_id_info, gtype)
 
         return self._change_config_helper(df, da, hf, ha)
 
@@ -2440,8 +2108,8 @@ class vmmDetails(vmmGObjectUI):
         df, da, add_define, hf, ha, add_hotplug = self.make_apply_data()
         ignore = add_hotplug
 
-        if self.editted(EDIT_VIDEO_MODEL):
-            model = self.get_combo_label_value("video-model")
+        if self.edited(EDIT_VIDEO_MODEL):
+            model = uiutil.get_combo_entry(self.widget("video-model"))
             if model:
                 add_define(self.vm.define_video_model, dev_id_info, model)
 
@@ -2452,8 +2120,8 @@ class vmmDetails(vmmGObjectUI):
         df, da, add_define, hf, ha, add_hotplug = self.make_apply_data()
         ignore = add_hotplug
 
-        if self.editted(EDIT_CONTROLLER_MODEL):
-            model = self.get_combo_label_value("controller-model")
+        if self.edited(EDIT_CONTROLLER_MODEL):
+            model = uiutil.get_combo_entry(self.widget("controller-model"))
             if model:
                 add_define(self.vm.define_controller_model, dev_id_info, model)
 
@@ -2464,13 +2132,26 @@ class vmmDetails(vmmGObjectUI):
         df, da, add_define, hf, ha, add_hotplug = self.make_apply_data()
         ignore = add_hotplug
 
-        if self.editted(EDIT_WATCHDOG_MODEL):
-            model = self.get_combo_label_value("watchdog-model")
+        if self.edited(EDIT_WATCHDOG_MODEL):
+            model = uiutil.get_combo_entry(self.widget("watchdog-model"))
             add_define(self.vm.define_watchdog_model, dev_id_info, model)
 
-        if self.editted(EDIT_WATCHDOG_ACTION):
-            action = self.get_combo_label_value("watchdog-action")
+        if self.edited(EDIT_WATCHDOG_ACTION):
+            action = uiutil.get_combo_entry(self.widget("watchdog-action"))
             add_define(self.vm.define_watchdog_action, dev_id_info, action)
+
+        return self._change_config_helper(df, da, hf, ha)
+
+    # Filesystem options
+    def config_filesystem_apply(self, dev_id_info):
+        df, da, add_define, hf, ha, add_hotplug = self.make_apply_data()
+        ignore = add_hotplug
+
+        if self.edited(EDIT_FS):
+            if self.fsDetails.validate_page_filesystem() is False:
+                return False
+            add_define(self.vm.define_filesystem, dev_id_info,
+                       self.fsDetails.get_dev())
 
         return self._change_config_helper(df, da, hf, ha)
 
@@ -2478,7 +2159,7 @@ class vmmDetails(vmmGObjectUI):
     def remove_device(self, dev_type, dev_id_info):
         logging.debug("Removing device: %s %s", dev_type, dev_id_info)
 
-        if not util.chkbox_helper(self, self.config.get_confirm_removedev,
+        if not self.err.chkbox_helper(self.config.get_confirm_removedev,
             self.config.set_confirm_removedev,
             text1=(_("Are you sure you want to remove this device?"))):
             return
@@ -2522,17 +2203,10 @@ class vmmDetails(vmmGObjectUI):
         Arguments can be a single arg or a list or appropriate arg type (e.g.
         a list of functions for define_funcs)
         """
-        def listify(val):
-            if not val:
-                return []
-            if type(val) is not list:
-                return [val]
-            return val
-
-        define_funcs = listify(define_funcs)
-        define_funcs_args = listify(define_funcs_args)
-        hotplug_funcs = listify(hotplug_funcs)
-        hotplug_funcs_args = listify(hotplug_funcs_args)
+        define_funcs = util.listify(define_funcs)
+        define_funcs_args = util.listify(define_funcs_args)
+        hotplug_funcs = util.listify(hotplug_funcs)
+        hotplug_funcs_args = util.listify(hotplug_funcs_args)
 
         hotplug_err = []
         active = self.vm.is_active()
@@ -2598,16 +2272,22 @@ class vmmDetails(vmmGObjectUI):
 
         # If the dialog is visible, we want to make sure the XML is always
         # up to date
-        if self.is_visible():
-            self.vm.refresh_xml()
+        try:
+            if self.is_visible():
+                self.vm.refresh_xml()
+        except libvirt.libvirtError, e:
+            if util.exception_is_libvirt_error(e, "VIR_ERR_NO_DOMAIN"):
+                self.close()
+                return
+            raise
 
         # Stats page needs to be refreshed every tick
-        if (page == PAGE_DETAILS and
+        if (page == DETAILS_PAGE_DETAILS and
             self.get_hw_selection(HW_LIST_COL_TYPE) == HW_LIST_TYPE_STATS):
             self.refresh_stats_page()
 
     def page_refresh(self, page):
-        if page != PAGE_DETAILS:
+        if page != DETAILS_PAGE_DETAILS:
             return
 
         # This function should only be called when the VM xml actually
@@ -2636,6 +2316,10 @@ class vmmDetails(vmmGObjectUI):
         desc_widget = self.widget("overview-description")
         desc_widget.get_buffer().set_text(desc)
 
+        title = self.vm.get_title()
+        self.widget("overview-title").set_sensitive(self.vm.title_supported)
+        self.widget("overview-title").set_text(title or "")
+
         # Hypervisor Details
         self.widget("overview-hv").set_text(self.vm.get_pretty_hv_type())
         arch = self.vm.get_arch() or _("Unknown")
@@ -2643,98 +2327,63 @@ class vmmDetails(vmmGObjectUI):
         self.widget("overview-arch").set_text(arch)
         self.widget("overview-emulator").set_text(emu)
 
-        # Operating System (ie. inspection data)
-        hostname = self.vm.inspection.hostname
-        if not hostname:
-            hostname = _("unknown")
-        self.widget("inspection-hostname").set_text(hostname)
-        product_name = self.vm.inspection.product_name
-        if not product_name:
-            product_name = _("unknown")
-        self.widget("inspection-product-name").set_text(product_name)
-
-        # Applications (also inspection data)
-        apps = self.vm.inspection.applications or []
-
-        apps_list = self.widget("inspection-apps")
-        apps_model = apps_list.get_model()
-        apps_model.clear()
-        for app in apps:
-            name = ""
-            if app["app_name"]:
-                name = app["app_name"]
-            if app["app_display_name"]:
-                name = app["app_display_name"]
-            version = ""
-            if app["app_version"]:
-                version = app["app_version"]
-            if app["app_release"]:
-                version += "-" + app["app_release"]
-            summary = ""
-            if app["app_summary"]:
-                summary = app["app_summary"]
-
-            apps_model.append([name, version, summary])
-
         # Machine settings
-        acpi = self.vm.get_acpi()
-        apic = self.vm.get_apic()
-        clock = self.vm.get_clock()
         machtype = self.vm.get_machtype()
-
-        # Hack in a way to represent 'default' acpi/apic for customize dialog
-        self.widget("overview-acpi").set_active(bool(acpi))
-        self.widget("overview-acpi").set_inconsistent(
-                                acpi is None and self.is_customize_dialog)
-        self.widget("overview-apic").set_active(bool(apic))
-        self.widget("overview-apic").set_inconsistent(
-                                apic is None and self.is_customize_dialog)
-
-        if not clock:
-            clock = _("Same as host")
-        self.set_combo_label("overview-clock", clock)
-
         if not arch in ["i686", "x86_64"]:
             if machtype is not None:
-                self.set_combo_label("machine-type", machtype)
+                uiutil.set_combo_entry(self.widget("machine-type"), machtype)
 
-        # Security details
-        semodel, sectype, vmlabel, relabel = self.vm.get_seclabel()
-        caps = self.vm.conn.get_capabilities()
+    def refresh_inspection_page(self):
+        inspection_supported = self.config.support_inspection
+        uiutil.set_grid_row_visible(self.widget("details-overview-error"),
+                                       self.vm.inspection.error)
+        if self.vm.inspection.error:
+            msg = _("Error while inspecting the guest configuration")
+            self.widget("details-overview-error").set_text(msg)
 
-        if caps.host.secmodel and caps.host.secmodel.model:
-            semodel = caps.host.secmodel.model
+        # Operating System (ie. inspection data)
+        self.widget("details-inspection-os").set_visible(inspection_supported)
+        if inspection_supported:
+            hostname = self.vm.inspection.hostname
+            if not hostname:
+                hostname = _("unknown")
+            self.widget("inspection-hostname").set_text(hostname)
+            product_name = self.vm.inspection.product_name
+            if not product_name:
+                product_name = _("unknown")
+            self.widget("inspection-product-name").set_text(product_name)
 
-        self.widget("security-model").set_text(semodel or _("None"))
+        # Applications (also inspection data)
+        self.widget("details-inspection-apps").set_visible(inspection_supported)
+        if inspection_supported:
+            apps = self.vm.inspection.applications or []
+            apps_list = self.widget("inspection-apps")
+            apps_model = apps_list.get_model()
+            apps_model.clear()
+            for app in apps:
+                name = ""
+                if app["app_name"]:
+                    name = app["app_name"]
+                if app["app_display_name"]:
+                    name = app["app_display_name"]
+                version = ""
+                if app["app_version"]:
+                    version = app["app_version"]
+                if app["app_release"]:
+                    version += "-" + app["app_release"]
+                summary = ""
+                if app["app_summary"]:
+                    summary = app["app_summary"]
 
-        if not semodel or semodel == "apparmor":
-            self.widget("security-type-box").hide()
-            self.widget("security-type-label").hide()
-        else:
-            self.widget("security-type-box").set_sensitive(bool(semodel))
-
-            if sectype == "static":
-                self.widget("security-static").set_active(True)
-                self.widget("security-relabel").set_sensitive(True)
-                # As "no" is default for relabel with 'static' label and
-                # 'dynamic' must have relabel='yes', this will work properly
-                # for both False (relabel='no') and None (relabel not
-                # specified)
-                self.widget("security-relabel").set_active(relabel)
-            else:
-                self.widget("security-dynamic").set_active(True)
-                # Dynamic label type must use resource labeling
-                self.widget("security-relabel").set_active(True)
-                self.widget("security-relabel").set_sensitive(False)
-            self.widget("security-label").set_text(vmlabel)
+                apps_model.append([name, version, summary])
 
     def refresh_stats_page(self):
         def _dsk_rx_tx_text(rx, tx, unit):
-            return ('<span color="#82003B">%(rx)d %(unit)s read</span>\n'
+            return ('<span color="#82003B">%(rx)d %(unit)s read</span> '
                     '<span color="#295C45">%(tx)d %(unit)s write</span>' %
                     {"rx": rx, "tx": tx, "unit": unit})
         def _net_rx_tx_text(rx, tx, unit):
-            return ('<span color="#82003B">%(rx)d %(unit)s in</span>\n'
+            return ('<span color="#82003B">%(rx)d %(unit)s in</span> '
                     '<span color="#295C45">%(tx)d %(unit)s out</span>' %
                     {"rx": rx, "tx": tx, "unit": unit})
 
@@ -2770,9 +2419,9 @@ class vmmDetails(vmmGObjectUI):
         self.disk_io_graph.set_property("data_array",
                                         self.vm.disk_io_vector())
         self.network_traffic_graph.set_property("data_array",
-                                                self.vm.network_traffic_vector())
+                                        self.vm.network_traffic_vector())
 
-    def _refresh_cpu_count(self):
+    def refresh_config_cpu(self):
         conn = self.vm.conn
         host_active_count = conn.host_active_processor_count()
         maxvcpus = self.vm.vcpu_max_count()
@@ -2787,103 +2436,48 @@ class vmmDetails(vmmGObjectUI):
 
         # Warn about overcommit
         warn = bool(self.config_get_vcpus() > host_active_count)
-        self.widget("config-vcpus-warn-box").set_property("visible", warn)
-    def _refresh_cpu_pinning(self):
-        # Populate VCPU pinning
-        vcpupin  = self.vm.vcpu_pinning()
-        self.widget("config-vcpupin").set_text(vcpupin)
+        self.widget("config-vcpus-warn-box").set_visible(warn)
 
-    def _refresh_runtime_pinning(self):
-        conn = self.vm.conn
-        host_active_count = conn.host_active_processor_count()
-
-        vcpu_list = self.widget("config-vcpu-list")
-        vcpu_model = vcpu_list.get_model()
-        vcpu_model.clear()
-
-        reason = ""
-        if not self.vm.is_active():
-            reason = _("VCPU info only available for running domain.")
-        else:
-            try:
-                vcpu_info, vcpu_pinning = self.vm.vcpu_info()
-            except Exception, e:
-                reason = _("Error getting VCPU info: %s") % str(e)
-
-            if not self.vm.getvcpus_supported:
-                reason = _("Virtual machine does not support runtime "
-                           "VPCU info.")
-
-        vcpu_list.set_sensitive(not bool(reason))
-        vcpu_list.set_tooltip_text(reason or "")
-        if reason:
-            return
-
-        def build_cpuset_str(pin_info):
-            pinstr = ""
-            for i in range(host_active_count):
-                if i < len(pin_info) and pin_info[i]:
-                    pinstr += (",%s" % str(i))
-
-            return pinstr.strip(",")
-
-        for idx in range(len(vcpu_info)):
-            vcpu = str(vcpu_info[idx][0])
-            vcpucur = str(vcpu_info[idx][3])
-            vcpupin = build_cpuset_str(vcpu_pinning[idx])
-
-            vcpu_model.append([vcpu, vcpucur, vcpupin])
-
-    def _refresh_cpu_config(self, cpu):
-        feature_ui = self.widget("cpu-features")
-        model = cpu.model or ""
-        caps = self.vm.conn.get_capabilities()
-
-        capscpu = None
-        try:
-            arch = self.vm.get_arch()
-            if arch:
-                cpu_values = caps.get_cpu_values(arch)
-                for c in cpu_values.cpus:
-                    if model and c.model == model:
-                        capscpu = c
-                        break
-        except:
-            pass
-
+        # CPU model config
+        cpu = self.vm.get_cpu_config()
         show_top = bool(cpu.sockets or cpu.cores or cpu.threads)
         sockets = cpu.sockets or 1
         cores = cpu.cores or 1
         threads = cpu.threads or 1
 
         self.widget("cpu-topology-enable").set_active(show_top)
-        self.widget("cpu-model").get_child().set_text(model)
         self.widget("cpu-sockets").set_value(sockets)
         self.widget("cpu-cores").set_value(cores)
         self.widget("cpu-threads").set_value(threads)
+        if show_top:
+            self.widget("cpu-topology-expander").set_expanded(True)
 
-        def get_feature_policy(name):
-            for f in cpu.features:
-                if f.name == name:
-                    return f.policy
+        model = cpu.model or None
+        if not model:
+            if cpu.mode == "host-model" or cpu.mode == "host-passthrough":
+                model = cpu.mode
 
-            if capscpu:
-                for f in capscpu.features:
-                    if f == name:
-                        return "model"
-            return "off"
+        if model:
+            self.widget("cpu-model").get_child().set_text(model)
+        else:
+            uiutil.set_combo_entry(
+                self.widget("cpu-model"), "hypdefault", 2)
 
-        for row in feature_ui.get_model():
-            row[1] = get_feature_policy(row[0])
+        # Determine if CPU definition is just the host copy
+        hostcpu = self.conn.caps.host.cpu
+        is_host = False
+        if (hostcpu.model and
+            cpu.model == hostcpu.model and
+            len(cpu.features) == len(hostcpu.features.names())):
+            is_host = True
+            for feature in cpu.features:
+                if (feature.policy != "require" or
+                    feature.name not in hostcpu.features.names()):
+                    is_host = False
+                    break
 
-    def refresh_config_cpu(self):
-        self._cpu_copy_host = False
-        cpu = self.vm.get_cpu_config()
-
-        self._refresh_cpu_count()
-        self._refresh_cpu_pinning()
-        self._refresh_runtime_pinning()
-        self._refresh_cpu_config(cpu)
+        self.widget("cpu-copy-host").set_active(bool(is_host))
+        self.on_cpu_copy_host_clicked(self.widget("cpu-copy-host"))
 
     def refresh_config_memory(self):
         host_mem_widget = self.widget("state-host-memory")
@@ -2913,6 +2507,7 @@ class vmmDetails(vmmGObjectUI):
         ro = disk.read_only
         share = disk.shareable
         bus = disk.bus
+        removable = disk.removable
         addr = disk.address.type
         idx = disk.disk_bus_index
         cache = disk.driver_cache
@@ -2944,6 +2539,14 @@ class vmmDetails(vmmGObjectUI):
 
         is_cdrom = (devtype == virtinst.VirtualDisk.DEVICE_CDROM)
         is_floppy = (devtype == virtinst.VirtualDisk.DEVICE_FLOPPY)
+        is_usb = (bus == "usb")
+
+        can_set_removable = (is_usb and (self.conn.is_qemu() or
+                                         self.conn.is_test_conn()))
+        if removable is None:
+            removable = False
+        else:
+            can_set_removable = True
 
         if addr == "spapr-vio":
             bus = "spapr-vscsi"
@@ -2956,9 +2559,12 @@ class vmmDetails(vmmGObjectUI):
         self.widget("disk-readonly").set_active(ro)
         self.widget("disk-readonly").set_sensitive(not is_cdrom)
         self.widget("disk-shareable").set_active(share)
+        self.widget("disk-removable").set_active(removable)
+        uiutil.set_grid_row_visible(self.widget("disk-removable"),
+                                       can_set_removable)
         self.widget("disk-size").set_text(size)
-        self.set_combo_label("disk-cache", cache)
-        self.set_combo_label("disk-io", io)
+        uiutil.set_combo_entry(self.widget("disk-cache"), cache)
+        uiutil.set_combo_entry(self.widget("disk-io"), io)
 
         self.widget("disk-format").set_sensitive(show_format)
         self.widget("disk-format").get_child().set_text(driver_type)
@@ -2966,7 +2572,7 @@ class vmmDetails(vmmGObjectUI):
         no_default = not self.is_customize_dialog
 
         self.populate_disk_bus_combo(devtype, no_default)
-        self.set_combo_label("disk-bus", bus)
+        uiutil.set_combo_entry(self.widget("disk-bus"), bus)
         self.widget("disk-serial").set_text(serial or "")
 
         self.widget("disk-iotune-rbs").set_value(iotune_rbs)
@@ -2992,66 +2598,12 @@ class vmmDetails(vmmGObjectUI):
         if not net:
             return
 
-        nettype = net.type
-        source = net.get_source()
-        source_mode = net.source_mode
-        model = net.model
-
-        netobj = None
-        if nettype == virtinst.VirtualNetworkInterface.TYPE_VIRTUAL:
-            name_dict = {}
-            for uuid in self.conn.list_net_uuids():
-                vnet = self.conn.get_net(uuid)
-                name = vnet.get_name()
-                name_dict[name] = vnet
-
-            if source and source in name_dict:
-                netobj = name_dict[source]
-
-        desc = uihelpers.pretty_network_desc(nettype, source, netobj)
-
+        vmmAddHardware.populate_network_model_combo(
+            self.vm, self.widget("network-model"))
+        uiutil.set_combo_entry(self.widget("network-model"), net.model)
         self.widget("network-mac-address").set_text(net.macaddr)
-        uihelpers.populate_network_list(
-                    self.widget("network-source-combo"),
-                    self.conn)
-        self.widget("network-source-combo").set_active(-1)
 
-        self.widget("network-bridge").set_text("")
-        def compare_network(model, info):
-            for idx in range(len(model)):
-                row = model[idx]
-                if row[0] == info[0] and row[1] == info[1]:
-                    return True, idx
-
-            if info[0] == virtinst.VirtualNetworkInterface.TYPE_BRIDGE:
-                idx = (len(model) - 1)
-                self.widget("network-bridge").set_text(str(info[1]))
-                return True, idx
-
-            return False, 0
-
-        self.set_combo_label("network-source",
-                             (nettype, source), label=desc,
-                             comparefunc=compare_network)
-
-        # source mode
-        uihelpers.populate_source_mode_combo(self.vm,
-                            self.widget("network-source-mode-combo"))
-        self.set_combo_label("network-source-mode", source_mode)
-
-        # Virtualport config
-        show_vport = (nettype == "direct")
-        vport = net.virtualport
-        self.widget("vport-expander").set_property("visible", show_vport)
-        self.widget("vport-type").set_text(vport.type or "")
-        self.widget("vport-managerid").set_text(vport.managerid or "")
-        self.widget("vport-typeid").set_text(vport.typeid or "")
-        self.widget("vport-typeidversion").set_text(vport.typeidversion or "")
-        self.widget("vport-instanceid").set_text(vport.instanceid or "")
-
-        uihelpers.populate_netmodel_combo(self.vm,
-                                          self.widget("network-model-combo"))
-        self.set_combo_label("network-model", model)
+        self.netlist.set_dev(net)
 
     def refresh_input_page(self):
         inp = self.get_hw_selection(HW_LIST_COL_DEVICE)
@@ -3089,84 +2641,22 @@ class vmmDetails(vmmGObjectUI):
         if not gfx:
             return
 
-        title = self.widget("graphics-title")
-        table = self.widget("graphics-table")
-        table.foreach(lambda w, ignore: w.hide(), ())
-
-        def set_title(text):
-            title.set_markup("<b>%s</b>" % text)
-
-        def show_row(widget_name, suffix=""):
-            base = "gfx-%s" % widget_name
-            self.widget(base + "-title").show()
-            self.widget(base + suffix).show()
-
-        def show_text(widget_name, text):
-            show_row(widget_name)
-            self.widget("gfx-" + widget_name).set_text(text)
-
-        def port_to_string(port):
-            if port is None:
-                return "-"
-            return (port == -1 and _("Automatically allocated") or str(port))
-
-        gtype = gfx.type
-        is_vnc = (gtype == "vnc")
-        is_sdl = (gtype == "sdl")
-        is_spice = (gtype == "spice")
-        is_other = not (True in [is_vnc, is_sdl, is_spice])
-
-        set_title(_("%(graphicstype)s Server") %
-                  {"graphicstype" : gfx.pretty_type_simple(gtype)})
-
-        settype = ""
-        if is_vnc or is_spice:
-            port  = port_to_string(gfx.port)
-            address = (gfx.listen or "127.0.0.1")
-            keymap  = (gfx.keymap or None)
-            passwd  = gfx.passwd or ""
-
-            show_text("password", passwd)
-            show_text("port", port)
-            show_text("address", address)
-
-            show_row("keymap", "-box")
-            self.set_combo_label("gfx-keymap", keymap)
-            settype = gtype
-
-        if is_spice:
-            tlsport = port_to_string(gfx.tlsPort)
-            show_text("tlsport", tlsport)
-
-        if is_sdl:
-            set_title(_("Local SDL Window"))
-
-            display = gfx.display or _("Unknown")
-            xauth   = gfx.xauth or _("Unknown")
-
-            show_text("display", display)
-            show_text("xauth", xauth)
-
-        if is_other:
-            settype = gfx.pretty_type_simple(gtype)
-
-        if settype:
-            show_row("type", "-box")
-            self.set_combo_label("gfx-type", gtype, label=settype)
+        title = self.gfxdetails.set_dev(gfx)
+        self.widget("graphics-title").set_markup("<b>%s</b>" % title)
 
     def refresh_sound_page(self):
         sound = self.get_hw_selection(HW_LIST_COL_DEVICE)
         if not sound:
             return
 
-        self.set_combo_label("sound-model", sound.model)
+        uiutil.set_combo_entry(self.widget("sound-model"), sound.model)
 
     def refresh_smartcard_page(self):
         sc = self.get_hw_selection(HW_LIST_COL_DEVICE)
         if not sc:
             return
 
-        self.set_combo_label("smartcard-mode", sc.mode)
+        uiutil.set_combo_entry(self.widget("smartcard-mode"), sc.mode)
 
     def refresh_redir_page(self):
         rd = self.get_hw_selection(HW_LIST_COL_DEVICE)
@@ -3179,31 +2669,121 @@ class vmmDetails(vmmGObjectUI):
         self.widget("redir-title").set_markup(devlabel)
         self.widget("redir-address").set_text(address)
 
-        self.widget("redir-type-label").set_text(rd.type)
-        self.widget("redir-type-combo").hide()
+        self.widget("redir-type").set_text(rd.type)
+
+    def refresh_tpm_page(self):
+        tpmdev = self.get_hw_selection(HW_LIST_COL_DEVICE)
+        if not tpmdev:
+            return
+
+        def show_ui(param, val=None):
+            widgetname = "tpm-" + param.replace("_", "-")
+            doshow = tpmdev.supports_property(param)
+
+            if not val and doshow:
+                val = getattr(tpmdev, param)
+
+            uiutil.set_grid_row_visible(self.widget(widgetname), doshow)
+            self.widget(widgetname).set_text(val or "-")
+
+        dev_type = tpmdev.type
+        self.widget("tpm-dev-type").set_text(
+                virtinst.VirtualTPMDevice.get_pretty_type(dev_type))
+
+        # Device type specific properties, only show if apply to the cur dev
+        show_ui("device_path")
+
+    def refresh_panic_page(self):
+        dev = self.get_hw_selection(HW_LIST_COL_DEVICE)
+        if not dev:
+            return
+
+        def show_ui(param, val=None):
+            widgetname = "panic-" + param.replace("_", "-")
+            if not val:
+                val = getattr(dev, param)
+                if not val:
+                    propername = param.upper() + "_DEFAULT"
+                    val = getattr(virtinst.VirtualPanicDevice, propername, "-").upper()
+
+            uiutil.set_grid_row_visible(self.widget(widgetname), True)
+            self.widget(widgetname).set_text(val or "-")
+
+        ptyp = virtinst.VirtualPanicDevice.get_pretty_type(dev.type)
+        show_ui("type", ptyp)
+        show_ui("iobase")
+
+    def refresh_rng_page(self):
+        dev = self.get_hw_selection(HW_LIST_COL_DEVICE)
+        values = {
+            "rng-bind-host" : "bind_host",
+            "rng-bind-service" : "bind_service",
+            "rng-connect-host" : "connect_host",
+            "rng-connect-service" : "connect_service",
+            "rng-type" : "type",
+            "rng-device" : "device",
+            "rng-backend-type" : "backend_type",
+            "rng-rate-bytes" : "rate_bytes",
+            "rng-rate-period" : "rate_period"
+        }
+        rewriter = {
+            "rng-type" : lambda x:
+            VirtualRNGDevice.get_pretty_type(x),
+            "rng-backend-type" : lambda x:
+            VirtualRNGDevice.get_pretty_backend_type(x),
+        }
+
+        def set_visible(widget, v):
+            uiutil.set_grid_row_visible(self.widget(widget), v)
+
+        is_egd = dev.type == VirtualRNGDevice.TYPE_EGD
+        udp = dev.backend_type == VirtualRNGDevice.BACKEND_TYPE_UDP
+        bind = VirtualRNGDevice.BACKEND_MODE_BIND in dev.backend_mode()
+
+        set_visible("rng-device", not is_egd)
+        set_visible("rng-mode", is_egd and not udp)
+        set_visible("rng-backend-type", is_egd)
+        set_visible("rng-connect-host", is_egd and (udp or not bind))
+        set_visible("rng-connect-service", is_egd and (udp or not bind))
+        set_visible("rng-bind-host", is_egd and (udp or bind))
+        set_visible("rng-bind-service", is_egd and (udp or bind))
+
+        for k, prop in values.items():
+            val = "-"
+            if dev.supports_property(prop):
+                val = getattr(dev, prop) or "-"
+                r = rewriter.get(k)
+                if r:
+                    val = r(val)
+            self.widget(k).set_text(val)
+
+        if is_egd and not udp:
+            mode = VirtualRNGDevice.get_pretty_mode(dev.backend_mode()[0])
+            self.widget("rng-mode").set_text(mode)
 
     def refresh_char_page(self):
         chardev = self.get_hw_selection(HW_LIST_COL_DEVICE)
         if not chardev:
             return
 
-        show_target_type = not (chardev.dev_type in
-                                [chardev.DEV_SERIAL, chardev.DEV_PARALLEL])
+        show_target_type = not (chardev.virtual_device_type in
+                                ["serial", "parallel"])
+        show_target_name = chardev.virtual_device_type == "channel"
 
         def show_ui(param, val=None):
             widgetname = "char-" + param.replace("_", "-")
-            labelname = widgetname + "-label"
             doshow = chardev.supports_property(param, ro=True)
 
             # Exception: don't show target type for serial/parallel
             if (param == "target_type" and not show_target_type):
                 doshow = False
+            if (param == "target_name" and not show_target_name):
+                doshow = False
 
             if not val and doshow:
                 val = getattr(chardev, param)
 
-            self.widget(widgetname).set_property("visible", doshow)
-            self.widget(labelname).set_property("visible", doshow)
+            uiutil.set_grid_row_visible(self.widget(widgetname), doshow)
             self.widget(widgetname).set_text(val or "-")
 
         def build_host_str(base):
@@ -3221,7 +2801,7 @@ class vmmDetails(vmmGObjectUI):
 
         char_type = chardev.virtual_device_type.capitalize()
         target_port = chardev.target_port
-        dev_type = chardev.char_type or "pty"
+        dev_type = chardev.type or "pty"
         primary = hasattr(chardev, "virtmanager_console_dup")
 
         typelabel = ""
@@ -3236,6 +2816,9 @@ class vmmDetails(vmmGObjectUI):
         else:
             typelabel = _("%s Device") % char_type.capitalize()
 
+        if (target_port is not None and
+                chardev.virtual_device_type == "console"):
+            typelabel += " %s" % (int(target_port) + 1)
         if target_port is not None and not show_target_type:
             typelabel += " %s" % (int(target_port) + 1)
         if primary:
@@ -3276,11 +2859,11 @@ class vmmDetails(vmmGObjectUI):
             return
 
         no_default = not self.is_customize_dialog
-        uihelpers.populate_video_combo(self.vm,
-                                self.widget("video-model-combo"),
-                                no_default=no_default)
+        vmmAddHardware.populate_video_combo(self.vm,
+            self.widget("video-model"),
+            no_default=no_default)
 
-        model = vid.model_type
+        model = vid.model
         ram = vid.vram
         heads = vid.heads
         try:
@@ -3289,10 +2872,9 @@ class vmmDetails(vmmGObjectUI):
             ramlabel = "-"
 
         self.widget("video-ram").set_text(ramlabel)
-        self.widget("video-heads").set_text(heads and heads or "-")
+        self.widget("video-heads").set_text(heads and str(heads) or "-")
 
-        self.set_combo_label("video-model", model,
-                             label=vid.pretty_model(model))
+        uiutil.set_combo_entry(self.widget("video-model"), model)
 
     def refresh_watchdog_page(self):
         watch = self.get_hw_selection(HW_LIST_COL_DEVICE)
@@ -3302,8 +2884,8 @@ class vmmDetails(vmmGObjectUI):
         model = watch.model
         action = watch.action
 
-        self.set_combo_label("watchdog-model", model)
-        self.set_combo_label("watchdog-action", action)
+        uiutil.set_combo_entry(self.widget("watchdog-model"), model)
+        uiutil.set_combo_entry(self.widget("watchdog-action"), action)
 
     def refresh_controller_page(self):
         dev = self.get_hw_selection(HW_LIST_COL_DEVICE)
@@ -3316,44 +2898,32 @@ class vmmDetails(vmmGObjectUI):
             model_label = _("Default")
 
         self.widget("controller-type").set_text(type_label)
+        combo = self.widget("controller-model")
+        uiutil.set_grid_row_visible(combo, True)
 
-        combo = self.widget("controller-model-combo")
         model = combo.get_model()
         model.clear()
-        if dev.type == virtinst.VirtualController.CONTROLLER_TYPE_USB:
-            model.append(["Default", "Default"])
+        if dev.type == virtinst.VirtualController.TYPE_USB:
+            model.append(["default", "Default"])
             model.append(["ich9-ehci1", "USB 2"])
+            model.append(["nec-xhci", "USB 3"])
             self.widget("config-remove").set_sensitive(False)
+        if dev.type == virtinst.VirtualController.TYPE_SCSI:
+            model.append(["default", "Default"])
+            model.append(["virtio-scsi", "Virtio SCSI"])
         else:
             self.widget("config-remove").set_sensitive(True)
 
-        self.set_combo_label("controller-model", model_label)
+        uiutil.set_combo_entry(self.widget("controller-model"),
+                             dev.model or "default")
 
     def refresh_filesystem_page(self):
         dev = self.get_hw_selection(HW_LIST_COL_DEVICE)
         if not dev:
             return
 
-        self.widget("fs-type").set_text(dev.type)
-
-        # mode can be irrelevant depending on the fs driver type
-        # selected.
-        if dev.mode:
-            self.show_pair("fs-mode", True)
-            self.widget("fs-mode").set_text(dev.mode)
-        else:
-            self.show_pair("fs-mode", False)
-
-        self.widget("fs-driver").set_text(dev.driver or _("Default"))
-
-        self.widget("fs-wrpolicy").set_text(dev.wrpolicy or _("Default"))
-
-        self.widget("fs-source").set_text(dev.source)
-        self.widget("fs-target").set_text(dev.target)
-        if dev.readonly:
-            self.widget("fs-readonly").set_text("Yes")
-        else:
-            self.widget("fs-readonly").set_text("No")
+        self.fsDetails.set_dev(dev)
+        self.fsDetails.update_fs_rows()
 
     def refresh_boot_page(self):
         # Refresh autostart
@@ -3373,18 +2943,41 @@ class vmmDetails(vmmGObjectUI):
         show_init = self.vm.is_container()
         show_boot = (not self.vm.is_container() and not self.vm.is_xenpv())
 
-        self.widget("boot-order-align").set_property("visible", show_boot)
-        self.widget("boot-kernel-align").set_property("visible", show_kernel)
-        self.widget("boot-init-align").set_property("visible", show_init)
+        self.widget("boot-order-align").set_visible(show_boot)
+        self.widget("boot-kernel-align").set_visible(show_kernel)
+        self.widget("boot-init-align").set_visible(show_init)
 
         # Kernel/initrd boot
-        kernel, initrd, args = self.vm.get_boot_kernel_info()
-        expand = bool(kernel or initrd or args)
-        self.widget("boot-kernel").set_text(kernel or "")
-        self.widget("boot-kernel-initrd").set_text(initrd or "")
-        self.widget("boot-kernel-args").set_text(args or "")
+        kernel, initrd, dtb, args = self.vm.get_boot_kernel_info()
+        expand = bool(kernel or dtb or initrd or args)
+
+        def keep_text(wname, guestval):
+            # If the user unsets kernel/initrd by unchecking the
+            # 'enable kernel boot' box, we keep the previous values cached
+            # in the text fields to allow easy switching back and forth.
+            guestval = guestval or ""
+            if self.get_text(wname) and not guestval:
+                return
+            self.widget(wname).set_text(guestval)
+
+        keep_text("boot-kernel", kernel)
+        keep_text("boot-initrd", initrd)
+        keep_text("boot-dtb", dtb)
+        keep_text("boot-kernel-args", args)
         if expand:
+            # Only 'expand' if requested, so a refresh doesn't
+            # magically unexpand the UI the user just touched
             self.widget("boot-kernel-expander").set_expanded(True)
+        self.widget("boot-kernel-enable").set_active(expand)
+        self.widget("boot-kernel-enable").toggled()
+
+        # Only show dtb if it's supported
+        arch = self.vm.get_arch() or ""
+        show_dtb = (self.get_text("boot-dtb") or
+            self.vm.get_hv_type() == "test" or
+            "arm" in arch or "microblaze" in arch or "ppc" in arch)
+        self.widget("boot-dtb-label").set_visible(show_dtb)
+        self.widget("boot-dtb-box").set_visible(show_dtb)
 
         # <init> populate
         init = self.vm.get_init()
@@ -3401,7 +2994,7 @@ class vmmDetails(vmmGObjectUI):
     ############################
 
     def populate_disk_bus_combo(self, devtype, no_default):
-        buslist     = self.widget("disk-bus-combo")
+        buslist     = self.widget("disk-bus")
         busmodel    = buslist.get_model()
         busmodel.clear()
 
@@ -3410,12 +3003,12 @@ class vmmDetails(vmmGObjectUI):
             buses.append(["fdc", "Floppy"])
         elif devtype == virtinst.VirtualDisk.DEVICE_CDROM:
             buses.append(["ide", "IDE"])
-            if self.vm.rhel6_defaults():
+            if not self.vm.stable_defaults():
                 buses.append(["scsi", "SCSI"])
         else:
             if self.vm.is_hvm():
                 buses.append(["ide", "IDE"])
-                if self.vm.rhel6_defaults():
+                if not self.vm.stable_defaults():
                     buses.append(["scsi", "SCSI"])
                     buses.append(["usb", "USB"])
             if self.vm.get_hv_type() in ["kvm", "test"]:
@@ -3441,8 +3034,11 @@ class vmmDetails(vmmGObjectUI):
                                   Gtk.IconSize.LARGE_TOOLBAR,
                                   page_id, title])
 
-        add_hw_list_option("Overview", HW_LIST_TYPE_GENERAL, "computer")
+        add_hw_list_option(_("Overview"), HW_LIST_TYPE_GENERAL, "computer")
         if not self.is_customize_dialog:
+            if self.config.support_inspection:
+                add_hw_list_option(_("OS information"),
+                    HW_LIST_TYPE_INSPECTION, "computer")
             add_hw_list_option("Performance", HW_LIST_TYPE_STATS,
                                "utilities-system-monitor")
         add_hw_list_option("Processor", HW_LIST_TYPE_CPU, "device_cpu")
@@ -3464,10 +3060,10 @@ class vmmDetails(vmmGObjectUI):
             if origdev == newdev:
                 return True
 
-            if not origdev.get_xml_node_path():
+            if not origdev.get_root_xpath():
                 return False
 
-            return origdev.get_xml_node_path() == newdev.get_xml_node_path()
+            return origdev.get_root_xpath() == newdev.get_root_xpath()
 
         def add_hw_list_option(idx, name, page_id, info, icon_name):
             hw_list_model.insert(idx, [name, icon_name,
@@ -3555,9 +3151,13 @@ class vmmDetails(vmmGObjectUI):
             port = chardev.target_port
 
             label = devtype.capitalize()
-            if devtype not in ["console", "channel"]:
-                # Don't show port for console
-                label += " %s" % (int(port) + 1)
+            if devtype in ["serial", "parallel", "console"]:
+                if port is not None:
+                    label += " %s" % (int(port) + 1)
+            elif devtype == "channel":
+                name = chardev.pretty_channel_name(chardev.target_name)
+                if name:
+                    label += " %s" % name
 
             update_hwlist(HW_LIST_TYPE_CHAR, chardev, label,
                           "device_serial")
@@ -3587,7 +3187,7 @@ class vmmDetails(vmmGObjectUI):
         # Populate video devices
         for vid in self.vm.get_video_devices():
             update_hwlist(HW_LIST_TYPE_VIDEO, vid,
-                          _("Video %s") % vid.pretty_model(vid.model_type),
+                          _("Video %s") % vid.pretty_model(vid.model),
                           "video-display")
 
         # Populate watchdog devices
@@ -3617,6 +3217,21 @@ class vmmDetails(vmmGObjectUI):
         for sc in self.vm.get_smartcard_devices():
             update_hwlist(HW_LIST_TYPE_SMARTCARD, sc,
                           _("Smartcard"), "device_serial")
+
+        # Populate list of TPM devices
+        for tpm in self.vm.get_tpm_devices():
+            update_hwlist(HW_LIST_TYPE_TPM, tpm,
+                          _("TPM"), "device_cpu")
+
+        # Populate list of RNG devices
+        for rng in self.vm.get_rng_devices():
+            update_hwlist(HW_LIST_TYPE_RNG, rng,
+                          _("RNG"), "system-run")
+
+        # Populate list of Panic devices
+        for rng in self.vm.get_panic_devices():
+            update_hwlist(HW_LIST_TYPE_PANIC, rng,
+                          _("Panic Notifier"), "system-run")
 
         devs = range(len(hw_list_model))
         devs.reverse()
@@ -3692,5 +3307,5 @@ class vmmDetails(vmmGObjectUI):
         combo = self.widget(basename)
         label = self.widget(basename + "-title")
 
-        combo.set_property("visible", show)
-        label.set_property("visible", show)
+        combo.set_visible(show)
+        label.set_visible(show)
