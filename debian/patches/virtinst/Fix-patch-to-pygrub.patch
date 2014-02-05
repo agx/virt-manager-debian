@@ -4,24 +4,19 @@ Subject: Fix patch to pygrub
 
 Closes: #685749
 ---
- virtinst/Installer.py | 4 ++--
- 1 file changed, 2 insertions(+), 2 deletions(-)
+ virtinst/guest.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/virtinst/Installer.py b/virtinst/Installer.py
-index d7ffaff..463b9d9 100644
---- a/virtinst/Installer.py
-+++ b/virtinst/Installer.py
-@@ -43,11 +43,11 @@ def _pygrub_path(conn=None):
-         if (cap.host.arch == "i86pc"):
-             return "/usr/lib/xen/bin/pygrub"
-         else:
--            return "/usr/bin/pygrub"
-+            return "pygrub"
+diff --git a/virtinst/guest.py b/virtinst/guest.py
+index eaa7ffa..a0ad3be 100644
+--- a/virtinst/guest.py
++++ b/virtinst/guest.py
+@@ -337,7 +337,7 @@ class Guest(XMLBuilder):
+         if (not install and
+             self.os.is_xenpv() and
+             not self.os.kernel):
+-            self.bootloader = "/usr/bin/pygrub"
++            self.bootloader = "pygrub"
+             self.os.clear()
  
-     if platform.system() == "SunOS":
-         return "/usr/lib/xen/bin/pygrub"
--    return "/usr/bin/pygrub"
-+    return "pygrub"
- 
- 
- class Installer(XMLBuilderDomain.XMLBuilderDomain):
+         return self.get_xml_config()

@@ -4,19 +4,19 @@ Subject: fix path to hvmloader
 
 Closes: #685749
 ---
- virtinst/Installer.py | 2 +-
+ virtinst/guest.py | 2 +-
  1 file changed, 1 insertion(+), 1 deletion(-)
 
-diff --git a/virtinst/Installer.py b/virtinst/Installer.py
-index eea7c17..d7ffaff 100644
---- a/virtinst/Installer.py
-+++ b/virtinst/Installer.py
-@@ -306,7 +306,7 @@ class Installer(XMLBuilderDomain.XMLBuilderDomain):
-         hvxen = (hvtype == "xen")
+diff --git a/virtinst/guest.py b/virtinst/guest.py
+index f713035..eaa7ffa 100644
+--- a/virtinst/guest.py
++++ b/virtinst/guest.py
+@@ -628,7 +628,7 @@ class Guest(XMLBuilder):
+             self.os.init = self.os.init or "/bin/sh"
  
-         if not loader and self.is_hvm() and hvxen:
--            loader = "/usr/lib/xen/boot/hvmloader"
-+            loader = "hvmloader"
- 
-         # Use older libvirt 'linux' value for back compat
-         if os_type == "xen" and hvxen:
+         if not self.os.loader and self.os.is_hvm() and self.type == "xen":
+-            self.os.loader = "/usr/lib/xen/boot/hvmloader"
++            self.os.loader = "hvmloader"
+         if self.os.os_type == "xen" and self.type == "xen":
+             # Use older libvirt 'linux' value for back compat
+             self.os.os_type = "linux"
