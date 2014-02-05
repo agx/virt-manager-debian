@@ -1,0 +1,11 @@
+       <model type="vmvga" vram="9216" heads="1"/>
+     </video>
+     <video>
+-      <model type="cirrus" vram="10240" heads="3"/>
++      <model type="qxl" vram="10240" heads="3"/>
+     </video>
+     <hostdev mode="subsystem" type="usb" managed="yes">
+       <source>
+
+Domain 'test-many-devices' defined successfully.
+Changes will take effect after the next domain shutdown.

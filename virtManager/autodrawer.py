@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2011 Red Hat, Inc.
+# Copyright (C) 2011, 2013 Red Hat, Inc.
 # Copyright (C) 2011 Cole Robinson <crobinso@redhat.com>
 #
 # Python implementation of autodrawer, originally found in vinagre sources:
@@ -25,9 +25,10 @@
 # pylint: disable=E0611
 from gi.repository import Gdk
 from gi.repository import GLib
-from gi.repository import GObject
 from gi.repository import Gtk
 # pylint: enable=E0611
+
+from virtManager import uiutil
 
 # pylint: disable=E1101
 # pylint can't detect functions we inheirit from Gtk, ex:
@@ -91,12 +92,12 @@ class OverBox(Gtk.Box):
         actual_min = self._get_actual_min()
 
         if self.overWidget:
-            expand = self.child_get_property(self.overWidget, "expand")
-            fill = self.child_get_property(self.overWidget, "fill")
-            padding = self.child_get_property(self.overWidget, "padding")
+            expand = uiutil.child_get_property(self, self.overWidget,
+                                                  "expand")
+            fill = uiutil.child_get_property(self, self.overWidget, "fill")
+            padding = uiutil.child_get_property(self, self.overWidget,
+                                                   "padding")
 
-        # XXX: On Fedora 19 child_get_property isn't working :(
-        expand = True
         if expand and fill:
             width = boxwidth
             x = 0
@@ -128,14 +129,6 @@ class OverBox(Gtk.Box):
     ########################
     # Custom functionality #
     ########################
-
-    def child_get_property(self, widget, propname):
-        # gtk3 bindings are crappy here, make it work like
-        # gobject.get_property()
-        value = GObject.Value()
-        value.init(GObject.TYPE_INT)
-        Gtk.Box.child_get_property(self, widget, propname, value)
-        return value.get_int()
 
     def do_set_over(self, widget):
         self.set_over(widget)
@@ -264,9 +257,9 @@ class OverBox(Gtk.Box):
         self.overWidth = over.width
         self.overHeight = over.height
 
-        expand = self.child_get_property(self.overWidget, "expand")
-        fill = self.child_get_property(self.overWidget, "fill")
-        padding = self.child_get_property(self.overWidget, "padding")
+        expand = uiutil.child_get_property(self, self.overWidget, "expand")
+        fill = uiutil.child_get_property(self, self.overWidget, "fill")
+        padding = uiutil.child_get_property(self, self.overWidget, "padding")
 
         if expand or fill:
             wpad = 0
@@ -454,13 +447,13 @@ class AutoDrawer(Drawer):
 
         self.over = newover
 
-    def _update(self, do_immediate, customDelay=-1):
+    def _update(self, do_immediate, customDelay=-1, force_open=False):
         toplevel = self.get_toplevel()
         if not toplevel or not toplevel.is_toplevel():
             # The autoDrawer cannot function properly without a toplevel.
             return
 
-        self.opened = False
+        self.opened = force_open
 
         # Is the drawer pinned open?
         if self.pinned:
@@ -611,7 +604,7 @@ class AutoDrawer(Drawer):
 
     def set_active(self, active):
         self.active = active
-        self._update(True)
+        self._update(True, force_open=active)
 
     def set_pinned(self, pinned):
         self.pinned = pinned

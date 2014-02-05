@@ -1,0 +1,11 @@
+     <input type="tablet" bus="usb"/>
+     <tpm model="tpm-tis">
+       <backend type="passthrough">
+-        <device path="/dev/tzz"/>
++        <device path="/dev/tpm"/>
+       </backend>
+     </tpm>
+     <input type="mouse" bus="ps2"/>
+
+Domain 'test-many-devices' defined successfully.
+Changes will take effect after the next domain shutdown.

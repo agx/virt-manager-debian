@@ -1,15 +1,17 @@
-<domain type='test'>
+<domain type="test">
   <name>foobar</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
   <vcpu>1</vcpu>
   <os>
-    <type arch='i686'>hvm</type>
-    <boot dev='network'/>
+    <type arch="i686">hvm</type>
+    <boot dev="network"/>
   </os>
   <features>
-    <acpi/><apic/><pae/>
+    <acpi/>
+    <apic/>
+    <pae/>
   </features>
   <clock offset="utc"/>
   <on_poweroff>destroy</on_poweroff>
@@ -17,25 +19,37 @@
   <on_crash>destroy</on_crash>
   <devices>
     <emulator>/usr/bin/test-hv</emulator>
-    <interface type='user'>
-      <mac address='00:11:22:33:44:55'/>
+    <controller type="usb" index="0" model="ich9-ehci1"/>
+    <controller type="usb" index="0" model="ich9-uhci1">
+      <master startport="0"/>
+    </controller>
+    <controller type="usb" index="0" model="ich9-uhci2">
+      <master startport="2"/>
+    </controller>
+    <controller type="usb" index="0" model="ich9-uhci3">
+      <master startport="4"/>
+    </controller>
+    <interface type="user">
+      <mac address="00:11:22:33:44:55"/>
     </interface>
-    <input type='mouse' bus='ps2'/>
-    <console type='pty'/>
+    <input type="mouse" bus="ps2"/>
+    <console type="pty"/>
   </devices>
 </domain>
-<domain type='test'>
+<domain type="test">
   <name>foobar</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
   <vcpu>1</vcpu>
   <os>
-    <type arch='i686'>hvm</type>
-    <boot dev='network'/>
+    <type arch="i686">hvm</type>
+    <boot dev="network"/>
   </os>
   <features>
-    <acpi/><apic/><pae/>
+    <acpi/>
+    <apic/>
+    <pae/>
   </features>
   <clock offset="utc"/>
   <on_poweroff>destroy</on_poweroff>
@@ -43,10 +57,20 @@
   <on_crash>restart</on_crash>
   <devices>
     <emulator>/usr/bin/test-hv</emulator>
-    <interface type='user'>
-      <mac address='00:11:22:33:44:55'/>
+    <controller type="usb" index="0" model="ich9-ehci1"/>
+    <controller type="usb" index="0" model="ich9-uhci1">
+      <master startport="0"/>
+    </controller>
+    <controller type="usb" index="0" model="ich9-uhci2">
+      <master startport="2"/>
+    </controller>
+    <controller type="usb" index="0" model="ich9-uhci3">
+      <master startport="4"/>
+    </controller>
+    <interface type="user">
+      <mac address="00:11:22:33:44:55"/>
     </interface>
-    <input type='mouse' bus='ps2'/>
-    <console type='pty'/>
+    <input type="mouse" bus="ps2"/>
+    <console type="pty"/>
   </devices>
 </domain>

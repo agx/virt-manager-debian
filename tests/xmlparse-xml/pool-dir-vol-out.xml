@@ -1,0 +1,34 @@
+<volume>
+  <name>pool-dir-vol</name>
+  <capacity>2000</capacity>
+  <allocation>1000</allocation>
+  <target>
+    <format type="qcow2"/>
+    <permissions>
+      <mode>0744</mode>
+      <owner>10000</owner>
+      <group>10000</group>
+      <label>foo.label</label>
+    </permissions>
+    <path>/foo/bar</path>
+    <features>
+      <lazy_refcounts/>
+    </features>
+  </target>
+  <backingStore>
+    <path>/my/backing</path>
+    <format type="qcow2"/>
+    <permissions>
+      <mode>0644</mode>
+      <owner>107</owner>
+      <group>107</group>
+      <label>system_u:object_r:virt_content_t:s0</label>
+    </permissions>
+    <timestamps>
+      <atime>1380391173.646500267</atime>
+      <mtime>1361141691.649777468</mtime>
+      <ctime>1380037213.225753249</ctime>
+    </timestamps>
+  </backingStore>
+  <key>fookey</key>
+</volume>

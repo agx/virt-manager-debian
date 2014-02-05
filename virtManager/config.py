@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2006, 2012 Red Hat, Inc.
+# Copyright (C) 2006, 2012-2014 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -26,9 +26,9 @@ from gi.repository import GLib
 from gi.repository import Gtk
 # pylint: enable=E0611
 
-import virtinst
-
 from virtManager.keyring import vmmKeyring, vmmSecret
+
+running_config = None
 
 
 class SettingsWrapper(object):
@@ -135,21 +135,17 @@ class vmmConfig(object):
     CONSOLE_SCALE_FULLSCREEN = 1
     CONSOLE_SCALE_ALWAYS = 2
 
-    _PEROBJ_FUNC_SET    = 0
-    _PEROBJ_FUNC_GET    = 1
-    _PEROBJ_FUNC_LISTEN = 2
-
     DEFAULT_XEN_IMAGE_DIR = "/var/lib/xen/images"
     DEFAULT_XEN_SAVE_DIR = "/var/lib/xen/dump"
 
     DEFAULT_VIRT_IMAGE_DIR = "/var/lib/libvirt/images"
     DEFAULT_VIRT_SAVE_DIR = "/var/lib/libvirt"
 
-    def __init__(self, appname, appversion, ui_dir, test_first_run=False):
+    def __init__(self, appname, cliconfig, test_first_run=False):
         self.appname = appname
-        self.appversion = appversion
+        self.appversion = cliconfig.__version__
         self.conf_dir = "/org/virt-manager/%s/" % self.appname
-        self.ui_dir = ui_dir
+        self.ui_dir = os.path.join(cliconfig.asset_dir, "ui")
         self.test_first_run = bool(test_first_run)
 
         self.conf = SettingsWrapper("org.virt-manager.virt-manager")
@@ -159,33 +155,35 @@ class vmmConfig(object):
         # the keyring
         self.keyring = None
 
-        self.default_qemu_user = "root"
+        self.default_qemu_user = cliconfig.default_qemu_user
+        self.stable_defaults = cliconfig.stable_defaults
+        self.preferred_distros = cliconfig.preferred_distros
+        self.hv_packages = cliconfig.hv_packages
+        self.libvirt_packages = cliconfig.libvirt_packages
+        self.askpass_package = cliconfig.askpass_package
+        self.default_graphics_from_config = cliconfig.default_graphics
+        self.cli_usbredir = None
 
-        # Use this key to disable certain features not supported on RHEL
-        self.rhel6_defaults = True
-        self.preferred_distros = []
-        self.hv_packages = []
-        self.libvirt_packages = []
-        self.askpass_package = []
-        self.default_graphics_from_config = "vnc"
+        self.default_storage_format_from_config = "qcow2"
+        self.cpu_default_from_config = "host-cpu-model"
+        self.default_console_resizeguest = 0
+        self.default_add_spice_usbredir = "yes"
 
         self._objects = []
 
-        self.support_threading = virtinst.support.support_threading()
-
-        self.support_inspection = self.check_inspection(self.support_threading)
+        self.support_inspection = self.check_inspection()
 
         self._spice_error = None
 
+        global running_config
+        running_config = self
 
-    def check_inspection(self, support_threading):
-        if not support_threading:
-            return False
 
+    def check_inspection(self):
         try:
             # Check we can open the Python guestfs module.
             from guestfs import GuestFS  # pylint: disable=F0401
-            GuestFS()
+            GuestFS(close_on_exit=False)
             return True
         except:
             return False
@@ -244,6 +242,8 @@ class vmmConfig(object):
         return self.conf.get("/vmlist-fields/cpu-usage")
     def is_vmlist_host_cpu_usage_visible(self):
         return self.conf.get("/vmlist-fields/host-cpu-usage")
+    def is_vmlist_memory_usage_visible(self):
+        return self.conf.get("/vmlist-fields/memory-usage")
     def is_vmlist_disk_io_visible(self):
         return self.conf.get("/vmlist-fields/disk-usage")
     def is_vmlist_network_traffic_visible(self):
@@ -253,6 +253,8 @@ class vmmConfig(object):
         self.conf.set("/vmlist-fields/cpu-usage", state)
     def set_vmlist_host_cpu_usage_visible(self, state):
         self.conf.set("/vmlist-fields/host-cpu-usage", state)
+    def set_vmlist_memory_usage_visible(self, state):
+        self.conf.set("/vmlist-fields/memory-usage", state)
     def set_vmlist_disk_io_visible(self, state):
         self.conf.set("/vmlist-fields/disk-usage", state)
     def set_vmlist_network_traffic_visible(self, state):
@@ -262,6 +264,8 @@ class vmmConfig(object):
         return self.conf.notify_add("/vmlist-fields/cpu-usage", cb)
     def on_vmlist_host_cpu_usage_visible_changed(self, cb):
         return self.conf.notify_add("/vmlist-fields/host-cpu-usage", cb)
+    def on_vmlist_memory_usage_visible_changed(self, cb):
+        return self.conf.notify_add("/vmlist-fields/memory-usage", cb)
     def on_vmlist_disk_io_visible_changed(self, cb):
         return self.conf.notify_add("/vmlist-fields/disk-usage", cb)
     def on_vmlist_network_traffic_visible_changed(self, cb):
@@ -342,16 +346,22 @@ class vmmConfig(object):
         return self.conf.get("/stats/enable-disk-poll")
     def get_stats_enable_net_poll(self):
         return self.conf.get("/stats/enable-net-poll")
+    def get_stats_enable_memory_poll(self):
+        return self.conf.get("/stats/enable-memory-poll")
 
     def set_stats_enable_disk_poll(self, val):
         self.conf.set("/stats/enable-disk-poll", val)
     def set_stats_enable_net_poll(self, val):
         self.conf.set("/stats/enable-net-poll", val)
+    def set_stats_enable_memory_poll(self, val):
+        self.conf.set("/stats/enable-memory-poll", val)
 
     def on_stats_enable_disk_poll_changed(self, cb, row=None):
         return self.conf.notify_add("/stats/enable-disk-poll", cb, row)
     def on_stats_enable_net_poll_changed(self, cb, row=None):
         return self.conf.notify_add("/stats/enable-net-poll", cb, row)
+    def on_stats_enable_memory_poll_changed(self, cb, row=None):
+        return self.conf.notify_add("/stats/enable-memory-poll", cb, row)
 
     # VM Console preferences
     def on_console_accels_changed(self, cb):
@@ -371,6 +381,23 @@ class vmmConfig(object):
     def set_console_scaling(self, pref):
         self.conf.set("/console/scaling", pref)
 
+    def on_console_resizeguest_changed(self, cb):
+        return self.conf.notify_add("/console/resize-guest", cb)
+    def get_console_resizeguest(self):
+        val = self.conf.get("/console/resize-guest")
+        if val == -1:
+            val = self.default_console_resizeguest
+        return val
+    def set_console_resizeguest(self, pref):
+        self.conf.set("/console/resize-guest", pref)
+
+    def get_auto_redirection(self):
+        if self.cli_usbredir is not None:
+            return self.cli_usbredir
+        return self.conf.get("/console/auto-redirect")
+    def set_auto_redirection(self, state):
+        self.conf.set("/console/auto-redirect", state)
+
     # Show VM details toolbar
     def get_details_show_toolbar(self):
         res = self.conf.get("/details/show-toolbar")
@@ -389,29 +416,56 @@ class vmmConfig(object):
         self.conf.set("/details/window_width", w)
         self.conf.set("/details/window_height", h)
 
-    # Create sound device for default guest
+
+    # New VM preferences
     def get_new_vm_sound(self):
         return self.conf.get("/new-vm/add-sound")
     def set_new_vm_sound(self, state):
         self.conf.set("/new-vm/add-sound", state)
 
-    def get_graphics_type(self):
+    def get_graphics_type(self, raw=False):
         ret = self.conf.get("/new-vm/graphics-type")
-        if ret == "system":
+        if ret not in ["system", "vnc", "spice"]:
+            ret = "system"
+        if ret == "system" and not raw:
             return self.default_graphics_from_config
-        if ret not in ["vnc", "spice"]:
-            return "vnc"
         return ret
     def set_graphics_type(self, gtype):
         self.conf.set("/new-vm/graphics-type", gtype.lower())
 
-    def get_storage_format(self):
+    def get_add_spice_usbredir(self, raw=False):
+        ret = self.conf.get("/new-vm/add-spice-usbredir")
+        if ret not in ["system", "yes", "no"]:
+            ret = "system"
+        if not raw and not self.get_graphics_type() == "spice":
+            return "no"
+        if ret == "system" and not raw:
+            return self.default_add_spice_usbredir
+        return ret
+    def set_add_spice_usbredir(self, val):
+        self.conf.set("/new-vm/add-spice-usbredir", val)
+
+    def get_default_storage_format(self, raw=False):
         ret = self.conf.get("/new-vm/storage-format")
         if ret not in ["default", "raw", "qcow2"]:
-            return "default"
+            ret = "default"
+        if ret == "default" and not raw:
+            return self.default_storage_format_from_config
         return ret
     def set_storage_format(self, typ):
         self.conf.set("/new-vm/storage-format", typ.lower())
+
+    def get_default_cpu_setting(self, raw=False):
+        ret = self.conf.get("/new-vm/cpu-default")
+        whitelist = ["default", "hv-default", "host-cpu-model", "host-model"]
+
+        if ret not in whitelist:
+            ret = "default"
+        if ret == "default" and not raw:
+            ret = self.cpu_default_from_config
+        return ret
+    def set_default_cpu_setting(self, val):
+        self.conf.set("/new-vm/cpu-default", val.lower())
 
 
     # URL/Media path history

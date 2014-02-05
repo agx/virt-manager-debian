@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2011 Red Hat, Inc.
+# Copyright (C) 2011, 2013 Red Hat, Inc.
 # Copyright (C) 2011 Cole Robinson <crobinso@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,33 +18,26 @@
 # MA 02110-1301 USA.
 #
 
-import virtinst
+from virtinst import NodeDevice
 
 from virtManager.libvirtobject import vmmLibvirtObject
 
 
+def _parse_convert(conn, parsexml=None):
+    return NodeDevice.parse(conn, parsexml)
+
+
 class vmmNodeDevice(vmmLibvirtObject):
-    def __init__(self, conn, backend, name):
-        vmmLibvirtObject.__init__(self, conn)
-
-        self.name = name
-        self._backend = backend
-
-        self._virtinst_obj = None
-
-        self.get_virtinst_obj()
+    def __init__(self, conn, backend, key):
+        vmmLibvirtObject.__init__(self, conn, backend, key, _parse_convert)
+        self._name = key
 
     def _XMLDesc(self, flags):
         return self._backend.XMLDesc(flags)
-
     def get_name(self):
-        return self.name
-
+        return self._name
     def is_active(self):
         return True
 
-    def get_virtinst_obj(self):
-        if not self._virtinst_obj:
-            self._virtinst_obj = virtinst.NodeDeviceParser.parse(
-                self._backend.XMLDesc(0))
-        return self._virtinst_obj
+    def tick(self):
+        pass

@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+# Copyright (C) 2013, 2014 Red Hat, Inc.
 
 # pylint: disable=W0201
 # Attribute defined outside __init__: custom commands require breaking this
@@ -31,7 +32,7 @@ def _generate_potfiles_in():
         return ret
 
     scripts = ["virt-manager", "virt-install",
-               "virt-clone", "virt-image", "virt-convert"]
+               "virt-clone", "virt-image", "virt-convert", "virt-xml"]
 
     potfiles = "\n".join(scripts) + "\n\n"
     potfiles += "\n".join(find("virtManager", "*.py")) + "\n\n"
@@ -74,6 +75,7 @@ class my_build_i18n(build):
         # Borrowed from python-distutils-extra
         desktop_files = [
             ("share/applications", ["data/virt-manager.desktop.in"]),
+            ("share/appdata", ["data/virt-manager.appdata.xml"]),
         ]
         po_dir = "po"
 
@@ -143,7 +145,7 @@ class my_build(build):
 
     def _make_bin_wrappers(self):
         cmds = ["virt-manager", "virt-install", "virt-clone",
-                "virt-image", "virt-convert"]
+                "virt-image", "virt-convert", "virt-xml"]
 
         if not os.path.exists("build"):
             os.mkdir("build")
@@ -169,13 +171,17 @@ class my_build(build):
                 mantype = "5"
                 newbase = "virt-image.pod"
 
+            appname = os.path.splitext(newbase)[0]
             newpath = os.path.join(os.path.dirname(path),
-                                os.path.splitext(newbase)[0] + "." + mantype)
+                                   appname + "." + mantype)
 
             print "Generating %s" % newpath
-            ret = os.system('pod2man --release="" '
+            ret = os.system('pod2man '
                             '--center "Virtual Machine Manager" '
-                            '< %s > %s' % (path, newpath))
+                            '--release %s --name %s '
+                            '< %s > %s' % (cliconfig.__version__,
+                                           appname.upper(),
+                                           path, newpath))
             if ret != 0:
                 raise RuntimeError("Generating '%s' failed." % newpath)
 
@@ -300,8 +306,8 @@ class my_rpm(Command):
 
 class configure(Command):
     user_options = [
-        ("pkgversion=", None, "user specified version-id"),
         ("prefix=", None, "installation prefix"),
+        ("pkgversion=", None, "user specified version-id"),
         ("qemu-user=", None,
          "user libvirt uses to launch qemu processes (default=root)"),
         ("libvirt-package-names=", None,
@@ -312,10 +318,10 @@ class configure(Command):
          "(default=none)"),
         ("askpass-package-names=", None,
          "name of your distro's askpass package(s) (default=none)"),
-        ("hide-unsupported-rhel-options", None,
-         "Hide config bits that are not supported on RHEL (default=no)"),
         ("preferred-distros=", None,
          "Distros to list first in the New VM wizard (default=none)"),
+        ("stable-defaults", None,
+         "Hide config bits that are not considered stable (default=no)"),
         ("default-graphics=", None,
          "Default graphics type (spice or vnc) (default=spice)"),
 
@@ -326,41 +332,57 @@ class configure(Command):
         pass
 
     def initialize_options(self):
-        self.qemu_user = "root"
-        self.libvirt_package_names = ""
-        self.kvm_package_names = ""
-        self.askpass_package_names = ""
-        self.hide_unsupported_rhel_options = 0
-        self.preferred_distros = ""
-        self.default_graphics = "spice"
         self.prefix = sysprefix
-        self.pkgversion = ""
+        self.pkgversion = None
+        self.qemu_user = None
+        self.libvirt_package_names = None
+        self.kvm_package_names = None
+        self.askpass_package_names = None
+        self.preferred_distros = None
+        self.stable_defaults = None
+        self.default_graphics = None
 
 
     def run(self):
         template = ""
         template += "[config]\n"
         template += "prefix = %s\n" % self.prefix
-        template += "pkgversion = %s\n" % self.pkgversion
-        template += "default_qemu_user = %s\n" % self.qemu_user
-        template += "libvirt_packages = %s\n" % self.libvirt_package_names
-        template += "hv_packages = %s\n" % self.kvm_package_names
-        template += "askpass_packages = %s\n" % self.askpass_package_names
-        template += "preferred_distros = %s\n" % self.preferred_distros
-        template += ("hide_unsupported_rhel_options = %s\n" %
-                     self.hide_unsupported_rhel_options)
-        template += "default_graphics = %s\n" % self.default_graphics
+        if self.pkgversion is not None:
+            template += "pkgversion = %s\n" % self.pkgversion
+        if self.qemu_user is not None:
+            template += "default_qemu_user = %s\n" % self.qemu_user
+        if self.libvirt_package_names is not None:
+            template += "libvirt_packages = %s\n" % self.libvirt_package_names
+        if self.kvm_package_names is not None:
+            template += "hv_packages = %s\n" % self.kvm_package_names
+        if self.askpass_package_names is not None:
+            template += "askpass_packages = %s\n" % self.askpass_package_names
+        if self.preferred_distros is not None:
+            template += "preferred_distros = %s\n" % self.preferred_distros
+        if self.stable_defaults is not None:
+            template += ("stable_defaults = %s\n" %
+                         self.stable_defaults)
+        if self.default_graphics is not None:
+            template += "default_graphics = %s\n" % self.default_graphics
 
         file(cliconfig.cfgpath, "w").write(template)
         print "Generated %s" % cliconfig.cfgpath
 
 
 class TestBaseCommand(Command):
-    user_options = [('debug', 'd', 'Show debug output')]
-    boolean_options = ['debug']
+    user_options = [
+        ('debug', 'd', 'Show debug output'),
+        ('coverage', 'c', 'Show coverage report'),
+        ('regenerate-output', None, 'Regenerate test output'),
+        ("only=", None,
+         "Run only testcases whose name contains the passed string"),
+    ]
 
     def initialize_options(self):
         self.debug = 0
+        self.regenerate_output = 0
+        self.coverage = 0
+        self.only = None
         self._testfiles = []
         self._dir = os.getcwd()
 
@@ -370,18 +392,21 @@ class TestBaseCommand(Command):
 
     def run(self):
         try:
-            # Use system 'coverage' if available
             import coverage
-            use_coverage = True
+            use_cov = True
         except:
-            use_coverage = False
+            use_cov = False
+            cov = None
 
-        tests = unittest.TestLoader().loadTestsFromNames(self._testfiles)
-        t = unittest.TextTestRunner(verbosity=1)
+        if use_cov:
+            omit = ["/usr/*", "/*/tests/*"]
+            cov = coverage.coverage(omit=omit)
+            cov.erase()
+            cov.start()
 
-        if use_coverage:
-            coverage.erase()
-            coverage.start()
+        import tests as testsmodule
+        testsmodule.cov = cov
+        testsmodule.utils.REGENERATE_OUTPUT = bool(self.regenerate_output)
 
         if hasattr(unittest, "installHandler"):
             try:
@@ -389,24 +414,50 @@ class TestBaseCommand(Command):
             except:
                 print "installHandler hack failed"
 
+        tests = unittest.TestLoader().loadTestsFromNames(self._testfiles)
+        if self.only:
+            newtests = []
+            for suite1 in tests:
+                for suite2 in suite1:
+                    for testcase in suite2:
+                        if self.only in str(testcase):
+                            newtests.append(testcase)
+
+            if not newtests:
+                print "--only didn't find any tests"
+                sys.exit(1)
+            tests = unittest.TestSuite(newtests)
+            print "Running only:"
+            for test in newtests:
+                print "%s" % test
+            print
+
+        t = unittest.TextTestRunner(verbosity=1)
+
         try:
             result = t.run(tests)
         except KeyboardInterrupt:
             sys.exit(1)
 
-        if use_coverage:
-            coverage.stop()
+        if use_cov:
+            cov.stop()
+            cov.save()
 
-        sys.exit(int(bool(len(result.failures) > 0 or
-                          len(result.errors) > 0)))
+        err = int(bool(len(result.failures) > 0 or
+                       len(result.errors) > 0))
+        if not err and use_cov and self.coverage:
+            cov.report(show_missing=False)
+        sys.exit(err)
+
 
 
 class TestCommand(TestBaseCommand):
     description = "Runs a quick unit test suite"
-    user_options = TestBaseCommand.user_options + \
-                   [("testfile=", None, "Specific test file to run (e.g "
-                                        "validation, storage, ...)"),
-                    ("skipcli", None, "Skip CLI tests")]
+    user_options = TestBaseCommand.user_options + [
+        ("testfile=", None, "Specific test file to run (e.g "
+                            "validation, storage, ...)"),
+        ("skipcli", None, "Skip CLI tests"),
+    ]
 
     def initialize_options(self):
         TestBaseCommand.initialize_options(self)
@@ -423,7 +474,8 @@ class TestCommand(TestBaseCommand):
         testfiles = []
         for t in glob.glob(os.path.join(self._dir, 'tests', '*.py')):
             if (t.endswith("__init__.py") or
-                t.endswith("urltest.py")):
+                t.endswith("test_urls.py") or
+                t.endswith("test_inject.py")):
                 continue
 
             base = os.path.basename(t)
@@ -446,22 +498,17 @@ class TestCommand(TestBaseCommand):
 class TestURLFetch(TestBaseCommand):
     description = "Test fetching kernels and isos from various distro trees"
 
-    user_options = TestBaseCommand.user_options + \
-                   [("match=", None, "Regular expression of dist names to "
-                                     "match [default: '.*']"),
-                    ("path=", None, "Paths to local iso or directory or check"
-                                    " for installable distro. Comma separated")]
+    user_options = TestBaseCommand.user_options + [
+        ("path=", None, "Paths to local iso or directory or check"
+                        " for installable distro. Comma separated"),
+    ]
 
     def initialize_options(self):
         TestBaseCommand.initialize_options(self)
-        self.match = None
         self.path = ""
 
     def finalize_options(self):
         TestBaseCommand.finalize_options(self)
-        if self.match is None:
-            self.match = ".*"
-
         origpath = str(self.path)
         if not origpath:
             self.path = []
@@ -469,12 +516,38 @@ class TestURLFetch(TestBaseCommand):
             self.path = origpath.split(",")
 
     def run(self):
-        import tests
-        self._testfiles = ["tests.urltest"]
-        tests.urltest.MATCH_FILTER = self.match
+        self._testfiles = ["tests.test_urls"]
         if self.path:
-            for p in self.path:
-                tests.urltest.LOCAL_MEDIA.append(p)
+            import tests
+            tests.URLTEST_LOCAL_MEDIA += self.path
+        TestBaseCommand.run(self)
+
+
+class TestInitrdInject(TestBaseCommand):
+    description = "Test initrd inject with real kernels, fetched from URLs"
+
+    user_options = TestBaseCommand.user_options + [
+        ("distro=", None, "Comma separated list of distros to test, from "
+                          "the tests internal URL dictionary.")
+    ]
+
+    def initialize_options(self):
+        TestBaseCommand.initialize_options(self)
+        self.distro = ""
+
+    def finalize_options(self):
+        TestBaseCommand.finalize_options(self)
+        orig = str(self.distro)
+        if not orig:
+            self.distro = []
+        else:
+            self.distro = orig.split(",")
+
+    def run(self):
+        self._testfiles = ["tests.test_inject"]
+        if self.distro:
+            import tests
+            tests.INITRD_TEST_DISTROS += self.distro
         TestBaseCommand.run(self)
 
 
@@ -489,7 +562,7 @@ class CheckPylint(Command):
 
     def run(self):
         files = ["setup.py", "virt-install", "virt-clone", "virt-image",
-                 "virt-convert", "virt-manager",
+                 "virt-convert", "virt-xml", "virt-manager",
                  "virtcli", "virtinst", "virtconv", "virtManager",
                  "tests"]
 
@@ -520,7 +593,8 @@ setup(
         "build/virt-clone",
         "build/virt-install",
         "build/virt-image",
-        "build/virt-convert"]),
+        "build/virt-convert",
+        "build/virt-xml"]),
 
     data_files=[
         ("share/virt-manager/", [
@@ -529,6 +603,7 @@ setup(
             "virt-clone",
             "virt-image",
             "virt-convert",
+            "virt-xml",
         ]),
         ("share/glib-2.0/schemas",
          ["data/org.virt-manager.virt-manager.gschema.xml"]),
@@ -539,7 +614,8 @@ setup(
             "man/virt-install.1",
             "man/virt-clone.1",
             "man/virt-image.1",
-            "man/virt-convert.1"
+            "man/virt-convert.1",
+            "man/virt-xml.1"
         ]),
         ("share/man/man5", ["man/virt-image.5"]),
 
@@ -567,5 +643,6 @@ setup(
         'rpm': my_rpm,
         'test': TestCommand,
         'test_urls' : TestURLFetch,
+        'test_initrd_inject' : TestInitrdInject,
     }
 )

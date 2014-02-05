@@ -18,11 +18,12 @@
   <devices>
     <emulator>/usr/bin/qemu-kvm</emulator>
     <disk type="file" device="disk">
+      <driver name="qemu" type="vmdk"/>
+      <source file="/dev/default-pool/new1.img"/>
       <target dev="hda" bus="ide"/>
-      <source file="/default-pool/new1.img"/>
     </disk>
     <disk type="block" device="disk">
-      <source dev="/disk-pool/new2.img"/>
+      <source dev="/dev/disk-pool/new2.img"/>
       <target dev="hdb" bus="ide"/>
     </disk>
     <interface type="network">

@@ -1,0 +1,10 @@
+       <address type="isa" iobase="0x505"/>
+     </panic>
+   </devices>
++  <seclabel relabel="yes">
++    <label>foo,bar,baz,UNKNOWN=val</label>
++  </seclabel>
+ </domain>
+
+Domain 'test-many-devices' defined successfully.
+Changes will take effect after the next domain shutdown.

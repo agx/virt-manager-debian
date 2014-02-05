@@ -2,18 +2,17 @@
 
 
 %define with_guestfs               0
-%define disable_unsupported_rhel   0
+%define stable_defaults            0
 %define askpass_package            "openssh-askpass"
 %define qemu_user                  "qemu"
 %define libvirt_packages           "libvirt-daemon-kvm,libvirt-daemon-config-network"
 %define preferred_distros          "fedora,rhel"
 %define kvm_packages               "qemu-system-x86"
-%define default_graphics           "spice"
 
 %if 0%{?rhel}
 %define preferred_distros          "rhel,fedora"
 %define kvm_packages               "qemu-kvm"
-%define disable_unsupported_rhel   1
+%define stable_defaults            1
 %endif
 
 
@@ -47,9 +46,10 @@ Requires: virt-manager-common = %{verrel}
 Requires: pygobject3
 Requires: gtk3
 Requires: libvirt-glib >= 0.0.9
-Requires: gnome-python2-gconf
 Requires: libxml2-python
 Requires: vte3
+Requires: dconf
+Requires: dbus-x11
 
 # For console widget
 Requires: gtk-vnc2
@@ -62,7 +62,7 @@ BuildRequires: /usr/bin/pod2man
 
 %description
 Virtual Machine Manager provides a graphical tool for administering virtual
-machines for KVM, Xen, and QEmu. Start, stop, add or remove virtual devices,
+machines for KVM, Xen, and LXC. Start, stop, add or remove virtual devices,
 connect to a graphical or serial console, and see resource usage statistics
 for existing VMs on local or remote machines. Uses libvirt as the backend
 management API.
@@ -93,6 +93,7 @@ Provides: virt-install
 Provides: virt-clone
 Provides: virt-image
 Provides: virt-convert
+Provides: virt-xml
 Obsoletes: python-virtinst
 
 %description -n virt-install
@@ -125,12 +126,8 @@ machine).
 %define _askpass_package --askpass-package-names=%{askpass_package}
 %endif
 
-%if %{disable_unsupported_rhel}
-%define _disable_unsupported_rhel --hide-unsupported-rhel-options
-%endif
-
-%if %{default_graphics}
-%define _default_graphics --default-graphics=%{default_graphics}
+%if %{stable_defaults}
+%define _stable_defaults --stable-defaults
 %endif
 
 python setup.py configure \
@@ -140,8 +137,7 @@ python setup.py configure \
     %{?_libvirt_packages} \
     %{?_askpass_package} \
     %{?_preferred_distros} \
-    %{?_disable_unsupported_rhel} \
-    %{?_default_graphics}
+    %{?_stable_defaults}
 
 
 %install
@@ -182,6 +178,7 @@ fi
 %{_datadir}/%{name}/icons
 %{_datadir}/icons/hicolor/*/apps/*
 
+%{_datadir}/appdata/%{name}.appdata.xml
 %{_datadir}/applications/%{name}.desktop
 %{_datadir}/glib-2.0/schemas/org.virt-manager.virt-manager.gschema.xml
 
@@ -198,6 +195,7 @@ fi
 %{_mandir}/man1/virt-install.1*
 %{_mandir}/man1/virt-clone.1*
 %{_mandir}/man1/virt-convert.1*
+%{_mandir}/man1/virt-xml.1*
 %{_mandir}/man1/virt-image.1*
 %{_mandir}/man5/virt-image.5*
 
@@ -205,11 +203,13 @@ fi
 %{_datadir}/%{name}/virt-clone
 %{_datadir}/%{name}/virt-image
 %{_datadir}/%{name}/virt-convert
+%{_datadir}/%{name}/virt-xml
 
 %{_bindir}/virt-install
 %{_bindir}/virt-clone
 %{_bindir}/virt-image
 %{_bindir}/virt-convert
+%{_bindir}/virt-xml
 
 
 %changelog
@@ -242,7 +242,7 @@ fi
 
 * Mon Jul 09 2012 Cole Robinson <crobinso@redhat.com> - 0.9.2-1
 - virt-manager release 0.9.2
-- Convert to gtkbuilder: UI can now be editted with modern glade tool
+- Convert to gtkbuilder: UI can now be edited with modern glade tool
 - virt-manager no longer runs on RHEL5, but can manage a remote RHEL5
   host
 - Option to configure spapr net and disk devices for pseries (Li Zhang)

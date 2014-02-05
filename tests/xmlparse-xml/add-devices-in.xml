@@ -19,7 +19,7 @@
     <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
     <disk type="file" device="floppy">
       <driver name="qemu" type="qcow2"/>
-      <source file="/default-pool/testvol1.img"/>
+      <source file="/dev/default-pool/testvol1.img"/>
       <target dev="fda" bus="fdc"/>
     </disk>
     <disk type="file" device="disk">
@@ -29,7 +29,7 @@
     </disk>
     <disk type="block" device="disk">
       <driver name="qemu"/>
-      <source dev="/dev/loop0"/>
+      <source dev="/dev/null"/>
       <target dev="vdb" bus="virtio"/>
     </disk>
     <disk type="block" device="cdrom">

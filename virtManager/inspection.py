@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2011 Red Hat, Inc.
+# Copyright (C) 2011, 2013 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -21,6 +21,7 @@ from Queue import Queue, Empty
 from threading import Thread
 import logging
 import os
+import re
 
 from guestfs import GuestFS  # pylint: disable=F0401
 
@@ -121,6 +122,11 @@ class vmmInspection(vmmGObject):
                 if not conn.is_active():
                     break
 
+                def set_inspection_error(vm):
+                    data = vmmInspectionData()
+                    data.error = True
+                    self._set_vm_inspection_data(vm, data)
+
                 prettyvm = vmuuid
                 try:
                     vm = conn.get_vm(vmuuid)
@@ -138,13 +144,26 @@ class vmmInspection(vmmGObject):
 
                     # Whether success or failure, we've "seen" this VM now.
                     self._vmseen[vmuuid] = True
-                    self._process(conn, vm, vmuuid)
+                    try:
+                        data = self._process(conn, vm, vmuuid)
+                        if data:
+                            self._set_vm_inspection_data(vm, data)
+                        else:
+                            set_inspection_error(vm)
+                    except:
+                        set_inspection_error(vm)
+                        raise
                 except:
                     logging.exception("%s: exception while processing",
                                       prettyvm)
 
     def _process(self, conn, vm, vmuuid):
-        g = GuestFS()
+        if re.search(r"^guestfs-", vm.get_name()):
+            logging.debug("ignore libvirt/guestfs temporary VM %s",
+                          vm.get_name())
+            return None
+
+        g = GuestFS(close_on_exit=False)
         prettyvm = conn.get_uri() + ":" + vm.get_name()
         ignore = vmuuid
 
@@ -157,7 +176,7 @@ class vmmInspection(vmmGObject):
 
         if not disks:
             logging.debug("%s: nothing to inspect", prettyvm)
-            return
+            return None
 
         # Add the disks.  Note they *must* be added with readonly flag set.
         for disk in disks:
@@ -167,7 +186,7 @@ class vmmInspection(vmmGObject):
             if not (os.path.exists(path) and os.access(path, os.R_OK)):
                 logging.debug("%s: cannot access '%s', skipping inspection",
                               prettyvm, path)
-                return
+                return None
 
             g.add_drive_opts(path, readonly=1, format=driver_type)
 
@@ -177,7 +196,7 @@ class vmmInspection(vmmGObject):
         roots = g.inspect_os()
         if len(roots) == 0:
             logging.debug("%s: no operating systems found", prettyvm)
-            return
+            return None
 
         # Arbitrarily pick the first root device.
         root = roots[0]
@@ -258,8 +277,9 @@ class vmmInspection(vmmGObject):
         data.product_variant = str(product_variant)
         data.icon = icon
         data.applications = list(apps)
+        data.error = False
 
-        self._set_vm_inspection_data(vm, data)
+        return data
 
     def _set_vm_inspection_data(self, vm, data):
         vm.inspection = data

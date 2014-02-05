@@ -19,7 +19,7 @@
     <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
     <disk type="file" device="floppy">
       <driver name="qemu" type="qcow2"/>
-      <source file="/default-pool/testvol1.img"/>
+      <source file="/dev/default-pool/testvol1.img"/>
       <target dev="fda" bus="fdc"/>
     </disk>
     <disk type="file" device="disk">
@@ -38,11 +38,13 @@
     </interface>
     <graphics type="sdl" display=":3.4" xauth="/tmp/.Xauthority"/>
     <console type="pty"/>
-    <watchdog model="i6300esb" action="reset"/>
+    <sound model="pcspk"/>
     <interface type="network">
       <source network="default"/>
       <mac address="1A:2A:3A:4A:5A:6A"/>
+      <address type="spapr-vio"/>
     </interface>
+    <watchdog model="i6300esb" action="reset"/>
   </devices>
   <seclabel type="static" model="selinux">
     <label>foolabel</label>

@@ -39,6 +39,20 @@
   </devices>
 </domain>
 
+<domain type='test'>
+  <name>test-arm-kernel</name>
+  <memory>8388608</memory>
+  <currentMemory>2097152</currentMemory>
+  <vcpu>2</vcpu>
+  <os>
+    <type arch="i686">hvm</type>
+    <kernel>/dev/default-pool/test-arm-kernel</kernel>
+    <initrd>/dev/default-pool/test-arm-initrd</initrd>
+    <dtb>/dev/default-pool/test-arm-dtb</dtb>
+    <cmdline>console=ttyAMA0 rw root=/dev/vda3</cmdline>
+  </os>
+</domain>
+
 
 <domain type='test'>
   <name>test-many-devices</name>
@@ -57,13 +71,26 @@
     yeah boii &lt; &gt; yeahfoo
   </description>
   <features>
-    <acpi/><apic/>
+    <acpi/>
+    <apic eoi='off'/>
+    <hyperv>
+      <relaxed state='on'/>
+      <vapic state='on'/>
+      <spinlocks state='on' retries='12287'/>
+    </hyperv>
   </features>
-  <clock offset="utc"/>
+  <clock offset="utc">
+    <timer name="rtc" tickpolicy="catchup"/>
+    <timer name="pit" tickpolicy="delay"/>
+    <timer name="hpet" present="no"/>
+  </clock>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
   <on_crash>restart</on_crash>
   <vcpu cpuset="1,2,5-9,11,13-14">9</vcpu>
+  <numatune>
+    <memory mode='interleave' placement='auto'/>
+  </numatune>
   <cpu match="exact">
     <model>core2duo</model>
     <vendor>Intel</vendor>
@@ -81,13 +108,18 @@
     <feature policy="require" name="xtpr"/>
     <feature policy="require" name="acpi"/>
   </cpu>
+
+  <pm>
+    <suspend-to-mem enabled='no'/>
+  </pm>
+
   <devices>
     <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
 
 
     <!-- disk devices -->
     <disk type='block' device='floppy'>
-      <source dev='/dev/loop0'/>
+      <source dev='/dev/null'/>
       <target dev='fda' bus='fdc'/>
     </disk>
     <disk type='dir' device='floppy'>
@@ -104,7 +136,7 @@
     </disk>
     <disk type='block' device='disk'>
       <driver cache='none' type="raw"/>
-      <source dev='/dev/loop0'/>
+      <source dev='/dev/null'/>
       <target dev='hdc' bus='ide'/>
     </disk>
     <disk type='block' device='cdrom'>
@@ -114,15 +146,20 @@
       <driver name="qemu" type="qcow2" cache="none"/>
       <source file='/tmp/foobar2'/>
       <target dev='vdc' bus='virtio'/>
+      <shareable/>
     </disk>
-    <disk type='file' device='disk'>
-      <source file='/tmp/foobar3'/>
+    <disk type='block' device='disk'>
+      <source dev='/dev/default-pool/overlay.img'/>
       <target dev='sdd' bus='usb'/>
     </disk>
     <disk type='file' device='disk'>
       <driver name='tap' type='qcow' cache="writethrough"/>
       <source file='/tmp/foobar4'/>
       <target dev='xvdc' bus='xen'/>
+    </disk>
+    <disk type='file' device='cdrom'>
+      <source startupPolicy='requisite'/>
+      <target dev='hdb' bus='ide'/>
     </disk>
 
 
@@ -134,14 +171,13 @@
     </interface>
     <interface type='network'>
       <source network='idontexistfool'/>
+      <mac address='22:11:11:11:11:11'/>
     </interface>
     <interface type='network'>
       <source network='dupmac'/>
       <mac address='22:22:33:54:32:11'/>
     </interface>
-    <interface type='user'>
-      <mac address='22:11:11:11:11:11'/>
-    </interface>
+    <interface type='user'/>
     <interface type='bridge'>
       <source bridge='brempty'/>
       <mac address='22:22:33:44:AA:BB'/>
@@ -152,9 +188,8 @@
       <mac address='22:00:00:44:AA:BF'/>
       <model type='e1000'/>
     </interface>
-    <controller type='usb'/>
     <interface type='ethernet'>
-        <mac address='00:11:7F:33:44:55'/>
+        <mac address='00:11:7f:33:44:55'/>
         <script path='/etc/qemu-ifup'/>
         <target dev='nic02'/>
     </interface>
@@ -179,13 +214,16 @@
     <graphics type='vnc' listen="1.2.3.4" keymap="fi"/>
     <graphics type='vnc' port="5903" passwd="foobar"/>
     <graphics type='rdp'/>
-    <graphics type='spice'/>
+    <graphics type='spice' autoport='yes' passwd=''/>
     <graphics type="spice" passwd="newpass" port="6000" tlsPort="6001" listen="1.2.3.4">
       <channel name="inputs" mode="secure"/>
       <channel name="main" mode="any"/>
       <channel name="record" mode="insecure"/>
     </graphics>
 
+    <!-- controller devices -->
+    <controller type='scsi' model='virtio-scsi'/>
+    <controller type='usb'/>
 
     <!-- sound devices -->
     <sound model='sb16'/>
@@ -226,15 +264,18 @@
     </hostdev>
 
 
-    <!-- serial/parallel devices -->
+    <!-- serial devices -->
     <serial type='null'/>
-    <parallel type='file'>
-      <source path='/tmp/foo.log'/>
-    </parallel>
     <serial type='tcp'>
       <source mode='bind' host='my.source.host' service='1234'/>
       <protocol type='telnet'/>
     </serial>
+
+
+    <!-- parallel devices -->
+    <parallel type='file'>
+      <source path='/tmp/foo.log'/>
+    </parallel>
     <parallel type='unix'>
       <source mode='bind' path='/tmp/foobar'/>
     </parallel>
@@ -242,6 +283,33 @@
       <source mode='bind' host='my.bind.host' service='1111'/>
       <source mode='connect' host='my.source.host' service='2222'/>
     </parallel>
+
+
+    <!-- console devices -->
+    <console type='pty'>
+      <target type='virtio'/>
+    </console>
+    <console type='pty'>
+      <target type='uml'/>
+    </console>
+
+
+    <!-- channel devices -->
+    <channel type='pipe'>
+      <source path='/tmp/guestfwd'/>
+      <target type='guestfwd' address='10.0.2.1' port='4600'/>
+    </channel>
+    <channel type='spicevmc'>
+      <target type='virtio' name='com.redhat.spice.0'/>
+      <address type='virtio-serial' controller='1' bus='0' port='3'/>
+    </channel>
+    <channel type='pty'>
+      <target type='virtio' name='org.qemu.guest_agent.0'/>
+    </channel>
+    <channel type='unix'>
+      <source mode='bind'/>
+      <target type='virtio' name='org.libguestfs.channel.0'/>
+    </channel>
 
 
     <!-- watchdog devices -->
@@ -264,20 +332,6 @@
     </smartcard>
 
 
-    <!-- channel devices -->
-    <channel type='pipe'>
-      <source path='/tmp/guestfwd'/>
-      <target type='guestfwd' address='10.0.2.1' port='4600'/>
-    </channel>
-    <channel type='spicevmc'>
-      <target type='virtio' name='com.redhat.spice.0'/>
-      <address type='virtio-serial' controller='1' bus='0' port='3'/>
-    </channel>
-    <channel type='pty'>
-      <target type='virtio' name='org.linux-kvm.port.0'/>
-    </channel>
-
-
     <!-- redir devices -->
     <redirdev bus='usb' type='tcp'>
       <source mode='connect' host='localhost' service='4000'/>
@@ -292,53 +346,78 @@
     </redirfilter>
 
 
+    <!-- filesystems -->
+    <filesystem>
+      <driver type='handle'/>
+      <source dir='/foo/bar'/>
+      <target dir='/bar/baz'/>
+    </filesystem>
+    <filesystem type='template'>
+      <source name='template_fedora'/>
+      <target dir='/bar/baz'/>
+    </filesystem>
+    <filesystem type='mount' accessmode='squash'>
+      <driver type='path' wrpolicy='immediate'/>
+      <source dir='/foo/bar'/>
+      <target dir='/bar/baz'/>
+    </filesystem>
+    <filesystem type='mount' accessmode='mapped'>
+      <driver type='path'/>
+      <source dir='/foo/bar'/>
+      <target dir='/bar/baz'/>
+    </filesystem>
+
+
+    <!-- tpm devices -->
+    <tpm model='tpm-tis'>
+      <backend type='passthrough'>
+        <device path='/dev/tzz'/>
+      </backend>
+    </tpm>
+
+    <!-- rng devices -->
+    <rng model='virtio'>
+      <rate period='2000' bytes='1234'/>
+      <backend model='egd' type='tcp'>
+        <source mode='connect' host='1.2.3.4' service='1234'/>
+      </backend>
+    </rng>
+
+    <!-- panic notifier devices -->
+    <panic>
+      <address type='isa' iobase='0x505'/>
+    </panic>
+
+    <!-- memballoon device -->
+    <memballoon model='virtio'/>
   </devices>
 </domain>
-
 
 <domain type='test'>
-  <name>test-many-nets</name>
-  <currentMemory>204800</currentMemory>
-  <memory>409600</memory>
-  <uuid>12345678-1234-1234-1234-123456789001</uuid>
+  <name>test-alternate-devs</name>
+  <uuid>4a64cc71-19c4-2fd0-2323-00aa941ea3c3</uuid>
+  <description>Test alternate devices that can't be crammed in
+test-many-devices, like an alternate RNG.
+  </description>
+  <title>test alternate devs (title)</title>
+  <memory>8388608</memory>
+  <currentMemory>2097152</currentMemory>
+  <vcpu>2</vcpu>
   <os>
     <type arch='i686'>hvm</type>
-    <loader>/usr/lib/xen/boot/hvmloader</loader>
     <boot dev='hd'/>
   </os>
-  <features>
-    <acpi/><apic/>
-  </features>
-  <clock offset="utc"/>
+  <clock offset='utc'/>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
-  <on_crash>restart</on_crash>
-  <vcpu>5</vcpu>
+  <on_crash>destroy</on_crash>
   <devices>
-    <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
-    <disk type='file' device='disk'>
-      <source file='/default-pool/default-vol'/>
-      <target dev='hda' bus='ide'/>
-    </disk>
-    <interface type='network'>
-      <source network='default'/>
-      <mac address='22:22:33:00:00:00'/>
-      <model type='e1000'/>
-    </interface>
-    <interface type='network'>
-      <source network='nat_to_eth0'/>
-      <mac address='22:22:33:11:11:11'/>
-    </interface>
-    <interface type='network'>
-      <source network='isolated_net'/>
-      <mac address='22:22:33:22:22:33'/>
-    </interface>
-    <interface type='user'>
-      <mac address='22:11:11:11:11:11'/>
-    </interface>
+    <rng model='virtio'>
+      <rate bytes='123' period='1234'/>
+      <backend model='random'>/dev/hwrng</backend>
+    </rng>
   </devices>
 </domain>
-
 
 <domain type='test'>
   <name>test-clone-simple</name>
@@ -361,8 +440,9 @@
   <devices>
     <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
     <disk type='file' device='disk'>
-      <source file='/default-pool/test-clone-simple.img'/>
+      <source file='/dev/default-pool/test-clone-simple.img'/>
       <target dev='hda' bus='ide'/>
+      <driver type="qcow2"/>
     </disk>
     <interface type='user'>
       <mac address='22:11:11:11:11:11'/>
@@ -395,11 +475,12 @@
   <devices>
     <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
     <disk type='block' device='floppy'>
-      <source dev='/disk-pool/diskvol1'/>
+      <source dev='/dev/disk-pool/diskvol1'/>
       <target dev='fda' bus='fdc'/>
+      <driver type="vmdk"/>
     </disk>
     <disk type='block' device='disk'>
-      <source dev='/disk-pool/diskvol2'/>
+      <source dev='/dev/disk-pool/diskvol2'/>
       <target dev='sda' bus='scsi'/>
       <readonly/>
     </disk>
@@ -407,17 +488,18 @@
       <target dev='sdb' bus='scsi'/>
     </disk>
     <disk type='block' device='disk'>
-      <source dev='/default-pool/collidevol1.img'/>
+      <source dev='/dev/default-pool/collidevol1.img'/>
       <target dev='sdc' bus='scsi'/>
+      <driver type="qcow2"/>
       <readonly/>
       <shareable/>
     </disk>
     <disk type='file' device='disk'>
-      <source file='/default-pool/default-vol'/>
+      <source file='/dev/default-pool/default-vol'/>
       <target dev='hda' bus='ide'/>
     </disk>
     <disk type='file' device='disk'>
-      <source file='/default-pool/testvol2.img'/>
+      <source file='/dev/default-pool/testvol2.img'/>
       <target dev='hdb' bus='ide'/>
     </disk>
     <interface type='network'>
@@ -503,13 +585,13 @@
 
 
 <domain type='test'>
-  <name>test_xenpv_kernel</name>
+  <name>test-xenpv-kernel</name>
   <uuid>596a5d2171f48fb2e068e2386a5c413e</uuid>
   <os>
     <type>xen</type>
     <kernel>/var/lib/xen/vmlinuz.2Dn2YT</kernel>
     <initrd>/var/lib/xen/initrd.img.0u-Vhq</initrd>
-    <cmdline> method=http://download.fedora.devel.redhat.com/pub/fedora/linux/core/test/5.91/x86_64/os  </cmdline>
+    <cmdline>method=http://download.fedora.devel.redhat.com/pub/fedora/linux/core/test/5.91/x86_64/os</cmdline>
   </os>
   <memory>430080</memory>
   <vcpu>2</vcpu>
@@ -549,6 +631,399 @@
     </hostdev>
   </devices>
 </domain>
+
+<domain type='test' xmlns:test='http://libvirt.org/schemas/domain/test/1.0'>
+  <name>test-state-shutoff</name>
+  <memory>1048576</memory>
+  <bootloader>/tmp/bootfoo</bootloader>
+  <test:runstate>5</test:runstate>
+</domain>
+<domain type='test' xmlns:test='http://libvirt.org/schemas/domain/test/1.0'>
+  <name>test-state-paused</name>
+  <memory>1048576</memory>
+  <bootloader>/tmp/bootfoo</bootloader>
+  <test:runstate>3</test:runstate>
+</domain>
+<domain type='test' xmlns:test='http://libvirt.org/schemas/domain/test/1.0'>
+  <name>test-state-crashed</name>
+  <memory>1048576</memory>
+  <bootloader>/tmp/bootfoo</bootloader>
+  <test:runstate>6</test:runstate>
+</domain>
+<domain type='test' xmlns:test='http://libvirt.org/schemas/domain/test/1.0'>
+  <name>test-state-pmsuspended</name>
+  <memory>1048576</memory>
+  <bootloader>/tmp/bootfoo</bootloader>
+  <test:runstate>7</test:runstate>
+</domain>
+<domain type='test' xmlns:test='http://libvirt.org/schemas/domain/test/1.0'>
+  <name>test-state-transient</name>
+  <memory>1048576</memory>
+  <bootloader>/tmp/bootfoo</bootloader>
+  <test:transient/>
+</domain>
+<domain type='test' xmlns:test='http://libvirt.org/schemas/domain/test/1.0'>
+  <name>test-state-managedsave</name>
+  <memory>1048576</memory>
+  <bootloader>/tmp/bootfoo</bootloader>
+  <test:runstate>5</test:runstate>
+  <test:hasmanagedsave/>
+</domain>
+
+
+
+
+
+<!-- ############ -->
+<!-- Snapshot VMs -->
+<!-- ############ -->
+
+
+<domain type='test' xmlns:test='http://libvirt.org/schemas/domain/test/1.0'>
+  <name>test-snapshots</name>
+  <memory>409600</memory>
+  <uuid>12345678-1234-FDDF-1234-12345678FFFF</uuid>
+  <bootloader>/tmp/bootfoo</bootloader>
+  <devices>
+    <disk type='file' device='disk'>
+      <source file='/dev/default-pool/test-clone-simple.img'/>
+      <target dev='hda' bus='ide'/>
+    </disk>
+    <graphics type='vnc'/>
+  </devices>
+
+<test:domainsnapshot>
+  <name>internal-root</name>
+  <state>running</state>
+  <creationTime>1375905080</creationTime>
+  <memory snapshot='internal'/>
+  <disks>
+    <disk name='hda' snapshot='internal'/>
+  </disks>
+  <description>FOO
+desc line #2
+ba</description>
+  <domain type='test'>
+    <name>test-snapshots</name>
+    <uuid>12345678-1234-fddf-1234-12345678ffff</uuid>
+    <memory unit='KiB'>409600</memory>
+    <currentMemory unit='KiB'>409600</currentMemory>
+    <vcpu placement='static'>1</vcpu>
+    <bootloader>/tmp/bootfoo</bootloader>
+    <os>
+      <type arch='i686'>xen</type>
+    </os>
+    <clock offset='utc'/>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>destroy</on_crash>
+    <devices>
+      <disk type='file' device='disk'>
+        <source file='/dev/default-pool/test-clone-simple.img'/>
+        <target dev='hda' bus='ide'/>
+        <address type='drive' controller='0' bus='0' target='0' unit='0'/>
+      </disk>
+      <controller type='ide' index='0'/>
+      <graphics type='vnc'/>
+    </devices>
+  </domain>
+  <active>0</active>
+</test:domainsnapshot>
+
+<test:domainsnapshot>
+  <name>internal-root-child1</name>
+  <state>running</state>
+  <parent>
+    <name>internal-root</name>
+  </parent>
+  <creationTime>1375885107</creationTime>
+  <memory snapshot='internal'/>
+  <disks>
+    <disk name='hda' snapshot='internal'/>
+  </disks>
+  <domain type='test'>
+    <name>test-snapshots</name>
+    <uuid>12345678-1234-fddf-1234-12345678ffff</uuid>
+    <memory unit='KiB'>409600</memory>
+    <currentMemory unit='KiB'>409600</currentMemory>
+    <vcpu placement='static'>1</vcpu>
+    <bootloader>/tmp/bootfoo</bootloader>
+    <os>
+      <type arch='i686'>xen</type>
+    </os>
+    <clock offset='utc'/>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>destroy</on_crash>
+    <devices>
+      <disk type='file' device='disk'>
+        <source file='/dev/default-pool/test-clone-simple.img'/>
+        <target dev='hda' bus='ide'/>
+        <address type='drive' controller='0' bus='0' target='0' unit='0'/>
+      </disk>
+      <controller type='ide' index='0'/>
+      <graphics type='vnc'/>
+    </devices>
+  </domain>
+  <active>1</active>
+</test:domainsnapshot>
+
+<test:domainsnapshot>
+  <name>offline-root</name>
+  <state>shutoff</state>
+  <creationTime>1375905902</creationTime>
+  <memory snapshot='no'/>
+  <disks>
+    <disk name='hda' snapshot='internal'/>
+  </disks>
+  <domain type='test'>
+    <name>test-snapshots</name>
+    <uuid>12345678-1234-fddf-1234-12345678ffff</uuid>
+    <memory unit='KiB'>409600</memory>
+    <currentMemory unit='KiB'>409600</currentMemory>
+    <vcpu placement='static'>1</vcpu>
+    <bootloader>/tmp/bootfoo</bootloader>
+    <os>
+      <type arch='i686'>xen</type>
+    </os>
+    <clock offset='utc'/>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>destroy</on_crash>
+    <devices>
+      <disk type='file' device='disk'>
+        <source file='/dev/default-pool/test-clone-simple.img'/>
+        <target dev='hda' bus='ide'/>
+        <address type='drive' controller='0' bus='0' target='0' unit='0'/>
+      </disk>
+      <controller type='ide' index='0'/>
+      <graphics type='vnc'/>
+    </devices>
+  </domain>
+  <active>0</active>
+</test:domainsnapshot>
+
+<test:domainsnapshot>
+  <name>offline-root-child1</name>
+  <state>shutoff</state>
+  <parent>
+    <name>offline-root</name>
+  </parent>
+  <creationTime>1375905916</creationTime>
+  <memory snapshot='no'/>
+  <disks>
+    <disk name='hda' snapshot='internal'/>
+  </disks>
+  <domain type='test'>
+    <name>test-snapshots</name>
+    <uuid>12345678-1234-fddf-1234-12345678ffff</uuid>
+    <memory unit='KiB'>409600</memory>
+    <currentMemory unit='KiB'>409600</currentMemory>
+    <vcpu placement='static'>1</vcpu>
+    <bootloader>/tmp/bootfoo</bootloader>
+    <os>
+      <type arch='i686'>xen</type>
+    </os>
+    <clock offset='utc'/>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>destroy</on_crash>
+    <devices>
+      <disk type='file' device='disk'>
+        <source file='/dev/default-pool/test-clone-simple.img'/>
+        <target dev='hda' bus='ide'/>
+        <address type='drive' controller='0' bus='0' target='0' unit='0'/>
+      </disk>
+      <controller type='ide' index='0'/>
+      <graphics type='vnc'/>
+    </devices>
+  </domain>
+  <active>0</active>
+</test:domainsnapshot>
+
+<test:domainsnapshot>
+  <name>offline-root-child2</name>
+  <state>shutoff</state>
+  <parent>
+    <name>offline-root</name>
+  </parent>
+  <creationTime>137590600</creationTime>
+  <memory snapshot='no'/>
+  <disks>
+    <disk name='hda' snapshot='internal'/>
+  </disks>
+  <domain type='test'>
+    <name>test-snapshots</name>
+    <uuid>12345678-1234-fddf-1234-12345678ffff</uuid>
+    <memory unit='KiB'>409600</memory>
+    <currentMemory unit='KiB'>409600</currentMemory>
+    <vcpu placement='static'>1</vcpu>
+    <bootloader>/tmp/bootfoo</bootloader>
+    <os>
+      <type arch='i686'>xen</type>
+    </os>
+    <clock offset='utc'/>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>destroy</on_crash>
+    <devices>
+      <disk type='file' device='disk'>
+        <source file='/dev/default-pool/test-clone-simple.img'/>
+        <target dev='hda' bus='ide'/>
+        <address type='drive' controller='0' bus='0' target='0' unit='0'/>
+      </disk>
+      <controller type='ide' index='0'/>
+      <graphics type='vnc'/>
+    </devices>
+  </domain>
+  <active>0</active>
+</test:domainsnapshot>
+
+<test:domainsnapshot>
+  <name>snap-paused</name>
+  <state>paused</state>
+  <creationTime>1375903080</creationTime>
+  <memory snapshot='internal'/>
+  <disks>
+    <disk name='hda' snapshot='internal'/>
+  </disks>
+  <domain type='test'>
+    <name>test-snapshots</name>
+    <uuid>12345678-1234-fddf-1234-12345678ffff</uuid>
+    <memory unit='KiB'>409600</memory>
+    <currentMemory unit='KiB'>409600</currentMemory>
+    <vcpu placement='static'>1</vcpu>
+    <bootloader>/tmp/bootfoo</bootloader>
+    <os>
+      <type arch='i686'>xen</type>
+    </os>
+    <clock offset='utc'/>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>destroy</on_crash>
+    <devices>
+      <disk type='file' device='disk'>
+        <source file='/dev/default-pool/test-clone-simple.img'/>
+        <target dev='hda' bus='ide'/>
+        <address type='drive' controller='0' bus='0' target='0' unit='0'/>
+      </disk>
+      <controller type='ide' index='0'/>
+      <graphics type='vnc'/>
+    </devices>
+  </domain>
+  <active>0</active>
+</test:domainsnapshot>
+
+<test:domainsnapshot>
+  <name>snap-pmsuspended</name>
+  <state>pmsuspended</state>
+  <creationTime>1375903080</creationTime>
+  <memory snapshot='internal'/>
+  <disks>
+    <disk name='hda' snapshot='internal'/>
+  </disks>
+  <domain type='test'>
+    <name>test-snapshots</name>
+    <uuid>12345678-1234-fddf-1234-12345678ffff</uuid>
+    <memory unit='KiB'>409600</memory>
+    <currentMemory unit='KiB'>409600</currentMemory>
+    <vcpu placement='static'>1</vcpu>
+    <bootloader>/tmp/bootfoo</bootloader>
+    <os>
+      <type arch='i686'>xen</type>
+    </os>
+    <clock offset='utc'/>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>destroy</on_crash>
+    <devices>
+      <disk type='file' device='disk'>
+        <source file='/dev/default-pool/test-clone-simple.img'/>
+        <target dev='hda' bus='ide'/>
+        <address type='drive' controller='0' bus='0' target='0' unit='0'/>
+      </disk>
+      <controller type='ide' index='0'/>
+      <graphics type='vnc'/>
+    </devices>
+  </domain>
+  <active>0</active>
+</test:domainsnapshot>
+
+<test:domainsnapshot>
+  <name>aaa-external-mem</name>
+  <state>running</state>
+  <creationTime>1365903080</creationTime>
+  <memory snapshot='external' file='/path/to/memory/state'/>
+  <disks>
+    <disk name='hda' snapshot='external'>
+      <source file='/path/to/new'/>
+    </disk>
+  </disks>
+  <domain type='test'>
+    <name>test-snapshots</name>
+    <uuid>12345678-1234-fddf-1234-12345678ffff</uuid>
+    <memory unit='KiB'>409600</memory>
+    <currentMemory unit='KiB'>409600</currentMemory>
+    <vcpu placement='static'>1</vcpu>
+    <bootloader>/tmp/bootfoo</bootloader>
+    <os>
+      <type arch='i686'>xen</type>
+    </os>
+    <clock offset='utc'/>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>destroy</on_crash>
+    <devices>
+      <disk type='file' device='disk'>
+        <source file='/dev/default-pool/test-clone-simple.img'/>
+        <target dev='hda' bus='ide'/>
+        <address type='drive' controller='0' bus='0' target='0' unit='0'/>
+      </disk>
+      <controller type='ide' index='0'/>
+      <graphics type='vnc'/>
+    </devices>
+  </domain>
+  <active>0</active>
+</test:domainsnapshot>
+
+<test:domainsnapshot>
+  <name>zzz-external-diskonly</name>
+  <state>shutoff</state>
+  <creationTime>1365903080</creationTime>
+  <disks>
+    <disk name='hda' snapshot='external'>
+      <source file='/path/to/diskonly'/>
+    </disk>
+  </disks>
+  <domain type='test'>
+    <name>test-snapshots</name>
+    <uuid>12345678-1234-fddf-1234-12345678ffff</uuid>
+    <memory unit='KiB'>409600</memory>
+    <currentMemory unit='KiB'>409600</currentMemory>
+    <vcpu placement='static'>1</vcpu>
+    <bootloader>/tmp/bootfoo</bootloader>
+    <os>
+      <type arch='i686'>xen</type>
+    </os>
+    <clock offset='utc'/>
+    <on_poweroff>destroy</on_poweroff>
+    <on_reboot>restart</on_reboot>
+    <on_crash>destroy</on_crash>
+    <devices>
+      <disk type='file' device='disk'>
+        <source file='/dev/default-pool/test-clone-simple.img'/>
+        <target dev='hda' bus='ide'/>
+        <address type='drive' controller='0' bus='0' target='0' unit='0'/>
+      </disk>
+      <controller type='ide' index='0'/>
+      <graphics type='vnc'/>
+    </devices>
+  </domain>
+  <active>0</active>
+</test:domainsnapshot>
+
+</domain>
+
 
 
 
@@ -631,7 +1106,7 @@
 
 <network>
   <name>ipv4_prefix</name>
-  <uuid>81ff0d90-c91e-6742-64da-4a736edb9a9b</uuid>
+  <uuid>81ff0d90-c91e-6742-64da-4a736edb9122</uuid>
   <forward dev='eth1' mode='nat'>
     <interface dev='eth1'/>
   </forward>
@@ -726,7 +1201,17 @@
   </ip>
 </network>
 
-
+<network ipv6='yes'>
+  <name>ipv6route</name>
+  <domain name='bar' />
+  <forward mode='route' dev='eth1'/>
+  <ip family='ipv6' address='fd00:db8:ac10:fd01::1' prefix='64'>
+    <dhcp>
+      <range start='fd00:db8:ac10:fd01::100' end='fd00:db8:ac10:fd01::1ff'/>
+    </dhcp>
+  </ip>
+  <route family='ipv6' address='fd00:db8:ac10:fd00::' prefix='64' gateway='fd00:db8:ac10:fd01::1' />
+</network>
 
 
 
@@ -748,7 +1233,7 @@
   <source>
   </source>
   <target>
-    <path>/default-pool</path>
+    <path>/dev/default-pool</path>
     <permissions>
       <mode>0700</mode>
       <owner>10736</owner>
@@ -857,6 +1342,74 @@
     <allocation>50000</allocation>
     <target/>
   </volume>
+  <volume>
+    <name>backingl3.img</name>
+    <capacity>1000000</capacity>
+    <allocation>50000</allocation>
+    <target>
+      <format type='raw'/>
+    </target>
+  </volume>
+  <volume>
+    <name>backingl2.img</name>
+    <capacity>1000000</capacity>
+    <allocation>50000</allocation>
+    <target>
+      <format type='qcow2'/>
+    </target>
+    <backingStore>
+      <path>/dev/default-pool/backingl3.img</path>
+    </backingStore>
+  </volume>
+  <volume>
+    <name>backingl1.img</name>
+    <capacity>1000000</capacity>
+    <allocation>50000</allocation>
+    <target>
+      <format type='qcow2'/>
+    </target>
+    <backingStore>
+      <path>/dev/default-pool/backingl2.img</path>
+    </backingStore>
+  </volume>
+  <volume>
+    <name>overlay.img</name>
+    <capacity>1000000</capacity>
+    <allocation>50000</allocation>
+    <target>
+      <format type='qcow2'/>
+    </target>
+    <backingStore>
+      <path>/dev/default-pool/backingl1.img</path>
+    </backingStore>
+  </volume>
+
+
+  <!-- fake arm media -->
+  <volume>
+    <name>test-arm-kernel</name>
+    <capacity>1000000</capacity>
+    <allocation>50000</allocation>
+    <target>
+      <format type='raw'/>
+    </target>
+  </volume>
+  <volume>
+    <name>test-arm-initrd</name>
+    <capacity>1000000</capacity>
+    <allocation>50000</allocation>
+    <target>
+      <format type='raw'/>
+    </target>
+  </volume>
+  <volume>
+    <name>test-arm-dtb</name>
+    <capacity>1000000</capacity>
+    <allocation>50000</allocation>
+    <target>
+      <format type='raw'/>
+    </target>
+  </volume>
 </pool>
 
 
@@ -946,7 +1499,7 @@
   <source>
   </source>
   <target>
-    <path>/cross-pool</path>
+    <path>/dev/cross-pool</path>
     <permissions>
       <mode>0700</mode>
       <owner>10736</owner>
@@ -1065,7 +1618,7 @@
   <source>
   </source>
   <target>
-    <path>/disk-pool</path>
+    <path>/dev/disk-pool</path>
     <permissions>
       <mode>0700</mode>
       <owner>10736</owner>
@@ -1097,7 +1650,6 @@
   <source>
     <host name="iscsi.example.com"/>
     <device path="demo-target"/>
-    <auth type='chap' login='foobar' passwd='frobbar'/>
   </source>
   <target>
     <path>/iscsi-pool</path>
@@ -1137,6 +1689,7 @@
     <name>rbd</name>
   </source>
 </pool>
+
 
 
 
@@ -1243,6 +1796,9 @@
     <function>50</function>
     <product id='0x0476'>RL5c476 II</product>
     <vendor id='0x1180'>Ricoh Co Ltd</vendor>
+    <iommuGroup number='3'>
+      <address domain='0x0000' bus='0x15' slot='0x00' function='0x4'/>
+    </iommuGroup>
   </capability>
 </device>
 
@@ -1257,6 +1813,9 @@
     <function>4</function>
     <product id='0x0592'>R5C592 Memory Stick Bus Host Adapter</product>
     <vendor id='0x1180'>Ricoh Co Ltd</vendor>
+    <iommuGroup number='3'>
+      <address domain='0x0001' bus='0x15' slot='0x0A' function='0x4'/>
+    </iommuGroup>
   </capability>
 </device>
 
@@ -2517,6 +3076,5 @@
 
 <!-- Unused interface -->
 <interface type="ethernet" name="unusedeth0"/>
-
 
 </node>

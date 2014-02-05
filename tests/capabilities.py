@@ -1,8 +1,9 @@
+# Copyright (C) 2013 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
-# the Free  Software Foundation; either version 2 of the License, or
-# (at your option)  any later version.
+# the Free Software Foundation; either version 2 of the License, or
+# (at your option) any later version.
 #
 # This program is distributed in the hope that it will be useful,
 # but WITHOUT ANY WARRANTY; without even the implied warranty of
@@ -14,9 +15,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
-import os.path
+import os
 import unittest
-import virtinst.CapabilitiesParser as capabilities
+
+from virtinst import CapabilitiesParser as capabilities
 
 
 def build_host_feature_dict(feature_list):
@@ -45,20 +47,23 @@ class TestCapabilities(unittest.TestCase):
         path = os.path.join("tests/capabilities-xml", filename)
         xml = file(path).read()
 
-        return capabilities.parse(xml)
+        return capabilities.Capabilities(xml)
 
     def _testCapabilities(self, path, (host_arch, host_features), guests,
                           secmodel=None):
         caps = self._buildCaps(path)
 
         if host_arch:
-            self.assertEqual(host_arch,     caps.host.arch)
+            self.assertEqual(host_arch, caps.host.cpu.arch)
             for n in host_features:
-                self.assertEqual(host_features[n], caps.host.features[n])
+                self.assertEqual(host_features[n], caps.host.cpu.features[n])
 
         if secmodel:
             self.assertEqual(secmodel[0], caps.host.secmodel.model)
             self.assertEqual(secmodel[1], caps.host.secmodel.doi)
+            if secmodel[2]:
+                for k, v in secmodel[2].items():
+                    self.assertEqual(v, caps.host.secmodel.baselabels[k])
 
         for idx in range(len(guests)):
             self._compareGuest(guests[idx], caps.guests[idx])
@@ -81,7 +86,7 @@ class TestCapabilities(unittest.TestCase):
 
     def testCapabilities2(self):
         host = ('x86_64', {})
-        secmodel = ('selinux', '0')
+        secmodel = ('selinux', '0', None)
 
         guests = [
             ('x86_64', 'hvm',
@@ -121,7 +126,9 @@ class TestCapabilities(unittest.TestCase):
                ['g3bw', 'mac99', 'prep']]], {}),
        ]
 
-        self._testCapabilities("capabilities-kvm.xml", host, guests)
+        secmodel = ('dac', '0', {"kvm" : "+0:+0", "qemu" : "+0:+0"})
+
+        self._testCapabilities("capabilities-kvm.xml", host, guests, secmodel)
 
     def testCapabilities4(self):
         host = ('i686',
@@ -160,7 +167,7 @@ class TestCapabilities(unittest.TestCase):
 
         caps = self._buildCaps(filename)
         for f in feature_dict.keys():
-            self.assertEquals(caps.host.features[f], feature_dict[f])
+            self.assertEquals(caps.host.cpu.features[f], feature_dict[f])
 
     def testCapsCPUFeaturesOldSyntaxSVM(self):
         filename = "rhel5.4-xen-caps.xml"
@@ -169,7 +176,7 @@ class TestCapabilities(unittest.TestCase):
 
         caps = self._buildCaps(filename)
         for f in feature_dict.keys():
-            self.assertEquals(caps.host.features[f], feature_dict[f])
+            self.assertEquals(caps.host.cpu.features[f], feature_dict[f])
 
     def testCapsCPUFeaturesNewSyntax(self):
         filename = "libvirt-0.7.6-qemu-caps.xml"
@@ -179,7 +186,7 @@ class TestCapabilities(unittest.TestCase):
 
         caps = self._buildCaps(filename)
         for f in feature_dict.keys():
-            self.assertEquals(caps.host.features[f], feature_dict[f])
+            self.assertEquals(caps.host.cpu.features[f], feature_dict[f])
 
         self.assertEquals(caps.host.cpu.model, "core2duo")
         self.assertEquals(caps.host.cpu.vendor, "Intel")
