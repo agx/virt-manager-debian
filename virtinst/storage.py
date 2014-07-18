@@ -79,6 +79,13 @@ class _StorageObject(XMLBuilder):
                                    is_single=True)
 
 
+def _get_default_pool_path(conn):
+    path = "/var/lib/libvirt/images"
+    if conn.is_session_uri():
+        path = os.path.expanduser("~/VirtualMachines")
+    return path
+
+
 class StoragePool(_StorageObject):
     """
     Base class for building and installing libvirt storage pool xml
@@ -92,6 +99,7 @@ class StoragePool(_StorageObject):
     TYPE_ISCSI   = "iscsi"
     TYPE_SCSI    = "scsi"
     TYPE_MPATH   = "mpath"
+    TYPE_GLUSTER = "gluster"
 
     # Pool type descriptions for use in higher level programs
     _descs = {}
@@ -103,6 +111,7 @@ class StoragePool(_StorageObject):
     _descs[TYPE_ISCSI]   = _("iSCSI Target")
     _descs[TYPE_SCSI]    = _("SCSI Host Adapter")
     _descs[TYPE_MPATH]   = _("Multipath Device Enumerator")
+    _descs[TYPE_GLUSTER] = _("Gluster Filesystem")
 
     @staticmethod
     def get_pool_types():
@@ -177,9 +186,7 @@ class StoragePool(_StorageObject):
 
         pool = None
         name = "default"
-        path = "/var/lib/libvirt/images"
-        if conn.is_session_uri():
-            path = os.path.expanduser("~/VirtualMachines")
+        path = _get_default_pool_path(conn)
 
         try:
             pool = conn.storagePoolLookupByName(name)
@@ -196,13 +203,35 @@ class StoragePool(_StorageObject):
             defpool.type = defpool.TYPE_DIR
             defpool.name = name
             defpool.target_path = path
-            newpool = defpool.install(build=True, create=True, autostart=True)
+            defpool.install(build=True, create=True, autostart=True)
             conn.clear_cache(pools=True)
-            return newpool
+            return defpool
         except Exception, e:
             raise RuntimeError(
                 _("Couldn't create default storage pool '%s': %s") %
                 (path, str(e)))
+
+
+    @staticmethod
+    def get_default_path(conn):
+        """
+        Return the default storage path. If there's a 'default' pool,
+        report that. If there's no default pool, return the path we would
+        use for the default.
+        """
+        path = _get_default_pool_path(conn)
+        if not conn.check_support(conn.SUPPORT_CONN_STORAGE):
+            os.makedirs(path)
+            return path
+
+        try:
+            poolobj = conn.storagePoolLookupByName("default")
+            return StoragePool(conn, parsexml=poolobj.XMLDesc(0)).target_path
+        except:
+            pass
+
+        return StoragePool.build_default_pool(conn).target_path
+
 
     @staticmethod
     def lookup_pool_by_path(conn, path):
@@ -226,6 +255,15 @@ class StoragePool(_StorageObject):
                 return conn.storagePoolLookupByName(pool.name)
         return None
 
+    @staticmethod
+    def find_free_name(conn, basename, **kwargs):
+        """
+        Finds a name similar (or equal) to passed 'basename' that is not
+        in use by another pool. Extra params are passed to generate_name
+        """
+        return util.generate_name(basename,
+                                  conn.storagePoolLookupByName,
+                                  **kwargs)
 
 
     def __init__(self, *args, **kwargs):
@@ -248,6 +286,8 @@ class StoragePool(_StorageObject):
                                 name))
 
     def _get_default_target_path(self):
+        if not self.supports_property("target_path"):
+            return None
         if (self.type == self.TYPE_DIR or
             self.type == self.TYPE_NETFS or
             self.type == self.TYPE_FS):
@@ -310,7 +350,7 @@ class StoragePool(_StorageObject):
                        "capacity", "allocation", "available",
                        "format", "host",
                        "source_path", "source_name", "target_path",
-                       "permissions"]
+                       "source_dir", "permissions"]
 
     type = XMLProperty("./@type",
         doc=_("Storage device type the pool will represent."))
@@ -335,6 +375,7 @@ class StoragePool(_StorageObject):
 
     target_path = XMLProperty("./target/path",
                               default_cb=_get_default_target_path)
+    source_dir = XMLProperty("./source/dir/@path")
 
 
     ######################
@@ -345,10 +386,14 @@ class StoragePool(_StorageObject):
         users = {
             "source_path": [self.TYPE_FS, self.TYPE_NETFS, self.TYPE_LOGICAL,
                             self.TYPE_DISK, self.TYPE_ISCSI, self.TYPE_SCSI],
-            "source_name": [self.TYPE_LOGICAL],
-            "host": [self.TYPE_NETFS, self.TYPE_ISCSI],
+            "source_name": [self.TYPE_LOGICAL, self.TYPE_GLUSTER],
+            "source_dir" : [self.TYPE_GLUSTER, self.TYPE_NETFS],
+            "host": [self.TYPE_NETFS, self.TYPE_ISCSI, self.TYPE_GLUSTER],
             "format": [self.TYPE_FS, self.TYPE_NETFS, self.TYPE_DISK],
             "iqn": [self.TYPE_ISCSI],
+            "target_path" : [self.TYPE_DIR, self.TYPE_FS, self.TYPE_NETFS,
+                             self.TYPE_LOGICAL, self.TYPE_DISK, self.TYPE_ISCSI,
+                             self.TYPE_SCSI, self.TYPE_MPATH]
         }
 
         if users.get(propname):
@@ -369,7 +414,7 @@ class StoragePool(_StorageObject):
         return self.type in [
             StoragePool.TYPE_DIR, StoragePool.TYPE_FS,
             StoragePool.TYPE_NETFS, StoragePool.TYPE_LOGICAL,
-            StoragePool.TYPE_DISK]
+            StoragePool.TYPE_DISK, StoragePool.TYPE_GLUSTER]
 
     def get_vm_disk_type(self):
         """
@@ -475,7 +520,7 @@ class StorageVolume(_StorageObject):
     def find_free_name(pool_object, basename, **kwargs):
         """
         Finds a name similar (or equal) to passed 'basename' that is not
-        in use by another pool. Extra params are passed to generate_name
+        in use by another volume. Extra params are passed to generate_name
         """
         pool_object.refresh(0)
         return util.generate_name(basename,
@@ -604,6 +649,8 @@ class StorageVolume(_StorageObject):
     backing_store = XMLProperty("./backingStore/path")
 
     def _lazy_refcounts_default_cb(self):
+        if self.format != "qcow2":
+            return False
         return self.conn.check_support(
             self.conn.SUPPORT_CONN_QCOW2_LAZY_REFCOUNTS)
     lazy_refcounts = XMLProperty("./target/features/lazy_refcounts",

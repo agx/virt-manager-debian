@@ -20,8 +20,9 @@ import imp
 import logging
 import os
 
-os.environ["VIRTINST_TEST_TRACKPROPS"] = "1"
 os.environ["VIRTINST_TEST_SUITE"] = "1"
+os.environ["VIRTINST_TEST_URL_DIR"] = os.path.abspath(
+    "tests/cli-test-xml/fakefedoratree/")
 
 import virtinst
 virtinst.stable_defaults = False

@@ -1,7 +1,7 @@
 #
 # Some code for parsing libvirt's capabilities XML
 #
-# Copyright 2007, 2012-2013 Red Hat, Inc.
+# Copyright 2007, 2012-2014 Red Hat, Inc.
 # Mark McLoughlin <markmc@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -37,34 +37,10 @@ def xpathString(node, path, default=None):
 
 class CPUValuesModel(object):
     """
-    Single <model> definition from cpu_map
+    Single CPU model
     """
-    def __init__(self, node):
-        self.model = node.prop("name")
-        self.features = []
-        self.parent = None
-        self.vendor = None
-
-        self._parseXML(node)
-
-    def _parseXML(self, node):
-        child = node.children
-        while child:
-            if child.name == "model":
-                self.parent = child.prop("name")
-            if child.name == "vendor":
-                self.vendor = child.prop("name")
-            if child.name == "feature":
-                self.features.append(child.prop("name"))
-
-            child = child.next
-
-        self.features.sort()
-
-    def inheritParent(self, parentcpu):
-        self.vendor = parentcpu.vendor or self.vendor
-        self.features += parentcpu.features
-        self.features.sort()
+    def __init__(self, model):
+        self.model = model
 
 
 class CPUValuesArch(object):
@@ -75,7 +51,6 @@ class CPUValuesArch(object):
         self.arch = arch
         self.vendors = []
         self.cpus = []
-        self.features = []
 
         if node:
             self._parseXML(node)
@@ -85,20 +60,13 @@ class CPUValuesArch(object):
         while child:
             if child.name == "vendor":
                 self.vendors.append(child.prop("name"))
-            if child.name == "feature":
-                self.features.append(child.prop("name"))
             if child.name == "model":
-                newcpu = CPUValuesModel(child)
-                if newcpu.parent:
-                    for chkcpu in self.cpus:
-                        if chkcpu.model == newcpu.parent:
-                            newcpu.inheritParent(chkcpu)
+                newcpu = CPUValuesModel(child.prop("name"))
                 self.cpus.append(newcpu)
 
             child = child.next
 
         self.vendors.sort()
-        self.features.sort()
 
     def get_cpu(self, model):
         for c in self.cpus:
@@ -107,15 +75,37 @@ class CPUValuesArch(object):
         raise ValueError(_("Unknown CPU model '%s'") % model)
 
 
-class CPUValues(object):
+class _CPUAPIValues(object):
     """
-    Lists valid values for domain <cpu> parameters, parsed from libvirt's
-    local cpu_map.xml
+    Lists valid values for cpu models obtained trough libvirt's getCPUModelNames
     """
-    def __init__(self, cpu_filename=None):
+    def __init__(self):
+        self._cpus = None
+
+    def get_cpus(self, arch, conn):
+        if self._cpus is not None:
+            return self._cpus
+
+        if (conn and conn.check_support(conn.SUPPORT_CONN_CPU_MODEL_NAMES)):
+            names = conn.getCPUModelNames(arch, 0)
+
+            # Bindings were broke for a long time, so catch -1
+            if names != -1:
+                self._cpus = [CPUValuesModel(i) for i in names]
+                return self._cpus
+
+        return []
+
+
+class _CPUMapFileValues(_CPUAPIValues):
+    """
+    Fallback method to lists cpu models, parsed directly from libvirt's local
+    cpu_map.xml
+    """
+    def __init__(self):
+        _CPUAPIValues.__init__(self)
         self.archmap = {}
-        if not cpu_filename:
-            cpu_filename = "/usr/share/libvirt/cpu_map.xml"
+        cpu_filename = "/usr/share/libvirt/cpu_map.xml"
         xml = file(cpu_filename).read()
 
         util.parse_node_helper(xml, "cpus",
@@ -131,9 +121,8 @@ class CPUValues(object):
 
             child = child.next
 
-    def get_arch(self, arch):
-        if not arch:
-            return None
+    def get_cpus(self, arch, conn):
+        ignore = conn
         if re.match(r'i[4-9]86', arch):
             arch = "x86"
         elif arch == "x86_64":
@@ -144,7 +133,7 @@ class CPUValues(object):
             cpumap = CPUValuesArch(arch)
             self.archmap[arch] = cpumap
 
-        return cpumap
+        return cpumap.cpus
 
 
 class Features(object):
@@ -345,18 +334,15 @@ class Guest(object):
 
             child = child.next
 
-    def _favoredDomain(self, accelerated, domains):
+    def _favoredDomain(self, domains):
         """
         Return the recommended domain for use if the user does not explicitly
         request one.
         """
-        if accelerated is None:
-            # Picking last in list so we favour KVM/KQEMU over QEMU
-            return domains[-1]
+        if not domains:
+            return None
 
         priority = ["kvm", "xen", "kqemu", "qemu"]
-        if not accelerated:
-            priority.reverse()
 
         for t in priority:
             for d in domains:
@@ -366,7 +352,7 @@ class Guest(object):
         # Fallback, just return last item in list
         return domains[-1]
 
-    def bestDomainType(self, accelerated=None, dtype=None, machine=None):
+    def bestDomainType(self, dtype=None, machine=None):
         domains = []
         for d in self.domains:
             if dtype and d.hypervisor_type != dtype.lower():
@@ -375,22 +361,7 @@ class Guest(object):
                 continue
             domains.append(d)
 
-        if len(domains) == 0:
-            domainerr = ""
-            machineerr = ""
-            if dtype:
-                domainerr = _(", domain type '%s'") % dtype
-            if machine:
-                machineerr = _(", machine type '%s'") % machine
-
-            error = (_("No domains available for virt type '%(type)s', "
-                      "arch '%(arch)s'") %
-                      {'type': self.os_type, 'arch': self.arch})
-            error += domainerr
-            error += machineerr
-            raise RuntimeError(error)
-
-        return self._favoredDomain(accelerated, domains)
+        return self._favoredDomain(domains)
 
 
 class Domain(object):
@@ -621,7 +592,7 @@ class Capabilities(object):
                 return True
         return False
 
-    def guestForOSType(self, typ=None, arch=None):
+    def _guestForOSType(self, typ=None, arch=None):
         if self.host is None:
             return None
 
@@ -645,15 +616,23 @@ class Capabilities(object):
                 self.guests.append(Guest(child))
             child = child.next
 
-    def get_cpu_values(self, arch):
-        if not self._cpu_values:
-            self._cpu_values = CPUValues()
+    def get_cpu_values(self, conn, arch):
+        if not arch:
+            return []
+        if self._cpu_values:
+            return self._cpu_values.get_cpus(arch, conn)
 
-        return self._cpu_values.get_arch(arch)
+        # Iterate over the available methods until a set of CPU models is found
+        for mode in (_CPUAPIValues, _CPUMapFileValues):
+            cpu_values = mode()
+            cpus = cpu_values.get_cpus(arch, conn)
+            if len(cpus) > 0:
+                self._cpu_values = cpu_values
+                return cpus
 
+        return []
 
-    def guest_lookup(self, os_type=None, arch=None, typ=None,
-                     accelerated=False, machine=None):
+    def guest_lookup(self, os_type=None, arch=None, typ=None, machine=None):
         """
         Simple virtualization availability lookup
 
@@ -671,20 +650,13 @@ class Capabilities(object):
         not found.
 
         @param typ: Virtualization type ('hvm', 'xen', ...)
-        @type typ: C{str}
         @param arch: Guest architecture ('x86_64', 'i686' ...)
-        @type arch: C{str}
         @param os_type: Hypervisor name ('qemu', 'kvm', 'xen', ...)
-        @type os_type: C{str}
-        @param accelerated: Whether to look for accelerated domain if none is
-                            specifically requested
-        @type accelerated: C{bool}
         @param machine: Optional machine type to emulate
-        @type machine: C{str}
 
         @returns: A (Capabilities Guest, Capabilities Domain) tuple
         """
-        guest = self.guestForOSType(os_type, arch)
+        guest = self._guestForOSType(os_type, arch)
         if not guest:
             archstr = _("for arch '%s'") % arch
             if not arch:
@@ -697,12 +669,9 @@ class Capabilities(object):
             raise ValueError(_("Host does not support %(virttype)s %(arch)s") %
                                {'virttype' : osstr, 'arch' : archstr})
 
-        domain = guest.bestDomainType(accelerated=accelerated,
-                                      dtype=typ,
-                                      machine=machine)
-
+        domain = guest.bestDomainType(dtype=typ, machine=machine)
         if domain is None:
-            machinestr = "with machine '%s'" % machine
+            machinestr = " with machine '%s'" % machine
             if not machine:
                 machinestr = ""
             raise ValueError(_("Host does not support domain type %(domain)s"

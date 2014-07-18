@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2006-2007, 2013, 2014 Red Hat, Inc.
+# Copyright (C) 2006-2007, 2012-2014 Red Hat, Inc.
 # Copyright (C) 2006 Hugh O. Brock <hbrock@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -20,6 +20,7 @@
 
 import logging
 import traceback
+import collections
 
 # pylint: disable=E0611
 from gi.repository import Gtk
@@ -97,6 +98,7 @@ class vmmAddHardware(vmmGObjectUI):
             "on_hw_list_changed": self.hw_selected,
 
             "on_config_storage_bustype_changed": self.populate_disk_device,
+            "on_config_storage_devtype_changed": self.change_storage_devtype,
 
             "on_mac_address_clicked" : self.change_macaddr_use,
 
@@ -361,16 +363,15 @@ class vmmAddHardware(vmmGObjectUI):
                       self.conn.is_nodedev_capable(),
                       _("Connection does not support host device enumeration"),
                       "pci")
-        add_hw_option("Video", "video-display", PAGE_VIDEO,
-                      self.conn.check_support(
-                            self.conn.SUPPORT_CONN_DOMAIN_VIDEO),
+        add_hw_option("Video", "video-display", PAGE_VIDEO, True,
                       _("Libvirt version does not support video devices."))
         add_hw_option("Watchdog", "device_pci", PAGE_WATCHDOG,
                       self.vm.is_hvm(),
                       _("Not supported for this guest type."))
         add_hw_option("Filesystem", Gtk.STOCK_DIRECTORY, PAGE_FILESYSTEM,
                       self.conn.check_support(
-                        self.conn.SUPPORT_CONN_FILESYSTEM),
+                        self.conn.SUPPORT_CONN_FILESYSTEM) and
+                      not self.vm.stable_defaults(),
                       _("Not supported for this hypervisor/libvirt "
                         "combination."))
         add_hw_option("Smartcard", "device_serial", PAGE_SMARTCARD,
@@ -433,7 +434,7 @@ class vmmAddHardware(vmmGObjectUI):
         # Video params
         self.populate_video_combo(self.vm, self.widget("video-model"))
 
-        # TPM paams
+        # TPM params
         self.widget("tpm-device-path").set_text("/dev/tpm0")
 
         # Hide all notebook pages, so the wizard isn't as big as the largest
@@ -651,25 +652,6 @@ class vmmAddHardware(vmmGObjectUI):
         combo.set_active(idx)
 
     @staticmethod
-    def build_graphics_keymap_combo(vm, combo, no_default=False):
-        ignore = vm
-        model = Gtk.ListStore(str, str)
-        combo.set_model(model)
-        uiutil.set_combo_text_column(combo, 1)
-
-        if not no_default:
-            model.append([None, "default"])
-        else:
-            model.append([None, "Auto"])
-
-        model.append([virtinst.VirtualGraphics.KEYMAP_LOCAL,
-                      "Copy local keymap"])
-        for k in virtinst.VirtualGraphics.valid_keymaps():
-            model.append([k, k])
-
-        combo.set_active(-1)
-
-    @staticmethod
     def build_disk_cache_combo(vm, combo):
         ignore = vm
         model = Gtk.ListStore(str, str)
@@ -758,15 +740,14 @@ class vmmAddHardware(vmmGObjectUI):
         if self.vm.get_hv_type() in ["qemu", "kvm", "test"]:
             model.append(["sata", "SATA"])
             model.append(["sd", "SD"])
-            model.append(["virtio", "Virtio"])
-            model.append(["virtio-scsi", "Virtio SCSI"])
+            model.append(["virtio", "VirtIO"])
+            model.append(["virtio-scsi", "VirtIO SCSI"])
 
         if self.conn.is_xen() or self.conn.is_test_conn():
             model.append(["xen", "Xen"])
 
         if len(model) > 0:
             widget.set_active(0)
-
 
     def populate_disk_device(self, src):
         ignore = src
@@ -797,7 +778,6 @@ class vmmAddHardware(vmmGObjectUI):
 
         if len(model) > 0:
             devlist.set_active(0)
-
 
     def populate_input_model(self, model):
         model.clear()
@@ -1096,6 +1076,14 @@ class vmmAddHardware(vmmGObjectUI):
     def toggle_storage_select(self, ignore, src):
         act = src.get_active()
         self.populate_disk_format_combo_wrapper(not act)
+
+    def change_storage_devtype(self, ignore):
+        devtype = self.get_config_disk_device()
+        allow_create = devtype not in ["cdrom", "floppy"]
+        self.addstorage.widget("config-storage-create-box").set_sensitive(
+            allow_create)
+        if not allow_create:
+            self.addstorage.widget("config-storage-select").set_active(True)
 
     # Network listeners
     def change_macaddr_use(self, ignore=None):
@@ -1414,34 +1402,45 @@ class vmmAddHardware(vmmGObjectUI):
             self._dev.validate()
         return ret
 
-    def _set_disk_controller(self, disk, controller_model):
+    def _set_disk_controller(self, disk, controller_model, used_disks):
         # Add a SCSI controller with model virtio-scsi if needed
         disk.vmm_controller = None
         if controller_model != "virtio-scsi":
-            return
+            return None
 
+        # Get SCSI controllers
         controllers = self.vm.get_controller_devices()
         ctrls_scsi = [x for x in controllers if
                 (x.type == VirtualController.TYPE_SCSI)]
-        if len(ctrls_scsi) > 0:
-            index_new = max([x.index for x in ctrls_scsi]) + 1
-        else:
-            index_new = 0
 
+        # Create possible new controller
         controller = VirtualController(self.conn.get_backend())
         controller.type = "scsi"
         controller.model = controller_model
-        disk.vmm_controller = controller
-        for d in controllers:
-            if controller.type == d.type:
-                controller.index = index_new
-            if controller_model == d.model:
-                disk.vmm_controller = None
-                controller = d
-                break
 
-        disk.address.type = disk.address.ADDRESS_TYPE_DRIVE
-        disk.address.controller = controller.index
+        # And set its index
+        controller.index = 0
+        if ctrls_scsi:
+            controller.index = max([x.index for x in ctrls_scsi]) + 1
+
+        # Take only virtio-scsi ones
+        ctrls_scsi = [x for x in ctrls_scsi
+                      if x.model == controller_model]
+
+        # Save occupied places per controller
+        occupied = collections.defaultdict(int)
+        for d in used_disks:
+            if d.get_target_prefix() == disk.get_target_prefix():
+                num = virtinst.VirtualDisk.target_to_num(d.target)
+                occupied[num / 7] += 1
+        for c in ctrls_scsi:
+            if occupied[c.index] < 7:
+                controller = c
+                break
+        else:
+            disk.vmm_controller = controller
+
+        return controller.index
 
     def validate_page_storage(self):
         bus = self.get_config_disk_bus()
@@ -1461,21 +1460,26 @@ class vmmAddHardware(vmmGObjectUI):
             return disk
 
         try:
+            used = []
             disk.bus = bus
             if cache:
                 disk.driver_cache = cache
 
             # Generate target
+            disks = []
             if not self.is_customize_dialog:
-                used = []
                 disks = (self.vm.get_disk_devices() +
                          self.vm.get_disk_devices(inactive=True))
                 for d in disks:
-                    used.append(d.target)
+                    if d.target not in used:
+                        used.append(d.target)
 
-                disk.generate_target(used)
+            prefer_ctrl = self._set_disk_controller(
+                disk, controller_model, disks)
 
-            self._set_disk_controller(disk, controller_model)
+            if not self.is_customize_dialog:
+                disk.generate_target(used, prefer_ctrl)
+
         except Exception, e:
             return self.err.val_err(_("Storage parameter error."), e)
 

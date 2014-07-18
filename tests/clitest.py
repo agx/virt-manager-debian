@@ -1,4 +1,4 @@
-# Copyright (C) 2013 Red Hat, Inc.
+# Copyright (C) 2013, 2014 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -32,7 +32,6 @@ from virtinst import support
 from tests import virtinstall, virtimage, virtclone, virtconvert, virtxml
 from tests import utils
 
-os.environ["VIRTCONV_TEST_NO_DISK_CONVERSION"] = "1"
 os.environ["LANG"] = "en_US.UTF-8"
 
 # Used to ensure consistent SDL xml output
@@ -75,13 +74,14 @@ virtimage_exist = ["/tmp/__virtinst__cli_root.raw"]
 # Images created by virt-image
 virtimage_new = ["/tmp/__virtinst__cli_scratch.raw"]
 
-# virt-convert output dirs
-virtconv_dirs = [virtconv_out]
+# Fake iso for --location iso mounting
+fake_iso = ["/tmp/fake.iso"]
 
-exist_files = exist_images + virtimage_exist
-new_files   = new_images + virtimage_new + virtconv_dirs
+exist_files = exist_images + virtimage_exist + fake_iso
+new_files   = new_images + virtimage_new
 clean_files = (new_images + exist_images +
-               virtimage_exist + virtimage_new + virtconv_dirs + [ro_dir])
+               virtimage_exist + virtimage_new + [ro_dir]
+               + fake_iso)
 
 promptlist = []
 
@@ -98,30 +98,28 @@ test_files = {
     'CLONE_NOEXIST_XML' : "%s/clone-disk-noexist.xml" % xmldir,
     'IMAGE_XML'         : "%s/image.xml" % xmldir,
     'IMAGE_NOGFX_XML'   : "%s/image-nogfx.xml" % xmldir,
-    'NEWIMG1'           : new_images[0],
-    'NEWIMG2'           : new_images[1],
-    'NEWIMG3'           : new_images[2],
-    'EXISTIMG1'         : exist_images[0],
-    'EXISTIMG2'         : exist_images[1],
+    'NEWIMG1'           : "/dev/default-pool/new1.img",
+    'NEWIMG2'           : "/dev/default-pool/new2.img",
+    'NEWCLONEIMG1'      : new_images[0],
+    'NEWCLONEIMG2'      : new_images[1],
+    'NEWCLONEIMG3'      : new_images[2],
+    'AUTOMANAGEIMG'     : "/some/new/pool/dir/new",
+    'EXISTIMG1'         : "/dev/default-pool/testvol1.img",
+    'EXISTIMG2'         : "/dev/default-pool/testvol2.img",
+    'EXISTUPPER'        : "/dev/default-pool/UPPER",
     'ROIMG'             : ro_img,
     'ROIMGNOEXIST'      : ro_noexist_img,
     'POOL'              : "default-pool",
     'VOL'               : "testvol1.img",
     'DIR'               : os.getcwd(),
     'TREEDIR'           : treedir,
-    'MANAGEDEXIST1'     : "/dev/default-pool/testvol1.img",
-    'MANAGEDEXIST2'     : "/dev/default-pool/testvol2.img",
-    'MANAGEDEXISTUPPER' : "/dev/default-pool/UPPER",
     'MANAGEDNEW1'       : "/dev/default-pool/clonevol",
-    'MANAGEDNEW2'       : "/dev/default-pool/clonevol",
     'MANAGEDDISKNEW1'   : "/dev/disk-pool/newvol1.img",
     'COLLIDE'           : "/dev/default-pool/collidevol1.img",
     'SHARE'             : "/dev/default-pool/sharevol.img",
 
-    'VIRTCONV_OUT'      : "%s/test.out" % virtconv_out,
-    'VC_IMG1'           : "%s/virtimage/test1.virt-image" % vcdir,
-    'VC_IMG2'           : "tests/image-xml/image-format.xml",
-    'VMX_IMG1'          : "%s/vmx/test1.vmx" % vcdir,
+    'OVF_IMG1'           : "%s/tests/virtconv-files/ovf_input/test1.ovf" % os.getcwd(),
+    'VMX_IMG1'          : "%s/tests/virtconv-files/vmx_input/test1.vmx" % os.getcwd(),
 }
 
 
@@ -165,6 +163,7 @@ class Command(object):
             if self.input_file:
                 sys.stdin = file(self.input_file)
 
+            exc = ""
             try:
                 if app.count("virt-install"):
                     ret = virtinstall.main(conn=conn)
@@ -173,15 +172,18 @@ class Command(object):
                 elif app.count("virt-image"):
                     ret = virtimage.main(conn=conn)
                 elif app.count("virt-convert"):
-                    ret = virtconvert.main()
+                    ret = virtconvert.main(conn=conn)
                 elif app.count("virt-xml"):
-                    ret = virtxml.main()
+                    ret = virtxml.main(conn=conn)
             except SystemExit, sys_e:
                 ret = sys_e.code
+            except Exception:
+                ret = -1
+                exc = "\n" + "".join(traceback.format_exc())
 
             if ret != 0:
                 ret = -1
-            outt = out.getvalue()
+            outt = out.getvalue() + exc
             if outt.endswith("\n"):
                 outt = outt[:-1]
             return (ret, outt)
@@ -226,7 +228,7 @@ class Command(object):
                     conn = utils.openconn(self.argv[idx + 1])
                     break
 
-            if not conn and "virt-convert" not in self.argv[0]:
+            if not conn:
                 raise RuntimeError("couldn't parse URI from command %s" %
                                    self.argv)
 
@@ -234,12 +236,6 @@ class Command(object):
             if skipmsg is not None:
                 tests.skipTest(skipmsg)
                 return
-
-            filename = self.compare_file
-            if (self.compare_check and conn and not
-                conn.check_support(self.compare_check)):
-                logging.debug("Skipping compare check due to lack of support")
-                filename = None
 
             code, output = self._get_output(conn)
 
@@ -251,8 +247,15 @@ class Command(object):
                      ("Error code : %d\n" % code) +
                      ("Output was:\n%s" % output))
 
-            if filename:
+            if self.compare_file:
+                if (self.compare_check and not
+                    conn.check_support(self.compare_check)):
+                    tests.skipTest(
+                        "Skipping compare check due to lack of support")
+                    return
+
                 # Generate test files that don't exist yet
+                filename = self.compare_file
                 if utils.REGENERATE_OUTPUT or not os.path.exists(filename):
                     file(filename, "w").write(output)
 
@@ -380,9 +383,8 @@ class App(object):
         if not iscompare:
             args = "--debug"
 
-        if self.appname != "virt-convert" and not iscompare:
-            if "--connect " not in cli:
-                args += " --connect %(TESTURI)s"
+        if "--connect " not in cli:
+            args += " --connect %(TESTURI)s"
 
         if self.appname in ["virt-install"]:
             if "--name " not in cli:
@@ -405,9 +407,6 @@ class App(object):
                 if not cli.count("--print-xml"):
                     args += " --print-xml"
 
-            if self.appname != "virt-convert" and not "--connect " in cli:
-                args += " --connect %s" % utils.fakeuri
-
         return args
 
 
@@ -429,6 +428,7 @@ class App(object):
         cmd = Command(cmdstr)
         cmd.check_success = valid
         if compfile:
+            compfile = os.path.basename(self.appname) + "-" + compfile
             cmd.compare_file = "%s/%s.xml" % (compare_xmldir, compfile)
         cmd.skip_check = skip_check or category.skip_check
         cmd.compare_check = compare_check or category.compare_check
@@ -468,6 +468,10 @@ c.add_valid("--cpu somemodel")  # Simple --cpu
 c.add_valid("--cpu foobar,+x2apic,+x2apicagain,-distest,forbid=foo,forbid=bar,disable=distest2,optional=opttest,require=reqtest,match=strict,vendor=meee")  # Crazy --cpu
 c.add_valid("--numatune 1,2,3,5-7,^6")  # Simple --numatune
 c.add_valid("--numatune 1-3,4,mode=strict")  # More complex, parser should do the right thing here
+c.add_valid("--blkiotune weight=100,device_path=/home/test/1.img,device_weight=200")  # --blkiotune
+c.add_valid("--memtune hard_limit=10,soft_limit=20,swap_hard_limit=30,min_guarantee=40")  # --memtune
+c.add_valid("--memorybacking hugepages=yes,nosharepages=yes,locked=yes")  # --memorybacking nosharepages,locked
+c.add_valid("--idmap uid_start=0,uid_target=1000,uid_count=10,gid_start=0,gid_target=1000,gid_count=10")  # --idmap
 c.add_compare("--connect %(DEFAULTURI)s --cpuset auto --vcpus 2", "cpuset-auto")  # --cpuset=auto actually works
 c.add_invalid("--vcpus 32 --cpuset=969-1000")  # Bogus cpuset
 c.add_invalid("--vcpus 32 --cpuset=autofoo")  # Bogus cpuset
@@ -520,17 +524,18 @@ c.add_valid("--nodisks --boot hd --paravirt --arch i686")  # 32 on 64 xen
 
 
 c = vinst.add_category("kvm", "--connect %(KVMURI)s --noautoconsole")
-c.add_compare("--os-variant fedora20 --file %(EXISTIMG1)s --location %(TREEDIR)s --extra-args console=ttyS0 --cpu host --channel none --console none", "kvm-f14-url")  # F14 Directory tree URL install with extra-args
+c.add_compare("--os-variant fedora20 --file %(EXISTIMG1)s --location %(TREEDIR)s --extra-args console=ttyS0 --cpu host --channel none --console none --sound none --redirdev none", "kvm-f14-url")  # F14 Directory tree URL install with extra-args
 c.add_compare("--os-variant fedora20 --disk %(NEWIMG1)s,size=.01 --location %(TREEDIR)s --extra-args console=ttyS0 --quiet", "quiet-url")  # Quiet URL install should make no noise
 c.add_compare("--cdrom %(EXISTIMG2)s --file %(EXISTIMG1)s --os-variant win2k3 --wait 0 --sound --controller usb", "kvm-win2k3-cdrom")  # HVM windows install with disk
-c.add_compare("--os-variant fedora20 --nodisks --boot hd --paravirt", "kvm-xenner")  # xenner
+c.add_compare("--os-variant fedora20 --nodisks --boot hd --paravirt --cpu pentium2", "kvm-xenner")  # xenner
 c.add_compare("--os-variant fedora20 --nodisks --boot cdrom --virt-type qemu --cpu Penryn", "qemu-plain")  # plain qemu
 c.add_compare("--os-variant fedora20 --nodisks --boot network --nographics --arch i686", "qemu-32-on-64")  # 32 on 64
-c.add_compare("--os-variant fedora20 --nodisks --boot fd --graphics spice --machine pc", "kvm-machine")  # kvm machine type 'pc'
+c.add_compare("--os-variant fedora20 --nodisks --boot fd --graphics spice --machine pc --cpu none", "kvm-machine")  # kvm machine type 'pc'
 c.add_compare("--os-variant fedora20 --nodisks --boot fd --graphics sdl --arch sparc --machine SS-20", "qemu-sparc")  # exotic arch + machine type
 c.add_compare("--arch armv7l --machine vexpress-a9 --boot kernel=/f19-arm.kernel,initrd=/f19-arm.initrd,dtb=/f19-arm.dtb,extra_args=\"console=ttyAMA0 rw root=/dev/mmcblk0p3\" --disk %(EXISTIMG1)s --nographics", "arm-vexpress-plain", skip_check=support.SUPPORT_CONN_DISK_SD)
 c.add_compare("--arch armv7l --machine vexpress-a15 --boot kernel=/f19-arm.kernel,initrd=/f19-arm.initrd,dtb=/f19-arm.dtb,kernel_args=\"console=ttyAMA0 rw root=/dev/vda3\",extra_args=foo --disk %(EXISTIMG1)s --nographics --os-variant fedora19", "arm-vexpress-f19", skip_check=support.SUPPORT_CONN_VIRTIO_MMIO)
 c.add_compare("--arch ppc64 --machine pseries --boot network --disk %(EXISTIMG1)s --os-variant fedora20", "ppc64-pseries-f20")
+c.add_compare("--nodisks --location /tmp/fake.iso", "location-iso")  # Using --location iso mounting
 c.add_valid("--cdrom %(EXISTIMG2)s --file %(EXISTIMG1)s --os-variant win2k3 --wait 0 --sound")  # HVM windows install with disk
 c.add_valid("--os-variant fedora20 --file %(EXISTIMG1)s --location %(TREEDIR)s --extra-args console=ttyS0 --sound")  # F14 Directory tree URL install with extra-args
 c.add_invalid("--nodisks --boot network --machine foobar")  # Unknown machine type
@@ -548,40 +553,44 @@ c.add_compare("""--hvm --pxe \
 --controller usb,model=ich9-uhci1,address=0:0:4.0,index=0,master=0 \
 --controller usb,model=ich9-uhci2,address=0:0:4.1,index=0,master=2 \
 --controller usb,model=ich9-uhci3,address=0:0:4.2,index=0,master=4 \
---disk %(MANAGEDEXISTUPPER)s,cache=writeback,io=threads,perms=sh,serial=WD-WMAP9A966149 \
+--disk %(EXISTUPPER)s,cache=writeback,io=threads,perms=sh,serial=WD-WMAP9A966149,boot_order=2 \
 --disk %(NEWIMG1)s,sparse=false,size=.001,perms=ro,error_policy=enospace \
 --disk device=cdrom,bus=sata,read_bytes_sec=1,read_iops_sec=2,total_bytes_sec=10,total_iops_sec=20,write_bytes_sec=5,write_iops_sec=6 \
+--disk size=1 \
 --serial tcp,host=:2222,mode=bind,protocol=telnet \
 --filesystem /source,/target,mode=squash \
 --network user,mac=12:34:56:78:11:22 \
 --network bridge=foobar,model=virtio,driver_name=qemu,driver_queues=3 \
---network type=direct,source=eth5,source_mode=vepa,target=mytap12,virtualport_type=802.1Qbg,virtualport_managerid=12,virtualport_typeid=1193046,virtualport_typeidversion=1,virtualport_instanceid=09b11c53-8b5c-4eeb-8f00-d84eaa0aaa3b \
+--network type=direct,source=eth5,source_mode=vepa,target=mytap12,virtualport_type=802.1Qbg,virtualport_managerid=12,virtualport_typeid=1193046,virtualport_typeidversion=1,virtualport_instanceid=09b11c53-8b5c-4eeb-8f00-d84eaa0aaa3b,boot_order=1 \
 --channel spicevmc \
+--redirdev spicevmc,boot_order=3
 --smartcard passthrough,type=spicevmc \
 --tpm /dev/tpm0 \
 --panic default \
 --security type=static,label='system_u:object_r:svirt_image_t:s0:c100,c200',relabel=yes \
 --numatune \\"1-3,5\\",mode=preferred \
+--blkiotune weight=200,device_path=/dev/sdc,device_weight=300 \
+--idmap uid_start=0,uid_target=1000,uid_count=10,gid_start=0,gid_target=1000,gid_count=10 \
 --boot loader=/foo/bar \
---host-device net_00_1c_25_10_b1_e4 \
+--host-device net_00_1c_25_10_b1_e4,boot_order=4,rom_bar=off \
 --features acpi=off,eoi=on,privnet=on,hyperv_spinlocks=on,hyperv_spinlocks_retries=1234 \
 --clock offset=localtime,hpet_present=no,rtc_tickpolicy=merge \
 --pm suspend_to_mem=yes,suspend_to_disk=no \
 """, "many-devices")  # Lots of devices
-c.add_valid("--hvm --disk path=virt-install,device=cdrom")  # Specifying cdrom media via --disk
-c.add_valid("--hvm --import --disk path=virt-install")  # FV Import install
-c.add_valid("--hvm --import --disk path=virt-install --prompt --force")  # Working scenario w/ prompt shouldn't ask anything
-c.add_valid("--paravirt --import --disk path=virt-install")  # PV Import install
-c.add_valid("--paravirt --import --disk path=virt-install --print-xml")  # PV Import install, print single XML
-c.add_valid("--hvm --import --disk path=virt-install,device=floppy")  # Import a floppy disk
+c.add_valid("--hvm --disk path=%(EXISTIMG1)s,device=cdrom")  # Specifying cdrom media via --disk
+c.add_valid("--hvm --import --disk path=%(EXISTIMG1)s")  # FV Import install
+c.add_valid("--hvm --import --disk path=%(EXISTIMG1)s --prompt --force")  # Working scenario w/ prompt shouldn't ask anything
+c.add_valid("--paravirt --import --disk path=%(EXISTIMG1)s")  # PV Import install
+c.add_valid("--paravirt --import --disk path=%(EXISTIMG1)s --print-xml")  # PV Import install, print single XML
+c.add_valid("--hvm --import --disk path=%(EXISTIMG1)s,device=floppy")  # Import a floppy disk
 c.add_valid("--hvm --nodisks --pxe --autostart")  # --autostart flag
 c.add_valid("--hvm --nodisks --pxe --description \"foobar & baz\"")  # --description
 c.add_valid("--hvm --cdrom %(EXISTIMG2)s --file %(EXISTIMG1)s --os-variant win2k3 --wait 0")  # HVM windows install with disk
 c.add_valid("--hvm --cdrom %(EXISTIMG2)s --file %(EXISTIMG1)s --os-variant win2k3 --wait 0 --print-step 3")  # HVM windows install, print 3rd stage XML
 c.add_valid("--hvm --nodisks --pxe --watchdog default")  # --watchdog dev default
 c.add_valid("--hvm --nodisks --pxe --watchdog ib700,action=pause")  # --watchdog opts
-c.add_valid("--hvm --nodisks --pxe --sound")  # --sound option
-c.add_valid("--hvm --nodisks --pxe --soundhw default --soundhw ac97")  # --soundhw option
+c.add_valid("--hvm --nodisks --pxe --sound")  # --sound with no option back compat
+c.add_valid("--hvm --nodisks --pxe --soundhw default --sound ac97")  # --soundhw option
 c.add_valid("--hvm --nodisks --pxe --security type=dynamic")  # --security dynamic
 c.add_valid("--hvm --nodisks --pxe --security label=foobar.label,relabel=yes")  # --security implicit static
 c.add_valid("--hvm --nodisks --pxe --security label=foobar.label,a1,z2,b3,type=static,relabel=no")  # --security static with commas 1
@@ -597,7 +606,7 @@ c.add_invalid("--nodisks --pxe --name test")  # Colliding name
 c.add_invalid("--hvm --nodisks --pxe --watchdog default,action=foobar")  # Busted --watchdog
 c.add_invalid("--hvm --nodisks --pxe --soundhw default --soundhw foobar")  # Busted --soundhw
 c.add_invalid("--hvm --nodisks --pxe --security type=foobar")  # Busted --security
-c.add_invalid("--paravirt --import --disk path=virt-install --print-step 2")  # PV Import install, no second XML step
+c.add_invalid("--paravirt --import --disk path=%(EXISTIMG1)s --print-step 2")  # PV Import install, no second XML step
 c.add_invalid("--hvm --nodisks --pxe --print-xml")  # 2 stage install with --print-xml
 c.add_invalid("--hvm --nodisks --pxe --memballoon foobar")  # Busted --memballoon
 
@@ -651,12 +660,14 @@ c.add_invalid("--graphics vnc --vnclisten 1.2.3.4")  # mixing old and new
 
 c = vinst.add_category("remote", "--connect %(REMOTEURI)s --nographics --noautoconsole")
 c.add_valid("--nodisks --pxe")  # Simple pxe nodisks
-c.add_valid("--nodisks --cdrom %(MANAGEDEXIST1)s")  # Managed CDROM install
-c.add_valid("--pxe --file %(MANAGEDEXIST1)s")  # Using existing managed storage
 c.add_valid("--pxe --disk vol=%(POOL)s/%(VOL)s")  # Using existing managed storage 2
 c.add_valid("--pxe --disk pool=%(POOL)s,size=.04")  # Creating storage on managed pool
+c.add_valid("--pxe --disk size=.04")  # Creating storage on implied pool=default
+c.add_valid("--pxe --disk /foo/bar/baz,size=.01")  # Creating any random path on the remote host
+c.add_valid("--pxe --disk /dev/zde")  # /dev file that we just pass through to the remote VM
+c.add_invalid("--pxe --disk /foo/bar/baz")  # File that doesn't exist after auto storage setup
 c.add_invalid("--nodisks --location /tmp")  # Use of --location
-c.add_invalid("--file %(EXISTIMG1)s --pxe")  # Trying to use unmanaged storage
+c.add_invalid("--file /foo/bar/baz --pxe")  # Trying to use unmanaged storage without size argument
 
 
 c = vinst.add_category("network", "--pxe --nographics --noautoconsole --nodisks")
@@ -688,8 +699,6 @@ c.add_valid(" --disk path=%(EXISTIMG1)s,bus=scsi --disk path=%(EXISTIMG1)s,bus=s
 c.add_valid("--disk path=%(NEWIMG1)s,format=raw,size=.0000001")  # Unmanaged file using format 'raw'
 c.add_valid("--disk path=%(MANAGEDNEW1)s,format=raw,size=.0000001")  # Managed file using format raw
 c.add_valid("--disk path=%(MANAGEDNEW1)s,format=qcow2,size=.0000001")  # Managed file using format qcow2
-c.add_valid("--disk path=%(ROIMG)s,perms=ro")  # Using ro path as a disk with readonly flag
-c.add_valid("--disk path=%(ROIMG)s,device=cdrom")  # Using RO path with cdrom dev
 c.add_valid("--disk %(EXISTIMG1)s")  # Not specifying path=
 c.add_valid("--disk %(NEWIMG1)s,format=raw,size=.0000001")  # Not specifying path= but creating storage
 c.add_valid("--disk %(COLLIDE)s --force")  # Colliding storage with --force
@@ -702,17 +711,17 @@ c.add_valid("--disk pool=default,size=.00001")  # Building 'default' pool
 c.add_valid("--disk path=%(EXISTIMG1)s,bus=usb")  # Existing USB disk
 c.add_valid("--disk path=%(EXISTIMG1)s,bus=usb,removable=on")  # Existing USB disk as removable
 c.add_valid("--disk path=%(EXISTIMG1)s,bus=usb,removable=off")  # Existing USB disk as non-removable
+c.add_valid("--disk %(AUTOMANAGEIMG)s,size=.1")  # autocreate the pool
 c.add_invalid("--disk %(NEWIMG1)s,sparse=true,size=100000000000 --force")  # Don't warn about fully allocated file exceeding disk space
 c.add_invalid("--file %(NEWIMG1)s --file-size 100000 --nonsparse")  # Nonexisting file, size too big
 c.add_invalid("--file %(NEWIMG1)s --file-size 100000")  # Huge file, sparse, but no prompting
 c.add_invalid("--file %(NEWIMG1)s")  # Nonexisting file, no size
 c.add_invalid("--file %(EXISTIMG1)s --file %(EXISTIMG1)s --file %(EXISTIMG1)s --file %(EXISTIMG1)s --file %(EXISTIMG1)s")  # Too many IDE
-c.add_invalid("--file-size .0001")  # Size, no file
 c.add_invalid("--disk pool=foopool,size=.0001")  # Specify a nonexistent pool
 c.add_invalid("--disk vol=%(POOL)s/foovol")  # Specify a nonexistent volume
 c.add_invalid("--disk pool=%(POOL)s")  # Specify a pool with no size
 c.add_invalid("--disk path=%(EXISTIMG1)s,perms=ro,size=.0001,cache=FOOBAR")  # Unknown cache type
-c.add_invalid("--disk path=%(NEWIMG1)s,format=qcow2,size=.0000001")  # Unmanaged file using non-raw format
+c.add_invalid("--disk path=/dev/foo/bar/baz,format=qcow2,size=.0000001")  # Unmanaged file using non-raw format
 c.add_invalid("--disk path=%(MANAGEDDISKNEW1)s,format=raw,size=.0000001")  # Managed disk using any format
 c.add_invalid("--disk %(NEWIMG1)s")  # Not specifying path= and non existent storage w/ no size
 c.add_invalid("--disk %(NEWIMG1)s,sparse=true,size=100000000000")  # Fail if fully allocated file would exceed disk space
@@ -742,7 +751,6 @@ c.add_invalid("--host-device 300:400")  # Parseable hostdev, but unknown digits
 
 c = vinst.add_category("install", "--nographics --noautoconsole --nodisks")
 c.add_valid("--hvm --cdrom %(EXISTIMG1)s")  # Simple cdrom install
-c.add_valid("--hvm --cdrom %(MANAGEDEXIST1)s")  # Cdrom install with managed storage
 c.add_valid("--hvm --wait 0 --os-variant winxp --cdrom %(EXISTIMG1)s")  # Windows (2 stage) install
 c.add_valid("--hvm --pxe --virt-type test")  # Explicit virt-type
 c.add_valid("--arch i686 --pxe")  # Explicity fullvirt + arch
@@ -752,7 +760,6 @@ c.add_valid("--hvm --location %(TREEDIR)s --initrd-inject virt-install --extra-a
 c.add_valid("--hvm --location %(TREEDIR)s --extra-args console=ttyS0")  # Directory tree URL install with extra-args
 c.add_valid("--hvm --cdrom %(TREEDIR)s")  # Directory tree CDROM install
 c.add_valid("--paravirt --location %(TREEDIR)s")  # Paravirt location
-c.add_valid("--hvm --cdrom %(ROIMG)s")  # Using ro path as a cd media
 c.add_valid("--paravirt --location %(TREEDIR)s --os-variant none")  # Paravirt location with --os-variant none
 c.add_valid("--hvm --location %(TREEDIR)s --os-variant fedora12")  # URL install with manual os-variant
 c.add_valid("--hvm --pxe --boot menu=on")  # Boot menu
@@ -775,7 +782,7 @@ c.add_invalid("--hvm --boot kernel=%(TREEDIR)s/pxeboot/vmlinuz,initrd=%(TREEDIR)
 vixml = App("virt-xml")
 c = vixml.add_category("misc", "")
 c.add_valid("--help")  # basic --help test
-c.add_valid("--soundhw=? --tpm=?")  # basic introspection test
+c.add_valid("--sound=? --tpm=?")  # basic introspection test
 c.add_invalid("test --edit --hostdev driver_name=vfio")  # Guest has no hostdev to edit
 c.add_invalid("test --edit --cpu host-passthrough --boot hd,network")  # Specified more than 1 option
 c.add_invalid("test --edit")  # specified no edit option
@@ -785,74 +792,78 @@ c.add_invalid("test-many-devices --add-device --host-device 0x0781:0x5151 --upda
 c.add_invalid("test-many-devices --remove-device --host-device 1 --update")  # test driver doesn't support detachdevice...
 c.add_invalid("test-many-devices --edit --graphics password=foo --update")  # test driver doesn't support updatdevice...
 c.add_invalid("--build-xml --memory 10,maxmemory=20")  # building XML for option that doesn't support it
-c.add_compare("test --print-xml --edit --vcpus 7", "virtxml-print-xml")  # test --print-xml
-c.add_compare("test --print-xml --edit --vcpus 7", "virtxml-print-xml")  # test --print-xml
-c.add_compare("--edit --cpu host-passthrough", "virtxml-stdin-edit", input_file=(xmldir + "/virtxml-stdin-edit.xml"))  # stdin test
-c.add_compare("--build-xml --cpu pentium3,+x2apic", "virtxml-build-cpu")
-c.add_compare("--build-xml --tpm /dev/tpm", "virtxml-build-tpm")
+c.add_compare("test --print-xml --edit --vcpus 7", "print-xml")  # test --print-xml
+c.add_compare("--edit --cpu host-passthrough", "stdin-edit", input_file=(xmldir + "/virtxml-stdin-edit.xml"))  # stdin test
+c.add_compare("--build-xml --cpu pentium3,+x2apic", "build-cpu")
+c.add_compare("--build-xml --tpm /dev/tpm", "build-tpm")
+c.add_compare("--build-xml --blkiotune weight=100,device_path=/dev/sdf,device_weight=200", "build-blkiotune")
+c.add_compare("--build-xml --idmap uid_start=0,uid_target=1000,uid_count=10,gid_start=0,gid_target=1000,gid_count=10", "build-idmap")
+c.add_compare("test --edit --boot network,cdrom", "edit-bootorder")
 
 
-c = vixml.add_category("simple edit diff", "test-many-devices --edit --print-diff --define", compare_check=support.SUPPORT_CONN_PANIC_DEVICE)
+c = vixml.add_category("simple edit diff", "test-many-devices --edit --print-diff --define", compare_check=support.SUPPORT_CONN_INPUT_KEYBOARD)
 c.add_compare("""--metadata name=foo-my-new-name,uuid=12345678-12F4-1234-1234-123456789AFA,description="hey this is my
 new
-very,very=new desc\\\'",title="This is my,funky=new title" """, "virtxml-edit-simple-metadata")
-c.add_compare("--memory 500,maxmemory=1000,hugepages=off", "virtxml-edit-simple-memory")
-c.add_compare("--vcpus 10,maxvcpus=20,cores=5,sockets=4,threads=1", "virtxml-edit-simple-vcpus")
-c.add_compare("--cpu model=pentium2,+x2apic,forbid=pbe", "virtxml-edit-simple-cpu")
-c.add_compare("--numatune 1-5,7,mode=strict", "virtxml-edit-simple-numatune")
-c.add_compare("--boot loader=foo.bar,network,useserial=on,init=/bin/bash", "virtxml-edit-simple-boot")
-c.add_compare("--security label=foo,bar,baz,UNKNOWN=val,relabel=on", "virtxml-edit-simple-security")
-c.add_compare("--features eoi=on,hyperv_relaxed=off,acpi=", "virtxml-edit-simple-features")
-c.add_compare("--clock offset=localtime,hpet_present=yes,kvmclock_present=no,rtc_tickpolicy=merge", "virtxml-edit-simple-clock")
-c.add_compare("--pm suspend_to_mem=yes,suspend_to_disk=no", "virtxml-edit-simple-pm")
-c.add_compare("--disk /dev/zero,perms=ro,startup_policy=optional", "virtxml-edit-simple-disk")
-c.add_compare("--disk path=", "virtxml-edit-simple-disk-remove-path")
-c.add_compare("--network source=br0,type=bridge,model=virtio,mac=", "virtxml-edit-simple-network")
-c.add_compare("--graphics tlsport=5902,keymap=ja", "virtxml-edit-simple-graphics")
-c.add_compare("--controller index=2,model=lsilogic", "virtxml-edit-simple-controller")
-c.add_compare("--smartcard type=spicevmc", "virtxml-edit-simple-smartcard")
-c.add_compare("--redirdev type=spicevmc,server=example.com:12345", "virtxml-edit-simple-redirdev")
-c.add_compare("--tpm path=/dev/tpm", "virtxml-edit-simple-tpm")
-c.add_compare("--rng rate_bytes=3333,rate_period=4444", "virtxml-edit-simple-rng")
-c.add_compare("--watchdog action=reset", "virtxml-edit-simple-watchdog")
-c.add_compare("--memballoon model=none", "virtxml-edit-simple-memballoon")
-c.add_compare("--serial pty", "virtxml-edit-simple-serial")
-c.add_compare("--parallel unix,path=/some/other/log", "virtxml-edit-simple-parallel")
-c.add_compare("--channel null", "virtxml-edit-simple-channel")
-c.add_compare("--console target_type=serial", "virtxml-edit-simple-console")
-c.add_compare("--filesystem /1/2/3,/4/5/6,mode=mapped", "virtxml-edit-simple-filesystem")
-c.add_compare("--video cirrus", "virtxml-edit-simple-video")
-c.add_compare("--soundhw pcspk", "virtxml-edit-simple-soundhw")
-c.add_compare("--host-device 0x0781:0x5151,driver_name=vfio", "virtxml-edit-simple-host-device")
+very,very=new desc\\\'",title="This is my,funky=new title" """, "edit-simple-metadata")
+c.add_compare("--memory 500,maxmemory=1000,hugepages=off", "edit-simple-memory")
+c.add_compare("--vcpus 10,maxvcpus=20,cores=5,sockets=4,threads=1", "edit-simple-vcpus")
+c.add_compare("--cpu model=pentium2,+x2apic,forbid=pbe", "edit-simple-cpu")
+c.add_compare("--numatune 1-5,7,mode=strict", "edit-simple-numatune")
+c.add_compare("--blkiotune weight=500,device_path=/dev/sdf,device_weight=600", "edit-simple-blkiotune")
+c.add_compare("--idmap uid_start=0,uid_target=2000,uid_count=30,gid_start=0,gid_target=3000,gid_count=40", "edit-simple-idmap")
+c.add_compare("--boot loader=foo.bar,useserial=on,init=/bin/bash", "edit-simple-boot")
+c.add_compare("--security label=foo,bar,baz,UNKNOWN=val,relabel=on", "edit-simple-security")
+c.add_compare("--features eoi=on,hyperv_relaxed=off,acpi=", "edit-simple-features")
+c.add_compare("--clock offset=localtime,hpet_present=yes,kvmclock_present=no,rtc_tickpolicy=merge", "edit-simple-clock")
+c.add_compare("--pm suspend_to_mem=yes,suspend_to_disk=no", "edit-simple-pm")
+c.add_compare("--disk /dev/zero,perms=ro,startup_policy=optional", "edit-simple-disk")
+c.add_compare("--disk path=", "edit-simple-disk-remove-path")
+c.add_compare("--network source=br0,type=bridge,model=virtio,mac=", "edit-simple-network")
+c.add_compare("--graphics tlsport=5902,keymap=ja", "edit-simple-graphics")
+c.add_compare("--controller index=2,model=lsilogic", "edit-simple-controller")
+c.add_compare("--smartcard type=spicevmc", "edit-simple-smartcard")
+c.add_compare("--redirdev type=spicevmc,server=example.com:12345", "edit-simple-redirdev")
+c.add_compare("--tpm path=/dev/tpm", "edit-simple-tpm")
+c.add_compare("--rng rate_bytes=3333,rate_period=4444", "edit-simple-rng")
+c.add_compare("--watchdog action=reset", "edit-simple-watchdog")
+c.add_compare("--memballoon model=none", "edit-simple-memballoon")
+c.add_compare("--serial pty", "edit-simple-serial")
+c.add_compare("--parallel unix,path=/some/other/log", "edit-simple-parallel")
+c.add_compare("--channel null", "edit-simple-channel")
+c.add_compare("--console target_type=serial", "edit-simple-console")
+c.add_compare("--filesystem /1/2/3,/4/5/6,mode=mapped", "edit-simple-filesystem")
+c.add_compare("--video cirrus", "edit-simple-video")
+c.add_compare("--sound pcspk", "edit-simple-soundhw")
+c.add_compare("--host-device 0x0781:0x5151,driver_name=vfio", "edit-simple-host-device")
 
-c = vixml.add_category("edit selection", "test-many-devices --print-diff --define", compare_check=support.SUPPORT_CONN_PANIC_DEVICE)
+c = vixml.add_category("edit selection", "test-many-devices --print-diff --define", compare_check=support.SUPPORT_CONN_INPUT_KEYBOARD)
 c.add_invalid("--edit target=vvv --disk /dev/null")  # no match found
-c.add_compare("--edit 3 --soundhw pcspk", "virtxml-edit-pos-num")
-c.add_compare("--edit -1 --video qxl", "virtxml-edit-neg-num")
-c.add_compare("--edit all --host-device driver_name=vfio", "virtxml-edit-all")
-c.add_compare("--edit ich6 --soundhw pcspk", "virtxml-edit-select-sound-model")
-c.add_compare("--edit target=hda --disk /dev/null", "virtxml-edit-select-disk-target")
-c.add_compare("--edit /tmp/foobar2 --disk shareable=off,readonly=on", "virtxml-edit-select-disk-path")
-c.add_compare("--edit mac=00:11:7f:33:44:55 --network target=nic55", "virtxml-edit-select-network-mac")
+c.add_compare("--edit 3 --sound pcspk", "edit-pos-num")
+c.add_compare("--edit -1 --video qxl", "edit-neg-num")
+c.add_compare("--edit all --host-device driver_name=vfio", "edit-all")
+c.add_compare("--edit ich6 --sound pcspk", "edit-select-sound-model")
+c.add_compare("--edit target=hda --disk /dev/null", "edit-select-disk-target")
+c.add_compare("--edit /tmp/foobar2 --disk shareable=off,readonly=on", "edit-select-disk-path")
+c.add_compare("--edit mac=00:11:7f:33:44:55 --network target=nic55", "edit-select-network-mac")
 
-c = vixml.add_category("edit clear", "test-many-devices --print-diff --define", compare_check=support.SUPPORT_CONN_PANIC_DEVICE)
+c = vixml.add_category("edit clear", "test-many-devices --print-diff --define", compare_check=support.SUPPORT_CONN_INPUT_KEYBOARD)
 c.add_invalid("--edit --memory 200,clearxml=yes")  # clear isn't wired up for memory
-c.add_compare("--edit --cpu host-passthrough,clearxml=yes", "virtxml-edit-clear-cpu")
-c.add_compare("--edit --clock offset=utc,clearxml=yes", "virtxml-edit-clear-clock")
-c.add_compare("--edit --disk /foo/bar,target=fda,bus=fdc,device=floppy,clearxml=yes", "virtxml-edit-clear-disk")
+c.add_compare("--edit --cpu host-passthrough,clearxml=yes", "edit-clear-cpu")
+c.add_compare("--edit --clock offset=utc,clearxml=yes", "edit-clear-clock")
+c.add_compare("--edit --disk /foo/bar,target=fda,bus=fdc,device=floppy,clearxml=yes", "edit-clear-disk")
 
-c = vixml.add_category("add/rm devices", "test-many-devices --print-diff --define", compare_check=support.SUPPORT_CONN_PANIC_DEVICE)
+c = vixml.add_category("add/rm devices", "test-many-devices --print-diff --define", compare_check=support.SUPPORT_CONN_INPUT_KEYBOARD)
 c.add_invalid("--add-device --security foo")  # --add-device without a device
 c.add_invalid("--remove-device --clock utc")  # --remove-device without a dev
-c.add_compare("--add-device --host-device net_00_1c_25_10_b1_e4", "virtxml-add-host-device")
-c.add_compare("--add-device --soundhw pcspk", "virtxml-add-sound")
-c.add_compare("--add-device --disk %(EXISTIMG1)s,bus=virtio,target=vdf", "virtxml-add-disk-basic")
-c.add_compare("--add-device --disk %(EXISTIMG1)s", "virtxml-add-disk-notarget")  # filling in acceptable target
-c.add_compare("--add-device --disk %(NEWIMG1)s,size=.01", "virtxml-add-disk-create-storage")
-c.add_compare("--remove-device --soundhw ich6", "virtxml-remove-sound-model")
-c.add_compare("--remove-device --disk 6", "virtxml-remove-disk-index")
-c.add_compare("--remove-device --disk /dev/null", "virtxml-remove-disk-path")
-c.add_compare("--remove-device --video all", "virtxml-remove-video-all")
+c.add_compare("--add-device --host-device net_00_1c_25_10_b1_e4", "add-host-device")
+c.add_compare("--add-device --sound pcspk", "add-sound")
+c.add_compare("--add-device --disk %(EXISTIMG1)s,bus=virtio,target=vdf", "add-disk-basic")
+c.add_compare("--add-device --disk %(EXISTIMG1)s", "add-disk-notarget")  # filling in acceptable target
+c.add_compare("--add-device --disk %(NEWIMG1)s,size=.01", "add-disk-create-storage")
+c.add_compare("--remove-device --sound ich6", "remove-sound-model")
+c.add_compare("--remove-device --disk 6", "remove-disk-index")
+c.add_compare("--remove-device --disk /dev/null", "remove-disk-path")
+c.add_compare("--remove-device --video all", "remove-video-all")
 
 
 vimag = App("virt-image")
@@ -894,18 +905,12 @@ c.add_invalid("--boot 10")  # Out of bounds index
 
 
 vconv = App("virt-convert")
-c = vconv.add_category("misc", "")
-c.add_compare("%(VC_IMG1)s %(VIRTCONV_OUT)s", "convert-default")  # virt-image to default (virt-image) w/ no convert
-c.add_valid("%(VC_IMG1)s -D none %(VIRTCONV_OUT)s")  # virt-image to default (virt-image) w/ no convert
-c.add_valid("%(VC_IMG1)s -o virt-image -D none %(VIRTCONV_OUT)s")  # virt-image to virt-image w/ no convert
-c.add_valid("%(VC_IMG1)s -o vmx -D none %(VIRTCONV_OUT)s")  # virt-image to vmx w/ no convert
-c.add_valid("%(VC_IMG1)s -o vmx -D raw %(VIRTCONV_OUT)s")  # virt-image to vmx w/ raw
-c.add_valid("%(VC_IMG1)s -o vmx -D vmdk %(VIRTCONV_OUT)s")  # virt-image to vmx w/ vmdk
-c.add_valid("%(VC_IMG1)s -o vmx -D qcow2 %(VIRTCONV_OUT)s")  # virt-image to vmx w/ qcow2
-c.add_valid("%(VMX_IMG1)s -o vmx -D none %(VIRTCONV_OUT)s")  # vmx to vmx no convert
-c.add_valid("%(VC_IMG2)s -o vmx -D vmdk %(VIRTCONV_OUT)s")  # virt-image with exotic formats specified
-c.add_invalid("%(VC_IMG1)s -o virt-image -D foobarfmt %(VIRTCONV_OUT)s")  # virt-image to virt-image with invalid format
-c.add_invalid("%(VC_IMG1)s -o ovf %(VIRTCONV_OUT)s")  # virt-image to ovf (has no output formatter)
+c = vconv.add_category("misc", "--connect %(KVMURI)s --dry")
+c.add_invalid("%(VMX_IMG1)s --input-format foo")  # invalid input format
+c.add_invalid("%(EXISTIMG1)s")  # invalid input file
+
+c.add_compare("%(VMX_IMG1)s --disk-format qcow2 --print-xml", "vmx-compare")
+c.add_compare("%(OVF_IMG1)s --disk-format none --destination /tmp --print-xml", "ovf-compare")
 
 
 
@@ -931,12 +936,12 @@ c.add_invalid("-o test-for-clone --auto-clone")
 
 c = vclon.add_category("general", "-n clonetest")
 c.add_valid("-o test")  # Nodisk guest
-c.add_valid("-o test --file %(NEWIMG1)s --file %(NEWIMG2)s")  # Nodisk, but with spurious files passed
-c.add_valid("-o test --file %(NEWIMG1)s --file %(NEWIMG2)s --prompt")  # Working scenario w/ prompt shouldn't ask anything
-c.add_valid("--original-xml %(CLONE_DISK_XML)s --file %(NEWIMG1)s --file %(NEWIMG2)s")  # XML File with 2 disks
+c.add_valid("-o test --file %(NEWCLONEIMG1)s --file %(NEWCLONEIMG2)s")  # Nodisk, but with spurious files passed
+c.add_valid("-o test --file %(NEWCLONEIMG1)s --file %(NEWCLONEIMG2)s --prompt")  # Working scenario w/ prompt shouldn't ask anything
+c.add_valid("--original-xml %(CLONE_DISK_XML)s --file %(NEWCLONEIMG1)s --file %(NEWCLONEIMG2)s")  # XML File with 2 disks
 c.add_valid("--original-xml %(CLONE_DISK_XML)s --file virt-install --file %(EXISTIMG1)s --preserve")  # XML w/ disks, overwriting existing files with --preserve
-c.add_valid("--original-xml %(CLONE_DISK_XML)s --file %(NEWIMG1)s --file %(NEWIMG2)s --file %(NEWIMG3)s --force-copy=hdc")  # XML w/ disks, force copy a readonly target
-c.add_valid("--original-xml %(CLONE_DISK_XML)s --file %(NEWIMG1)s --file %(NEWIMG2)s --force-copy=fda")  # XML w/ disks, force copy a target with no media
+c.add_valid("--original-xml %(CLONE_DISK_XML)s --file %(NEWCLONEIMG1)s --file %(NEWCLONEIMG2)s --file %(NEWCLONEIMG3)s --force-copy=hdc")  # XML w/ disks, force copy a readonly target
+c.add_valid("--original-xml %(CLONE_DISK_XML)s --file %(NEWCLONEIMG1)s --file %(NEWCLONEIMG2)s --force-copy=fda")  # XML w/ disks, force copy a target with no media
 c.add_valid("--original-xml %(CLONE_STORAGE_XML)s --file %(MANAGEDNEW1)s")  # XML w/ managed storage, specify managed path
 c.add_valid("--original-xml %(CLONE_NOEXIST_XML)s --file %(EXISTIMG1)s --preserve")  # XML w/ managed storage, specify managed path across pools# Libvirt test driver doesn't support cloning across pools# XML w/ non-existent storage, with --preserve
 c.add_valid("-o test -n test-many-devices --replace")  # Overwriting existing VM
@@ -946,7 +951,7 @@ c.add_invalid("-o idontexist --auto-clone")  # Non-existent vm name with auto fl
 c.add_invalid("-o test -n test")  # Colliding new name
 c.add_invalid("--original-xml %(CLONE_DISK_XML)s")  # XML file with several disks, but non specified
 c.add_invalid("--original-xml %(CLONE_DISK_XML)s --file virt-install --file %(EXISTIMG1)s")  # XML w/ disks, overwriting existing files with no --preserve
-c.add_invalid("--original-xml %(CLONE_DISK_XML)s --file %(NEWIMG1)s --file %(NEWIMG2)s --force-copy=hdc")  # XML w/ disks, force copy but not enough disks passed
+c.add_invalid("--original-xml %(CLONE_DISK_XML)s --file %(NEWCLONEIMG1)s --file %(NEWCLONEIMG2)s --force-copy=hdc")  # XML w/ disks, force copy but not enough disks passed
 c.add_invalid("--original-xml %(CLONE_STORAGE_XML)s --file /tmp/clonevol")  # XML w/ managed storage, specify unmanaged path (should fail)
 c.add_invalid("--original-xml %(CLONE_NOEXIST_XML)s --file %(EXISTIMG1)s")  # XML w/ non-existent storage, WITHOUT --preserve
 c.add_invalid("--original-xml %(CLONE_DISK_XML)s --file %(ROIMG)s --file %(ROIMG)s --force")  # XML w/ managed storage, specify RO image without preserve

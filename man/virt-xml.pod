@@ -37,7 +37,7 @@ Show the help message and exit
 
 Show program's version number and exit
 
-=item  --connect=URI
+=item  -c URI, --connect=URI
 
 Connect to a non-default hypervisor. See L<virt-install(1)> for details
 
@@ -110,7 +110,7 @@ Remove the second disk device
 
 Remove all network devices
 
-=item --remove-device --soundhw pcspk
+=item --remove-device --sound pcspk
 
 Remove all sound devices with model='pcspk'
 
@@ -206,7 +206,7 @@ Before defining or updating the domain, show the generated XML diff and interact
 
 =item --host-device
 
-=item --soundhw
+=item --sound
 
 =item --watchdog
 
@@ -228,7 +228,7 @@ These options alter the XML for a single class of XML elements. More complete do
 
 Generally these options map pretty straightforwardly to the libvirt XML, documented at L<http://libvirt.org/formatdomain.html>
 
-Option strings are in the format of: --option opt=val,opt2=val2,...  example: --disk path=/tmp/foo,shareable=on. Propertys can be unsed with '--option opt=,', so to clear a disks cache setting you could use '--disk cache=,'
+Option strings are in the format of: --option opt=val,opt2=val2,...  example: --disk path=/tmp/foo,shareable=on. Properties can be used with '--option opt=,', so to clear a disks cache setting you could use '--disk cache=,'
 
 Every XML option has a special value 'clearxml=yes'. When combined with --edit, it will completely blank out the XML block being edited before applying the requested changes. This allows completely rebuilding an XML block. See EXAMPLES for some usage.
 
@@ -278,7 +278,7 @@ Clear the previous <cpu> definition of domain 'winxp', change it to 'host-model'
 
 Change the second sound card to model=ich6 on 'fedora19', but only output the diff:
 
-  # virt-xml fedora19 --edit 2 --soundhw model=ich6 --print-diff
+  # virt-xml fedora19 --edit 2 --sound model=ich6 --print-diff
 
 Update the every graphics device password to 'foo' of the running VM 'rhel6':
 

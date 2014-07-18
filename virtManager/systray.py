@@ -35,18 +35,6 @@ except:
     AppIndicator3 = None
 
 
-def build_image_menu_item(label):
-    hasfunc = hasattr(Gtk.ImageMenuItem, "set_use_underline")
-    if hasfunc:
-        label.replace("_", "__")
-
-    menu_item = Gtk.ImageMenuItem(label)
-    if hasfunc:
-        menu_item.set_use_underline(False)
-
-    return menu_item
-
-
 class vmmSystray(vmmGObject):
     __gsignals__ = {
         "action-toggle-manager": (GObject.SignalFlags.RUN_FIRST, None, []),
@@ -144,6 +132,7 @@ class vmmSystray(vmmGObject):
             return
 
         if self.systray_indicator:
+            # pylint: disable=maybe-no-member
             self.systray_icon = AppIndicator3.Indicator.new("virt-manager",
                                 "virt-manager-icon",
                                 AppIndicator3.IndicatorCategory.OTHER)
@@ -167,12 +156,11 @@ class vmmSystray(vmmGObject):
                 self.init_systray()
         else:
             if self.systray_indicator:
+                # pylint: disable=maybe-no-member
+                status = AppIndicator3.IndicatorStatus.PASSIVE
                 if do_show:
-                    self.systray_icon.set_status(
-                            AppIndicator3.IndicatorStatus.ACTIVE)
-                else:
-                    self.systray_icon.set_status(
-                            AppIndicator3.IndicatorStatus.PASSIVE)
+                    status = AppIndicator3.IndicatorStatus.ACTIVE
+                self.systray_icon.set_status(status)
             else:
                 self.systray_icon.set_visible(do_show)
 
@@ -277,7 +265,7 @@ class vmmSystray(vmmGObject):
         vm_names.sort()
 
         if len(vm_names) == 0:
-            menu_item = Gtk.MenuItem(_("No virtual machines"))
+            menu_item = Gtk.MenuItem.new_with_label(_("No virtual machines"))
             menu_item.set_sensitive(False)
             vm_submenu.insert(menu_item, 0)
             return
@@ -301,7 +289,9 @@ class vmmSystray(vmmGObject):
             return
 
         # Build VM list entry
-        menu_item = build_image_menu_item(vm.get_name())
+        menu_item = Gtk.ImageMenuItem.new_with_label(vm.get_name())
+        menu_item.set_use_underline(False)
+
         vm_mappings[uuid] = menu_item
         vm_action_menu = vmmenu.VMActionMenu(self, lambda: vm)
         menu_item.set_submenu(vm_action_menu)
@@ -329,7 +319,8 @@ class vmmSystray(vmmGObject):
             del(vm_mappings[uuid])
 
             if len(vm_menu.get_children()) == 0:
-                placeholder = Gtk.MenuItem(_("No virtual machines"))
+                placeholder = Gtk.MenuItem.new_with_label(
+                    _("No virtual machines"))
                 placeholder.show()
                 placeholder.set_sensitive(False)
                 vm_menu.add(placeholder)

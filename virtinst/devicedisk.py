@@ -1,7 +1,7 @@
 #
 # Classes for building disk device xml
 #
-# Copyright 2006-2008, 2012-2013 Red Hat, Inc.
+# Copyright 2006-2008, 2012-2014 Red Hat, Inc.
 # Jeremy Katz <katzj@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -114,8 +114,8 @@ def _distill_storage(conn, do_create, nomanaged,
         pass
     elif path and not nomanaged:
         path = os.path.abspath(path)
-        vol_object, pool, path_is_pool = diskbackend.check_if_path_managed(
-                                                            conn, path)
+        (vol_object, pool, path_is_pool) = diskbackend.manage_path(conn, path)
+
 
     creator = None
     backend = diskbackend.StorageBackend(conn, path, vol_object,
@@ -123,12 +123,14 @@ def _distill_storage(conn, do_create, nomanaged,
     if not do_create:
         return backend, None
 
-    if backend.exists() and path is not None:
-        if vol_install:
-            raise ValueError("vol_install specified but %s exists." %
-                             backend.path)
-        elif not clone_path:
+    if backend.exists(auto_check=False) and path is not None:
+        if not clone_path:
             return backend, None
+
+    if path and not (vol_install or pool or clone_path):
+        raise RuntimeError(_("Don't know how to create storage for "
+            "path '%s'. Use libvirt APIs to manage the parent directory "
+            "as a pool first.") % path)
 
     if path or vol_install or pool or clone_path:
         creator = diskbackend.StorageCreator(conn, path, pool,
@@ -219,13 +221,9 @@ class VirtualDisk(VirtualDevice):
             return False
 
         try:
-            vol = None
-            path_is_pool = False
-            try:
-                vol, ignore, path_is_pool = diskbackend.check_if_path_managed(
-                                                            conn, path)
-            except:
-                pass
+            (vol, pool, path_is_pool) = diskbackend.check_if_path_managed(
+                conn, path)
+            ignore = pool
 
             if vol or path_is_pool:
                 return True
@@ -274,6 +272,34 @@ class VirtualDisk(VirtualDevice):
             dirname, base = os.path.split(dirname)
 
         return fixlist
+
+    @staticmethod
+    def check_path_search(conn, path):
+        # Only works for qemu and DAC
+        if conn.is_remote() or not conn.is_qemu_system():
+            return None, []
+
+        from virtcli import cliconfig
+        user = cliconfig.default_qemu_user
+        try:
+            for i in conn.caps.host.secmodels:
+                if i.model != "dac":
+                    continue
+
+                label = (i.baselabels.get("kvm") or
+                         i.baselabels.get("qemu"))
+                if not label:
+                    continue
+
+                pwuid = pwd.getpwuid(
+                    int(label.split(":")[0].replace("+", "")))
+                if pwuid:
+                    user = pwuid[0]
+        except:
+            logging.debug("Exception grabbing qemu DAC user", exc_info=True)
+            return None, []
+
+        return user, VirtualDisk.check_path_search_for_user(conn, path, user)
 
     @staticmethod
     def fix_path_search_for_user(conn, path, username):
@@ -446,6 +472,23 @@ class VirtualDisk(VirtualDevice):
             gen_t += "%c" % (ord('a') + digit - 1)
 
         return gen_t
+
+
+    @staticmethod
+    def target_to_num(tgt):
+        """
+        Convert disk /dev number (like hda, hdb, hdaa, etc.) to an index
+        """
+        num = 0
+        k = 0
+        if tgt[0] == 'x':
+            # This case is here for 'xvda'
+            tgt = tgt[1:]
+        for i, c in enumerate(reversed(tgt[2:])):
+            if i != 0:
+                k = 1
+            num += (ord(c) - ord('a') + k) * (26 ** i)
+        return num
 
 
     _XML_PROP_ORDER = [
@@ -629,8 +672,9 @@ class VirtualDisk(VirtualDevice):
         if backing_store is not None:
             backing_store = os.path.abspath(backing_store)
 
-        _validate_path(clone_path)
-        _validate_path(backing_store)
+        if not fake:
+            _validate_path(clone_path)
+            _validate_path(backing_store)
 
         if fake and size is None:
             size = .000001
@@ -692,7 +736,6 @@ class VirtualDisk(VirtualDevice):
         """
         return bool(self._storage_creator)
 
-
     def validate(self):
         """
         function to validate all the complex interaction between the various
@@ -713,9 +756,6 @@ class VirtualDisk(VirtualDevice):
             if not storage_capable:
                 raise ValueError(_("Connection doesn't support remote "
                                    "storage."))
-            if not self.__managed_storage():
-                raise ValueError(_("Must specify libvirt managed storage "
-                                   "if on a remote connection"))
 
         # The main distinctions from this point forward:
         # - Are we doing storage API operations or local media checks?
@@ -865,14 +905,18 @@ class VirtualDisk(VirtualDevice):
                     return _return(pref)
         return _return("sd")
 
-    def generate_target(self, skip_targets):
+    def generate_target(self, skip_targets, pref_ctrl=None):
         """
         Generate target device ('hda', 'sdb', etc..) for disk, excluding
-        any targets in 'skip_targets'. Sets self.target, and returns the
-        generated value
+        any targets in 'skip_targets'.  If given the 'pref_ctrl'
+        parameter, it tries to select the target so that the disk is
+        mapped onto that controller.
+        Sets self.target, and returns the generated value.
 
         @param skip_targets: list of targets to exclude
         @type skip_targets: C{list}
+        @param pref_ctrl: preferred controller to connect the disk to
+        @type pref_ctrl: C{int}
         @raise ValueError: can't determine target type, no targets available
         @returns generated target
         @rtype C{str}
@@ -884,8 +928,14 @@ class VirtualDisk(VirtualDevice):
         def get_target():
             first_found = None
 
-            for i in range(1, maxnode + 1):
-                gen_t = prefix + self.num_to_target(i)
+            ran = range(maxnode)
+            if pref_ctrl is not None:
+                # We assume narrow SCSI bus and libvirt assigning 7
+                # (1-7, 8-14, etc.) devices per controller
+                ran = range(pref_ctrl * 7, (pref_ctrl + 1) * 7)
+
+            for i in ran:
+                gen_t = prefix + self.num_to_target(i + 1)
                 if gen_t in skip_targets:
                     skip_targets.remove(gen_t)
                     continue
@@ -900,7 +950,14 @@ class VirtualDisk(VirtualDevice):
         if ret:
             self.target = ret
             return ret
-        raise ValueError(_("Only %s disks of type '%s' are supported"
-            % (maxnode, prefix)))
+
+        if pref_ctrl is not None:
+            # This basically means that we either chose full
+            # controller or didn't add any
+            raise ValueError(_("Controller number %d for disk of type %s has "
+                               "no empty slot to use" % (pref_ctrl, prefix)))
+        else:
+            raise ValueError(_("Only %s disks of type '%s' are supported"
+                               % (maxnode, prefix)))
 
 VirtualDisk.register_type()

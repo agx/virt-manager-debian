@@ -17,7 +17,6 @@
 # MA 02110-1301 USA.
 
 import logging
-import os
 import re
 import weakref
 
@@ -33,13 +32,6 @@ from virtinst import util
 from virtinst.cli import VirtOptionString
 
 _virtinst_uri_magic = "__virtinst_test__"
-
-
-def _fakemkstemp(prefix, *args, **kwargs):
-    ignore = args
-    ignore = kwargs
-    filename = os.path.join(".", prefix)
-    return os.open(filename, os.O_RDWR | os.O_CREAT), filename
 
 
 def _sanitize_xml(xml):
@@ -66,7 +58,7 @@ class VirtualConnection(object):
     - simplified API wrappers that handle new and old ways of doing things
     """
     def __init__(self, uri):
-        _initial_uri = uri or ""
+        self._initial_uri = uri or ""
 
         self._fake_pretty_name = None
         self._fake_libvirt_version = None
@@ -74,9 +66,9 @@ class VirtualConnection(object):
         self._daemon_version = None
         self._conn_version = None
 
-        if _initial_uri.startswith(_virtinst_uri_magic):
+        if self._initial_uri.startswith(_virtinst_uri_magic):
             # virtinst unit test URI handling
-            uri = _initial_uri.replace(_virtinst_uri_magic, "")
+            uri = self._initial_uri.replace(_virtinst_uri_magic, "")
             ret = uri.split(",", 1)
             self._open_uri = ret[0]
             self._test_opts = VirtOptionString(
@@ -84,8 +76,8 @@ class VirtualConnection(object):
             self._early_virtinst_test_uri()
             self._uri = self._virtinst_uri_make_fake()
         else:
-            self._open_uri = _initial_uri
-            self._uri = _initial_uri
+            self._open_uri = self._initial_uri
+            self._uri = self._initial_uri
             self._test_opts = {}
 
         self._libvirtconn = None
@@ -112,10 +104,11 @@ class VirtualConnection(object):
     # Properties #
     ##############
 
-    # Proxy virConnect API calls
     def __getattr__(self, attr):
         if attr in self.__dict__:
             return self.__dict__[attr]
+
+        # Proxy virConnect API calls
         libvirtconn = self.__dict__.get("_libvirtconn")
         return getattr(libvirtconn, attr)
 
@@ -123,19 +116,23 @@ class VirtualConnection(object):
         return self._uri or self._open_uri
     uri = property(_get_uri)
 
-    libvirtconn = property(lambda self: getattr(self, "_libvirtconn"))
-
     def _get_caps(self):
         if not self._caps:
             self._caps = CapabilitiesParser.Capabilities(
-                                        self.libvirtconn.getCapabilities())
+                                        self._libvirtconn.getCapabilities())
         return self._caps
     caps = property(_get_caps)
+
+    def get_conn_for_api_arg(self):
+        return self._libvirtconn
 
 
     ##############
     # Public API #
     ##############
+
+    def is_closed(self):
+        return not bool(self._libvirtconn)
 
     def close(self):
         self._libvirtconn = None
@@ -222,8 +219,13 @@ class VirtualConnection(object):
             pool = self._libvirtconn.storagePoolLookupByName(xmlobj.name)
             ignore, ignore, vols = pollhelpers.fetch_volumes(
                 self, pool, {}, lambda obj, ignore: obj)
-            ret += [StorageVolume(weakref.ref(self), parsexml=obj.XMLDesc(0))
-                    for obj in vols.values()]
+
+            for vol in vols.values():
+                try:
+                    xml = vol.XMLDesc(0)
+                    ret.append(StorageVolume(weakref.ref(self), parsexml=xml))
+                except Exception, e:
+                    logging.debug("Fetching volume XML failed: %s", e)
 
         if self.cache_object_fetch:
             self._fetch_cache[key] = ret
@@ -274,7 +276,7 @@ class VirtualConnection(object):
             if not self.check_support(support.SUPPORT_CONN_LIBVERSION):
                 self._daemon_version = 0
             else:
-                self._daemon_version = self.libvirtconn.getLibVersion()
+                self._daemon_version = self._libvirtconn.getLibVersion()
         return self._daemon_version
 
     def conn_version(self):
@@ -285,7 +287,7 @@ class VirtualConnection(object):
             if not self.check_support(support.SUPPORT_CONN_GETVERSION):
                 self._conn_version = 0
             else:
-                self._conn_version = self.libvirtconn.getVersion()
+                self._conn_version = self._libvirtconn.getVersion()
         return self._conn_version
 
 
@@ -403,8 +405,6 @@ class VirtualConnection(object):
 
         if "predictable" in opts:
             opts.pop("predictable")
-            import tempfile
-            tempfile.mkstemp = _fakemkstemp
             setattr(self, "_virtinst__fake_conn_predictable", True)
 
         # Fake remote status

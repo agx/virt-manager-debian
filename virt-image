@@ -1,8 +1,8 @@
-#!/usr/bin/python -tt
+#!/usr/bin/python2 -tt
 #
 # Create a virtual machine from an XML image description
 #
-# Copyright 2007  Red Hat, Inc.
+# Copyright 2007, 2014  Red Hat, Inc.
 # David Lutterkort <dlutter@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -21,11 +21,13 @@
 # MA 02110-1301 USA.
 
 import argparse
+import logging
+import os
 import sys
+import time
 
 import urlgrabber.progress as progress
 
-import virtinst
 import virtinst.cli as cli
 from virtinst.cli import fail, print_stdout, print_stderr
 from virtinst import virtimage
@@ -96,14 +98,13 @@ def main(conn=None):
             fail(_("The index for --boot must be between 0 and %d") %
                  (nboots - 1))
 
-
     # Build the Installer instance
     installer = virtimage.ImageInstaller(conn, image, boot_index=options.boot)
     guest = conn.caps.build_virtinst_guest(conn, *installer.get_caps_guest())
     guest.installer = installer
 
     cli.convert_old_memory(options)
-    cli.convert_old_networks(guest, options, image.domain.interface)
+    cli.convert_old_networks(options, image.domain.interface)
     cli.convert_old_graphics(guest, options,
         default_override=bool(image.domain.graphics))
     cli.convert_old_cpuset(options)
@@ -124,12 +125,16 @@ def main(conn=None):
 
     cli.parse_option_strings(parsermap, options, guest, None)
 
-    if not guest.get_devices("input"):
-        guest.add_default_input_device()
-    if not guest.get_devices("console") and not guest.get_devices("serial"):
-        guest.add_default_console_device()
-    if not guest.get_devices("video") and guest.get_devices("graphics"):
-        guest.add_device(virtinst.VirtualVideoDevice(guest.conn))
+    guest.add_default_devices()
+
+    msg = _("\nvirt-image is planned for removal in the near future. "
+        "If you are depending on this tool, please contact the developers "
+        "at virt-tools-list@redhat.com\n")
+    logging.warning(msg)
+    if "VIRTINST_TEST_SUITE" not in os.environ:
+        if options.quiet:
+            print msg
+        time.sleep(3)
 
     # we've got everything -- try to start the install
     if options.xmlonly:

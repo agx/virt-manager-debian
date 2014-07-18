@@ -26,10 +26,14 @@ from virtinst import support
 from virtinst.osxml import OSXML
 from virtinst.domainfeatures import DomainFeatures
 from virtinst.domainnumatune import DomainNumatune
+from virtinst.domainblkiotune import DomainBlkiotune
+from virtinst.domainmemorytune import DomainMemorytune
+from virtinst.domainmemorybacking import DomainMemorybacking
 from virtinst.clock import Clock
 from virtinst.cpu import CPU, CPUFeature
 from virtinst.seclabel import Seclabel
 from virtinst.pm import PM
+from virtinst.idmap import IdMap
 
 import virtinst.capabilities as CapabilitiesParser
 from virtinst.interface import Interface, InterfaceProtocol

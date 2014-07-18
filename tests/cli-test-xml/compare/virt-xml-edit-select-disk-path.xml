@@ -1,0 +1,12 @@
+       <driver name="qemu" type="qcow2" cache="none"/>
+       <source file="/tmp/foobar2"/>
+       <target dev="vdc" bus="virtio"/>
+-      <shareable/>
+       <boot order="1"/>
++      <readonly/>
+     </disk>
+     <disk type="block" device="disk">
+       <source dev="/dev/default-pool/overlay.img"/>
+
+Domain 'test-many-devices' defined successfully.
+Changes will take effect after the next domain shutdown.

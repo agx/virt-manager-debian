@@ -140,16 +140,15 @@ def validate_uuid(val):
 
 
 def validate_name(name_type, val):
-    if re.match("^[0-9]+$", val):
-        raise ValueError(_("%s name can not be only numeric characters") %
-                          name_type)
-
     # Rather than try and match libvirt's regex, just forbid things we
     # know don't work
     forbid = [" "]
     for c in forbid:
-        if c in val:
-            raise ValueError(_("%s name can not contain '%s' character.") % c)
+        if c not in val:
+            continue
+        raise ValueError(
+            _("%s name '%s' can not contain '%s' character.") %
+            (name_type, val, c))
 
 
 def validate_macaddr(val):
@@ -162,7 +161,7 @@ def validate_macaddr(val):
     form = re.match("^([0-9a-fA-F]{1,2}:){5}[0-9a-fA-F]{1,2}$", val)
     if form is None:
         raise ValueError(_("MAC address must be of the format "
-                           "AA:BB:CC:DD:EE:FF"))
+                           "AA:BB:CC:DD:EE:FF, was '%s'") % val)
 
 
 def generate_name(base, collision_cb, suffix="", lib_collision=True,
@@ -279,33 +278,9 @@ def parse_node_helper(xml, root_name, callback, exec_class=ValueError):
     return ret
 
 
-def xml_parse_wrapper(xml, parse_func, *args, **kwargs):
-    """
-    Parse the passed xml string into an xpath context, which is passed
-    to parse_func, along with any extra arguments.
-    """
-    doc = None
-    ctx = None
-    ret = None
-    register_namespace = kwargs.pop("register_namespace", None)
-
-    try:
-        doc = libxml2.parseDoc(xml)
-        ctx = doc.xpathNewContext()
-        if register_namespace:
-            register_namespace(ctx)
-        ret = parse_func(doc, ctx, *args, **kwargs)
-    finally:
-        if ctx is not None:
-            ctx.xpathFreeContext()
-        if doc is not None:
-            doc.freeDoc()
-    return ret
-
-
 def generate_uuid(conn):
     for ignore in range(256):
-        uuid = randomUUID(conn=conn)
+        uuid = randomUUID(conn)
         if not vm_uuid_collision(conn, uuid):
             return uuid
 
@@ -474,9 +449,8 @@ def uuidstr(rawuuid):
 
 
 def get_system_scratchdir(hvtype):
-    scratchdir = os.environ.get("VIRTINST_TEST_SCRATCHDIR", None)
-    if scratchdir:
-        return scratchdir
+    if "VIRTINST_TEST_SUITE" in os.environ:
+        return os.getcwd()
 
     if hvtype == "test":
         return "/tmp"

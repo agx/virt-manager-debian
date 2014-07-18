@@ -1,4 +1,4 @@
-# Copyright (C) 2013 Red Hat, Inc.
+# Copyright (C) 2013, 2014 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -34,7 +34,6 @@ def sanitize_file_xml(xml):
 
 
 class XMLParseTest(unittest.TestCase):
-
     def _roundtrip_compare(self, filename):
         expectXML = sanitize_file_xml(file(filename).read())
         guest = virtinst.Guest(conn, parsexml=expectXML)
@@ -115,7 +114,6 @@ class XMLParseTest(unittest.TestCase):
         check("uuid", "12345678-1234-1234-1234-123456789012",
                       "11111111-2222-3333-4444-555555555555")
         check("emulator", "/usr/lib/xen/bin/qemu-dm", "/usr/binnnn/fooemu")
-        check("hugepage", False, True)
         check("type", "kvm", "test")
         check("bootloader", None, "pygrub")
         check("on_poweroff", "destroy", "restart")
@@ -192,8 +190,32 @@ class XMLParseTest(unittest.TestCase):
         check("memory_mode", "interleave", "strict", None)
         check("memory_nodeset", "1-5,^3,7", "2,4,6")
 
+        check = self._make_checker(guest.memtune)
+        check("hard_limit", None, 1024, 2048)
+        check("soft_limit", None, 100, 200)
+        check("swap_hard_limit", None, 300, 400)
+        check("min_guarantee", None, 400, 500)
+
+        check = self._make_checker(guest.blkiotune)
+        check("weight", None, 100, 200)
+        check("device_weight", None, 300)
+        check("device_path", None, "/home/1.img")
+
+        check = self._make_checker(guest.idmap)
+        check("uid_start", None, 0)
+        check("uid_target", None, 1000)
+        check("uid_count", None, 10)
+        check("gid_start", None, 0)
+        check("gid_target", None, 1000)
+        check("gid_count", None, 10)
+
         check = self._make_checker(guest.get_devices("memballoon")[0])
         check("model", "virtio", "none")
+
+        check = self._make_checker(guest.memoryBacking)
+        check("hugepages", False, True)
+        check("nosharepages", False, True)
+        check("locked", False, True)
 
         self._alter_compare(guest.get_xml_config(), outfile)
 
@@ -316,6 +338,8 @@ class XMLParseTest(unittest.TestCase):
         check("iotune_tis", None, 5)
         check("iotune_tbs", None, 6)
 
+        check = self._make_checker(disk6.boot)
+        check("order", None, 7, None)
 
         self._alter_compare(guest.get_xml_config(), outfile)
 
@@ -503,7 +527,7 @@ class XMLParseTest(unittest.TestCase):
         check("keymap", None, "en-us")
 
         check = self._make_checker(dev2)
-        check("type", "sdl")
+        check("type", "vnc")
         check("xauth", "/tmp/.Xauthority", "fooauth")
         check("display", "1:2", "6:1")
 
@@ -539,6 +563,7 @@ class XMLParseTest(unittest.TestCase):
         check("channel_cursor_mode", "any", "any")
         check("channel_playback_mode", "any", "insecure")
         check("passwdValidTo", "2010-04-09T15:51:00", "2011-01-07T19:08:00")
+        check("defaultMode", None, "secure")
 
         self._alter_compare(guest.get_xml_config(), outfile)
 
@@ -600,6 +625,7 @@ class XMLParseTest(unittest.TestCase):
         check("slot", "0x2", "0x6")
         check("function", "0x3", "0x7")
         check("driver_name", None, "vfio")
+        check("rom_bar", None, True)
 
         self._alter_compare(guest.get_xml_config(), outfile)
 
@@ -1012,6 +1038,7 @@ class XMLParseTest(unittest.TestCase):
         check("capacity", 984373075968, 200000)
         check("allocation", 756681687040, 150000)
         check("available", 227691388928, 50000)
+        check("source_dir", None, None)
 
         check("format", "auto", "ext3")
         check("source_path", "/some/source/path", "/dev/foo/bar")
@@ -1030,6 +1057,23 @@ class XMLParseTest(unittest.TestCase):
         check = self._make_checker(pool)
         check("host", "some.random.hostname", "my.host")
         check("iqn", "foo.bar.baz.iqn", "my.iqn")
+
+        utils.diff_compare(pool.get_xml_config(), outfile)
+        utils.test_create(conn, pool.get_xml_config(), "storagePoolDefineXML")
+
+    def testGlusterPool(self):
+        if not conn.check_support(conn.SUPPORT_CONN_POOL_GLUSTERFS):
+            raise unittest.SkipTest("Gluster pools not supported with this "
+                "libvirt version.")
+
+        basename = "pool-gluster"
+        infile = "tests/storage-xml/%s.xml" % basename
+        outfile = "tests/xmlparse-xml/%s-out.xml" % basename
+        pool = virtinst.StoragePool(conn, parsexml=file(infile).read())
+
+        check = self._make_checker(pool)
+        check("host", "some.random.hostname", "my.host")
+        check("source_dir", None, "/foo")
 
         utils.diff_compare(pool.get_xml_config(), outfile)
         utils.test_create(conn, pool.get_xml_config(), "storagePoolDefineXML")

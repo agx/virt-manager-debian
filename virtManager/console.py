@@ -360,6 +360,9 @@ class Viewer(vmmGObject):
     def send_keys(self, keys):
         raise NotImplementedError()
 
+    def set_grab_keyboard(self):
+        raise NotImplementedError()
+
     def open_host(self, ginfo):
         raise NotImplementedError()
 
@@ -375,6 +378,8 @@ class Viewer(vmmGObject):
         return False
     def set_resizeguest(self, val):
         ignore = val
+    def get_resizeguest(self):
+        return False
 
 
 class VNCViewer(Viewer):
@@ -392,6 +397,7 @@ class VNCViewer(Viewer):
 
     def init_widget(self):
         self.set_grab_keys()
+        self.set_grab_keyboard()
 
         self.display.realize()
 
@@ -401,7 +407,6 @@ class VNCViewer(Viewer):
         self.console.sync_scaling_with_display()
         self.console.refresh_resizeguest_from_settings()
 
-        self.display.set_keyboard_grab(True)
         self.display.set_pointer_grab(True)
 
         self.display.connect("size-allocate",
@@ -458,6 +463,10 @@ class VNCViewer(Viewer):
 
     def send_keys(self, keys):
         return self.display.send_keys([Gdk.keyval_from_name(k) for k in keys])
+
+    def set_grab_keyboard(self):
+        self.display.set_keyboard_grab(self.config.get_grab_keyboard())
+        self.display.force_grab(self.config.get_grab_keyboard())
 
     def _desktop_resize(self, src_ignore, w, h):
         self.desktop_resolution = (w, h)
@@ -569,6 +578,7 @@ class SpiceViewer(Viewer):
 
     def _init_widget(self):
         self.set_grab_keys()
+        self.set_grab_keyboard()
         self.console.sync_scaling_with_display()
         self.console.refresh_resizeguest_from_settings()
 
@@ -614,6 +624,9 @@ class SpiceViewer(Viewer):
     def send_keys(self, keys):
         return self.display.send_keys([Gdk.keyval_from_name(k) for k in keys],
                                       SpiceClientGtk.DisplayKeyEvent.CLICK)
+
+    def set_grab_keyboard(self):
+        self.display.set_property("grab-keyboard", self.config.get_grab_keyboard())
 
     def close(self):
         if self.spice_session is not None:
@@ -770,6 +783,11 @@ class SpiceViewer(Viewer):
         if self.display:
             self.display.set_property("resize-guest", val)
 
+    def get_resizeguest(self):
+        if self.display:
+            return self.display.get_property("resize-guest")
+        return False
+
     def _usbdev_redirect_error(self,
                              spice_usbdev_widget, spice_usb_device,
                              errstr):
@@ -868,6 +886,8 @@ class vmmConsolePages(vmmGObjectUI):
             self.config.on_console_accels_changed(self.set_enable_accel))
         self.add_gconf_handle(
             self.config.on_keys_combination_changed(self.grab_keys_changed))
+        self.add_gconf_handle(
+            self.config.on_grab_keyboard_changed(self.grab_keyboard_changed))
 
         self.page_changed()
 
@@ -1020,6 +1040,9 @@ class vmmConsolePages(vmmGObjectUI):
     def pointer_grabbed(self, src_ignore):
         self.pointer_is_grabbed = True
         self.change_title()
+        if not self.config.get_grab_keyboard():
+            self.viewer.display.force_grab(False)
+            self.viewer.display.set_keyboard_grab(self.config.get_grab_keyboard())
 
     def pointer_ungrabbed(self, src_ignore):
         self.pointer_is_grabbed = False
@@ -1060,6 +1083,10 @@ class vmmConsolePages(vmmGObjectUI):
         if self.viewer:
             self.viewer.set_grab_keys()
 
+    def grab_keyboard_changed(self):
+        if self.viewer:
+            self.viewer.set_grab_keyboard()
+
     def set_enable_accel(self):
         # Make sure modifiers are up to date
         self.viewer_focus_changed()
@@ -1085,7 +1112,7 @@ class vmmConsolePages(vmmGObjectUI):
 
     def resizeguest_ui_changed_cb(self, src):
         # Called from details.py
-        if not src.get_active():
+        if not src.get_sensitive():
             return
 
         val = int(self.widget("details-menu-view-resizeguest").get_active())
@@ -1312,8 +1339,13 @@ class vmmConsolePages(vmmGObjectUI):
             self.widget("details-menu-usb-redirection").set_sensitive(True)
             return
 
-    def page_changed(self, ignore1=None, ignore2=None, ignore3=None):
+    def page_changed(self, ignore1=None, ignore2=None, newpage=None):
         pagenum = self.widget("console-pages").get_current_page()
+
+        for i in range(self.widget("console-pages").get_n_pages()):
+            w = self.widget("console-pages").get_nth_page(i)
+            w.set_visible(i == newpage)
+
         if pagenum < CONSOLE_PAGE_OFFSET:
             self.last_gfx_page = pagenum
         self.set_allow_fullscreen()
@@ -1496,11 +1528,13 @@ class vmmConsolePages(vmmGObjectUI):
 
         scroll = self.widget("console-gfx-scroll")
         is_scale = self.viewer.get_scaling()
+        is_resizeguest = self.viewer.get_resizeguest()
 
         dx = 0
         dy = 0
         align_ratio = float(req.width) / float(req.height)
 
+        # pylint: disable=unpacking-non-sequence
         desktop_w, desktop_h = self.viewer.get_desktop_resolution()
         if desktop_h == 0:
             return
@@ -1512,6 +1546,12 @@ class vmmConsolePages(vmmGObjectUI):
         else:
             scroll.set_policy(Gtk.PolicyType.AUTOMATIC,
                               Gtk.PolicyType.AUTOMATIC)
+
+        if not self.force_resize and is_resizeguest:
+            # With resize guest, we don't want to maintain aspect ratio,
+            # since the guest can resize to arbitray resolutions.
+            self.viewer.display.set_size_request(req.width, req.height)
+            return
 
         if not is_scale or self.force_resize:
             # Scaling disabled is easy, just force the VNC widget size. Since
@@ -1648,7 +1688,7 @@ class vmmConsolePages(vmmGObjectUI):
                 if group is None:
                     group = item
             else:
-                item = Gtk.MenuItem(msg)
+                item = Gtk.MenuItem.new_with_label(msg)
 
             item.set_sensitive(sensitive)
 
@@ -1671,7 +1711,8 @@ class vmmConsolePages(vmmGObjectUI):
         # Populate graphical devices
         devs = self.vm.get_graphics_devices()
         if len(devs) == 0:
-            item = Gtk.MenuItem(_("No graphical console available"))
+            item = Gtk.MenuItem.new_with_label(
+                _("No graphical console available"))
             item.set_sensitive(False)
             src.add(item)
         else:

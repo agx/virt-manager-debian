@@ -20,6 +20,7 @@
 # MA 02110-1301 USA.
 
 import copy
+import logging
 import os
 import re
 
@@ -32,7 +33,7 @@ from virtinst import util
 # This whole file is calling around into non-public functions that we
 # don't want regular API users to touch
 
-_trackprops = bool("VIRTINST_TEST_TRACKPROPS" in os.environ)
+_trackprops = bool("VIRTINST_TEST_SUITE" in os.environ)
 _allprops = []
 _seenprops = []
 
@@ -686,7 +687,13 @@ class _XMLState(object):
         else:
             if not xml:
                 xml = self.make_xml_stub()
-            doc = libxml2.parseDoc(xml)
+
+            try:
+                doc = libxml2.parseDoc(xml)
+            except:
+                logging.debug("Error parsing xml=\n%s", xml)
+                raise
+
             self.xml_root_doc = _DocCleanupWrapper(doc)
             self.xml_node = doc.children
             self.xml_node.virtinst_is_build = self.is_build

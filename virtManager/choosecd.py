@@ -97,7 +97,13 @@ class vmmChooseCD(vmmGObjectUI):
 
     def reset_state(self):
         self.mediacombo.reset_state()
-        use_cdrom = (self.mediacombo.has_media())
+
+        enable_phys = not self.vm.stable_defaults()
+        self.widget("physical-media").set_sensitive(enable_phys)
+        self.widget("physical-media").set_tooltip_text("" if enable_phys else
+            _("Physical CDROM passthrough not supported with this hypervisor"))
+
+        use_cdrom = (self.mediacombo.has_media()) and enable_phys
 
         self.widget("physical-media").set_active(use_cdrom)
         self.widget("iso-image").set_active(not use_cdrom)
@@ -125,7 +131,7 @@ class vmmChooseCD(vmmGObjectUI):
             if not res:
                 return False
 
-        vmmAddStorage.check_path_search_for_qemu(self, self.conn, path)
+        vmmAddStorage.check_path_search(self, self.conn, path)
 
         self.emit("cdrom-chosen", self.disk, path)
         self.close()

@@ -1,0 +1,12 @@
+     <panic>
+       <address type="isa" iobase="0x505"/>
+     </panic>
++    <disk type="file" device="disk">
++      <source file="/dev/default-pool/testvol1.img"/>
++      <target dev="vdf" bus="virtio"/>
++    </disk>
+   </devices>
+ </domain>
+
+Domain 'test-many-devices' defined successfully.
+Changes will take effect after the next domain shutdown.

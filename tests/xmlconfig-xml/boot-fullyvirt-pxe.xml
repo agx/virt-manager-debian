@@ -20,11 +20,11 @@
   <devices>
     <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
     <disk type="file" device="disk">
-      <source file="/tmp/test.img"/>
+      <source file="/dev/default-pool/new-test-suite.img"/>
       <target dev="hda" bus="ide"/>
     </disk>
     <input type="mouse" bus="ps2"/>
-    <graphics type="sdl" display=":3.4" xauth="/tmp/.Xauthority"/>
+    <graphics type="vnc" port="-1" keymap="ja"/>
     <console type="pty"/>
   </devices>
 </domain>

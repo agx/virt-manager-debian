@@ -98,6 +98,11 @@ class vmmConnection(vmmGObject):
         self._interface_capable = None
         self._nodedev_capable = None
 
+        self.using_domain_events = False
+        self._domain_cb_id = None
+        self.using_network_events = False
+        self._network_cb_id = None
+
         self._xml_flags = {}
 
         # Physical network interfaces: name -> virtinst.NodeDevice
@@ -167,10 +172,17 @@ class vmmConnection(vmmGObject):
         self._backend.cb_fetch_all_pools = (
             lambda: [obj.get_xmlobj(refresh_if_nec=False)
                      for obj in self.pools.values()])
-        self._backend.cb_fetch_all_vols = (
-            lambda: [obj.get_xmlobj(refresh_if_nec=False)
-                     for pool in self.pools.values()
-                     for obj in pool.get_volumes(refresh=False).values()])
+
+        def fetch_all_vols():
+            ret = []
+            for pool in self.pools.values():
+                for vol in pool.get_volumes(refresh=False).values():
+                    try:
+                        ret.append(vol.get_xmlobj(refresh_if_nec=False))
+                    except Exception, e:
+                        logging.debug("Fetching volume XML failed: %s", e)
+            return ret
+        self._backend.cb_fetch_all_vols = fetch_all_vols
 
         def clear_cache(pools=False):
             if not pools:
@@ -360,11 +372,12 @@ class vmmConnection(vmmGObject):
 
         fmt = self.config.get_default_storage_format()
         if fmt != "qcow2":
-            return
+            return fmt
 
         if self.check_support(self._backend.SUPPORT_CONN_DEFAULT_QCOW2):
             return fmt
         return None
+
 
     ####################################
     # Connection pretty print routines #
@@ -818,6 +831,66 @@ class vmmConnection(vmmGObject):
         return self._rename_helper("storagepool", self.define_pool,
                                    obj, origxml, newxml)
 
+    #########################
+    # Domain event handling #
+    #########################
+
+    # Our strategy here isn't the most efficient: since we need to keep the
+    # poll helpers around for compat with old libvirt, switching to a fully
+    # event driven setup is hard, so we end up doing more polling than
+    # necessary on most events.
+
+    def _domain_lifecycle_event(self, conn, domain, event, reason, userdata):
+        ignore = conn
+        ignore = reason
+        ignore = userdata
+        obj = self.vms.get(domain.UUIDString(), None)
+
+        if obj:
+            # If the domain disappeared, this will catch it and trigger
+            # a domain list refresh
+            self.idle_add(obj.force_update_status, True)
+
+            if event == libvirt.VIR_DOMAIN_EVENT_DEFINED:
+                self.idle_add(obj.refresh_xml, True)
+        else:
+            self.schedule_priority_tick(pollvm=True, force=True)
+
+    def _network_lifecycle_event(self, conn, network, event, reason, userdata):
+        ignore = conn
+        ignore = reason
+        ignore = userdata
+        obj = self.nets.get(network.UUIDString(), None)
+
+        if obj:
+            self.idle_add(obj.force_update_status, True)
+
+            if event == getattr(libvirt, "VIR_NETWORK_EVENT_DEFINED", 0):
+                self.idle_add(obj.refresh_xml, True)
+        else:
+            self.schedule_priority_tick(pollnet=True, force=True)
+
+    def _add_conn_events(self):
+        try:
+            self._domain_cb_id = self.get_backend().domainEventRegisterAny(
+                None, libvirt.VIR_DOMAIN_EVENT_ID_LIFECYCLE,
+                self._domain_lifecycle_event, None)
+            self.using_domain_events = True
+            logging.debug("Using domain events")
+        except Exception, e:
+            self.using_domain_events = False
+            logging.debug("Error registering domain events: %s", e)
+
+        try:
+            eventid = getattr(libvirt, "VIR_NETWORK_EVENT_ID_LIFECYCLE", 0)
+            self._network_cb_id = self.get_backend().networkEventRegisterAny(
+                None, eventid, self._network_lifecycle_event, None)
+            self.using_network_events = True
+            logging.debug("Using network events")
+        except Exception, e:
+            self.using_network_events = False
+            logging.debug("Error registering network events: %s", e)
+
 
     ####################
     # Update listeners #
@@ -856,7 +929,25 @@ class vmmConnection(vmmGObject):
     def close(self):
         def cleanup(devs):
             for dev in devs.values():
-                dev.cleanup()
+                try:
+                    dev.cleanup()
+                except:
+                    logging.debug("Failed to cleanup %s", exc_info=True)
+
+        try:
+            if not self._backend.is_closed():
+                if self._domain_cb_id is not None:
+                    self._backend.domainEventDeregisterAny(
+                        self._domain_cb_id)
+                self._domain_cb_id = None
+
+                if self._network_cb_id is not None:
+                    self._backend.networkEventDeregisterAny(
+                        self._network_cb_id)
+                self._network_cb_id = None
+        except:
+            logging.debug("Failed to deregister events in conn cleanup",
+                exc_info=True)
 
         self._backend.close()
         self.record = []
@@ -986,10 +1077,12 @@ class vmmConnection(vmmGObject):
             logging.debug("conn version=%s", self._backend.conn_version())
             logging.debug("%s capabilities:\n%s",
                           self.get_uri(), self.caps.xml)
+            self._add_conn_events()
             self.schedule_priority_tick(stats_update=True,
                                         pollvm=True, pollnet=True,
                                         pollpool=True, polliface=True,
-                                        pollnodedev=True, pollmedia=True)
+                                        pollnodedev=True, pollmedia=True,
+                                        force=True)
 
         if self.state == self.STATE_DISCONNECTED:
             if self.connectError:
@@ -1046,13 +1139,22 @@ class vmmConnection(vmmGObject):
     def tick(self, stats_update,
              pollvm=False, pollnet=False,
              pollpool=False, polliface=False,
-             pollnodedev=False, pollmedia=False):
-        """ main update function: polls for new objects, updates stats, ..."""
+             pollnodedev=False, pollmedia=False,
+             force=False):
+        """
+        main update function: polls for new objects, updates stats, ...
+        @force: Perform the requested polling even if async events are in use
+        """
         if self.state != self.STATE_ACTIVE:
             return
 
         if not pollvm:
             stats_update = False
+
+        if self.using_domain_events and not force:
+            pollvm = False
+        if self.using_network_events and not force:
+            pollnet = False
 
         self.hostinfo = self._backend.getInfo()
 
@@ -1074,11 +1176,16 @@ class vmmConnection(vmmGObject):
             if not self._backend.is_open():
                 return
 
-            self.vms = vms
-            self.nodedevs = nodedevs
-            self.interfaces = interfaces
-            self.pools = pools
-            self.nets = nets
+            if pollvm:
+                self.vms = vms
+            if pollnet:
+                self.nets = nets
+            if polliface:
+                self.interfaces = interfaces
+            if pollpool:
+                self.pools = pools
+            if pollnodedev:
+                self.nodedevs = nodedevs
 
             # Make sure device polling is setup
             if not self.netdev_initialized:
@@ -1145,7 +1252,7 @@ class vmmConnection(vmmGObject):
         if stats_update:
             updateVMs = vms
 
-        if pollvm:
+        if stats_update:
             for key in vms:
                 if key in updateVMs:
                     add_to_ticklist([vms[key]], (True,))
