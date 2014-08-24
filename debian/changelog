@@ -1,3 +1,15 @@
+virt-manager (1:1.0.1-1) experimental; urgency=medium
+
+  * [f36ee97] Version gtk-3.0 build-dep.
+    Thanks to Paul Wise (Closes: #740048)
+  * [b82bf86] New upstream version 1.0.1
+    Closes: #758470
+  * [52b2fdd] Recommend libvirt-daemon instead of libvirt-bin. This pulls in
+    fewer dependencies and is sufficient to run qemu/kvm instances as
+    non-root.
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 24 Aug 2014 11:57:18 +0200
+
 virt-manager (1:0.10.0+git20130205.69015c-1) experimental; urgency=medium
 
   [ Guido Günther ]
