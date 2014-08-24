@@ -44,6 +44,8 @@ from virtManager.addstorage import vmmAddStorage
 
 # Number of seconds to wait for media detection
 DETECT_TIMEOUT = 20
+DETECT_INPROGRESS = -1
+DETECT_FAILED = -2
 
 DEFAULT_MEM = 1024
 
@@ -82,7 +84,6 @@ class vmmCreate(vmmGObjectUI):
         self.engine = engine
 
         self.conn = None
-        self.caps = None
         self.capsguest = None
         self.capsdomain = None
 
@@ -91,11 +92,9 @@ class vmmCreate(vmmGObjectUI):
         self.nic = None
 
         self.storage_browser = None
-        self.conn_signals = []
 
         # Distro detection state variables
-        self.detectedDistro = -1
-        self.detecting = False
+        self.detectedDistro = None
         self.mediaDetected = False
         self.show_all_os = False
 
@@ -174,7 +173,8 @@ class vmmCreate(vmmGObjectUI):
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
-        logging.debug("Closing new vm wizard")
+        if self.is_visible():
+            logging.debug("Closing new vm wizard")
         self.topwin.hide()
 
         if self.config_window:
@@ -188,7 +188,6 @@ class vmmCreate(vmmGObjectUI):
         self.remove_conn()
 
         self.conn = None
-        self.caps = None
         self.capsguest = None
         self.capsdomain = None
 
@@ -214,13 +213,9 @@ class vmmCreate(vmmGObjectUI):
             self.addstorage = None
 
     def remove_conn(self):
-        if not self.conn:
-            return
-
-        for signal in self.conn_signals:
-            self.conn.disconnect(signal)
-        self.conn_signals = []
         self.conn = None
+        self.capsguest = None
+        self.capsdomain = None
 
     def set_conn(self, newconn, force_validate=False):
         if self.conn == newconn and not force_validate:
@@ -506,7 +501,6 @@ class vmmCreate(vmmGObjectUI):
         # A bit out of order, but populate arch + hv lists so we can
         # determine a default
         self.conn.invalidate_caps()
-        self.caps = self.conn.caps
         self.change_caps()
         self.populate_hv()
         self.populate_arch()
@@ -557,9 +551,14 @@ class vmmCreate(vmmGObjectUI):
         cdrom_option.set_active(self.mediacombo.has_media())
         iso_option.set_active(not self.mediacombo.has_media())
 
+        enable_phys = not self._stable_defaults()
+        cdrom_option.set_sensitive(enable_phys)
+        cdrom_option.set_tooltip_text("" if enable_phys else
+            _("Physical CDROM passthrough not supported with this hypervisor"))
+
         # Only allow ISO option for remote VM
         is_local = not self.conn.is_remote()
-        if not is_local:
+        if not is_local or not enable_phys:
             iso_option.set_active(True)
 
         self.toggle_local_cdrom(cdrom_option)
@@ -614,11 +613,11 @@ class vmmCreate(vmmGObjectUI):
         model.clear()
 
         default = 0
-        guests = self.caps.guests[:]
+        guests = self.conn.caps.guests[:]
         if not (self.conn.is_xen() or self.conn.is_test_conn()):
             guests = []
 
-        for guest in self.caps.guests:
+        for guest in self.conn.caps.guests:
             gtype = guest.os_type
             if not guest.domains:
                 continue
@@ -653,7 +652,7 @@ class vmmCreate(vmmGObjectUI):
 
         default = 0
         archs = []
-        for guest in self.caps.guests:
+        for guest in self.conn.caps.guests:
             if guest.os_type == self.capsguest.os_type:
                 archs.append(guest.arch)
 
@@ -693,7 +692,7 @@ class vmmCreate(vmmGObjectUI):
         model = lst.get_model()
         model.clear()
 
-        machines = self.capsdomain.machines
+        machines = self.capsdomain.machines[:]
         if self.capsguest.arch in ["i686", "x86_64"]:
             machines = []
         machines.sort()
@@ -854,22 +853,16 @@ class vmmCreate(vmmGObjectUI):
 
     def change_caps(self, gtype=None, arch=None):
         if gtype is None:
-            # If none specified, prefer HVM. This way, the default install
-            # options won't be limited because we default to PV. If hvm not
-            # supported, differ to guest_lookup
-            for g in self.caps.guests:
+            # If none specified, prefer HVM so install options aren't limited
+            # with a default PV choice.
+            for g in self.conn.caps.guests:
                 if g.os_type == "hvm":
                     gtype = "hvm"
                     break
 
-        (newg, newdom) = self.caps.guest_lookup(os_type=gtype,
-                                                accelerated=True,
-                                                arch=arch)
+        (newg, newdom) = self.conn.caps.guest_lookup(os_type=gtype, arch=arch)
 
-        if (self.capsguest and self.capsdomain and
-            (newg.arch == self.capsguest.arch and
-            newg.os_type == self.capsguest.os_type)):
-            # No change
+        if self.capsguest == newg and self.capsdomain and newdom:
             return
 
         self.capsguest = newg
@@ -1117,11 +1110,13 @@ class vmmCreate(vmmGObjectUI):
         self.change_caps(self.capsguest.os_type, arch)
 
     def url_box_changed(self, ignore):
+        self.mediaDetected = False
+
         # If the url_entry has focus, don't fire detect_media_os, it means
         # the user is probably typing
-        self.mediaDetected = False
         if self.widget("install-url-box").get_child().has_focus():
             return
+
         self.detect_media_os()
 
     def should_detect_media(self):
@@ -1349,15 +1344,6 @@ class vmmCreate(vmmGObjectUI):
             page = self.widget("create-pages").get_nth_page(nr)
             page.set_visible(nr == pagenum)
 
-    def get_graphics_device(self, guest):
-        if guest.os.is_container():
-            return
-        if guest.os.arch not in ["x86_64", "i686", "ppc64"]:
-            return
-
-        guest.default_graphics_type = self.config.get_graphics_type()
-        return virtinst.VirtualGraphics(guest.conn)
-
     def build_guest(self, variant):
         guest = self.conn.caps.build_virtinst_guest(
             self.conn.get_backend(), self.capsguest, self.capsdomain)
@@ -1380,47 +1366,17 @@ class vmmCreate(vmmGObjectUI):
 
         # Set up default devices
         try:
-            gdev = self.get_graphics_device(guest)
-            if gdev:
-                guest.add_device(gdev)
+            guest.default_graphics_type = self.config.get_graphics_type()
+            guest.skip_default_sound = not self.config.get_new_vm_sound()
+            guest.skip_default_usbredir = (
+                self.config.get_add_spice_usbredir() == "no")
+            guest.x86_cpu_default = self.config.get_default_cpu_setting(
+                for_cpu=True)
 
-            guest.add_default_video_device()
-            guest.add_default_input_device()
-            guest.add_default_console_device()
-            guest.add_default_usb_controller()
-            guest.add_default_channels()
+            guest.add_default_devices()
 
-            if self.config.get_new_vm_sound():
-                guest.add_default_sound_device()
-
-            if (gdev and
-                self.config.get_add_spice_usbredir() == "yes" and
-                self.conn.check_support(self.conn.SUPPORT_CONN_USBREDIR)):
-                for ignore in range(4):
-                    dev = virtinst.VirtualRedirDevice(guest.conn)
-                    dev.bus = "usb"
-                    dev.type = "spicevmc"
-                    guest.add_device(dev)
-
-            if (((guest.conn.is_qemu() and guest.type == "kvm") or
-                 guest.conn.is_test()) and
-                guest.os.is_x86() and
-                guest.os.arch == guest.conn.caps.host.cpu.arch):
-                cpu_type = self.config.get_default_cpu_setting()
-
-                if cpu_type == "hv-default":
-                    pass
-                elif cpu_type == "host-cpu-model":
-                    if guest.conn.caps.host.cpu.model:
-                        guest.cpu.model = guest.conn.caps.host.cpu.model
-                elif cpu_type == "host-model":
-                    # host-model has known issues, so use our 'copy cpu'
-                    # behavior until host-model does what we need
-                    guest.cpu.copy_host_cpu()
-                else:
-                    raise RuntimeError("Unknown cpu default '%s'" % cpu_type)
-
-            if self.conn.check_support(self.conn.SUPPORT_CONN_PM_DISABLE):
+            if (guest.os.is_x86() and
+                self.conn.check_support(self.conn.SUPPORT_CONN_PM_DISABLE)):
                 guest.pm.suspend_to_mem = False
                 guest.pm.suspend_to_disk = False
 
@@ -1624,7 +1580,7 @@ class vmmCreate(vmmGObjectUI):
             path = None
 
         if path:
-            self.addstorage.check_path_search_for_qemu(
+            self.addstorage.check_path_search(
                 self, self.conn, path)
 
         # Validation passed, store the install path (if there is one) in
@@ -1739,6 +1695,7 @@ class vmmCreate(vmmGObjectUI):
         if self.validate(page) is not True:
             return False
 
+        logging.debug("Starting create finish() sequence")
         guest = self.guest
 
         # Start the install
@@ -1748,6 +1705,7 @@ class vmmCreate(vmmGObjectUI):
             Gdk.Cursor.new(Gdk.CursorType.WATCH))
 
         if self.get_config_customize():
+            logging.debug("User requested 'customize', launching dialog")
             try:
                 self.customize(guest)
             except Exception, e:
@@ -1771,9 +1729,11 @@ class vmmCreate(vmmGObjectUI):
             cleanup_config_window()
             if not self.is_visible():
                 return
+            logging.debug("User finished customize dialog, starting install")
             self.start_install(guest)
 
         def details_closed(ignore):
+            logging.debug("User closed customize window, back to wizard")
             cleanup_config_window()
             self._undo_finish_cursor()
             self.widget("summary-customize").set_active(False)
@@ -1781,13 +1741,12 @@ class vmmCreate(vmmGObjectUI):
         cleanup_config_window()
         self.config_window = vmmDetails(virtinst_guest, self.topwin)
         self.config_window_signals = []
-        self.config_window_signals.append(self.config_window.connect(
-                                                        "customize-finished",
-                                                        start_install_wrapper,
-                                                        guest))
-        self.config_window_signals.append(self.config_window.connect(
-                                                        "details-closed",
-                                                         details_closed))
+        self.config_window_signals.append(
+            self.config_window.connect("customize-finished",
+                                       start_install_wrapper,
+                                       guest))
+        self.config_window_signals.append(
+            self.config_window.connect("details-closed", details_closed))
         self.config_window.show()
 
     def _install_finished_cb(self, error, details):
@@ -1960,7 +1919,8 @@ class vmmCreate(vmmGObjectUI):
         try:
             base = _("Detecting")
 
-            if (self.detectedDistro == -1) or (idx >= (DETECT_TIMEOUT * 2)):
+            if (self.detectedDistro == DETECT_INPROGRESS and
+                (idx < (DETECT_TIMEOUT * 2))):
                 detect_str = base + ("." * ((idx % 3) + 1))
                 self.set_distro_labels(detect_str, detect_str)
 
@@ -1972,25 +1932,25 @@ class vmmCreate(vmmGObjectUI):
         except:
             logging.exception("Error in distro detect timeout")
 
-        if results == -1:
+        if results in [DETECT_INPROGRESS, DETECT_FAILED]:
             results = None
+
         self.widget("create-forward").set_sensitive(True)
         self.mediaDetected = True
-        self.detecting = False
         logging.debug("Finished OS detection.")
         self.set_distro_selection(results)
         if forward:
             self.idle_add(self.forward, ())
 
     def start_detection(self, forward):
-        if self.detecting:
+        if self.detectedDistro == DETECT_INPROGRESS:
             return
 
         media = self.get_config_detectable_media()
         if not media:
             return
 
-        self.detectedDistro = -1
+        self.detectedDistro = DETECT_INPROGRESS
 
         logging.debug("Starting OS detection thread for media=%s", media)
         self.widget("create-forward").set_sensitive(False)
@@ -2005,13 +1965,13 @@ class vmmCreate(vmmGObjectUI):
 
     def actually_detect(self, media):
         try:
-            installer = virtinst.DistroInstaller(self.conn)
+            installer = virtinst.DistroInstaller(self.conn.get_backend())
             installer.location = media
 
             self.detectedDistro = installer.detect_distro(self.guest)
         except:
             logging.exception("Error detecting distro.")
-            self.detectedDistro = -1
+            self.detectedDistro = DETECT_FAILED
 
     def _browse_file_cb(self, ignore, widget):
         self._browse_file(widget)

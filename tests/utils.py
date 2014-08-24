@@ -1,4 +1,4 @@
-# Copyright (C) 2013 Red Hat, Inc.
+# Copyright (C) 2013, 2014 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -36,17 +36,14 @@ REGENERATE_OUTPUT = False
 
 _capsprefix  = ",caps=%s/tests/capabilities-xml/" % os.getcwd()
 defaulturi = "__virtinst_test__test:///default,predictable"
-testuri    = "test:///%s/tests/testdriver.xml" % os.getcwd()
-fakeuri = "__virtinst_test__" + testuri + ",predictable"
-uriremote = fakeuri + ",remote"
-uriqemu = "%s,qemu" % fakeuri
-urixen = "%s,xen" % fakeuri
-urixencaps = fakeuri + _capsprefix + "rhel5.4-xen-caps-virt-enabled.xml,xen"
-urixenia64 = fakeuri + _capsprefix + "xen-ia64-hvm.xml,xen"
+testuri = "__virtinst_test__test:///%s/tests/testdriver.xml,predictable" % os.getcwd()
+uriremote = testuri + ",remote"
+uriqemu = "%s,qemu" % testuri
+urixen = "%s,xen" % testuri
+urixencaps = testuri + _capsprefix + "rhel5.4-xen-caps-virt-enabled.xml,xen"
+urixenia64 = testuri + _capsprefix + "xen-ia64-hvm.xml,xen"
 urikvm = uriqemu + _capsprefix + "libvirt-1.1.2-qemu-caps.xml"
-urilxc = fakeuri + _capsprefix + "capabilities-lxc.xml,lxc"
-
-os.environ["VIRTINST_TEST_SCRATCHDIR"] = os.getcwd()
+urilxc = testuri + _capsprefix + "capabilities-lxc.xml,lxc"
 
 
 def get_debug():
@@ -78,11 +75,12 @@ def openconn(uri):
 
     if uri not in _conn_cache:
         _conn_cache[uri] = {}
-    cache = _conn_cache[uri]
+        _conn_cache[uri]["vms"] = conn._fetch_all_guests_cached()
+        _conn_cache[uri]["pools"] = conn._fetch_all_pools_cached()
+        _conn_cache[uri]["vols"] = conn._fetch_all_vols_cached()
+    cache = _conn_cache[uri].copy()
 
     def cb_fetch_all_guests():
-        if "vms" not in cache:
-            cache["vms"] = conn._fetch_all_guests_cached()
         return cache["vms"]
 
     def cb_fetch_all_pools():
@@ -98,6 +96,7 @@ def openconn(uri):
     def cb_clear_cache(pools=False):
         if pools:
             cache.pop("pools", None)
+            cache.pop("vols", None)
 
     conn.cb_fetch_all_guests = cb_fetch_all_guests
     conn.cb_fetch_all_pools = cb_fetch_all_pools
@@ -254,9 +253,8 @@ def get_basic_fullyvirt_guest(typ="xen", installer=None):
     g.installer.location = "/dev/null"
     g.installer.cdrom = True
     gdev = VirtualGraphics(_conn)
-    gdev.type = "sdl"
-    gdev.display = ":3.4"
-    gdev.xauth = "/tmp/.Xauthority"
+    gdev.type = "vnc"
+    gdev.keymap = "ja"
     g.add_device(gdev)
     g.features.pae = False
     g.vcpus = 5
@@ -316,7 +314,7 @@ def get_floppy(path=None):
 
 def get_filedisk(path=None, fake=True):
     if not path:
-        path = "/tmp/test.img"
+        path = "/dev/default-pool/new-test-suite.img"
     d = VirtualDisk(_conn)
     d.path = path
     size = None

@@ -26,6 +26,7 @@ from gi.repository import GLib
 from gi.repository import Gtk
 # pylint: enable=E0611
 
+from virtinst import CPU
 from virtManager.keyring import vmmKeyring, vmmSecret
 
 running_config = None
@@ -285,6 +286,14 @@ class vmmConfig(object):
     def on_keys_combination_changed(self, cb):
         return self.conf.notify_add("/console/grab-keys", cb)
 
+    # This key is not intended to be exposed in the UI yet
+    def get_grab_keyboard(self):
+        return self.conf.get("/console/grab-keyboard")
+    def set_grab_keyboard(self, val):
+        self.conf.set("/console/grab-keyboard", val)
+    def on_grab_keyboard_changed(self, cb):
+        return self.conf.notify_add("/console/grab-keyboard", cb)
+
     # Confirmation preferences
     def get_confirm_forcepoweroff(self):
         return self.conf.get("/confirm/forcepoweroff")
@@ -342,6 +351,8 @@ class vmmConfig(object):
 
 
     # Disable/Enable different stats polling
+    def get_stats_enable_cpu_poll(self):
+        return self.conf.get("/stats/enable-cpu-poll")
     def get_stats_enable_disk_poll(self):
         return self.conf.get("/stats/enable-disk-poll")
     def get_stats_enable_net_poll(self):
@@ -349,6 +360,8 @@ class vmmConfig(object):
     def get_stats_enable_memory_poll(self):
         return self.conf.get("/stats/enable-memory-poll")
 
+    def set_stats_enable_cpu_poll(self, val):
+        self.conf.set("/stats/enable-cpu-poll", val)
     def set_stats_enable_disk_poll(self, val):
         self.conf.set("/stats/enable-disk-poll", val)
     def set_stats_enable_net_poll(self, val):
@@ -356,6 +369,8 @@ class vmmConfig(object):
     def set_stats_enable_memory_poll(self, val):
         self.conf.set("/stats/enable-memory-poll", val)
 
+    def on_stats_enable_cpu_poll_changed(self, cb, row=None):
+        return self.conf.notify_add("/stats/enable-cpu-poll", cb, row)
     def on_stats_enable_disk_poll_changed(self, cb, row=None):
         return self.conf.notify_add("/stats/enable-disk-poll", cb, row)
     def on_stats_enable_net_poll_changed(self, cb, row=None):
@@ -455,14 +470,24 @@ class vmmConfig(object):
     def set_storage_format(self, typ):
         self.conf.set("/new-vm/storage-format", typ.lower())
 
-    def get_default_cpu_setting(self, raw=False):
+    def get_default_cpu_setting(self, raw=False, for_cpu=False):
         ret = self.conf.get("/new-vm/cpu-default")
-        whitelist = ["default", "hv-default", "host-cpu-model", "host-model"]
+        whitelist = [CPU.SPECIAL_MODE_HOST_MODEL_ONLY,
+                     CPU.SPECIAL_MODE_HOST_MODEL,
+                     CPU.SPECIAL_MODE_HV_DEFAULT]
 
         if ret not in whitelist:
             ret = "default"
         if ret == "default" and not raw:
             ret = self.cpu_default_from_config
+            if ret not in whitelist:
+                ret = whitelist[0]
+
+        if for_cpu and ret == CPU.SPECIAL_MODE_HOST_MODEL:
+            # host-model has known issues, so use our 'copy cpu'
+            # behavior until host-model does what we need
+            ret = CPU.SPECIAL_MODE_HOST_COPY
+
         return ret
     def set_default_cpu_setting(self, val):
         self.conf.set("/new-vm/cpu-default", val.lower())

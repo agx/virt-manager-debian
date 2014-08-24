@@ -1,7 +1,7 @@
 #
 # Common code for all guests
 #
-# Copyright 2006-2009, 2013 Red Hat, Inc.
+# Copyright 2006-2009, 2013, 2014 Red Hat, Inc.
 # Jeremy Katz <katzj@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -35,8 +35,12 @@ from virtinst import Clock
 from virtinst import Seclabel
 from virtinst import CPU
 from virtinst import DomainNumatune
+from virtinst import DomainMemorytune
+from virtinst import DomainMemorybacking
+from virtinst import DomainBlkiotune
 from virtinst import DomainFeatures
 from virtinst import PM
+from virtinst import IdMap
 from virtinst.xmlbuilder import XMLBuilder, XMLProperty, XMLChildProperty
 
 from virtinst import osdict
@@ -89,10 +93,10 @@ class Guest(XMLBuilder):
 
     _XML_ROOT_NAME = "domain"
     _XML_PROP_ORDER = ["type", "name", "uuid", "title", "description",
-        "maxmemory", "memory", "hugepage", "vcpus", "curvcpus",
-        "numatune", "bootloader", "os", "features", "cpu", "clock",
-        "on_poweroff", "on_reboot", "on_crash", "pm", "emulator", "_devices",
-        "seclabel"]
+        "maxmemory", "memory", "memoryBacking", "vcpus", "curvcpus", "memtune",
+        "numatune", "blkiotune", "bootloader", "os", "idmap", "features",
+        "cpu", "clock", "on_poweroff", "on_reboot", "on_crash", "pm",
+        "emulator", "_devices", "seclabel"]
 
     def __init__(self, *args, **kwargs):
         XMLBuilder.__init__(self, *args, **kwargs)
@@ -106,6 +110,10 @@ class Guest(XMLBuilder):
 
         self.skip_default_console = False
         self.skip_default_channel = False
+        self.skip_default_sound = False
+        self.skip_default_usbredir = False
+        self.skip_default_graphics = False
+        self.x86_cpu_default = self.cpu.SPECIAL_MODE_HOST_MODEL_ONLY
 
         self._os_variant = None
         self._random_uuid = None
@@ -167,7 +175,6 @@ class Guest(XMLBuilder):
 
     id = XMLProperty("./@id", is_int=True)
     type = XMLProperty("./@type", default_cb=lambda s: "xen")
-    hugepage = XMLProperty("./memoryBacking/hugepages", is_bool=True)
     bootloader = XMLProperty("./bootloader")
     description = XMLProperty("./description")
     title = XMLProperty("./title")
@@ -185,6 +192,10 @@ class Guest(XMLBuilder):
     cpu = XMLChildProperty(CPU, is_single=True)
     numatune = XMLChildProperty(DomainNumatune, is_single=True)
     pm = XMLChildProperty(PM, is_single=True)
+    blkiotune = XMLChildProperty(DomainBlkiotune, is_single=True)
+    memtune = XMLChildProperty(DomainMemorytune, is_single=True)
+    memoryBacking = XMLChildProperty(DomainMemorybacking, is_single=True)
+    idmap = XMLChildProperty(IdMap, is_single=True)
 
 
     ###############################
@@ -443,8 +454,7 @@ class Guest(XMLBuilder):
     def _create_guest(self, meter,
                       start_xml, final_xml, is_initial, noboot):
         """
-        Actually do the XML logging, guest defining/creating, console
-        launching and waiting
+        Actually do the XML logging, guest defining/creating
 
         @param is_initial: If running initial guest creation, else we
                            are continuing the install
@@ -581,6 +591,25 @@ class Guest(XMLBuilder):
             dev.target_name = dev.CHANNEL_NAME_QEMUGA
             self.add_device(dev)
 
+    def add_default_graphics(self):
+        if self.skip_default_graphics:
+            return
+        if self.get_devices("graphics"):
+            return
+        if self.os.is_container():
+            return
+        if self.os.arch not in ["x86_64", "i686", "ppc64", "ia64"]:
+            return
+        self.add_device(virtinst.VirtualGraphics(self.conn))
+
+    def add_default_devices(self):
+        self.add_default_graphics()
+        self.add_default_video_device()
+        self.add_default_input_device()
+        self.add_default_console_device()
+        self.add_default_usb_controller()
+        self.add_default_channels()
+
     def _set_transient_device_defaults(self, install):
         def do_remove_media(d):
             # Keep cdrom around, but with no media attached,
@@ -615,16 +644,22 @@ class Guest(XMLBuilder):
         self._set_disk_defaults()
         self._set_net_defaults()
         self._set_input_defaults()
-        self._set_sound_defaults()
         self._set_graphics_defaults()
         self._set_video_defaults()
+        self._set_sound_defaults()
+
+    def _is_os_container(self):
+        if not self.os.is_container():
+            return False
+        for fs in self.get_devices("filesystem"):
+            if fs.target == "/":
+                return True
+        return False
 
     def _set_osxml_defaults(self):
         if self.os.is_container() and not self.os.init:
-            for fs in self.get_devices("filesystem"):
-                if fs.target == "/":
-                    self.os.init = "/sbin/init"
-                    break
+            if self._is_os_container():
+                self.os.init = "/sbin/init"
             self.os.init = self.os.init or "/bin/sh"
 
         if not self.os.loader and self.os.is_hvm() and self.type == "xen":
@@ -691,11 +726,27 @@ class Guest(XMLBuilder):
     def _set_cpu_defaults(self):
         self.cpu.set_topology_defaults(self.vcpus)
 
+        if (not self.conn.is_test() and not
+            (self.conn.is_qemu() and self.type == "kvm")):
+            return
+        if not self.os.is_x86():
+            return
+        if self.os.arch != self.conn.caps.host.cpu.arch:
+            return
+        if self.cpu.special_mode_was_set:
+            return
+        if self.cpu.get_xml_config().strip():
+            return
+
+        self.cpu.set_special_mode(self.x86_cpu_default)
+
     def _set_feature_defaults(self):
         if self.os.is_container():
             self.features.acpi = None
             self.features.apic = None
             self.features.pae = None
+            if self._is_os_container():
+                self.features.privnet = True
             return
 
         if not self.os.is_hvm():
@@ -703,8 +754,7 @@ class Guest(XMLBuilder):
 
         default = True
         if (self._lookup_osdict_key("xen_disable_acpi", False) and
-            self.conn.check_support(
-                support.SUPPORT_CONN_SKIP_DEFAULT_ACPI)):
+            not self.conn.check_support(support.SUPPORT_CONN_CAN_ACPI)):
             default = False
 
         if self.features.acpi == "default":
@@ -855,20 +905,38 @@ class Guest(XMLBuilder):
             gfx.type = gtype
 
     def _add_spice_channels(self):
-        def has_spice_agent():
-            for chn in self.get_devices("channel"):
-                if chn.type == chn.TYPE_SPICEVMC:
-                    return True
-
         if self.skip_default_channel:
             return
 
-        if (not has_spice_agent() and
-            self.conn.check_support(
-                self.conn.SUPPORT_CONN_CHAR_SPICEVMC)):
+        for chn in self.get_devices("channel"):
+            if chn.type == chn.TYPE_SPICEVMC:
+                return
+
+        if self.conn.check_support(self.conn.SUPPORT_CONN_CHAR_SPICEVMC):
             agentdev = virtinst.VirtualChannelDevice(self.conn)
             agentdev.type = agentdev.TYPE_SPICEVMC
             self.add_device(agentdev)
+
+    def _add_spice_sound(self):
+        if self.skip_default_sound:
+            return
+        if self.get_devices("sound"):
+            return
+        self.add_default_sound_device()
+
+    def _add_spice_usbredir(self):
+        if self.skip_default_usbredir:
+            return
+        if self.get_devices("redirdev"):
+            return
+        if not self.conn.check_support(self.conn.SUPPORT_CONN_USBREDIR):
+            return
+
+        for ignore in range(4):
+            dev = virtinst.VirtualRedirDevice(self.conn)
+            dev.bus = "usb"
+            dev.type = "spicevmc"
+            self.add_device(dev)
 
     def _set_video_defaults(self):
         def has_spice():
@@ -878,6 +946,8 @@ class Guest(XMLBuilder):
 
         if has_spice():
             self._add_spice_channels()
+            self._add_spice_sound()
+            self._add_spice_usbredir()
 
         if has_spice() and self.os.is_x86():
             video_model = "qxl"

@@ -100,6 +100,12 @@ like 'maxmemory' and 'hugepages'. This deprecates the -r/--ram option.
 
 Use --memory=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsMemoryAllocation>
 
+=item --memorybacking OPT1=yes|no[,OPT2=yes|no][...]
+
+This option will influence how virtual memory pages are backed by host pages.
+
+Use --memorybacking=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsMemoryBacking>
+
 =item  --arch=ARCH
 
 Request a non-native CPU architecture for the guest virtual machine.
@@ -151,12 +157,30 @@ mode.
 
 Use --numatune=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsNUMATuning>
 
+=item --memtune=SOFT_LIMIT,[hard_limit=HARD_LIMIT,swap_hard_limit=SW_HARD_LIMIT,min_guarantee=MIN_GUARANTEE]
+
+Tune memory policy for the domain process. Example invocations
+
+    --memtune 1000
+    --memtune hard_limit=100,soft_limit=60,swap_hard_limit=150,min_guarantee=80
+
+Use --memtune=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsMemoryTuning>
+
+=item --blkiotune=WEIGHT,[device_path=DEVICE_PATH,device_weight=DEVICE_WEIGHT]
+
+Tune blkio policy for the domain process. Example invocations
+
+    --blkiotune 100
+    --blkiotune weight=100,device_path=/dev/sdc,device_weight=200
+
+Use --blkiotune=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsBlockTuning>
+
 =item --cpu MODEL[,+feature][,-feature][,match=MATCH][,vendor=VENDOR]
 
 Configure the CPU model and CPU features exposed to the guest. The only
 required value is MODEL, which is a valid CPU model as known to libvirt.
 
-libvirt's feature policy values force, require, optional, disable, or forbid,
+Libvirt's feature policy values force, require, optional, disable, or forbid,
 or with the shorthand '+feature' and '-feature', which equal 'force=feature'
 and 'disable=feature' respectively
 
@@ -433,6 +457,20 @@ will default to /bin/sh.
 
 Use --boot=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsOS>
 
+=item --idmap=IDMAPOPTS
+
+If the guest configuration declares a UID or GID mapping,
+the 'user' namespace will be enabled to apply these.
+A suitably configured UID/GID mapping is a pre-requisite to
+make containers secure, in the absence of sVirt confinement.
+
+--idmap can be specified to enable user namespace for LXC containers
+
+Example:
+    --idmap uid_start=0,uid_target=1000,uid_count=10,gid_start=0,gid_target=1000,gid_count=10
+
+Use --idmap=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsOSContainer>
+
 =back
 
 
@@ -450,9 +488,13 @@ general format of a disk string is
 
     --disk opt1=val1,opt2=val2,...
 
-To specify media, the command can either be:
+The simplest invocation to create a new 10G disk image and associated disk device:
 
-    --disk /some/storage/path,opt1=val1
+    --disk size=10
+
+virt-install will generate a path name, and place it in the default image location for the hypervisor. To specify media, the command can either be:
+
+    --disk /some/storage/path[,opt1=val1]...
 
 or explicitly specify one of the following arguments:
 
@@ -461,14 +503,11 @@ or explicitly specify one of the following arguments:
 =item B<path>
 
 A path to some storage media to use, existing or not. Existing media can be
-a file or block device. If installing on a remote host, the existing media
-must be shared as a libvirt storage volume.
+a file or block device.
 
 Specifying a non-existent path implies attempting to create the new storage,
-and will require specifying a 'size' value. If the base directory of the path
-is a libvirt storage pool on the host, the new storage will be created as a
-libvirt storage volume. For remote hosts, the base directory is required to be
-a storage pool if using this method.
+and will require specifying a 'size' value. Even for remote hosts, virt-install
+will try to use libvirt storage APIs to automatically create the given path.
 
 =item B<pool>
 
@@ -539,16 +578,11 @@ read and write caching.
 
 =item B<format>
 
-Image format to be used if creating managed storage. For file volumes, this
-can be 'raw', 'qcow2', 'vmdk', etc. See format types in
-L<http://libvirt.org/storage.html> for possible values. This is often
-mapped to the B<driver_type> value as well.
+Disk image format. For file volumes, this can be 'raw', 'qcow2', 'vmdk', etc. See format types in L<http://libvirt.org/storage.html> for possible values. This is often mapped to the B<driver_type> value as well.
 
-With libvirt 0.8.3 and later, this option should be specified if reusing
-an existing disk image, since libvirt does not autodetect storage format
-as it is a potential security issue. For example, if reusing an existing
-qcow2 image, you will want to specify format=qcow2, otherwise the hypervisor
-may not be able to read your disk image.
+If not specified when creating file images, this will default to 'qcow2'.
+
+If creating storage, this will be the format of the new image. If using an existing image, this overrides libvirt's format auto-detection.
 
 =item B<driver_name>
 
@@ -759,12 +793,6 @@ actual VNC display allocated can be obtained using the C<vncdisplay>
 command to C<virsh> (or L<virt-viewer(1)> can be used which handles this
 detail for the use).
 
-sdl
-
-Setup a virtual console in the guest and display an SDL window in the
-host to render the output. If the SDL window is closed the guest may
-be unconditionally terminated.
-
 spice
 
 Export the guest's console using the Spice protocol. Spice allows advanced
@@ -824,7 +852,7 @@ This deprecates the following options: --vnc, --vncport, --vnclisten, -k/--keyma
 =item  --noautoconsole
 
 Don't automatically try to connect to the guest console. The default behaviour
-is to launch a VNC client to display the graphical console, or to run the
+is to launch L<virt-viewer(1)> to display the graphical console, or to run the
 C<virsh> C<console> command to display the text console. Use of this parameter
 will disable this behaviour.
 
@@ -954,16 +982,16 @@ PCI device (via lspci).
 
 Use --host-device=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsHostDev>
 
-=item --soundhw MODEL
+=item --sound MODEL
 
 Attach a virtual audio device to the guest. MODEL specifies the emulated
 sound card model. Possible values are ich6, ac97, es1370, sb16, pcspk,
 or default. 'default' will try to pick the best model that the specified
 OS supports.
 
-This deprecates the old boolean --sound option.
+This deprecates the old --soundhw option.
 
-Use --soundhw=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsSound>
+Use --sound=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsSound>
 
 =item --watchdog MODEL[,action=ACTION]
 
@@ -1406,17 +1434,17 @@ C<~/.cache/virt-manager/virt-install.log> even if this parameter is omitted.
 
 =head1 EXAMPLES
 
-Install a Fedora 13 KVM guest with virtio accelerated disk/network,
-creating a new 8GB storage file, installing from media in the hosts
-CDROM drive, auto launching a graphical VNC viewer
+Install a Fedora 20 KVM guest with virtio accelerated disk/network,
+creating a new 10GB qcow2 file, installing from media in the hosts
+CDROM drive. This will use Spice graphics by default, and launch autolaunch
+a graphical client.
 
   # virt-install \
        --connect qemu:///system \
        --virt-type kvm \
        --name demo \
        --memory 500 \
-       --disk path=/var/lib/libvirt/images/demo.img,size=8 \
-       --graphics vnc \
+       --disk size=10 \
        --cdrom /dev/cdrom \
        --os-variant fedora13
 
@@ -1432,20 +1460,6 @@ booting from PXE, using VNC server/viewer
        --virt-type qemu
        --graphics vnc \
        --os-variant fedora9
-
-Install a guest with a real partition, with the default QEMU hypervisor for
-a different architecture using SDL graphics, using a remote kernel and initrd
-pair:
-
-  # virt-install \
-       --connect qemu:///system \
-       --name demo \
-       --memory 500 \
-       --disk path=/dev/hdc \
-       --network bridge=eth1 \
-       --arch ppc64 \
-       --graphics sdl \
-       --location http://download.fedora.redhat.com/pub/fedora/linux/core/6/x86_64/os/
 
 Run a Live CD image under Xen fullyvirt, in diskless environment
 

@@ -19,10 +19,6 @@
 # End local config
 
 
-%define _version 0.10.0
-%define _release 1
-
-
 # This macro is used for the continuous automated builds. It just
 # allows an extra fragment based on the timestamp to be appended
 # to the release. This distinguishes automated builds, from formal
@@ -30,8 +26,8 @@
 %define _extra_release %{?dist:%{dist}}%{?extra_release:%{extra_release}}
 
 Name: virt-manager
-Version: %{_version}
-Release: %{_release}%{_extra_release}
+Version: 1.0.1
+Release: 1%{_extra_release}
 %define verrel %{version}-%{release}
 
 Summary: Virtual Machine Manager
@@ -213,6 +209,37 @@ fi
 
 
 %changelog
+* Sat Mar 22 2014 Cole Robinson <crobinso@redhat.com> - 1.0.1-1
+- virt-manager release 1.0.1
+- virt-install/virt-xml: New --memorybacking option (Chen Hanxiao)
+- virt-install/virt-xml: New --memtune option (Chen Hanxiao)
+- virt-manager: UI for LXC <idmap> (Chen Hanxiao)
+- virt-manager: gsettings key to disable keygrab (Kjö Hansi Glaz)
+- virt-manager: Show domain state reason in the UI (Giuseppe Scrivano)
+- Fix a number of bugs found since the 1.0.0 release
+
+* Fri Feb 14 2014 Cole Robinson <crobinso@redhat.com> - 1.0.0-1
+- virt-manager release 1.0.0
+- virt-manager: Snapshot support
+- New tool virt-xml: Edit libvirt XML in one shot from the command line
+- Improved defaults: qcow2, USB2, host CPU model, guest agent channel,
+  ...
+- Introspect command line options like --disk=? or --network=help
+- The virt-image tool will be removed before the next release, speak up
+  if you have a good reason not to remove it.
+- virt-manager: Support arm vexpress VM creation
+- virt-manager: Add guest memory usage graphs (Thorsten Behrens)
+- virt-manager: UI for editing <filesystem> devices (Cédric Bosdonnat)
+- Spice USB redirection support (Guannan Ren)
+- <tpm> UI and command line support (Stefan Berger)
+- <rng> UI and command line support (Giuseppe Scrivano)
+- <panic> UI and command line support (Chen Hanxiao)
+- <blkiotune> command line support (Chen Hanxiao)
+- virt-manager: support for glusterfs storage pools (Giuseppe Scrivano)
+- cli: New options --memory, --features, --clock, --metadata, --pm
+- Greatly improve app responsiveness when connecting to remote hosts
+- Lots of UI cleanup and improvements
+
 * Wed Jun 19 2013 Cole Robinson <crobinso@redhat.com> - 0.10.0-1
 - virt-manager release 0.10.0
 - Merged code with python-virtinst. virtinst is no longer public

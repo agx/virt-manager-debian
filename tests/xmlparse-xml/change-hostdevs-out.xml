@@ -19,7 +19,7 @@
   <devices>
     <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
     <input type="mouse" bus="ps2"/>
-    <graphics type="sdl" display=":3.4" xauth="/tmp/.Xauthority"/>
+    <graphics type="vnc" display=":3.4" xauth="/tmp/.Xauthority"/>
     <console type="pty"/>
     <hostdev type="usb" managed="no">
       <source>
@@ -38,6 +38,7 @@
         <address domain="0x4" bus="0x5" slot="0x6" function="0x7"/>
       </source>
       <driver name="vfio"/>
+      <rom bar="on"/>
     </hostdev>
   </devices>
 </domain>

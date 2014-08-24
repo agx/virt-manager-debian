@@ -19,7 +19,6 @@
 
 import logging
 import os
-import pwd
 import statvfs
 
 # pylint: disable=E0611
@@ -139,25 +138,12 @@ class vmmAddStorage(vmmGObjectUI):
     ##############
 
     @staticmethod
-    def check_path_search_for_qemu(src, conn, path):
-        if conn.is_remote() or not conn.is_qemu_system():
-            return
-
-        user = src.config.default_qemu_user
-
-        for i in conn.caps.host.secmodels:
-            if i.model == "dac":
-                label = i.baselabels.get("kvm") or i.baselabels.get("qemu")
-                if not label:
-                    continue
-                pwuid = pwd.getpwuid(int(label.split(":")[0].replace("+", "")))
-                if pwuid:
-                    user = pwuid[0]
-
+    def check_path_search(src, conn, path):
         skip_paths = src.config.get_perms_fix_ignore()
-        broken_paths = virtinst.VirtualDisk.check_path_search_for_user(
-            conn.get_backend(), path, user)
-        for p in broken_paths:
+        user, broken_paths = virtinst.VirtualDisk.check_path_search(
+            conn.get_backend(), path)
+
+        for p in broken_paths[:]:
             if p in skip_paths:
                 broken_paths.remove(p)
 
@@ -178,8 +164,8 @@ class vmmAddStorage(vmmGObjectUI):
             return
 
         logging.debug("Attempting to correct permission issues.")
-        errors = virtinst.VirtualDisk.fix_path_search_for_user(conn.get_backend(),
-                                                               path, user)
+        errors = virtinst.VirtualDisk.fix_path_search_for_user(
+            conn.get_backend(), path, user)
         if not errors:
             return
 
@@ -205,6 +191,7 @@ class vmmAddStorage(vmmGObjectUI):
         self.widget("config-storage-size").set_value(8)
         self.widget("config-storage-entry").set_text("")
         self.widget("config-storage-nosparse").set_active(True)
+        self.widget("config-storage-create-box").set_sensitive(True)
 
         fmt = self.conn.get_default_storage_format()
         can_alloc = fmt in ["raw"]
@@ -338,11 +325,11 @@ class vmmAddStorage(vmmGObjectUI):
             if is_default:
                 path = self._check_ideal_path(path, vmname, collidelist)
 
-            if not path and device != "disk":
+            if not path and device in ["disk", "lun"]:
                 return self.err.val_err(_("A storage path must be specified."))
 
             disk = virtinst.VirtualDisk(conn)
-            disk.path = path
+            disk.path = path or None
             disk.read_only = readonly
             disk.device = device
             disk.set_create_storage(size=size, sparse=sparse,
@@ -380,7 +367,7 @@ class vmmAddStorage(vmmGObjectUI):
             if not res:
                 return False
 
-        self.check_path_search_for_qemu(self, self.conn, disk.path)
+        self.check_path_search(self, self.conn, disk.path)
 
 
     #############

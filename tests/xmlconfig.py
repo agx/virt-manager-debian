@@ -123,7 +123,7 @@ class TestXMLConfig(unittest.TestCase):
 
     def testBootParavirtDiskFile(self):
         g = utils.get_basic_paravirt_guest()
-        g.add_device(utils.get_filedisk("/tmp/somerandomfilename.img"))
+        g.add_device(utils.get_filedisk("/dev/default-pool/somerandomfilename.img"))
         self._compare(g, "boot-paravirt-disk-file", False)
 
     def testBootParavirtDiskFileBlktapCapable(self):
@@ -172,11 +172,11 @@ class TestXMLConfig(unittest.TestCase):
 
     def testBootParavirtManyDisks(self):
         g = utils.get_basic_paravirt_guest()
-        disk = utils.get_filedisk("/tmp/test2.img")
+        disk = utils.get_filedisk("/dev/default-pool/test2.img")
         disk.driver_name = VirtualDisk.DRIVER_TAP
         disk.driver_type = VirtualDisk.DRIVER_TAP_QCOW
 
-        g.add_device(utils.get_filedisk("/tmp/test1.img"))
+        g.add_device(utils.get_filedisk("/dev/default-pool/test1.img"))
         g.add_device(disk)
         g.add_device(utils.get_blkdisk())
         self._compare(g, "boot-paravirt-many-disks", False)
@@ -234,11 +234,11 @@ class TestXMLConfig(unittest.TestCase):
 
     def testInstallParavirtManyDisks(self):
         g = utils.get_basic_paravirt_guest()
-        disk = utils.get_filedisk("/tmp/test2.img")
+        disk = utils.get_filedisk("/dev/default-pool/test2.img")
         disk.driver_name = VirtualDisk.DRIVER_TAP
         disk.driver_type = VirtualDisk.DRIVER_TAP_QCOW
 
-        g.add_device(utils.get_filedisk("/tmp/test1.img"))
+        g.add_device(utils.get_filedisk("/dev/default-pool/test1.img"))
         g.add_device(disk)
         g.add_device(utils.get_blkdisk())
         self._compare(g, "install-paravirt-many-disks", True)
@@ -395,7 +395,7 @@ class TestXMLConfig(unittest.TestCase):
     def testXMLEscaping(self):
         g = utils.get_basic_fullyvirt_guest()
         g.description = "foooo barrrr \n baz && snarf. '' \"\" @@$\n"
-        g.add_device(utils.get_filedisk("/tmp/ISO&'&s"))
+        g.add_device(utils.get_filedisk("/dev/default-pool/ISO&'&s"))
         self._compare(g, "misc-xml-escaping", True)
 
     # OS Type/Version configurations
@@ -666,7 +666,7 @@ class TestXMLConfig(unittest.TestCase):
 
         dev = VirtualParallelDevice(g.conn)
         dev.type = "unix"
-        dev.source_path = "/tmp/foobar"
+        dev.source_path = "/dev/default-pool/foobar"
         g.add_device(dev)
 
         dev = VirtualSerialDevice(g.conn)
@@ -709,7 +709,7 @@ class TestXMLConfig(unittest.TestCase):
         g = utils.get_basic_fullyvirt_guest(installer=i)
 
         g.description = "foooo barrrr somedesc"
-        g.hugepage = True
+        g.memoryBacking.hugepages = True
 
         # Hostdevs
         dev1 = VirtualHostDevice(g.conn)
@@ -789,7 +789,7 @@ class TestXMLConfig(unittest.TestCase):
         cdev1.type = "null"
         cdev2 = VirtualParallelDevice(g.conn)
         cdev2.type = "unix"
-        cdev2.source_path = "/tmp/foobar"
+        cdev2.source_path = "/dev/default-pool/foobar"
         cdev3 = VirtualChannelDevice(g.conn)
         cdev3.type = "spicevmc"
         g.add_device(cdev1)
@@ -838,7 +838,7 @@ class TestXMLConfig(unittest.TestCase):
 
         gdev3 = virtinst.VirtualGraphics(g.conn)
         gdev3.type = "sdl"
-        gdev3.xauth = "/tmp/.Xauthority"
+        gdev3.xauth = "/dev/default-pool/.Xauthority"
         gdev3.display = ":3.4"
         gdev4 = virtinst.VirtualGraphics(g.conn)
         gdev4.type = "spice"
@@ -954,25 +954,6 @@ class TestXMLConfig(unittest.TestCase):
         self._testInstall(g, "winxp-kvm-stage1",
                           "winxp-kvm-stage3", "winxp-kvm-stage2")
 
-    def testCreateDisk(self):
-        """
-        Doesn't really belong here, but what the hell :)
-        """
-        path = "/tmp/__virtinst_create_test__.img"
-        sizegigs = .001
-        sizebytes = long(sizegigs * 1024L * 1024L * 1024L)
-
-        for sparse in [True, False]:
-            disk = VirtualDisk(utils.get_conn())
-            disk.path = path
-            disk.set_create_storage(size=sizegigs, sparse=sparse)
-            disk.validate()
-            disk.setup()
-
-            actualsize = long(os.path.getsize(path))
-            os.unlink(path)
-            self.assertEquals(sizebytes, actualsize)
-
     def testDefaultBridge(self):
         origfunc = None
         util = None
@@ -1046,6 +1027,16 @@ class TestXMLConfig(unittest.TestCase):
         self.assertEquals("zz", VirtualDisk.num_to_target(27 * 26))
         self.assertEquals("aaa", VirtualDisk.num_to_target(27 * 26 + 1))
 
+        self.assertEquals(VirtualDisk.target_to_num("hda"), 0)
+        self.assertEquals(VirtualDisk.target_to_num("hdb"), 1)
+        self.assertEquals(VirtualDisk.target_to_num("sdz"), 25)
+        self.assertEquals(VirtualDisk.target_to_num("sdaa"), 26)
+        self.assertEquals(VirtualDisk.target_to_num("vdab"), 27)
+        self.assertEquals(VirtualDisk.target_to_num("vdaz"), 51)
+        self.assertEquals(VirtualDisk.target_to_num("xvdba"), 52)
+        self.assertEquals(VirtualDisk.target_to_num("xvdzz"), 26 * (25 + 1) + 25)
+        self.assertEquals(VirtualDisk.target_to_num("xvdaaa"), 26 * 26 * 1 + 26 * 1 + 0)
+
         disk = virtinst.VirtualDisk(utils.get_conn())
         disk.bus = "ide"
 
@@ -1053,6 +1044,10 @@ class TestXMLConfig(unittest.TestCase):
         self.assertEquals("hdb", disk.generate_target(["hda"]))
         self.assertEquals("hdc", disk.generate_target(["hdb", "sda"]))
         self.assertEquals("hdb", disk.generate_target(["hda", "hdd"]))
+
+        disk.bus = "virtio-scsi"
+        self.assertEquals("sdb", disk.generate_target(["sda", "sdg", "sdi"], 0))
+        self.assertEquals("sdh", disk.generate_target(["sda", "sdg"], 1))
 
     def testFedoraTreeinfo(self):
         i = utils.make_distro_installer(

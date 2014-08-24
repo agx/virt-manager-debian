@@ -1,0 +1,13 @@
+       </source>
+       <boot order="6"/>
+     </hostdev>
+-    <redirdev bus="usb" type="tcp">
+-      <source mode="connect" host="localhost" service="4000"/>
++    <redirdev bus="usb" type="spicevmc">
++      <source mode="connect" host="example.com" service="12345"/>
+       <protocol type="raw"/>
+     </redirdev>
+     <redirdev bus="usb" type="spicevmc">
+
+Domain 'test-many-devices' defined successfully.
+Changes will take effect after the next domain shutdown.

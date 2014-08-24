@@ -1,0 +1,13 @@
+   </numatune>
+   <os>
+     <type arch="i686">hvm</type>
+-    <loader>/usr/lib/xen/boot/hvmloader</loader>
++    <loader>foo.bar</loader>
++    <bios useserial="yes"/>
++    <init>/bin/bash</init>
+   </os>
+   <idmap>
+     <uid start="0" target="1000" count="10"/>
+
+Domain 'test-many-devices' defined successfully.
+Changes will take effect after the next domain shutdown.

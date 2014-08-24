@@ -1,4 +1,4 @@
-#!/usr/bin/python -tt
+#!/usr/bin/python2 -tt
 #
 # Copyright 2013-2014 Red Hat, Inc.
 # Cole Robinson <crobinso@redhat.com>
@@ -240,7 +240,8 @@ def setup_device(dev):
         return
 
     logging.debug("Doing setup for disk=%s", dev)
-    meter = (cli.quiet and
+
+    meter = ((cli.quiet or "VIRTINST_TEST_SUITE" in os.environ) and
              progress.BaseMeter() or
              progress.TextMeter(fo=sys.stdout))
 
@@ -298,7 +299,7 @@ def parse_args():
         _("Edit libvirt XML using command line options."),
         introspection_epilog=True)
 
-    cli.add_connect_option(parser)
+    cli.add_connect_option(parser, "virt-xml")
 
     parser.add_argument("domain", nargs='?',
         help=_("Domain name, id, or uuid"))
@@ -345,7 +346,7 @@ def parse_args():
     cli.add_memory_option(g)
     cli.vcpu_cli_options(g, editexample=True)
     cli.add_guest_xml_options(g)
-    cli.add_boot_option(g)
+    cli.add_boot_options(g)
     cli.add_fs_option(g)
     cli.add_device_options(g)
 

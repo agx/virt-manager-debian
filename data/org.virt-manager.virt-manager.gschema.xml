@@ -111,16 +111,20 @@
   <schema id="org.virt-manager.virt-manager.stats" path="/org/virt-manager/virt-manager/stats/">
 
     <key name="update-interval" type="i">
-      <default>1</default>
+      <default>3</default>
       <summary>The statistics update interval</summary>
       <description>The statistics update interval in seconds</description>
     </key>
 
+    <key name="enable-cpu-poll" type="b">
+      <default>true</default>
+      <summary>Poll VM CPU stats</summary>
+      <description>Whether or not the app will poll VM CPU statistics</description>
+    </key>
     <key name="enable-disk-poll" type="b">
       <default>false</default>
       <summary>Poll disk i/o stats</summary>
       <description>Whether or not the app will poll VM disk i/o statistics</description>
-
     </key>
     <key name="enable-net-poll" type="b">
       <default>false</default>
@@ -128,7 +132,7 @@
       <description>Whether or not the app will poll VM network i/o statistics</description>
     </key>
     <key name="enable-memory-poll" type="b">
-      <default>true</default>
+      <default>false</default>
       <summary>Poll memory stats</summary>
       <description>Whether or not the app will poll VM memory statistics</description>
     </key>
@@ -184,6 +188,13 @@
       <description>Grab keyboard sequence for the graphical console</description>
     </key>
 
+    <!--This key is not intended to be exposed in the UI yet-->
+    <key name="grab-keyboard" type="b">
+      <default>true</default>
+      <summary>Enable grab keyboard when active and focused</summary>
+      <description>Enable grab keyboard when active and focused</description>
+    </key>
+
     <key name="auto-redirect" type="b">
       <default>true</default>
       <summary>Enable SPICE Auto USB redirection in console window</summary>
@@ -229,7 +240,7 @@
     <key name="cpu-default" type="s">
       <default>'default'</default>
       <summary>CPU setting to use for new VMs</summary>
-      <description>CPU setting to use for new VMs. Limited to VMs matching the host architecture. Possible values: default (virt-manager default), hv-default (qemu's default), host-cpu-model (just the model, not the additional features), host-model (libvirt's host-model setting).</description>
+      <description>CPU setting to use for new VMs. Limited to VMs matching the host architecture. Possible values: default (virt-manager default), hv-default (qemu's default), host-model-only (just the model, not the additional features), host-model (libvirt's host-model setting).</description>
     </key>
 
   </schema>

@@ -100,7 +100,7 @@ class vmmDeleteDialog(vmmGObjectUI):
         uiutil.set_grid_row_visible(
             self.widget("delete-warn-running-vm-box"), vm_active)
 
-        # Disable storage removal by default
+        # Enable storage removal by default
         self.widget("delete-remove-storage").set_active(True)
         self.widget("delete-remove-storage").toggled()
 
@@ -253,7 +253,7 @@ def populate_storage_list(storage_list, vm, conn):
         #
         # 2) If we can delete, do we want to delete this storage by
         #    default? Reasons not to, are if the storage is marked
-        #    readonly or sharable, or is in use by another VM.
+        #    readonly or shareable, or is in use by another VM.
 
         default = False
         definfo = None
