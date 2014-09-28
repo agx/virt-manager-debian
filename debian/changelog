@@ -1,3 +1,11 @@
+virt-manager (1:1.0.1-2) unstable; urgency=medium
+
+  * Upload to unstable
+  * [3fb8054] Drop long unused quilt from build-deps
+  * [27878eb] Move GConf values to GSettings (Closes: #740047)
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 28 Sep 2014 13:52:43 +0200
+
 virt-manager (1:1.0.1-1) experimental; urgency=medium
 
   * [f36ee97] Version gtk-3.0 build-dep.
