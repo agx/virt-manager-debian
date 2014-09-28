@@ -28,6 +28,8 @@ Depends: ${misc:Depends}, ${python:Depends},
  gir1.2-spice-client-gtk-3.0,
  gir1.2-vte-2.90,
  virtinst (>= ${binary:Version}),
+# For gsettings-data-convert
+ gconf2,
 Recommends: libvirt-daemon (>= 1.2.7), gnome-icon-theme,
  python-spice-client-gtk
 Suggests: virt-viewer, ssh-askpass, gnome-keyring, python-gnomekeyring,
