@@ -1,0 +1,20 @@
+Author: Giuseppe Scrivano <gscrivan@redhat.com>
+Date:   Tue Jun 24 13:59:12 2014 +0200
+Bug: https://bugzilla.redhat.com/show_bug.cgi?id=1112629
+Bug-Debian: https://bugs.debian.org/764508
+Origin: upstream, https://git.fedorahosted.org/cgit/virt-manager.git/commit/?id=eb5b2613110dfaa23626a16704d18df0dbba5086
+Description: details.py: fix typo s|removeable|removable|
+
+diff --git a/virtManager/details.py b/virtManager/details.py
+index dd43259..d3826e5 100644
+--- a/virtManager/details.py
++++ b/virtManager/details.py
+@@ -2166,7 +2166,7 @@ class vmmDetails(vmmGObjectUI):
+             kwargs["shareable"] = self.widget("disk-shareable").get_active()
+ 
+         if self.edited(EDIT_DISK_REMOVABLE):
+-            kwargs["removeable"] = bool(
++            kwargs["removable"] = bool(
+                 self.widget("disk-removable").get_active())
+ 
+         if self.edited(EDIT_DISK_CACHE):
