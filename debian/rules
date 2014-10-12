@@ -6,3 +6,8 @@
 override_dh_python2:
 	dh_python2 -O--buildsystem=python_distutils
 	dh_python2 -p virtinst usr/share/virt-manager
+
+override_dh_auto_install:
+	dh_auto_install
+	dh_install debian/10_virt-manager.gschema.override \
+		   /usr/share/glib-2.0/schemas/
