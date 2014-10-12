@@ -1,15 +1,17 @@
-Author: Giuseppe Scrivano <gscrivan@redhat.com>
-Date:   Tue Jun 24 13:59:12 2014 +0200
-Bug: https://bugzilla.redhat.com/show_bug.cgi?id=1112629
-Bug-Debian: https://bugs.debian.org/764508
-Origin: upstream, https://git.fedorahosted.org/cgit/virt-manager.git/commit/?id=eb5b2613110dfaa23626a16704d18df0dbba5086
-Description: details.py: fix typo s|removeable|removable|
+From: Debian Libvirt Maintainers
+ <pkg-libvirt-maintainers@lists.alioth.debian.org>
+Date: Sun, 12 Oct 2014 11:55:00 +0200
+Subject: fix-removable-drive-support
+
+---
+ virtManager/details.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/virtManager/details.py b/virtManager/details.py
-index dd43259..d3826e5 100644
+index c1833ae..75b9fa8 100644
 --- a/virtManager/details.py
 +++ b/virtManager/details.py
-@@ -2166,7 +2166,7 @@ class vmmDetails(vmmGObjectUI):
+@@ -2092,7 +2092,7 @@ class vmmDetails(vmmGObjectUI):
              kwargs["shareable"] = self.widget("disk-shareable").get_active()
  
          if self.edited(EDIT_DISK_REMOVABLE):

@@ -2,3 +2,4 @@ virtinst/fix-path-to-hvmloader.patch
 virtinst/Fix-patch-to-pygrub.patch
 Move-GConf-values-to-GSettings.patch
 fix-removable-drive-support.patch
+details-Fix-changing-graphics-type-bz-1083903.patch
