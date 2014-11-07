@@ -29,7 +29,7 @@ Depends: ${misc:Depends}, ${python:Depends},
  virtinst (>= ${binary:Version}),
 # For gsettings-data-convert
  gconf2,
-Recommends: libvirt-daemon (>= 1.2.7), gnome-icon-theme,
+Recommends: libvirt-daemon-system (>= 1.2.7), gnome-icon-theme,
  gir1.2-spice-client-gtk-3.0,
 Suggests: virt-viewer, ssh-askpass, gnome-keyring, python-gnomekeyring,
  python-guestfs
