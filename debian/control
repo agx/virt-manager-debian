@@ -25,12 +25,12 @@ Depends: ${misc:Depends}, ${python:Depends},
  gir1.2-libvirt-glib-1.0,
  gir1.2-gtk-vnc-2.0,
  gir1.2-gtk-3.0 (>= 3.10),
- gir1.2-spice-client-gtk-3.0,
  gir1.2-vte-2.90,
  virtinst (>= ${binary:Version}),
 # For gsettings-data-convert
  gconf2,
 Recommends: libvirt-daemon (>= 1.2.7), gnome-icon-theme,
+ gir1.2-spice-client-gtk-3.0,
 Suggests: virt-viewer, ssh-askpass, gnome-keyring, python-gnomekeyring,
  python-guestfs
 Description: desktop application for managing virtual machines

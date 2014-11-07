@@ -1,0 +1,40 @@
+From: =?utf-8?q?Guido_G=C3=BCnther?= <agx@sigxcpu.org>
+Date: Fri, 7 Nov 2014 21:03:39 +0100
+Subject: Make SpiceClientGtk optional
+
+---
+ virtManager/console.py | 14 +++++++++++---
+ 1 file changed, 11 insertions(+), 3 deletions(-)
+
+diff --git a/virtManager/console.py b/virtManager/console.py
+index b9f98de..edc76ca 100644
+--- a/virtManager/console.py
++++ b/virtManager/console.py
+@@ -25,8 +25,13 @@ from gi.repository import GObject
+ from gi.repository import Gtk
+ from gi.repository import Gdk
+ from gi.repository import GtkVnc
+-from gi.repository import SpiceClientGtk
+-from gi.repository import SpiceClientGLib
++try:
++    from gi.repository import SpiceClientGtk
++    from gi.repository import SpiceClientGLib
++    have_spice_gtk = True
++except ImportError:
++    have_spice_gtk = False
++
+ # pylint: enable=E0611
+ 
+ import libvirt
+@@ -1498,7 +1503,10 @@ class vmmConsolePages(vmmGObjectUI):
+                 self.widget("console-gfx-viewport").add(self.viewer.display)
+                 self.viewer.init_widget()
+             elif ginfo.gtype == "spice":
+-                self.viewer = SpiceViewer(self)
++                if have_spice_gtk:
++                    self.viewer = SpiceViewer(self)
++                else:
++                    raise RuntimeError("Error opening Spice console, SpiceClientGtk missing")
+ 
+             self.set_enable_accel()
+ 
