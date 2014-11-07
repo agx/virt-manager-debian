@@ -1,3 +1,11 @@
+virt-manager (1:1.0.1-4) unstable; urgency=medium
+
+  * [8b6f491] Drop Gtk2 only python-spice-client-gtk
+  * [1006788] Make SpiceClientGtk optional (Closes: #763623)
+  * [7da9c44] Recommend livbirt-daemon-system (Closes: #768000)
+
+ -- Guido Günther <agx@sigxcpu.org>  Fri, 07 Nov 2014 21:08:38 +0100
+
 virt-manager (1:1.0.1-3) unstable; urgency=medium
 
   * [da12f60] details: Fix changing graphics type (bz 1083903)
