@@ -1,3 +1,13 @@
+virt-manager (1:1.0.1-5) unstable; urgency=medium
+
+  * [b58bb6a] Add virt-xml (Closes: #775399)
+  * [44b9a97] Switch qemu recommendation to qemu-utils.  We only need the
+    command line tools.
+  * [5eabe1d] Make sure we use a binary compatible version of vte.  Thanks to
+    Vincent Danjean for the detailed report (Closes: #781127)
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 25 Mar 2015 15:09:09 +0100
+
 virt-manager (1:1.0.1-4) unstable; urgency=medium
 
   * [8b6f491] Drop Gtk2 only python-spice-client-gtk
