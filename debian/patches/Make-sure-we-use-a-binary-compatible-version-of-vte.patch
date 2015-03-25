@@ -1,0 +1,22 @@
+From: =?utf-8?q?Guido_G=C3=BCnther?= <agx@sigxcpu.org>
+Date: Wed, 25 Mar 2015 15:00:26 +0100
+Subject: Make sure we use a binary compatible version of vte
+
+Closes: #781127
+---
+ virtManager/serialcon.py | 2 ++
+ 1 file changed, 2 insertions(+)
+
+diff --git a/virtManager/serialcon.py b/virtManager/serialcon.py
+index 96e3d2f..ef4a394 100644
+--- a/virtManager/serialcon.py
++++ b/virtManager/serialcon.py
+@@ -29,6 +29,8 @@ import logging
+ from gi.repository import Gdk
+ from gi.repository import GLib
+ from gi.repository import Gtk
++import gi
++gi.require_version('Vte', '2.90')
+ from gi.repository import Vte
+ # pylint: enable=E0611
+ 

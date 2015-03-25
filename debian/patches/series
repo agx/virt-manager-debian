@@ -4,3 +4,4 @@ Move-GConf-values-to-GSettings.patch
 fix-removable-drive-support.patch
 details-Fix-changing-graphics-type-bz-1083903.patch
 Make-SpiceClientGtk-optional.patch
+Make-sure-we-use-a-binary-compatible-version-of-vte.patch
