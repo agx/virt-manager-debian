@@ -1,3 +1,16 @@
+virt-manager (1:1.2.1-1) experimental; urgency=medium
+
+  * [8724eb5] Adjust watch file to new domain
+  * [d8ca559] New upstream version 1.2.1 (Closes: #792876, #693969)
+  * [6b3e71a] Rediff patches.
+      Dropped
+        Move-GConf-values-to-GSettings.patch: Applied upstream
+        fix-removable-drive-support.patch: Fixed upstream
+        details-Fix-changing-graphics-type-bz-1083903.patch: Fixed upstream
+  * [1fa988a] Drop virt-inst abandoned upstream
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 13 Aug 2015 22:30:58 +0200
+
 virt-manager (1:1.0.1-6) experimental; urgency=medium
 
   * [170df9b] Don't rm /usr/share/virt-manager.  This dates back to the
