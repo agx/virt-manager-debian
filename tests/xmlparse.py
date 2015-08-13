@@ -24,7 +24,7 @@ import virtinst
 from tests import utils
 
 conn = utils.open_testdriver()
-kvmconn = utils.open_testkvmdriver()
+kvmconn = utils.open_kvm()
 
 
 def sanitize_file_xml(xml):
@@ -40,8 +40,10 @@ class XMLParseTest(unittest.TestCase):
         actualXML = guest.get_xml_config()
         utils.diff_compare(actualXML, expect_out=expectXML)
 
-    def _alter_compare(self, actualXML, outfile):
+    def _alter_compare(self, actualXML, outfile, support_check=None):
         utils.diff_compare(actualXML, outfile)
+        if (support_check and not conn.check_support(support_check)):
+            return
         utils.test_create(conn, actualXML)
 
     def testRoundTrip(self):
@@ -88,11 +90,6 @@ class XMLParseTest(unittest.TestCase):
         guest = virtinst.Guest(kvm and kvmconn or conn,
                                parsexml=file(infile).read())
         return guest, outfile
-
-    def test000ClearProps(self):
-        # pylint: disable=W0212
-        # Access to protected member, needed to unittest stuff
-        virtinst.xmlbuilder._seenprops = []
 
     def testAlterGuest(self):
         """
@@ -155,6 +152,10 @@ class XMLParseTest(unittest.TestCase):
         check("initrd", None)
         check("kernel_args", None)
 
+        guest.os.set_initargs_string("foo 'bar baz' frib")
+        self.assertEqual([i.val for i in guest.os.initargs],
+            ["foo", "bar baz", "frib"])
+
         check = self._make_checker(guest.features)
         check("acpi", True, False)
         check("apic", True, True)
@@ -167,6 +168,7 @@ class XMLParseTest(unittest.TestCase):
         check("hyperv_vapic", False, None)
         check("hyperv_spinlocks", True, True)
         check("hyperv_spinlocks_retries", 12287, 54321)
+        check("vmport", False, True)
 
         check = self._make_checker(guest.cpu)
         check("match", "exact", "strict")
@@ -209,15 +211,22 @@ class XMLParseTest(unittest.TestCase):
         check("gid_target", None, 1000)
         check("gid_count", None, 10)
 
+        check = self._make_checker(guest.resource)
+        check("partition", None, "/virtualmachines/production")
+
         check = self._make_checker(guest.get_devices("memballoon")[0])
         check("model", "virtio", "none")
 
         check = self._make_checker(guest.memoryBacking)
         check("hugepages", False, True)
+        check("page_size", None, 1)
+        check("page_unit", None, "G")
+        check("page_nodeset", None, "1,5-8")
         check("nosharepages", False, True)
         check("locked", False, True)
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml_config(), outfile,
+            support_check=conn.SUPPORT_CONN_VMPORT)
 
     def testAlterMinimalGuest(self):
         guest, outfile = self._get_test_content("change-minimal-guest")
@@ -241,6 +250,7 @@ class XMLParseTest(unittest.TestCase):
 
         check = self._make_checker(guest.cpu)
         check("model", None, "foobar")
+        check("model_fallback", None, "allow")
         check("cores", None, 4)
         guest.cpu.add_feature("x2apic", "forbid")
         guest.cpu.set_topology_defaults(guest.vcpus)
@@ -256,8 +266,8 @@ class XMLParseTest(unittest.TestCase):
         check = self._make_checker(guest.os)
         check("bootorder", ['hd', 'fd', 'cdrom', 'network'], ["cdrom"])
         check("enable_bootmenu", False, True)
-        check("kernel", None, "foo.img")
-        check("initrd", None, "bar.img")
+        check("kernel", None, "/foo.img")
+        check("initrd", None, "/bar.img")
         check("dtb", None, "/baz.dtb")
         check("kernel_args", None, "ks=foo.ks")
 
@@ -269,6 +279,24 @@ class XMLParseTest(unittest.TestCase):
         check = self._make_checker(guest.os)
         check("bootorder", [], ["network", "hd", "fd"])
         check("enable_bootmenu", None)
+        check("kernel", "/boot/vmlinuz", None)
+
+        check("initrd", "/boot/initrd", None)
+        check("kernel_args", "location", None)
+
+        self._alter_compare(guest.get_xml_config(), outfile)
+
+    def testAlterBootUEFI(self):
+        guest, outfile = self._get_test_content("change-boot-uefi")
+
+        check = self._make_checker(guest.os)
+        check("bootorder", [], ["network", "hd", "fd"])
+        check("loader_ro", None, True)
+        check("loader_type", None, "pflash")
+        check("nvram", None, "/tmp/nvram_store")
+        check("nvram_template", None, "/tmp/template")
+        check("loader", None, "OVMF_CODE.fd")
+
         check("kernel", "/boot/vmlinuz", None)
 
         check("initrd", "/boot/initrd", None)
@@ -293,53 +321,81 @@ class XMLParseTest(unittest.TestCase):
         """
         guest, outfile = self._get_test_content("change-disk")
 
-        # Set size up front. VirtualDisk validation is kind of
-        # convoluted. If trying to change a non-existing one and size wasn't
-        # already specified, we will error out.
-        disks = guest.get_devices("disk")
-        disk1 = disks[0]
-        disk1.size = 1
-        disk3 = disks[2]
-        disk3.size = 1
-        disk6 = disks[5]
-        disk6.size = 1
+        def _get_disk(target):
+            for disk in guest.get_devices("disk"):
+                if disk.target == target:
+                    return disk
 
-        check = self._make_checker(disk1)
+        disk = _get_disk("hda")
+        check = self._make_checker(disk)
         check("path", "/tmp/test.img", "/dev/null")
-        disk1.sync_path_props()
+        disk.sync_path_props()
         check("driver_name", None, "test")
         check("driver_type", None, "raw")
         check("serial", "WD-WMAP9A966149", "frob")
         check("bus", "ide", "usb")
         check("removable", None, False, True)
 
-        check = self._make_checker(disk3)
+        disk = _get_disk("hdc")
+        check = self._make_checker(disk)
         check("type", "block", "dir", "file", "block")
         check("path", "/dev/null", None)
-        disk3.sync_path_props()
+        disk.sync_path_props()
         check("device", "cdrom", "floppy")
         check("read_only", True, False)
         check("target", "hdc", "fde")
         check("bus", "ide", "fdc")
         check("error_policy", "stop", None)
 
-        check = self._make_checker(disk6)
+        disk = _get_disk("hdd")
+        check = self._make_checker(disk)
+        check("type", "block")
+        check("device", "lun")
+        check("sgio", None, "unfiltered")
+
+        disk = _get_disk("sda")
+        check = self._make_checker(disk)
+        check("path", None, "http://[1:2:3:4:5:6:7:8]:1122/my/file")
+        disk.sync_path_props()
+
+        disk = _get_disk("fda")
+        check = self._make_checker(disk)
         check("path", None, "/dev/default-pool/default-vol")
-        disk6.sync_path_props()
-        check("sourceStartupPolicy", None, "optional")
+        disk.sync_path_props()
+        check("startup_policy", None, "optional")
         check("shareable", False, True)
         check("driver_cache", None, "writeback")
         check("driver_io", None, "threads")
         check("driver_io", "threads", "native")
+        check("driver_discard", None, "unmap")
         check("iotune_ris", 1, 0)
         check("iotune_rbs", 2, 0)
         check("iotune_wis", 3, 0)
         check("iotune_wbs", 4, 0)
         check("iotune_tis", None, 5)
         check("iotune_tbs", None, 6)
-
-        check = self._make_checker(disk6.boot)
+        check = self._make_checker(disk.boot)
         check("order", None, 7, None)
+
+        disk = _get_disk("vdb")
+        check = self._make_checker(disk)
+        check("source_pool", "defaultPool", "anotherPool")
+        check("source_volume", "foobar", "newvol")
+
+        disk = _get_disk("vdc")
+        check = self._make_checker(disk)
+        check("source_protocol", "rbd", "gluster")
+        check("source_name", "pool/image", "new-val/vol")
+        check("source_host_name", "mon1.example.org", "diff.example.org")
+        check("source_host_port", 6321, 1234)
+        check("path", "gluster://diff.example.org:1234/new-val/vol")
+
+        disk = _get_disk("vdd")
+        check = self._make_checker(disk)
+        check("source_protocol", "nbd")
+        check("source_host_transport", "unix")
+        check("source_host_socket", "/var/run/nbdsock")
+        check("path", "nbd+unix:///var/run/nbdsock")
 
         self._alter_compare(guest.get_xml_config(), outfile)
 
@@ -361,6 +417,7 @@ class XMLParseTest(unittest.TestCase):
         console2    = guest.get_devices("console")[1]
         channel1    = guest.get_devices("channel")[0]
         channel2    = guest.get_devices("channel")[1]
+        channel3    = guest.get_devices("channel")[2]
 
         check = self._make_checker(serial1)
         check("type", "null", "udp")
@@ -407,6 +464,12 @@ class XMLParseTest(unittest.TestCase):
         check("target_type", "guestfwd")
         check("target_address", "1.2.3.4", "5.6.7.8")
         check("target_port", 4567, 1199)
+
+        check = self._make_checker(channel3)
+        check("type", "spiceport")
+        check("source_channel", "org.spice-space.webdav.0", "test.1")
+        check("target_type", "virtio")
+        check("target_name", "org.spice-space.webdav.0", "test.2")
 
         self._alter_compare(guest.get_xml_config(), outfile)
 
@@ -478,6 +541,7 @@ class XMLParseTest(unittest.TestCase):
         check("type", "direct")
         check("source", "eth0.1")
         check("source_mode", "vepa", "bridge")
+        check("portgroup", None, "sales")
         check("driver_name", None, "vhost")
         check("driver_queues", None, 5)
 
@@ -564,6 +628,11 @@ class XMLParseTest(unittest.TestCase):
         check("channel_playback_mode", "any", "insecure")
         check("passwdValidTo", "2010-04-09T15:51:00", "2011-01-07T19:08:00")
         check("defaultMode", None, "secure")
+        check("image_compression", None, "auto_glz")
+        check("streaming_mode", None, "filter")
+        check("clipboard_copypaste", None, True)
+        check("mouse_mode", None, "client")
+        check("filetransfer_enable", None, False)
 
         self._alter_compare(guest.get_xml_config(), outfile)
 
@@ -587,6 +656,7 @@ class XMLParseTest(unittest.TestCase):
         check = self._make_checker(dev3)
         check("model", "cirrus", "cirrus", "qxl")
         check("ram", None, 100)
+        check("vgamem", None, 8192)
 
         self._alter_compare(guest.get_xml_config(), outfile)
 
@@ -599,6 +669,7 @@ class XMLParseTest(unittest.TestCase):
         dev1 = guest.get_devices("hostdev")[0]
         dev2 = guest.get_devices("hostdev")[1]
         dev3 = guest.get_devices("hostdev")[2]
+        dev4 = guest.get_devices("hostdev")[3]
 
         check = self._make_checker(dev1)
         check("type", "usb", "foo", "usb")
@@ -627,6 +698,12 @@ class XMLParseTest(unittest.TestCase):
         check("driver_name", None, "vfio")
         check("rom_bar", None, True)
 
+        check = self._make_checker(dev4)
+        check("type", "scsi")
+        check("scsi_adapter", "scsi_host0", "foo")
+        check("scsi_bus", 0, 1)
+        check("scsi_target", 0, 2)
+        check("scsi_unit", 0, 3)
         self._alter_compare(guest.get_xml_config(), outfile)
 
     def testAlterWatchdogs(self):
@@ -958,7 +1035,7 @@ class XMLParseTest(unittest.TestCase):
         check("autoconf", True, False)
 
         check = self._make_checker(iface.protocols[1].ips[1])
-        check("address", "fe80::215:58ff:fe6e:5", "foobar")
+        check("address", "fe80::215:58ff:fe6e:5", "2002::")
         check("prefix", 64, 38)
 
         # Remove a child interface, verify it's data remains intact
@@ -1038,7 +1115,6 @@ class XMLParseTest(unittest.TestCase):
         check("capacity", 984373075968, 200000)
         check("allocation", 756681687040, 150000)
         check("available", 227691388928, 50000)
-        check("source_dir", None, None)
 
         check("format", "auto", "ext3")
         check("source_path", "/some/source/path", "/dev/foo/bar")
@@ -1055,8 +1131,9 @@ class XMLParseTest(unittest.TestCase):
         pool = virtinst.StoragePool(conn, parsexml=file(infile).read())
 
         check = self._make_checker(pool)
-        check("host", "some.random.hostname", "my.host")
         check("iqn", "foo.bar.baz.iqn", "my.iqn")
+        check = self._make_checker(pool.hosts[0])
+        check("name", "some.random.hostname", "my.host")
 
         utils.diff_compare(pool.get_xml_config(), outfile)
         utils.test_create(conn, pool.get_xml_config(), "storagePoolDefineXML")
@@ -1072,8 +1149,29 @@ class XMLParseTest(unittest.TestCase):
         pool = virtinst.StoragePool(conn, parsexml=file(infile).read())
 
         check = self._make_checker(pool)
-        check("host", "some.random.hostname", "my.host")
-        check("source_dir", None, "/foo")
+        check("source_path", "/some/source/path", "/foo")
+        check = self._make_checker(pool.hosts[0])
+        check("name", "some.random.hostname", "my.host")
+
+        utils.diff_compare(pool.get_xml_config(), outfile)
+        utils.test_create(conn, pool.get_xml_config(), "storagePoolDefineXML")
+
+    def testRBDPool(self):
+        basename = "pool-rbd"
+        infile = "tests/xmlparse-xml/%s.xml" % basename
+        outfile = "tests/xmlparse-xml/%s-out.xml" % basename
+        pool = virtinst.StoragePool(conn, parsexml=file(infile).read())
+
+        check = self._make_checker(pool.hosts[0])
+        check("name", "ceph-mon-1.example.com")
+        check("port", 6789, 1234)
+        check = self._make_checker(pool.hosts[1])
+        check("name", "ceph-mon-2.example.com", "foo.bar")
+        check("port", 6789)
+        check = self._make_checker(pool.hosts[2])
+        check("name", "ceph-mon-3.example.com")
+        check("port", 6789, 1000)
+        pool.add_host("frobber", "5555")
 
         utils.diff_compare(pool.get_xml_config(), outfile)
         utils.test_create(conn, pool.get_xml_config(), "storagePoolDefineXML")
@@ -1085,6 +1183,7 @@ class XMLParseTest(unittest.TestCase):
         vol = virtinst.StorageVolume(conn, parsexml=file(infile).read())
 
         check = self._make_checker(vol)
+        check("type", None, "file")
         check("key", None, "fookey")
         check("capacity", 10737418240, 2000)
         check("allocation", 5368709120, 1000)
@@ -1126,6 +1225,20 @@ class XMLParseTest(unittest.TestCase):
         check = self._make_checker(net.forward)
         check("mode", "nat", "route")
         check("dev", None, "eth22")
+
+        check = self._make_checker(net.bandwidth)
+        check("inbound_average", "1000", "3000")
+        check("inbound_peak", "5000", "4000")
+        check("inbound_burst", "5120", "5220")
+        check("inbound_floor", None, None)
+        check("outbound_average", "1000", "2000")
+        check("outbound_peak", "5000", "3000")
+        check("outbound_burst", "5120", "5120")
+
+        self.assertEquals(len(net.portgroups), 2)
+        check = self._make_checker(net.portgroups[0])
+        check("name", "engineering", "foo")
+        check("default", True, False)
 
         self.assertEqual(len(net.ips), 4)
         check = self._make_checker(net.ips[0])
@@ -1174,28 +1287,6 @@ class XMLParseTest(unittest.TestCase):
         guest.cpu.clear()
         utils.diff_compare(guest.get_xml_config(), outfile)
 
-    def testzzzzCheckProps(self):
-        # pylint: disable=W0212
-        # Access to protected member, needed to unittest stuff
-
-        # If a certain environment variable is set, XMLBuilder tracks
-        # every property registered and every one of those that is
-        # actually altered. The test suite sets that env variable.
-        #
-        # test000ClearProps resets the 'set' list, and this test
-        # ensures that every property we know about has been touched
-        # by one of the above tests.
-        fail = [p for p in virtinst.xmlbuilder._allprops
-                if p not in virtinst.xmlbuilder._seenprops]
-        try:
-            self.assertEquals([], fail)
-        except AssertionError:
-            msg = "".join(traceback.format_exc()) + "\n\n"
-            msg += ("This means that there are XML properties that are\n"
-                    "untested in tests/xmlparse.py. This could be caused\n"
-                    "by a previous test suite failure, or if you added\n"
-                    "a new property and didn't add corresponding tests!")
-            self.fail(msg)
 
 if __name__ == "__main__":
     unittest.main()

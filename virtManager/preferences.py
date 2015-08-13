@@ -20,13 +20,11 @@
 
 import logging
 
-# pylint: disable=E0611
 from gi.repository import Gtk
 from gi.repository import Gdk
-# pylint: enable=E0611
 
-from virtManager import uiutil
-from virtManager.baseclass import vmmGObjectUI
+from . import uiutil
+from .baseclass import vmmGObjectUI
 
 
 class vmmPreferences(vmmGObjectUI):
@@ -112,7 +110,7 @@ class vmmPreferences(vmmGObjectUI):
                     [2, _("Always")]]:
             model.append(row)
         combo.set_model(model)
-        uiutil.set_combo_text_column(combo, 1)
+        uiutil.init_combo_text_column(combo, 1)
 
         combo = self.widget("prefs-console-resizeguest")
         # [gsettings value, string]
@@ -126,7 +124,7 @@ class vmmPreferences(vmmGObjectUI):
         for key, val in vals.items():
             model.append([key, val])
         combo.set_model(model)
-        uiutil.set_combo_text_column(combo, 1)
+        uiutil.init_combo_text_column(combo, 1)
 
         combo = self.widget("prefs-graphics-type")
         # [gsettings value, string]
@@ -136,17 +134,17 @@ class vmmPreferences(vmmGObjectUI):
                     ["vnc", "VNC"], ["spice", "Spice"]]:
             model.append(row)
         combo.set_model(model)
-        uiutil.set_combo_text_column(combo, 1)
+        uiutil.init_combo_text_column(combo, 1)
 
         combo = self.widget("prefs-add-spice-usbredir")
         # [gsettings value, string]
         model = Gtk.ListStore(str, str)
         for row in [["system", _("System default (%s)") %
                      self.config.default_add_spice_usbredir],
-                    ["yes", "Yes"], ["Yes", "no"]]:
+                    ["yes", "Yes"], ["no", "No"]]:
             model.append(row)
         combo.set_model(model)
-        uiutil.set_combo_text_column(combo, 1)
+        uiutil.init_combo_text_column(combo, 1)
 
         combo = self.widget("prefs-storage-format")
         # [gsettings value, string]
@@ -157,7 +155,7 @@ class vmmPreferences(vmmGObjectUI):
                     ["qcow2", "QCOW2"]]:
             model.append(row)
         combo.set_model(model)
-        uiutil.set_combo_text_column(combo, 1)
+        uiutil.init_combo_text_column(combo, 1)
 
         combo = self.widget("prefs-cpu-default")
         # [gsettings value, string]
@@ -169,7 +167,7 @@ class vmmPreferences(vmmGObjectUI):
                     ["host-model", _("Copy host CPU definition")]]:
             model.append(row)
         combo.set_model(model)
-        uiutil.set_combo_text_column(combo, 1)
+        uiutil.init_combo_text_column(combo, 1)
 
 
     #########################
@@ -190,11 +188,11 @@ class vmmPreferences(vmmGObjectUI):
     def refresh_console_scaling(self):
         combo = self.widget("prefs-console-scaling")
         val = self.config.get_console_scaling()
-        uiutil.set_row_selection(combo, val)
+        uiutil.set_list_selection(combo, val)
     def refresh_console_resizeguest(self):
         combo = self.widget("prefs-console-resizeguest")
         val = self.config.get_console_resizeguest()
-        uiutil.set_row_selection(combo, val)
+        uiutil.set_list_selection(combo, val)
 
     def refresh_new_vm_sound(self):
         self.widget("prefs-new-vm-sound").set_active(
@@ -202,19 +200,19 @@ class vmmPreferences(vmmGObjectUI):
     def refresh_graphics_type(self):
         combo = self.widget("prefs-graphics-type")
         gtype = self.config.get_graphics_type(raw=True)
-        uiutil.set_row_selection(combo, gtype)
+        uiutil.set_list_selection(combo, gtype)
     def refresh_add_spice_usbredir(self):
         combo = self.widget("prefs-add-spice-usbredir")
         val = self.config.get_add_spice_usbredir(raw=True)
-        uiutil.set_row_selection(combo, val)
+        uiutil.set_list_selection(combo, val)
     def refresh_storage_format(self):
         combo = self.widget("prefs-storage-format")
         val = self.config.get_default_storage_format(raw=True)
-        uiutil.set_row_selection(combo, val)
+        uiutil.set_list_selection(combo, val)
     def refresh_cpu_default(self):
         combo = self.widget("prefs-cpu-default")
         val = self.config.get_default_cpu_setting(raw=True)
-        uiutil.set_row_selection(combo, val)
+        uiutil.set_list_selection(combo, val)
 
     def refresh_cpu_poll(self):
         self.widget("prefs-stats-enable-cpu").set_active(
@@ -303,10 +301,10 @@ class vmmPreferences(vmmGObjectUI):
         dialog.set_default_size(325, 160)
         dialog.set_border_width(6)
 
-        infolabel = Gtk.Label(label=
-                    _("You can now define grab keys by pressing them.\n"
-                      "To confirm your selection please click OK button\n"
-                      "while you have desired keys pressed."))
+        infolabel = Gtk.Label(
+            label=_("You can now define grab keys by pressing them.\n"
+                    "To confirm your selection please click OK button\n"
+                    "while you have desired keys pressed."))
         keylabel = Gtk.Label(label=_("Please press desired grab key combination"))
 
         vbox = Gtk.VBox()
@@ -340,24 +338,24 @@ class vmmPreferences(vmmGObjectUI):
     def change_console_scaling(self, box):
         self.config.set_console_scaling(box.get_active())
     def change_console_resizeguest(self, box):
-        val = uiutil.get_list_selection(box, 0)
+        val = uiutil.get_list_selection(box)
         self.config.set_console_resizeguest(val)
 
     def change_new_vm_sound(self, src):
         self.config.set_new_vm_sound(src.get_active())
     def change_graphics_type(self, src):
-        val = uiutil.get_list_selection(src, 0)
+        val = uiutil.get_list_selection(src)
         self.config.set_graphics_type(val)
         uiutil.set_grid_row_visible(
             self.widget("prefs-add-spice-usbredir"),
             self.config.get_graphics_type() == "spice")
     def change_add_spice_usbredir(self, src):
-        self.config.set_add_spice_usbredir(uiutil.get_list_selection(src, 0))
+        self.config.set_add_spice_usbredir(uiutil.get_list_selection(src))
     def change_storage_format(self, src):
-        typ = uiutil.get_list_selection(src, 0) or "default"
+        typ = uiutil.get_list_selection(src) or "default"
         self.config.set_storage_format(typ.lower())
     def change_cpu_default(self, src):
-        typ = uiutil.get_list_selection(src, 0) or "default"
+        typ = uiutil.get_list_selection(src) or "default"
         self.config.set_default_cpu_setting(typ.lower())
 
     def change_cpu_poll(self, src):

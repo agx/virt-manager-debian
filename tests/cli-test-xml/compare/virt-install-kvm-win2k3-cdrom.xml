@@ -13,18 +13,29 @@
     <acpi/>
     <apic/>
     <pae/>
+    <vmport state="off"/>
+    <hyperv>
+      <relaxed state="on"/>
+      <vapic state="on"/>
+      <spinlocks state="on" retries="8191"/>
+    </hyperv>
   </features>
   <cpu mode="custom" match="exact">
-    <model>core2duo</model>
+    <model>Opteron_G4</model>
   </cpu>
   <clock offset="localtime">
     <timer name="rtc" tickpolicy="catchup"/>
     <timer name="pit" tickpolicy="delay"/>
     <timer name="hpet" present="no"/>
+    <timer name="hypervclock" present="yes"/>
   </clock>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>destroy</on_reboot>
   <on_crash>destroy</on_crash>
+  <pm>
+    <suspend-to-mem enabled="no"/>
+    <suspend-to-disk enabled="no"/>
+  </pm>
   <devices>
     <emulator>/usr/bin/qemu-kvm</emulator>
     <disk type="file" device="disk">
@@ -44,7 +55,9 @@
       <mac address="00:11:22:33:44:55"/>
     </interface>
     <input type="tablet" bus="usb"/>
-    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes"/>
+    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
+      <image compression="off"/>
+    </graphics>
     <console type="pty"/>
     <channel type="spicevmc">
       <target type="virtio" name="com.redhat.spice.0"/>
@@ -53,8 +66,6 @@
     <video>
       <model type="qxl"/>
     </video>
-    <redirdev bus="usb" type="spicevmc"/>
-    <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="spicevmc"/>
   </devices>
@@ -73,18 +84,29 @@
     <acpi/>
     <apic/>
     <pae/>
+    <vmport state="off"/>
+    <hyperv>
+      <relaxed state="on"/>
+      <vapic state="on"/>
+      <spinlocks state="on" retries="8191"/>
+    </hyperv>
   </features>
   <cpu mode="custom" match="exact">
-    <model>core2duo</model>
+    <model>Opteron_G4</model>
   </cpu>
   <clock offset="localtime">
     <timer name="rtc" tickpolicy="catchup"/>
     <timer name="pit" tickpolicy="delay"/>
     <timer name="hpet" present="no"/>
+    <timer name="hypervclock" present="yes"/>
   </clock>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>destroy</on_reboot>
   <on_crash>destroy</on_crash>
+  <pm>
+    <suspend-to-mem enabled="no"/>
+    <suspend-to-disk enabled="no"/>
+  </pm>
   <devices>
     <emulator>/usr/bin/qemu-kvm</emulator>
     <disk type="file" device="disk">
@@ -104,7 +126,9 @@
       <mac address="00:11:22:33:44:55"/>
     </interface>
     <input type="tablet" bus="usb"/>
-    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes"/>
+    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
+      <image compression="off"/>
+    </graphics>
     <console type="pty"/>
     <channel type="spicevmc">
       <target type="virtio" name="com.redhat.spice.0"/>
@@ -113,8 +137,6 @@
     <video>
       <model type="qxl"/>
     </video>
-    <redirdev bus="usb" type="spicevmc"/>
-    <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="spicevmc"/>
   </devices>
@@ -133,18 +155,29 @@
     <acpi/>
     <apic/>
     <pae/>
+    <vmport state="off"/>
+    <hyperv>
+      <relaxed state="on"/>
+      <vapic state="on"/>
+      <spinlocks state="on" retries="8191"/>
+    </hyperv>
   </features>
   <cpu mode="custom" match="exact">
-    <model>core2duo</model>
+    <model>Opteron_G4</model>
   </cpu>
   <clock offset="localtime">
     <timer name="rtc" tickpolicy="catchup"/>
     <timer name="pit" tickpolicy="delay"/>
     <timer name="hpet" present="no"/>
+    <timer name="hypervclock" present="yes"/>
   </clock>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
   <on_crash>restart</on_crash>
+  <pm>
+    <suspend-to-mem enabled="no"/>
+    <suspend-to-disk enabled="no"/>
+  </pm>
   <devices>
     <emulator>/usr/bin/qemu-kvm</emulator>
     <disk type="file" device="disk">
@@ -164,7 +197,9 @@
       <mac address="00:11:22:33:44:55"/>
     </interface>
     <input type="tablet" bus="usb"/>
-    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes"/>
+    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
+      <image compression="off"/>
+    </graphics>
     <console type="pty"/>
     <channel type="spicevmc">
       <target type="virtio" name="com.redhat.spice.0"/>
@@ -173,8 +208,6 @@
     <video>
       <model type="qxl"/>
     </video>
-    <redirdev bus="usb" type="spicevmc"/>
-    <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="spicevmc"/>
   </devices>

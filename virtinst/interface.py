@@ -23,16 +23,25 @@ Classes for building and installing libvirt interface xml
 import logging
 
 import libvirt
+import ipaddr
 
-from virtinst import util
-from virtinst.xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
+from . import util
+from .xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
 
 
 class _IPAddress(XMLBuilder):
     _XML_PROP_ORDER = ["address", "prefix"]
     _XML_ROOT_NAME = "ip"
 
-    address = XMLProperty("./@address")
+    ######################
+    # Validation helpers #
+    ######################
+
+    def _validate_ipaddr(self, addr):
+        ipaddr.IPAddress(addr)
+        return addr
+
+    address = XMLProperty("./@address", validate_cb=_validate_ipaddr)
     prefix = XMLProperty("./@prefix", is_int=True)
 
 
@@ -245,14 +254,14 @@ class Interface(XMLBuilder):
         try:
             iface = self.conn.interfaceDefineXML(xml, 0)
         except Exception, e:
-            raise RuntimeError(_("Could not define interface: %s" % str(e)))
+            raise RuntimeError(_("Could not define interface: %s") % str(e))
 
         errmsg = None
         if create and not errmsg:
             try:
                 iface.create(0)
             except Exception, e:
-                errmsg = _("Could not create interface: %s" % str(e))
+                errmsg = _("Could not create interface: %s") % str(e)
 
         if errmsg:
             # Try and clean up the leftover pool

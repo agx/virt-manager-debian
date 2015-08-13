@@ -1,7 +1,7 @@
 #
 # List of OS Specific data
 #
-# Copyright 2006-2008, 2013 Red Hat, Inc.
+# Copyright 2006-2008, 2013-2014 Red Hat, Inc.
 # Jeremy Katz <katzj@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -19,29 +19,71 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
-_SENTINEL = -1234
-_allvariants = {}
+import datetime
+import logging
+import re
+
+from gi.repository import Libosinfo as libosinfo
 
 
-def lookup_os(key):
-    ret = _allvariants.get(key)
-    if ret is None:
-        return ret
+###################
+# Sorting helpers #
+###################
+
+def _remove_older_point_releases(distro_list):
+    ret = distro_list[:]
+
+    def _get_minor_version(osobj):
+        return int(osobj.name.rsplit(".", 1)[-1])
+
+    def _find_latest(prefix):
+        """
+        Given a prefix like 'rhel4', find the latest 'rhel4.X',
+        and remove the rest from the os list
+        """
+        latest_os = None
+        first_id = None
+        for osobj in ret[:]:
+            if not re.match("%s\.\d+" % prefix, osobj.name):
+                continue
+
+            if first_id is None:
+                first_id = ret.index(osobj)
+            ret.remove(osobj)
+
+            if (latest_os and
+                _get_minor_version(latest_os) > _get_minor_version(osobj)):
+                continue
+            latest_os = osobj
+
+        if latest_os:
+            ret.insert(first_id, latest_os)
+
+    _find_latest("rhel4")
+    _find_latest("rhel5")
+    _find_latest("rhel6")
+    _find_latest("rhel7")
+    _find_latest("freebsd9")
+    _find_latest("freebsd10")
     return ret
 
 
-def _sort(tosort, sortpref=None):
+def _sort(tosort, sortpref=None, limit_point_releases=False):
     sortby_mappings = {}
     distro_mappings = {}
     retlist = []
     sortpref = sortpref or []
 
-    # Make sure we are sorting by 'sortby' if specified, and group distros
-    # by their 'distro' tag first and foremost
     for key, osinfo in tosort.items():
-        sortby = osinfo.sortby or key
+        # Libosinfo has some duplicate version numbers here, so append .1
+        # if there's a collision
+        sortby = osinfo.sortby
+        while sortby_mappings.get(sortby):
+            sortby = sortby + ".1"
         sortby_mappings[sortby] = key
 
+        # Group distros by their urldistro value first, so debian is clumped
+        # together, and fedora, etc.
         distro = osinfo.urldistro or "zzzzzzz"
         if distro not in distro_mappings:
             distro_mappings[distro] = []
@@ -55,283 +97,478 @@ def _sort(tosort, sortpref=None):
         distro_list.sort()
         distro_list.reverse()
 
+    # Move the sortpref values to the front of the list
     sorted_distro_list = distro_mappings.keys()
     sorted_distro_list.sort()
     sortpref.reverse()
     for prefer in sortpref:
-        if not prefer in sorted_distro_list:
+        if prefer not in sorted_distro_list:
             continue
         sorted_distro_list.remove(prefer)
         sorted_distro_list.insert(0, prefer)
 
+    # Build the final list of sorted os objects
     for distro in sorted_distro_list:
         distro_list = distro_mappings[distro]
         for key in distro_list:
             orig_key = sortby_mappings[key]
             retlist.append(tosort[orig_key])
 
+    # Filter out older point releases
+    if limit_point_releases:
+        retlist = _remove_older_point_releases(retlist)
+
     return retlist
 
 
-def list_os(list_types=False, typename=None,
-            filtervars=None, only_supported=False,
-            **kwargs):
-    sortmap = {}
-    filtervars = filtervars or []
-
-    for key, osinfo in _allvariants.items():
-        if list_types and not osinfo.is_type:
-            continue
-        if not list_types and osinfo.is_type:
-            continue
-        if typename and typename != osinfo.typename:
-            continue
-        if filtervars and osinfo.name not in filtervars:
-            continue
-        if only_supported and not osinfo.supported:
-            continue
-        sortmap[key] = osinfo
-    return _sort(sortmap, **kwargs)
-
-
-def lookup_osdict_key(variant, key, default):
-    val = _SENTINEL
-    if variant is not None:
-        if not hasattr(_allvariants[variant], key):
-            raise ValueError("Unknown osdict property '%s'" % key)
-        val = getattr(_allvariants[variant], key)
-    if val == _SENTINEL:
-        val = default
-    return val
-
-
-class _OSVariant(object):
+class _OSDB(object):
     """
-    Object tracking guest OS specific configuration bits.
-
-    @name: name of the object. This must be lowercase. This becomes part of
-        the virt-install command line API so we cannot remove any existing
-        name (we could probably add aliases though)
-    @label: Pretty printed label. This is used in the virt-manager UI.
-        We can tweak this.
-    @is_type: virt-install historically had a distinction between an
-        os 'type' (windows, linux, etc), and an os 'variant' (fedora18,
-        winxp, etc). Back in 2009 we actually required the user to
-        specify --os-type if specifying an --os-variant even though we
-        could figure it out easily. This distinction isn't needed any
-        more, though it's still baked into the virt-manager UI where
-        it is still pretty useful, so we fake it here. New types should
-        not be added often.
-    @parent: Name of a pre-created variant that we want to extend. So
-        fedoraFOO would have parent fedoraFOO-1. It's used for inheiriting
-        values.
-    @sortby: A different key to use for sorting the distro list. By default
-        it's 'name', so this doesn't need to be specified.
-    @urldistro: This is a distro class. It's wired up in urlfetcher to give
-        us a shortcut when detecting OS type from a URL.
-    @supported: If this distro is supported by it's owning organization,
-        like is it still receiving updates. We use this to limit the
-        distros we show in virt-manager by default, so old distros aren't
-        squeezing out current ones.
-    @three_stage_install: If True, this VM has a 3 stage install, AKA windows.
-    @virtionet: If True, this OS supports virtionet out of the box
-    @virtiodisk: If True, this OS supports virtiodisk out of the box
-    @virtiommio: If True, this OS supports virtio-mmio out of the box,
-        which provides virtio for certain ARM configurations
-    @virtioconsole: If True, this OS supports virtio-console out of the box,
-        and we should use it as the default console.
-    @xen_disable_acpi: If True, disable acpi/apic for this OS if on old xen.
-        This corresponds with the SUPPORT_CONN_CAN_DEFAULT_ACPI check
-    @qemu_ga: If True, this distro has qemu_ga available by default
-
-    The rest of the parameters are about setting device/guest defaults
-    based on the OS. They should be self explanatory. See guest.py for
-    their usage.
+    Entry point for the public API
     """
-    def __init__(self, name, label, is_type=False,
-                 sortby=None, parent=_SENTINEL,
-                 urldistro=_SENTINEL, supported=_SENTINEL,
-                 three_stage_install=_SENTINEL,
-                 acpi=_SENTINEL, apic=_SENTINEL, clock=_SENTINEL,
-                 netmodel=_SENTINEL, diskbus=_SENTINEL,
-                 inputtype=_SENTINEL, inputbus=_SENTINEL,
-                 videomodel=_SENTINEL, virtionet=_SENTINEL,
-                 virtiodisk=_SENTINEL, virtiommio=_SENTINEL,
-                 virtioconsole=_SENTINEL, xen_disable_acpi=_SENTINEL,
-                 qemu_ga=_SENTINEL):
-        if is_type:
-            if parent != _SENTINEL:
-                raise RuntimeError("OS types must not specify parent")
-            parent = None
-        elif parent == _SENTINEL:
-            raise RuntimeError("Must specify explicit parent")
-        else:
-            parent = _allvariants[parent]
+    def __init__(self):
+        self.__os_loader = None
+        self.__all_variants = None
 
-        def _get_default(name, val, default=_SENTINEL):
-            if val == _SENTINEL:
-                if not parent:
-                    return default
-                return getattr(parent, name)
-            return val
+    # This is only for back compatibility with pre-libosinfo support.
+    # This should never change.
+    _aliases = {
+        "altlinux" : "altlinux1.0",
+        "debianetch" : "debian4",
+        "debianlenny" : "debian5",
+        "debiansqueeze" : "debian6",
+        "debianwheezy" : "debian7",
+        "freebsd10" : "freebsd10.0",
+        "freebsd6" : "freebsd6.0",
+        "freebsd7" : "freebsd7.0",
+        "freebsd8" : "freebsd8.0",
+        "freebsd9" : "freebsd9.0",
+        "mandriva2009" : "mandriva2009.0",
+        "mandriva2010" : "mandriva2010.0",
+        "mbs1" : "mbs1.0",
+        "msdos" : "msdos6.22",
+        "openbsd4" : "openbsd4.2",
+        "opensolaris" : "opensolaris2009.06",
+        "opensuse11" : "opensuse11.4",
+        "opensuse12" : "opensuse12.3",
+        "rhel4" : "rhel4.0",
+        "rhel5" : "rhel5.0",
+        "rhel6" : "rhel6.0",
+        "rhel7" : "rhel7.0",
+        "ubuntuhardy" : "ubuntu8.04",
+        "ubuntuintrepid" : "ubuntu8.10",
+        "ubuntujaunty" : "ubuntu9.04",
+        "ubuntukarmic" : "ubuntu9.10",
+        "ubuntulucid" : "ubuntu10.04",
+        "ubuntumaverick" : "ubuntu10.10",
+        "ubuntunatty" : "ubuntu11.04",
+        "ubuntuoneiric" : "ubuntu11.10",
+        "ubuntuprecise" : "ubuntu12.04",
+        "ubuntuquantal" : "ubuntu12.10",
+        "ubunturaring" : "ubuntu13.04",
+        "ubuntusaucy" : "ubuntu13.10",
+        "virtio26": "fedora10",
+        "vista" : "winvista",
+        "winxp64" : "winxp",
 
-        if name != name.lower():
-            raise RuntimeError("OS dictionary wants lowercase name, not "
-                               "'%s'" % name)
-
-        self.name = name
-        self.label = label
-        self.sortby = sortby
-
-        self.is_type = bool(is_type)
-        self.typename = _get_default("typename",
-                                     self.is_type and self.name or _SENTINEL)
-
-        # 'types' should rarely be altered, this check will make
-        # doubly sure that a new type isn't accidentally added
-        _approved_types = ["linux", "windows", "unix",
-                           "solaris", "other"]
-        if self.typename not in _approved_types:
-            raise RuntimeError("type '%s' for variant '%s' not in list "
-                               "of approved distro types %s" %
-                               (self.typename, self.name, _approved_types))
-
-        self.urldistro = _get_default("urldistro", urldistro, None)
-        self.supported = _get_default("supported", supported, False)
-        self.three_stage_install = _get_default("three_stage_install",
-                                                three_stage_install)
-
-        self.acpi = _get_default("acpi", acpi)
-        self.apic = _get_default("apic", apic)
-        self.clock = _get_default("clock", clock)
-
-        self.netmodel = _get_default("netmodel", netmodel)
-        self.videomodel = _get_default("videomodel", videomodel)
-        self.diskbus = _get_default("diskbus", diskbus)
-        self.inputtype = _get_default("inputtype", inputtype)
-        self.inputbus = _get_default("inputbus", inputbus)
-
-        self.xen_disable_acpi = _get_default("xen_disable_acpi",
-                                             xen_disable_acpi)
-        self.virtiodisk = _get_default("virtiodisk", virtiodisk)
-        self.virtionet = _get_default("virtionet", virtionet)
-        self.virtiommio = _get_default("virtiommio", virtiommio)
-        self.virtioconsole = _get_default("virtioconsole", virtioconsole)
-        self.qemu_ga = _get_default("qemu_ga", qemu_ga)
+        # Old --os-type values
+        "linux" : "generic",
+        "windows" : "winxp",
+        "solaris" : "solaris10",
+        "unix": "freebsd9",
+        "other": "generic",
+    }
 
 
-def _add_type(*args, **kwargs):
-    kwargs["is_type"] = True
-    _t = _OSVariant(*args, **kwargs)
-    _allvariants[_t.name] = _t
+    #################
+    # Internal APIs #
+    #################
+
+    def _make_default_variants(self):
+        ret = {}
+
+        # Generic variant
+        v = _OsVariant(None)
+        ret[v.name] = v
+        return ret
+
+    @property
+    def _os_loader(self):
+        if not self.__os_loader:
+            loader = libosinfo.Loader()
+            loader.process_default_path()
+
+            self.__os_loader = loader
+        return self.__os_loader
+
+    @property
+    def _all_variants(self):
+        if not self.__all_variants:
+            loader = self._os_loader
+            allvariants = self._make_default_variants()
+            db = loader.get_db()
+            oslist = db.get_os_list()
+            for os in range(oslist.get_length()):
+                osi = _OsVariant(oslist.get_nth(os))
+                allvariants[osi.name] = osi
+
+            self.__all_variants = allvariants
+        return self.__all_variants
 
 
-def _add_var(*args, **kwargs):
-    v = _OSVariant(*args, **kwargs)
-    _allvariants[v.name] = v
+    ###############
+    # Public APIs #
+    ###############
+
+    def lookup_os(self, key):
+        key = self._aliases.get(key) or key
+        ret = self._all_variants.get(key)
+        if ret is None:
+            return None
+        return ret
+
+    def lookup_os_by_media(self, location):
+        media = libosinfo.Media.create_from_location(location, None)
+        ret = self._os_loader.get_db().guess_os_from_media(media)
+        if not (ret and len(ret) > 0 and ret[0]):
+            return None
+
+        osname = ret[0].get_short_id()
+        if osname == "fedora-unknown":
+            osname = self.latest_fedora_version()
+            logging.debug("Detected location=%s as os=fedora-unknown. "
+                "Converting that to the latest fedora OS version=%s",
+                location, osname)
+
+        return osname
+
+    def list_types(self):
+        approved_types = ["linux", "windows", "unix",
+            "solaris", "other", "generic"]
+        return approved_types
+
+    def list_os(self, typename=None, only_supported=False, sortpref=None):
+        """
+        List all OSes in the DB
+
+        :param typename: Only list OSes of this type
+        :param only_supported: Only list OSses where self.supported == True
+        :param sortpref: Sort these OSes at the front of the list
+        """
+        sortmap = {}
+
+        for name, osobj in self._all_variants.items():
+            if typename and typename != osobj.get_typename():
+                continue
+            if only_supported and not osobj.get_supported():
+                continue
+            sortmap[name] = osobj
+
+        return _sort(sortmap, sortpref=sortpref,
+            limit_point_releases=only_supported)
+
+    def latest_fedora_version(self):
+        for osinfo in self.list_os():
+            if (osinfo.name.startswith("fedora") and
+                "unknown" not in osinfo.name):
+                # First fedora* occurrence should be the newest
+                return osinfo.name
 
 
-_add_type("linux", "Linux")
-_add_var("rhel2.1", "Red Hat Enterprise Linux 2.1", urldistro="rhel", parent="linux")
-_add_var("rhel3", "Red Hat Enterprise Linux 3", parent="rhel2.1")
-_add_var("rhel4", "Red Hat Enterprise Linux 4", supported=True, parent="rhel3")
-_add_var("rhel5", "Red Hat Enterprise Linux 5", supported=False, parent="rhel4")
-_add_var("rhel5.4", "Red Hat Enterprise Linux 5.4 or later", supported=True, virtiodisk=True, virtionet=True, parent="rhel5")
-_add_var("rhel6", "Red Hat Enterprise Linux 6", inputtype="tablet", inputbus="usb", parent="rhel5.4")
-_add_var("rhel7", "Red Hat Enterprise Linux 7 (or later)", parent="rhel6", qemu_ga=True, virtioconsole=True, virtiommio=True)
+#####################
+# OsVariant classes #
+#####################
 
-_add_var("fedora5", "Fedora Core 5", sortby="fedora05", urldistro="fedora", parent="linux")
-_add_var("fedora6", "Fedora Core 6", sortby="fedora06", parent="fedora5")
-_add_var("fedora7", "Fedora 7", sortby="fedora07", parent="fedora6")
-_add_var("fedora8", "Fedora 8", sortby="fedora08", parent="fedora7")
-# Apparently F9 has selinux errors when installing with virtio:
-# https://bugzilla.redhat.com/show_bug.cgi?id=470386
-_add_var("fedora9", "Fedora 9", sortby="fedora09", virtionet=True, parent="fedora8")
-_add_var("fedora10", "Fedora 10", virtiodisk=True, parent="fedora9")
-_add_var("fedora11", "Fedora 11", inputtype="tablet", inputbus="usb", parent="fedora10")
-_add_var("fedora12", "Fedora 12", parent="fedora11")
-_add_var("fedora13", "Fedora 13", parent="fedora12")
-_add_var("fedora14", "Fedora 14", parent="fedora13")
-_add_var("fedora15", "Fedora 15", parent="fedora14")
-_add_var("fedora16", "Fedora 16", parent="fedora15")
-_add_var("fedora17", "Fedora 17", parent="fedora16")
-_add_var("fedora18", "Fedora 18", supported=True, virtioconsole=True, qemu_ga=True, parent="fedora17")
-_add_var("fedora19", "Fedora 19", virtiommio=True, parent="fedora18")
-_add_var("fedora20", "Fedora 20 (or later)", parent="fedora19")
+class _OsVariant(object):
+    def __init__(self, o):
+        self._os = o
+        self._family = self._os and self._os.get_family() or None
 
-_add_var("opensuse11", "openSuse 11", urldistro="suse", supported=True, virtiodisk=True, virtionet=True, parent="linux")
-_add_var("opensuse12", "openSuse 12 (or later)", parent="opensuse11")
+        self.name = self._os and self._os.get_short_id() or "generic"
+        self.label = self._os and self._os.get_name() or "Generic"
 
-_add_var("sles10", "Suse Linux Enterprise Server", urldistro="suse", supported=True, parent="linux")
-_add_var("sles11", "Suse Linux Enterprise Server 11 (or later)", supported=True, virtiodisk=True, virtionet=True, parent="sles10")
-
-_add_var("mandriva2009", "Mandriva Linux 2009 and earlier", urldistro="mandriva", parent="linux")
-_add_var("mandriva2010", "Mandriva Linux 2010 (or later)", virtiodisk=True, virtionet=True, parent="mandriva2009")
-
-_add_var("mes5", "Mandriva Enterprise Server 5.0", urldistro="mandriva", parent="linux")
-_add_var("mes5.1", "Mandriva Enterprise Server 5.1 (or later)", supported=True, virtiodisk=True, virtionet=True, parent="mes5")
-_add_var("mbs1", "Mandriva Business Server 1 (or later)", supported=True, virtiodisk=True, virtionet=True, parent="linux")
-
-_add_var("mageia1", "Mageia 1 (or later)", urldistro="mandriva", supported=True, virtiodisk=True, virtionet=True, inputtype="tablet", inputbus="usb", parent="linux")
-
-_add_var("altlinux", "ALT Linux (or later)", urldistro="altlinux", supported=True, virtiodisk=True, virtionet=True, inputtype="tablet", inputbus="usb", parent="linux")
-
-_add_var("debianetch", "Debian Etch", urldistro="debian", sortby="debian4", parent="linux")
-_add_var("debianlenny", "Debian Lenny", sortby="debian5", supported=True, virtiodisk=True, virtionet=True, parent="debianetch")
-_add_var("debiansqueeze", "Debian Squeeze", sortby="debian6", virtiodisk=True, virtionet=True, inputtype="tablet", inputbus="usb", parent="debianlenny")
-_add_var("debianwheezy", "Debian Wheezy (or later)", sortby="debian7", parent="debiansqueeze")
-
-_add_var("ubuntuhardy", "Ubuntu 8.04 LTS (Hardy Heron)", urldistro="ubuntu", virtionet=True, parent="linux")
-_add_var("ubuntuintrepid", "Ubuntu 8.10 (Intrepid Ibex)", parent="ubuntuhardy")
-_add_var("ubuntujaunty", "Ubuntu 9.04 (Jaunty Jackalope)", virtiodisk=True, parent="ubuntuintrepid")
-_add_var("ubuntukarmic", "Ubuntu 9.10 (Karmic Koala)", parent="ubuntujaunty")
-_add_var("ubuntulucid", "Ubuntu 10.04 LTS (Lucid Lynx)", supported=True, parent="ubuntukarmic")
-_add_var("ubuntumaverick", "Ubuntu 10.10 (Maverick Meerkat)", supported=False, parent="ubuntulucid")
-_add_var("ubuntunatty", "Ubuntu 11.04 (Natty Narwhal)", parent="ubuntumaverick")
-_add_var("ubuntuoneiric", "Ubuntu 11.10 (Oneiric Ocelot)", parent="ubuntunatty")
-_add_var("ubuntuprecise", "Ubuntu 12.04 LTS (Precise Pangolin)", supported=True, parent="ubuntuoneiric")
-_add_var("ubuntuquantal", "Ubuntu 12.10 (Quantal Quetzal)", parent="ubuntuprecise")
-_add_var("ubunturaring", "Ubuntu 13.04 (Raring Ringtail)", videomodel="vmvga", parent="ubuntuquantal")
-_add_var("ubuntusaucy", "Ubuntu 13.10 (Saucy Salamander) (or later)", parent="ubunturaring")
-
-_add_var("generic24", "Generic 2.4.x kernel", parent="linux")
-_add_var("generic26", "Generic 2.6.x kernel", parent="generic24")
-_add_var("virtio26", "Generic 2.6.25 or later kernel with virtio", sortby="genericvirtio26", virtiodisk=True, virtionet=True, parent="generic26")
+        self.sortby = self._get_sortby()
+        self.urldistro = self._get_urldistro()
+        self._supported = None
 
 
-_add_type("windows", "Windows", clock="localtime", three_stage_install=True, inputtype="tablet", inputbus="usb", videomodel="vga")
-_add_var("win2k", "Microsoft Windows 2000", sortby="mswin4", xen_disable_acpi=True, parent="windows")
-_add_var("winxp", "Microsoft Windows XP", sortby="mswin5", supported=True, xen_disable_acpi=True, parent="windows")
-_add_var("winxp64", "Microsoft Windows XP (x86_64)", supported=True, sortby="mswin564", parent="windows")
-_add_var("win2k3", "Microsoft Windows Server 2003", supported=True, sortby="mswinserv2003", parent="windows")
-_add_var("win2k8", "Microsoft Windows Server 2008 (or later)", supported=True, sortby="mswinserv2008", parent="windows")
-_add_var("vista", "Microsoft Windows Vista", supported=True, sortby="mswin6", parent="windows")
-_add_var("win7", "Microsoft Windows 7 (or later)", supported=True, sortby="mswin7", parent="windows")
+    ########################
+    # Internal helper APIs #
+    ########################
+
+    def _is_related_to(self, related_os_list, os=None,
+        check_derives=True, check_upgrades=True, check_clones=True):
+        os = os or self._os
+        if not os:
+            return False
+
+        if os.get_short_id() in related_os_list:
+            return True
+
+        check_list = []
+        def _extend(newl):
+            for obj in newl:
+                if obj not in check_list:
+                    check_list.append(obj)
+
+        if check_derives:
+            _extend(os.get_related(
+                libosinfo.ProductRelationship.DERIVES_FROM).get_elements())
+        if check_clones:
+            _extend(os.get_related(
+                libosinfo.ProductRelationship.CLONES).get_elements())
+        if check_upgrades:
+            _extend(os.get_related(
+                libosinfo.ProductRelationship.UPGRADES).get_elements())
+
+        for checkobj in check_list:
+            if (checkobj.get_short_id() in related_os_list or
+                self._is_related_to(related_os_list, os=checkobj,
+                    check_upgrades=check_upgrades,
+                    check_derives=check_derives,
+                    check_clones=check_clones)):
+                return True
+
+        return False
 
 
-_add_type("solaris", "Solaris", clock="localtime")
-_add_var("solaris9", "Sun Solaris 9", parent="solaris")
-_add_var("solaris10", "Sun Solaris 10", inputtype="tablet", inputbus="usb", parent="solaris")
-# https://bugzilla.redhat.com/show_bug.cgi?id=894017 claims tablet doesn't work for solaris 11
-_add_var("solaris11", "Sun Solaris 11 (or later)", inputtype=None, inputbus=None, parent="solaris")
-_add_var("opensolaris", "Sun OpenSolaris (or later)", inputtype="tablet", inputbus="usb", parent="solaris")
+    ###############
+    # Cached APIs #
+    ###############
 
-_add_type("unix", "UNIX")
-# http: //www.nabble.com/Re%3A-Qemu%3A-bridging-on-FreeBSD-7.0-STABLE-p15919603.html
-_add_var("freebsd6", "FreeBSD 6.x", netmodel="ne2k_pci", parent="unix")
-_add_var("freebsd7", "FreeBSD 7.x", parent="freebsd6")
-_add_var("freebsd8", "FreeBSD 8.x", supported=True, netmodel="e1000", parent="freebsd7")
-_add_var("freebsd9", "FreeBSD 9.x", parent="freebsd8")
-_add_var("freebsd10", "FreeBSD 10.x (or later)", supported=False, virtiodisk=True, virtionet=True, parent="freebsd9")
+    def _get_sortby(self):
+        if not self._os:
+            return "1"
 
-# http: //calamari.reverse-dns.net: 980/cgi-bin/moin.cgi/OpenbsdOnQemu
-# https: //www.redhat.com/archives/et-mgmt-tools/2008-June/msg00018.html
-_add_var("openbsd4", "OpenBSD 4.x (or later)", netmodel="pcnet", parent="unix")
+        version = self._os.get_version()
+        try:
+            t = version.split(".")
+            t = t[:min(4, len(t))] + [0] * (4 - min(4, len(t)))
+            new_version = ""
+            for n in t:
+                new_version = new_version + ("%.4i" % int(n))
+            version = new_version
+        except:
+            pass
+
+        distro = self._os.get_distro()
+        return "%s-%s" % (distro, version)
+
+    def _get_supported(self):
+        if not self._os:
+            return True
+
+        eol_date = self._os.get_eol_date_string()
+        name = self._os.get_short_id()
+
+        if eol_date:
+            return (datetime.datetime.strptime(eol_date, "%Y-%m-%d") >
+                    datetime.datetime.now())
+
+        if name == "fedora-unknown":
+            return False
+
+        # As of libosinfo 2.11, many clearly EOL distros don't have an
+        # EOL date. So assume None == EOL, add some manual work arounds.
+        # We should fix this in a new libosinfo version, and then drop
+        # this hack
+        if self._is_related_to(["fedora20", "rhel7.0", "debian6",
+            "ubuntu13.04", "win8", "win2k12"],
+            check_clones=False, check_derives=False):
+            return True
+        return False
+
+    def _get_urldistro(self):
+        if not self._os:
+            return None
+        urldistro = self._os.get_distro()
+        remap = {
+            "opensuse" : "suse",
+            "sles" : "suse",
+            "mes" : "mandriva"
+        }
+
+        if remap.get(urldistro):
+            return remap[urldistro]
+
+        return urldistro
 
 
-_add_type("other", "Other")
-_add_var("msdos", "MS-DOS", acpi=False, apic=False, parent="other")
-_add_var("netware4", "Novell Netware 4", parent="other")
-_add_var("netware5", "Novell Netware 5", parent="other")
-_add_var("netware6", "Novell Netware 6 (or later)", parent="other")
-_add_var("generic", "Generic", supported=True, parent="other")
+    ###############
+    # Public APIs #
+    ###############
+
+    def get_supported(self):
+        if self._supported is None:
+            self._supported = self._get_supported()
+        return self._supported
+
+    def get_typename(self):
+        """
+        Streamline the family name for use in the virt-manager UI
+        """
+        if not self._os:
+            return "generic"
+
+        if self._family in ['linux']:
+            return "linux"
+
+        if self._family in ['win9x', 'winnt', 'win16']:
+            return "windows"
+
+        if self._family in ['solaris']:
+            return "solaris"
+
+        if self._family in ['openbsd', 'freebsd', 'netbsd']:
+            return "unix"
+
+        return "other"
+
+    def is_windows(self):
+        return self.get_typename() == "windows"
+
+    def need_old_xen_disable_acpi(self):
+        return self._is_related_to(["winxp", "win2k"], check_upgrades=False)
+
+    def get_clock(self):
+        if self.is_windows() or self._family in ['solaris']:
+            return "localtime"
+        return "utc"
+
+    def supports_virtioconsole(self):
+        # We used to enable this for Fedora 18+, because systemd would
+        # autostart a getty on /dev/hvc0 which made 'virsh console' work
+        # out of the box for a login prompt. However now in Fedora
+        # virtio-console is compiled as a module, and systemd doesn't
+        # detect it in time to start a getty. So the benefit of using
+        # it as the default is erased, and we reverted to this.
+        # https://bugzilla.redhat.com/show_bug.cgi?id=1039742
+        return False
+
+    def supports_virtiommio(self):
+        return self._is_related_to(["fedora19"])
+
+    def supports_acpi(self, default):
+        if self._family in ['msdos']:
+            return False
+        return default
+
+    def supports_apic(self, default):
+        return self.supports_acpi(default)
+
+    def default_netmodel(self):
+        """
+        Default non-virtio net-model, since we check for that separately
+        """
+        if not self._os:
+            return None
+
+        fltr = libosinfo.Filter()
+        fltr.add_constraint("class", "net")
+        devs = self._os.get_all_devices(fltr)
+        for idx in range(devs.get_length()):
+            devname = devs.get_nth(idx).get_name()
+            if devname != "virtio-net":
+                return devname
+        return None
+
+    def default_inputtype(self):
+        if self._os:
+            fltr = libosinfo.Filter()
+            fltr.add_constraint("class", "input")
+            devs = self._os.get_all_devices(fltr)
+            if devs.get_length():
+                return devs.get_nth(0).get_name()
+        return "mouse"
+
+    def default_inputbus(self):
+        if self._os:
+            fltr = libosinfo.Filter()
+            fltr.add_constraint("class", "input")
+            devs = self._os.get_all_devices(fltr)
+            if devs.get_length():
+                return devs.get_nth(0).get_bus_type()
+        return "ps2"
+
+    def supports_virtiodisk(self):
+        if self._os:
+            fltr = libosinfo.Filter()
+            fltr.add_constraint("class", "block")
+            devs = self._os.get_all_devices(fltr)
+            for dev in range(devs.get_length()):
+                d = devs.get_nth(dev)
+                if d.get_name() == "virtio-block":
+                    return True
+
+        return False
+
+    def supports_virtionet(self):
+        if self._os:
+            fltr = libosinfo.Filter()
+            fltr.add_constraint("class", "net")
+            devs = self._os.get_all_devices(fltr)
+            for dev in range(devs.get_length()):
+                d = devs.get_nth(dev)
+                if d.get_name() == "virtio-net":
+                    return True
+
+        return False
+
+    def supports_qemu_ga(self):
+        return self._is_related_to(["fedora18", "rhel6.0", "sles11sp4"])
+
+    def default_videomodel(self, guest):
+        if guest.os.is_pseries():
+            return "vga"
+
+        # Marc Deslauriers of canonical had previously patched us
+        # to use vmvga for ubuntu, see fb76c4e5. And Fedora users report
+        # issues with ubuntu + qxl for as late as 14.04, so carry the vmvga
+        # default forward until someone says otherwise. In 2014-09 I contacted
+        # Marc offlist and he said this was fine for now.
+        if self._os and self._os.get_distro() == "ubuntu":
+            return "vmvga"
+
+        if guest.has_spice() and guest.os.is_x86():
+            return "qxl"
+
+        if self.is_windows():
+            return "vga"
+
+        return None
+
+    def get_recommended_resources(self, guest):
+        ret = {}
+        if not self._os:
+            return ret
+
+        def read_resource(resources, minimum, arch):
+            # If we are reading the "minimum" block, allocate more
+            # resources.
+            ram_scale = minimum and 2 or 1
+            n_cpus_scale = minimum and 2 or 1
+            storage_scale = minimum and 2 or 1
+            for i in range(resources.get_length()):
+                r = resources.get_nth(i)
+                if r.get_architecture() == arch:
+                    ret["ram"] = r.get_ram() * ram_scale
+                    ret["cpu"] = r.get_cpu()
+                    ret["n-cpus"] = r.get_n_cpus() * n_cpus_scale
+                    ret["storage"] = r.get_storage() * storage_scale
+                    break
+
+        # libosinfo may miss the recommended resources block for some OS,
+        # in this case read first the minimum resources (if present)
+        # and use them.
+        read_resource(self._os.get_minimum_resources(), True, "all")
+        read_resource(self._os.get_minimum_resources(), True, guest.os.arch)
+        read_resource(self._os.get_recommended_resources(), False, "all")
+        read_resource(self._os.get_recommended_resources(),
+            False, guest.os.arch)
+
+        # QEMU TCG doesn't gain anything by having extra VCPUs
+        if guest.type == "qemu":
+            ret["n-cpus"] = 1
+
+        return ret
+
+OSDB = _OSDB()

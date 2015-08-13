@@ -21,15 +21,13 @@
 import logging
 import os
 
-# pylint: disable=E0611
 from gi.repository import Gtk
 from gi.repository import Gdk
-# pylint: enable=E0611
 
-from virtManager import uiutil
-from virtManager.baseclass import vmmGObjectUI
-from virtManager.asyncjob import vmmAsyncJob
-from virtManager.storagebrowse import vmmStorageBrowser
+from . import uiutil
+from .baseclass import vmmGObjectUI
+from .asyncjob import vmmAsyncJob
+from .storagebrowse import vmmStorageBrowser
 
 import virtinst
 from virtinst import Cloner
@@ -237,7 +235,7 @@ class vmmCloneVM(vmmGObjectUI):
 
         uiutil.set_grid_row_visible(
             self.widget("clone-dest-host"), self.conn.is_remote())
-        self.widget("clone-dest-host").set_text(self.conn.get_hostname())
+        self.widget("clone-dest-host").set_text(self.conn.get_pretty_desc())
 
         # We need to determine which disks fail (and why).
         self.storage_list, self.target_list = self.check_all_storage()
@@ -306,7 +304,11 @@ class vmmCloneVM(vmmGObjectUI):
                 label = _("Usermode")
 
             elif net_type == VirtualNetworkInterface.TYPE_VIRTUAL:
-                net = self.orig_vm.conn.get_net_by_name(net_dev)
+                net = None
+                for netobj in self.orig_vm.conn.list_nets():
+                    if netobj.get_name() == net_dev:
+                        net = netobj
+                        break
 
                 if net:
                     label = ""
@@ -376,6 +378,7 @@ class vmmCloneVM(vmmGObjectUI):
                                              devtype)
 
             def storage_add(failinfo=None):
+                # pylint: disable=cell-var-from-loop
                 storage_row[STORAGE_INFO_DEFINFO] = definfo
                 storage_row[STORAGE_INFO_DO_DEFAULT] = default
                 storage_row[STORAGE_INFO_CAN_SHARE] = bool(definfo)
@@ -475,6 +478,7 @@ class vmmCloneVM(vmmGObjectUI):
             info_label = Gtk.Label()
             info_label.set_alignment(0, .5)
             info_label.set_markup("<span size='small'>%s</span>" % failinfo)
+            info_label.set_line_wrap(True)
         if not is_default:
             disk_label += (definfo and " (%s)" % definfo or "")
 
@@ -697,8 +701,8 @@ class vmmCloneVM(vmmGObjectUI):
 
         new_path = self.widget("change-storage-new").get_text()
 
-        if virtinst.VirtualDisk.path_exists(self.clone_design.conn,
-                                            new_path):
+        if virtinst.VirtualDisk.path_definitely_exists(self.clone_design.conn,
+                                                       new_path):
             res = self.err.yes_no(_("Cloning will overwrite the existing "
                                     "file"),
                                     _("Using an existing image will overwrite "
@@ -721,7 +725,7 @@ class vmmCloneVM(vmmGObjectUI):
     def pretty_storage(self, size):
         if not size:
             return ""
-        return "%.1f GB" % float(size)
+        return "%.1f GiB" % float(size)
 
     # Listeners
     def validate(self):
@@ -788,9 +792,10 @@ class vmmCloneVM(vmmGObjectUI):
             error = (_("Error creating virtual machine clone '%s': %s") %
                       (self.clone_design.clone_name, error))
             self.err.show_err(error, details=details)
-        else:
-            self.close()
-            self.conn.schedule_priority_tick(pollvm=True)
+            return
+
+        self.close()
+        self.conn.schedule_priority_tick(pollvm=True)
 
     def finish(self, src_ignore):
         try:
@@ -819,8 +824,30 @@ class vmmCloneVM(vmmGObjectUI):
             self.orig_vm.set_cloning(True)
             meter = asyncjob.get_meter()
 
+            refresh_pools = []
+            for disk in self.clone_design.clone_disks:
+                if not disk.wants_storage_creation():
+                    continue
+
+                pool = disk.get_parent_pool()
+                if not pool:
+                    continue
+
+                poolname = pool.name()
+                if poolname not in refresh_pools:
+                    refresh_pools.append(poolname)
+
             self.clone_design.setup()
             self.clone_design.start_duplicate(meter)
+
+            for poolname in refresh_pools:
+                try:
+                    pool = self.conn.get_pool(poolname)
+                    self.idle_add(pool.refresh)
+                except:
+                    logging.debug("Error looking up pool=%s for refresh after "
+                        "VM clone.", poolname, exc_info=True)
+
         finally:
             self.orig_vm.set_cloning(False)
 
@@ -828,8 +855,11 @@ class vmmCloneVM(vmmGObjectUI):
         def callback(src_ignore, txt):
             self.widget("change-storage-new").set_text(txt)
 
+        if self.storage_browser and self.storage_browser.conn != self.conn:
+            self.storage_browser.cleanup()
+            self.storage_browser = None
         if self.storage_browser is None:
             self.storage_browser = vmmStorageBrowser(self.conn)
-            self.storage_browser.connect("storage-browse-finish", callback)
+            self.storage_browser.set_finish_cb(callback)
 
-        self.storage_browser.show(self.topwin, self.conn)
+        self.storage_browser.show(self.topwin)

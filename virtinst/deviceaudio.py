@@ -1,5 +1,5 @@
 #
-# Copyright 2008-2009, 2013 Red Hat, Inc.
+# Copyright 2008-2009, 2013-2014 Red Hat, Inc.
 # Cole Robinson <crobinso@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -17,15 +17,15 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
-from virtinst import VirtualDevice
-from virtinst.xmlbuilder import XMLProperty
+from .device import VirtualDevice
+from .xmlbuilder import XMLProperty
 
 
 class VirtualAudio(VirtualDevice):
     virtual_device_type = VirtualDevice.VIRTUAL_DEV_AUDIO
 
     MODEL_DEFAULT = "default"
-    MODELS = ["es1370", "sb16", "pcspk", "ac97", "ich6", MODEL_DEFAULT]
+    MODELS = ["es1370", "sb16", "pcspk", "ac97", "ich6", "ich9"]
 
     model = XMLProperty("./@model",
                         default_cb=lambda s: "es1370",

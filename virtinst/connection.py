@@ -1,5 +1,5 @@
 #
-# Copyright 2013 Red Hat, Inc.
+# Copyright 2013, 2014, 2015 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -22,14 +22,16 @@ import weakref
 
 import libvirt
 
-from virtinst import CapabilitiesParser
-from virtinst import Guest
-from virtinst import StoragePool
-from virtinst import StorageVolume
-from virtinst import pollhelpers
-from virtinst import support
-from virtinst import util
-from virtinst.cli import VirtOptionString
+from . import pollhelpers
+from . import support
+from . import util
+from . import URISplit
+from . import Capabilities
+from .cli import VirtOptionString
+from .guest import Guest
+from .nodedev import NodeDevice
+from .storage import StoragePool, StorageVolume
+from virtcli import CLIConfig
 
 _virtinst_uri_magic = "__virtinst_test__"
 
@@ -81,7 +83,7 @@ class VirtualConnection(object):
             self._test_opts = {}
 
         self._libvirtconn = None
-        self._urisplits = util.uri_split(self._uri)
+        self._urisplits = URISplit(self._uri)
         self._caps = None
 
         self._support_cache = {}
@@ -97,6 +99,7 @@ class VirtualConnection(object):
         self.cb_fetch_all_guests = None
         self.cb_fetch_all_pools = None
         self.cb_fetch_all_vols = None
+        self.cb_fetch_all_nodedevs = None
         self.cb_clear_cache = None
 
 
@@ -118,8 +121,8 @@ class VirtualConnection(object):
 
     def _get_caps(self):
         if not self._caps:
-            self._caps = CapabilitiesParser.Capabilities(
-                                        self._libvirtconn.getCapabilities())
+            self._caps = Capabilities(self,
+                self._libvirtconn.getCapabilities())
         return self._caps
     caps = property(_get_caps)
 
@@ -161,21 +164,39 @@ class VirtualConnection(object):
         self._libvirtconn = conn
         if not self._open_uri:
             self._uri = self._libvirtconn.getURI()
-            self._urisplits = util.uri_split(self._uri)
+            self._urisplits = URISplit(self._uri)
+
+    def set_keep_alive(self, interval, count):
+        if hasattr(self._libvirtconn, "setKeepAlive"):
+            self._libvirtconn.setKeepAlive(interval, count)
+
+
+    ####################
+    # Polling routines #
+    ####################
 
     _FETCH_KEY_GUESTS = "vms"
     _FETCH_KEY_POOLS = "pools"
     _FETCH_KEY_VOLS = "vols"
+    _FETCH_KEY_NODEDEVS = "nodedevs"
+
+    def clear_cache(self, pools=False):
+        if self.cb_clear_cache:
+            self.cb_clear_cache(pools=pools)  # pylint: disable=not-callable
+            return
+
+        if pools:
+            self._fetch_cache.pop(self._FETCH_KEY_POOLS, None)
 
     def _fetch_all_guests_cached(self):
         key = self._FETCH_KEY_GUESTS
         if key in self._fetch_cache:
             return self._fetch_cache[key]
 
-        ignore, ignore, ret = pollhelpers.fetch_vms(self, {},
-                                                    lambda obj, ignore: obj)
+        ignore, ignore, ret = pollhelpers.fetch_vms(
+            self, {}, lambda obj, ignore: obj)
         ret = [Guest(weakref.ref(self), parsexml=obj.XMLDesc(0))
-               for obj in ret.values()]
+               for obj in ret]
         if self.cache_object_fetch:
             self._fetch_cache[key] = ret
         return ret
@@ -185,7 +206,7 @@ class VirtualConnection(object):
         Returns a list of Guest() objects
         """
         if self.cb_fetch_all_guests:
-            return self.cb_fetch_all_guests()  # pylint: disable=E1102
+            return self.cb_fetch_all_guests()  # pylint: disable=not-callable
         return self._fetch_all_guests_cached()
 
     def _fetch_all_pools_cached(self):
@@ -193,10 +214,10 @@ class VirtualConnection(object):
         if key in self._fetch_cache:
             return self._fetch_cache[key]
 
-        ignore, ignore, ret = pollhelpers.fetch_pools(self, {},
-                                                    lambda obj, ignore: obj)
+        ignore, ignore, ret = pollhelpers.fetch_pools(
+            self, {}, lambda obj, ignore: obj)
         ret = [StoragePool(weakref.ref(self), parsexml=obj.XMLDesc(0))
-               for obj in ret.values()]
+               for obj in ret]
         if self.cache_object_fetch:
             self._fetch_cache[key] = ret
         return ret
@@ -206,7 +227,7 @@ class VirtualConnection(object):
         Returns a list of StoragePool objects
         """
         if self.cb_fetch_all_pools:
-            return self.cb_fetch_all_pools()  # pylint: disable=E1102
+            return self.cb_fetch_all_pools()  # pylint: disable=not-callable
         return self._fetch_all_pools_cached()
 
     def _fetch_all_vols_cached(self):
@@ -217,10 +238,13 @@ class VirtualConnection(object):
         ret = []
         for xmlobj in self.fetch_all_pools():
             pool = self._libvirtconn.storagePoolLookupByName(xmlobj.name)
+            if pool.info()[0] != libvirt.VIR_STORAGE_POOL_RUNNING:
+                continue
+
             ignore, ignore, vols = pollhelpers.fetch_volumes(
                 self, pool, {}, lambda obj, ignore: obj)
 
-            for vol in vols.values():
+            for vol in vols:
                 try:
                     xml = vol.XMLDesc(0)
                     ret.append(StorageVolume(weakref.ref(self), parsexml=xml))
@@ -236,16 +260,29 @@ class VirtualConnection(object):
         Returns a list of StorageVolume objects
         """
         if self.cb_fetch_all_vols:
-            return self.cb_fetch_all_vols()  # pylint: disable=E1102
+            return self.cb_fetch_all_vols()  # pylint: disable=not-callable
         return self._fetch_all_vols_cached()
 
-    def clear_cache(self, pools=False):
-        if self.cb_clear_cache:
-            self.cb_clear_cache(pools=pools)  # pylint: disable=E1102
-            return
+    def _fetch_all_nodedevs_cached(self):
+        key = self._FETCH_KEY_NODEDEVS
+        if key in self._fetch_cache:
+            return self._fetch_cache[key]
 
-        if pools:
-            self._fetch_cache.pop(self._FETCH_KEY_POOLS, None)
+        ignore, ignore, ret = pollhelpers.fetch_nodedevs(
+            self, {}, lambda obj, ignore: obj)
+        ret = [NodeDevice.parse(weakref.ref(self), obj.XMLDesc(0))
+               for obj in ret]
+        if self.cache_object_fetch:
+            self._fetch_cache[key] = ret
+        return ret
+
+    def fetch_all_nodedevs(self):
+        """
+        Returns a list of NodeDevice() objects
+        """
+        if self.cb_fetch_all_nodedevs:
+            return self.cb_fetch_all_nodedevs()  # pylint: disable=not-callable
+        return self._fetch_all_nodedevs_cached()
 
 
     #########################
@@ -290,6 +327,28 @@ class VirtualConnection(object):
                 self._conn_version = self._libvirtconn.getVersion()
         return self._conn_version
 
+    def stable_defaults(self, emulator=None, force=False):
+        """
+        :param force: Just check if we are running on RHEL, regardless of
+            whether stable defaults are requested by the build. This is needed
+            to ensure we don't enable VM devices that are compiled out on
+            RHEL, like vmvga
+        """
+        if not CLIConfig.stable_defaults and not force:
+            return False
+
+        if not self.is_qemu_system():
+            return False
+
+        if emulator:
+            return str(emulator).startswith("/usr/libexec")
+
+        for guest in self.caps.guests:
+            for dom in guest.domains:
+                if dom.emulator.startswith("/usr/libexec"):
+                    return True
+        return False
+
 
     ###################
     # Public URI bits #
@@ -300,56 +359,42 @@ class VirtualConnection(object):
 
     def is_remote(self):
         return (hasattr(self, "_virtinst__fake_conn_remote") or
-            self._urisplits[2])
+            self._urisplits.hostname)
 
     def get_uri_hostname(self):
-        return self._urisplits[2] or "localhost"
-
-    def get_uri_host_port(self):
-        hostname = self.get_uri_hostname()
-        port = None
-
-        if hostname.startswith("[") and "]" in hostname:
-            if "]:" in hostname:
-                hostname, port = hostname.rsplit(":", 1)
-            hostname = "".join(hostname[1:].split("]", 1))
-        elif ":" in hostname:
-            hostname, port = hostname.split(":", 1)
-        return hostname, port
-
+        return self._urisplits.hostname
+    def get_uri_port(self):
+        return self._urisplits.port
+    def get_uri_username(self):
+        return self._urisplits.username
     def get_uri_transport(self):
-        scheme = self._urisplits[0]
-        username = self._urisplits[1]
-        offset = scheme.find("+")
-        if offset != -1:
-            return [scheme[offset + 1:], username]
-        return [None, None]
+        return self._urisplits.transport
+    def get_uri_path(self):
+        return self._urisplits.path
 
     def get_uri_driver(self):
-        scheme = self._urisplits[0]
-        offset = scheme.find("+")
-        if offset > 0:
-            return scheme[:offset]
-        return scheme
+        return self._urisplits.scheme
 
     def is_session_uri(self):
-        return self._urisplits[3] == "/session"
+        return self.get_uri_path() == "/session"
     def is_qemu(self):
-        return self._urisplits[0].startswith("qemu")
+        return self._urisplits.scheme.startswith("qemu")
     def is_qemu_system(self):
-        return (self.is_qemu() and self._urisplits[3] == "/system")
+        return (self.is_qemu() and self._urisplits.path == "/system")
     def is_qemu_session(self):
         return (self.is_qemu() and self.is_session_uri())
 
+    def is_really_test(self):
+        return URISplit(self._open_uri).scheme.startswith("test")
     def is_test(self):
-        return self._urisplits[0].startswith("test")
+        return self._urisplits.scheme.startswith("test")
     def is_xen(self):
-        return (self._urisplits[0].startswith("xen") or
-                self._urisplits[0].startswith("libxl"))
+        return (self._urisplits.scheme.startswith("xen") or
+                self._urisplits.scheme.startswith("libxl"))
     def is_lxc(self):
-        return self._urisplits[0].startswith("lxc")
+        return self._urisplits.scheme.startswith("lxc")
     def is_openvz(self):
-        return self._urisplits[0].startswith("openvz")
+        return self._urisplits.scheme.startswith("openvz")
     def is_container(self):
         return self.is_lxc() or self.is_openvz()
 
@@ -429,6 +474,24 @@ class VirtualConnection(object):
         if "caps" in opts:
             capsxml = file(opts.pop("caps")).read()
             conn.getCapabilities = lambda: capsxml
+
+        # Fake domcapabilities. This is insufficient since output should
+        # vary per type/arch/emulator combo, but it can be expanded later
+        # if needed
+        if "domcaps" in opts:
+            domcapsxml = file(opts.pop("domcaps")).read()
+            def fake_domcaps(emulator, arch, machine, virttype, flags=0):
+                ignore = emulator
+                ignore = flags
+                ignore = machine
+                ignore = virttype
+
+                ret = domcapsxml
+                if arch:
+                    ret = re.sub("arch>.+</arch", "arch>%s</arch" % arch, ret)
+                return ret
+
+            conn.getDomainCapabilities = fake_domcaps
 
         if ("qemu" in opts) or ("xen" in opts) or ("lxc" in opts):
             opts.pop("qemu", None)

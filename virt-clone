@@ -24,14 +24,12 @@ import argparse
 import logging
 import sys
 
-import urlgrabber.progress as progress
-
 import virtinst.cli as cli
 from virtinst import Cloner
 from virtinst.cli import fail, print_stdout, print_stderr
 
 
-### General input gathering functions
+# General input gathering functions
 def get_clone_name(new_name, auto_clone, design):
     if not new_name and auto_clone:
         # Generate a name to use
@@ -39,7 +37,8 @@ def get_clone_name(new_name, auto_clone, design):
         logging.debug("Auto-generated clone name '%s'", new_name)
 
     if not new_name:
-        fail(_("A name is required for the new virtual machine."))
+        fail(_("A name is required for the new virtual machine,"
+            " use '--name NEW_VM_NAME' to specify one."))
     design.clone_name = new_name
 
 
@@ -57,7 +56,8 @@ def get_original_guest(guest_name, origfile, design):
             fail(e)
 
     if not guest_name:
-        fail(_("An original machine name or xml file is required."))
+        fail(_("An original machine name is required,"
+            " use '--original ORIGINAL_GUEST' and try again."))
     design.original_guest = guest_name
 
 
@@ -118,6 +118,8 @@ def parse_args():
     geng.add_argument("-n", "--name", dest="new_name",
                     help=_("Name for the new guest"))
     geng.add_argument("-u", "--uuid", dest="new_uuid", help=argparse.SUPPRESS)
+    geng.add_argument("--reflink", action="store_true", dest="reflink",
+            help=_("use btrfs COW lightweight copy"))
 
     stog = parser.add_argument_group(_("Storage Configuration"))
     stog.add_argument("-f", "--file", dest="new_diskfile", action="append",
@@ -159,8 +161,9 @@ def main(conn=None):
     options.quiet = options.quiet or options.xmlonly
     cli.setupLogging("virt-clone", options.debug, options.quiet)
 
+    cli.convert_old_force(options)
+    cli.parse_check(options.check)
     cli.set_prompt(options.prompt)
-    cli.set_force(options.force)
 
     if conn is None:
         conn = cli.getConnection(options.connect)
@@ -176,6 +179,8 @@ def main(conn=None):
     get_clone_macaddr(options.new_mac, design)
     if options.new_uuid is not None:
         design.clone_uuid = options.new_uuid
+    if options.reflink is True:
+        design.reflink = True
     for i in options.target or []:
         design.force_target = i
     design.clone_sparse = options.sparse
@@ -194,9 +199,7 @@ def main(conn=None):
     if options.xmlonly:
         print_stdout(design.clone_xml, do_force=True)
     else:
-        # start cloning
-        meter = progress.TextMeter(fo=sys.stdout)
-        design.start_duplicate(meter)
+        design.start_duplicate(cli.get_meter())
 
     print_stdout("")
     print_stdout(_("Clone '%s' created successfully.") % design.clone_name)

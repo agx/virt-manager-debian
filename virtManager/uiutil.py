@@ -18,10 +18,8 @@
 # MA 02110-1301 USA.
 #
 
-# pylint: disable=E0611
 from gi.repository import GObject
 from gi.repository import Gtk
-# pylint: enable=E0611
 
 try:
     import gi
@@ -31,19 +29,9 @@ except (ValueError, AttributeError):
     can_set_row_none = False
 
 
-def set_combo_text_column(combo, col):
-    """
-    Set the text column of the passed combo to 'col'. Does the
-    right thing whether it's a plain combo or a comboboxentry. Saves
-    some typing.
-    """
-    if combo.get_has_entry():
-        combo.set_entry_text_column(col)
-    else:
-        text = Gtk.CellRendererText()
-        combo.pack_start(text, True)
-        combo.add_attribute(text, 'text', col)
-
+#####################
+# UI getter helpers #
+#####################
 
 def spin_get_helper(widget):
     """
@@ -58,7 +46,7 @@ def spin_get_helper(widget):
         return adj.get_value()
 
 
-def get_list_selection(widget, rowindex=None, check_visible=False):
+def get_list_selected_row(widget, check_visible=False):
     """
     Helper to simplify getting the selected row in a list/tree/combo
     """
@@ -79,12 +67,31 @@ def get_list_selection(widget, rowindex=None, check_visible=False):
 
         row = widget.get_model()[idx]
 
-    if rowindex is None:
-        return row
-    return row[rowindex]
+    return row
 
 
-def set_list_selection(widget, rownum):
+def get_list_selection(widget, column=0, check_visible=False):
+    """
+    Helper to simplify getting the selected row and value in a list/tree/combo.
+    If nothing is selected, and the widget is a combo box with a text entry,
+    return the value of that.
+    """
+    row = get_list_selected_row(widget, check_visible=check_visible)
+    if row is not None:
+        return row[column]
+
+    if hasattr(widget, "get_has_entry"):
+        if widget.get_has_entry():
+            return widget.get_child().get_text().strip()
+
+    return None
+
+
+#####################
+# UI setter helpers #
+#####################
+
+def set_list_selection_by_number(widget, rownum):
     """
     Helper to set list selection from the passed row number
     """
@@ -96,62 +103,41 @@ def set_list_selection(widget, rownum):
     selection.select_path(path)
 
 
-def set_row_selection(listwidget, prevkey):
+def set_list_selection(widget, value, column=0):
     """
-    Set a list or tree selection given the passed key. The key is
-    expected to be element 0 in the list rows.
-    """
-    model = listwidget.get_model()
-    _iter = None
-    if prevkey is not None:
-        for row in model:
-            if row[0] == prevkey:
-                _iter = row.iter
-                break
-    if not _iter:
-        _iter = model.get_iter_first()
+    Set a list or tree selection given the passed key, expected to
+    be stored at the specified column.
 
-    if hasattr(listwidget, "get_selection"):
-        selection = listwidget.get_selection()
+    If the passed value is not found, and the widget is a combo box with
+    a text entry, set the text entry to the passed value.
+    """
+    model = widget.get_model()
+    _iter = None
+    for row in model:
+        if row[column] == value:
+            _iter = row.iter
+            break
+
+    if not _iter:
+        if hasattr(widget, "get_has_entry") and widget.get_has_entry():
+            widget.get_child().set_text(value or "")
+        else:
+            _iter = model.get_iter_first()
+
+    if hasattr(widget, "get_selection"):
+        selection = widget.get_selection()
         cb = selection.select_iter
     else:
-        selection = listwidget
+        selection = widget
         cb = selection.set_active_iter
     if _iter:
         cb(_iter)
     selection.emit("changed")
 
 
-def set_combo_entry(combo, value, rowidx=0):
-    """
-    Search the passed combobox for value, comparing against
-    rowidx. If found, select it. If not found, and
-    the combobox has a text entry, stick the value in their and
-    select it.
-    """
-    idx = -1
-    model_list = [x[rowidx] for x in combo.get_model()]
-    model_in_list = (value in model_list)
-    if model_in_list:
-        idx = model_list.index(value)
-
-    combo.set_active(idx)
-    if idx == -1 and combo.get_has_entry():
-        combo.get_child().set_text(value or "")
-
-
-def get_combo_entry(combo, rowidx=0):
-    """
-    Helper to get the value specified in a combo box, with or
-    without and entry
-    """
-    row = get_list_selection(combo)
-    if row:
-        return row[rowidx]
-    if not combo.get_has_entry():
-        return None
-    return combo.get_child().get_text().strip()
-
+##################
+# Misc functions #
+##################
 
 def child_get_property(parent, child, propname):
     """
@@ -180,3 +166,21 @@ def set_grid_row_visible(child, visible):
     for child in parent.get_children():
         if child_get_property(parent, child, "top-attach") == row:
             child.set_visible(visible)
+
+
+def init_combo_text_column(combo, col):
+    """
+    Set the text column of the passed combo to 'col'. Does the
+    right thing whether it's a plain combo or a comboboxentry. Saves
+    some typing.
+
+    :returns: If we added a cell renderer, returns it. Otherwise return None
+    """
+    if combo.get_has_entry():
+        combo.set_entry_text_column(col)
+    else:
+        text = Gtk.CellRendererText()
+        combo.pack_start(text, True)
+        combo.add_attribute(text, 'text', col)
+        return text
+    return None

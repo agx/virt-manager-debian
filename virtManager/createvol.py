@@ -20,22 +20,20 @@
 
 import logging
 
-# pylint: disable=E0611
 from gi.repository import GObject
 from gi.repository import Gtk
 from gi.repository import Gdk
-# pylint: enable=E0611
 
-from virtManager import uiutil
-from virtManager.baseclass import vmmGObjectUI
-from virtManager.asyncjob import vmmAsyncJob
+from . import uiutil
+from .baseclass import vmmGObjectUI
+from .asyncjob import vmmAsyncJob
 
 from virtinst import StorageVolume
 
 
 class vmmCreateVolume(vmmGObjectUI):
     __gsignals__ = {
-        "vol-created": (GObject.SignalFlags.RUN_FIRST, None, []),
+        "vol-created": (GObject.SignalFlags.RUN_FIRST, None, [str, str]),
     }
 
     def __init__(self, conn, parent_pool):
@@ -125,21 +123,25 @@ class vmmCreateVolume(vmmGObjectUI):
         format_list = self.widget("vol-format")
         format_model = Gtk.ListStore(str, str)
         format_list.set_model(format_model)
-        uiutil.set_combo_text_column(format_list, 1)
+        uiutil.init_combo_text_column(format_list, 1)
 
 
     def _make_stub_vol(self):
         self.vol = StorageVolume(self.conn.get_backend())
         self.vol.pool = self.parent_pool.get_backend()
 
-    def _can_alloc(self):
-        if self.parent_pool.get_type() == "logical":
-            # Sparse LVM volumes don't auto grow, so alloc=0 is useless
-            return False
+    def _can_only_sparse(self):
         if self.get_config_format() == "qcow2":
-            return False
+            return True
         if (self.widget("backing-store").is_visible() and
             self.widget("backing-store").get_text()):
+            return True
+        return False
+    def _can_alloc(self):
+        if self._can_only_sparse():
+            return False
+        if self.parent_pool.get_type() == "logical":
+            # Sparse LVM volumes don't auto grow, so alloc=0 is useless
             return False
         return True
     def _show_alloc(self, *args, **kwargs):
@@ -191,8 +193,7 @@ class vmmCreateVolume(vmmGObjectUI):
         self.widget("vol-allocation").set_range(0,
             int(self.parent_pool.get_available() / 1024 / 1024 / 1024))
         self.widget("vol-allocation").set_value(alloc)
-        self.widget("vol-capacity").set_range(0.1,
-            int(self.parent_pool.get_available() / 1024 / 1024 / 1024))
+        self.widget("vol-capacity").set_range(0.1, 1000000)
         self.widget("vol-capacity").set_value(default_cap)
 
         self.widget("vol-parent-name").set_markup(
@@ -202,7 +203,7 @@ class vmmCreateVolume(vmmGObjectUI):
 
 
     def get_config_format(self):
-        return uiutil.get_list_selection(self.widget("vol-format"), 0)
+        return uiutil.get_list_selection(self.widget("vol-format"))
 
     def populate_vol_format(self):
         stable_whitelist = ["raw", "qcow2", "qed"]
@@ -261,6 +262,9 @@ class vmmCreateVolume(vmmGObjectUI):
         ignore = src
         self._browse_file()
 
+    def _signal_vol_created(self, pool, volname):
+        self.emit("vol-created", pool.get_connkey(), volname)
+
     def _finish_cb(self, error, details):
         self.topwin.set_sensitive(True)
         self.topwin.get_window().set_cursor(
@@ -271,8 +275,9 @@ class vmmCreateVolume(vmmGObjectUI):
             self.show_err(error,
                           details=details)
         else:
-            # vol-created will refresh the parent pool
-            self.emit("vol-created")
+            self.parent_pool.connect("refreshed", self._signal_vol_created,
+                self.vol.name)
+            self.idle_add(self.parent_pool.refresh)
             self.close()
 
     def finish(self, src_ignore):
@@ -282,9 +287,6 @@ class vmmCreateVolume(vmmGObjectUI):
         except Exception, e:
             self.show_err(_("Uncaught error validating input: %s") % str(e))
             return
-
-        logging.debug("Creating volume with xml:\n%s",
-                      self.vol.get_xml_config())
 
         self.topwin.set_sensitive(False)
         self.topwin.get_window().set_cursor(
@@ -320,6 +322,8 @@ class vmmCreateVolume(vmmGObjectUI):
         backing = self.widget("backing-store").get_text()
         if not self.widget("vol-allocation").get_visible():
             alloc = cap
+            if self._can_only_sparse():
+                alloc = 0
 
         try:
             self._make_stub_vol()
@@ -342,17 +346,20 @@ class vmmCreateVolume(vmmGObjectUI):
         return self.err.val_err(info, details, modal=self.topwin.get_modal())
 
     def _browse_file(self):
+        if self.storage_browser and self.storage_browser.conn != self.conn:
+            self.storage_browser.cleanup()
+            self.storage_browser = None
+
         if self.storage_browser is None:
             def cb(src, text):
                 ignore = src
                 self.widget("backing-store").set_text(text)
 
-            from virtManager.storagebrowse import vmmStorageBrowser
+            from .storagebrowse import vmmStorageBrowser
             self.storage_browser = vmmStorageBrowser(self.conn)
-            self.storage_browser.connect("storage-browse-finish", cb)
+            self.storage_browser.set_finish_cb(cb)
             self.storage_browser.topwin.set_modal(self.topwin.get_modal())
-            self.storage_browser.can_new_volume = False
             self.storage_browser.set_browse_reason(
                 self.config.CONFIG_DIR_IMAGE)
 
-        self.storage_browser.show(self.topwin, self.conn)
+        self.storage_browser.show(self.topwin)

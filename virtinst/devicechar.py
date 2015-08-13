@@ -17,8 +17,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
-from virtinst import VirtualDevice
-from virtinst.xmlbuilder import XMLProperty
+from .device import VirtualDevice
+from .xmlbuilder import XMLProperty
 
 
 class _VirtualCharDevice(VirtualDevice):
@@ -38,10 +38,12 @@ class _VirtualCharDevice(VirtualDevice):
     TYPE_UDP      = "udp"
     TYPE_UNIX     = "unix"
     TYPE_SPICEVMC = "spicevmc"
+    TYPE_SPICEPORT = "spiceport"
+
     # We don't list the non-UI friendly types here
     _TYPES_FOR_ALL = [TYPE_PTY, TYPE_DEV, TYPE_FILE,
                       TYPE_TCP, TYPE_UDP, TYPE_UNIX]
-    _TYPES_FOR_CHANNEL = [TYPE_SPICEVMC]
+    _TYPES_FOR_CHANNEL = [TYPE_SPICEVMC, TYPE_SPICEPORT]
     TYPES = _TYPES_FOR_ALL
 
     MODE_CONNECT = "connect"
@@ -67,9 +69,11 @@ class _VirtualCharDevice(VirtualDevice):
     CHANNEL_NAME_SPICE = "com.redhat.spice.0"
     CHANNEL_NAME_QEMUGA = "org.qemu.guest_agent.0"
     CHANNEL_NAME_LIBGUESTFS = "org.libguestfs.channel.0"
+    CHANNEL_NAME_SPICE_WEBDAV = "org.spice-space.webdav.0"
     CHANNEL_NAMES = [CHANNEL_NAME_SPICE,
                      CHANNEL_NAME_QEMUGA,
-                     CHANNEL_NAME_LIBGUESTFS]
+                     CHANNEL_NAME_LIBGUESTFS,
+                     CHANNEL_NAME_SPICE_WEBDAV]
 
     @staticmethod
     def pretty_channel_name(val):
@@ -79,6 +83,8 @@ class _VirtualCharDevice(VirtualDevice):
             return "qemu-ga"
         if val == _VirtualCharDevice.CHANNEL_NAME_LIBGUESTFS:
             return "libguestfs"
+        if val == _VirtualCharDevice.CHANNEL_NAME_SPICE_WEBDAV:
+            return "spice-webdav"
         return None
 
     @staticmethod
@@ -110,6 +116,8 @@ class _VirtualCharDevice(VirtualDevice):
             desc = _("Unix socket")
         elif ctype == _VirtualCharDevice.TYPE_SPICEVMC:
             desc = _("Spice agent")
+        elif ctype == _VirtualCharDevice.TYPE_SPICEPORT:
+            desc = _("Spice port")
 
         return desc
 
@@ -137,6 +145,7 @@ class _VirtualCharDevice(VirtualDevice):
             "source_mode"   : [self.TYPE_UNIX, self.TYPE_TCP],
             "source_host"   : [self.TYPE_TCP, self.TYPE_UDP],
             "source_port"   : [self.TYPE_TCP, self.TYPE_UDP],
+            "source_channel": [self.TYPE_SPICEPORT],
             "protocol"      : [self.TYPE_TCP],
             "bind_host"     : [self.TYPE_UDP],
             "bind_port"     : [self.TYPE_UDP],
@@ -148,6 +157,11 @@ class _VirtualCharDevice(VirtualDevice):
         if users.get(propname):
             return self.type in users[propname]
         return hasattr(self, propname)
+
+    def set_defaults(self, guest):
+        if not self.source_host and self.supports_property("source_host"):
+            self.source_host = "127.0.0.1"
+
 
     def _set_host_helper(self, hostparam, portparam, val):
         def parse_host(val):
@@ -170,8 +184,9 @@ class _VirtualCharDevice(VirtualDevice):
 
     _XML_PROP_ORDER = ["type", "_has_mode_bind", "_has_mode_connect",
                        "bind_host", "bind_port",
-                       "source_mode", "_source_path",
-                       "source_host", "source_port",
+                       "source_mode", "_source_path", "source_channel",
+                       "_source_connect_host", "_source_bind_host",
+                       "_source_connect_port", "_source_bind_port",
                        "target_type", "target_name"]
 
     type = XMLProperty(
@@ -191,6 +206,23 @@ class _VirtualCharDevice(VirtualDevice):
         self._source_path = val
     source_path = property(_get_source_path, _set_source_path)
 
+    source_channel = XMLProperty(xpath="./source/@channel",
+                                 doc=_("Source channel name."))
+
+
+    ########################
+    # source mode handling #
+    ########################
+
+    def _get_mode_for_xml_prop(self):
+        mode = self.source_mode
+        if not mode:
+            # If we are parsing XML, source_mode may be empty
+            mode = self._get_default_source_mode()
+        if not mode:
+            mode = self.MODE_CONNECT
+        return mode
+
     def _get_default_source_mode(self):
         if self.type == self.TYPE_UDP:
             return self.MODE_CONNECT
@@ -206,33 +238,58 @@ class _VirtualCharDevice(VirtualDevice):
                               make_xpath_cb=_make_sourcemode_xpath,
                               default_cb=_get_default_source_mode)
 
-    def _get_default_sourcehost(self):
-        if not self.supports_property("source_host"):
-            return None
-        return "127.0.0.1"
-    def _set_source_validate(self, val):
-        if val is None or self.type != self.TYPE_UDP:
-            return val
-        if not self._has_mode_connect:
-            self._has_mode_connect = self.MODE_CONNECT
-        return val
-    def _make_sourcehost_xpath(self):
-        mode = self.source_mode
-        if self.type == self.TYPE_UDP:
-            mode = "connect"
-        return "./source[@mode='%s']/@host" % mode
-    source_host = XMLProperty(name="char sourcehost",
-                              doc=_("Address to connect/listen to."),
-                              make_xpath_cb=_make_sourcehost_xpath,
-                              default_cb=_get_default_sourcehost,
-                              set_converter=_set_source_validate)
 
-    def _make_sourceport_xpath(self):
-        return "./source[@mode='%s']/@service" % self.source_mode
-    source_port = XMLProperty(name="char sourceport",
-                        doc=_("Port on target host to connect/listen to."),
-                        make_xpath_cb=_make_sourceport_xpath,
-                        set_converter=_set_source_validate, is_int=True)
+    ########################
+    # source host handling #
+    ########################
+
+    _source_connect_host = XMLProperty("./source[@mode='connect']/@host")
+    _source_bind_host = XMLProperty("./source[@mode='bind']/@host")
+
+    def _set_source_host(self, val):
+        if (val and
+            self.type == self.TYPE_UDP and
+            not self._has_mode_connect):
+            self._has_mode_connect = self.MODE_CONNECT
+
+        if self._get_mode_for_xml_prop() == self.MODE_CONNECT:
+            self._source_connect_host = val
+        else:
+            self._source_bind_host = val
+    def _get_source_host(self):
+        if self._get_mode_for_xml_prop() == self.MODE_CONNECT:
+            return self._source_connect_host
+        else:
+            return self._source_bind_host
+    source_host = property(_get_source_host, _set_source_host,
+                           doc=_("Address to connect/listen to."))
+
+
+    ########################
+    # source port handling #
+    ########################
+
+    _source_connect_port = XMLProperty("./source[@mode='connect']/@service",
+        is_int=True)
+    _source_bind_port = XMLProperty("./source[@mode='bind']/@service",
+        is_int=True)
+    def _set_source_port(self, val):
+        if self._get_mode_for_xml_prop() == self.MODE_CONNECT:
+            self._source_connect_port = val
+        else:
+            self._source_bind_port = val
+    def _get_source_port(self):
+        if self._get_mode_for_xml_prop() == self.MODE_CONNECT:
+            return self._source_connect_port
+        else:
+            return self._source_bind_port
+    source_port = property(_get_source_port, _set_source_port,
+        doc=_("Port on target host to connect/listen to."))
+
+
+    #######################
+    # Remaining XML props #
+    #######################
 
     _has_mode_connect = XMLProperty("./source[@mode='connect']/@mode")
     _has_mode_bind = XMLProperty("./source[@mode='bind']/@mode")

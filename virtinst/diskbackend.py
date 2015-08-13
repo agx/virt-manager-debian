@@ -20,107 +20,102 @@
 
 import logging
 import os
+import re
 import statvfs
 
 import libvirt
 
-from virtinst import StoragePool, StorageVolume
-from virtinst import util
+from . import util
+from .storage import StoragePool, StorageVolume
 
 
-def _check_if_pool_source(conn, path):
+def _lookup_pool_by_dirname(conn, path):
     """
-    If passed path is a host disk device like /dev/sda, want to let the user
-    use it
+    Try to find the parent pool for the passed path.
+    If found, and the pool isn't running, attempt to start it up.
+
+    return pool, or None if not found
     """
-    if not conn.check_support(conn.SUPPORT_CONN_STORAGE):
+    pool = StoragePool.lookup_pool_by_path(conn, os.path.dirname(path))
+    if not pool:
         return None
 
-    def check_pool(poolname, path):
-        pool = conn.storagePoolLookupByName(poolname)
-        xmlobj = StoragePool(conn, parsexml=pool.XMLDesc(0))
-        if xmlobj.source_path == path:
-            return pool
+    # Ensure pool is running
+    if pool.info()[0] != libvirt.VIR_STORAGE_POOL_RUNNING:
+        pool.create(0)
+    return pool
 
-    running_list = conn.listStoragePools()
-    inactive_list = conn.listDefinedStoragePools()
-    for plist in [running_list, inactive_list]:
-        for name in plist:
-            p = check_pool(name, path)
-            if p:
-                return p
-    return None
+
+def _lookup_vol_by_path(conn, path):
+    """
+    Try to find a volume matching the full passed path. Call info() on
+    it to ensure the volume wasn't removed behind libvirt's back
+    """
+    try:
+        vol = conn.storageVolLookupByPath(path)
+        vol.info()
+        return vol, None
+    except libvirt.libvirtError, e:
+        if (hasattr(libvirt, "VIR_ERR_NO_STORAGE_VOL")
+            and e.get_error_code() != libvirt.VIR_ERR_NO_STORAGE_VOL):
+            raise
+        return None, e
+
+
+def _lookup_vol_by_basename(pool, path):
+    """
+    Try to lookup a volume for 'path' in parent 'pool' by it's filename.
+    This sometimes works in cases where full volume path lookup doesn't,
+    since not all libvirt storage backends implement path lookup.
+    """
+    name = os.path.basename(path)
+    if name in pool.listVolumes():
+        return pool.storageVolLookupByName(name)
 
 
 def check_if_path_managed(conn, path):
     """
-    Determine if we can use libvirt storage APIs to create or lookup
-    the passed path. If we can't, throw an error
+    Try to lookup storage objects for the passed path.
+
+    Returns (volume, parent pool). Only one is returned at a time.
     """
-    vol = None
-    pool = None
-    verr = None
-    path_is_pool = False
+    vol, ignore = _lookup_vol_by_path(conn, path)
+    if vol:
+        return vol, vol.storagePoolLookupByVolume()
 
-    def lookup_vol_by_path():
-        try:
-            vol = conn.storageVolLookupByPath(path)
-            vol.info()
-            return vol, None
-        except libvirt.libvirtError, e:
-            if (hasattr(libvirt, "VIR_ERR_NO_STORAGE_VOL")
-                and e.get_error_code() != libvirt.VIR_ERR_NO_STORAGE_VOL):
-                raise
-            return None, e
+    pool = _lookup_pool_by_dirname(conn, path)
+    if not pool:
+        return None, None
 
-    def lookup_vol_name(name):
-        try:
-            name = os.path.basename(path)
-            if pool and name in pool.listVolumes():
-                return pool.lookupByName(name)
-        except:
-            pass
-        return None
-
-    vol = lookup_vol_by_path()[0]
-    if not vol:
-        pool = StoragePool.lookup_pool_by_path(conn, os.path.dirname(path))
-
-        # Is pool running?
-        if pool and pool.info()[0] != libvirt.VIR_STORAGE_POOL_RUNNING:
-            pool = None
-
-    # Attempt to lookup path as a storage volume
-    if pool and not vol:
-        try:
-            # Pool may need to be refreshed, but if it errors,
-            # invalidate it
-            pool.refresh(0)
-            vol, verr = lookup_vol_by_path()
-            if verr:
-                vol = lookup_vol_name(os.path.basename(path))
-        except Exception, e:
-            vol = None
-            pool = None
-            verr = str(e)
+    # We have the parent pool, but didn't find a volume on first lookup
+    # attempt. Refresh the pool and try again, incase we were just out
+    # of date.
+    try:
+        pool.refresh(0)
+        vol, verr = _lookup_vol_by_path(conn, path)
+        if verr:
+            try:
+                vol = _lookup_vol_by_basename(pool, path)
+            except:
+                pass
+    except Exception, e:
+        vol = None
+        pool = None
+        verr = str(e)
 
     if not vol and not pool and verr:
         raise ValueError(_("Cannot use storage %(path)s: %(err)s") %
             {'path' : path, 'err' : verr})
 
-    if not vol:
-        # See if path is a pool source, and allow it through
-        trypool = _check_if_pool_source(conn, path)
-        if trypool:
-            path_is_pool = True
-            pool = trypool
-
-    return vol, pool, path_is_pool
+    return vol, pool
 
 
 def _can_auto_manage(path):
     path = path or ""
     skip_prefixes = ["/dev", "/sys", "/proc"]
+
+    if path_is_url(path):
+        return False
 
     for prefix in skip_prefixes:
         if path.startswith(prefix + "/") or path == prefix:
@@ -132,143 +127,126 @@ def manage_path(conn, path):
     """
     If path is not managed, try to create a storage pool to probe the path
     """
-    vol, pool, path_is_pool = check_if_path_managed(conn, path)
+    if not conn.check_support(conn.SUPPORT_CONN_STORAGE):
+        return None, None
+    if not path:
+        return None, None
+
+    if not path_is_url(path):
+        path = os.path.abspath(path)
+    vol, pool = check_if_path_managed(conn, path)
     if vol or pool or not _can_auto_manage(path):
-        return vol, pool, path_is_pool
+        return vol, pool
 
     dirname = os.path.dirname(path)
-    poolname = StoragePool.find_free_name(
-        conn, os.path.basename(dirname) or "pool")
+    poolname = os.path.basename(dirname).replace(" ", "_")
+    if not poolname:
+        poolname = "dirpool"
+    poolname = StoragePool.find_free_name(conn, poolname)
     logging.debug("Attempting to build pool=%s target=%s", poolname, dirname)
 
     poolxml = StoragePool(conn)
-    poolxml.name = poolxml.find_free_name(
-        conn, os.path.basename(dirname) or "dirpool")
+    poolxml.name = poolname
     poolxml.type = poolxml.TYPE_DIR
     poolxml.target_path = dirname
     pool = poolxml.install(build=False, create=True, autostart=True)
     conn.clear_cache(pools=True)
 
-    vol = None
-    for checkvol in pool.listVolumes():
-        if checkvol == os.path.basename(path):
-            vol = pool.storageVolLookupByName(checkvol)
-            break
-
-    return vol, pool, False
+    vol = _lookup_vol_by_basename(pool, path)
+    return vol, pool
 
 
-def build_vol_install(conn, path, pool, size, sparse):
-    # Path wasn't a volume. See if base of path is a managed
-    # pool, and if so, setup a StorageVolume object
-    if size is None:
-        raise ValueError(_("Size must be specified for non "
-                           "existent volume path '%s'" % path))
-
-    logging.debug("Path '%s' is target for pool '%s'. "
-                  "Creating volume '%s'.",
-                  os.path.dirname(path), pool.name(),
-                  os.path.basename(path))
-
-    cap = (size * 1024 * 1024 * 1024)
-    if sparse:
-        alloc = 0
-    else:
-        alloc = cap
-
-    volinst = StorageVolume(conn)
-    volinst.pool = pool
-    volinst.name = os.path.basename(path)
-    volinst.capacity = cap
-    volinst.allocation = alloc
-    return volinst
+def path_is_url(path):
+    """
+    Detect if path is a URL
+    """
+    if not path:
+        return False
+    return bool(re.match("[a-zA-Z]+(\+[a-zA-Z]+)?://.*", path))
 
 
+##############################################
+# Classes for tracking storage media details #
+##############################################
 
 class _StorageBase(object):
+    """
+    Storage base class, defining the API used by VirtualDisk
+    """
+    def __init__(self, conn):
+        self._conn = conn
+        self._parent_pool_xml = None
+
     def get_size(self):
         raise NotImplementedError()
     def get_dev_type(self):
         raise NotImplementedError()
-    def is_managed(self):
-        raise NotImplementedError()
     def get_driver_type(self):
         raise NotImplementedError()
+    def get_vol_install(self):
+        raise NotImplementedError()
+    def get_vol_object(self):
+        raise NotImplementedError()
+    def get_parent_pool(self):
+        raise NotImplementedError()
+    def get_parent_pool_xml(self):
+        if not self._parent_pool_xml and self.get_parent_pool():
+            self._parent_pool_xml = StoragePool(self._conn,
+                parsexml=self.get_parent_pool().XMLDesc(0))
+        return self._parent_pool_xml
+    def validate(self, disk):
+        raise NotImplementedError()
+    def get_path(self):
+        raise NotImplementedError()
+
+    # Storage creation routines
+    def is_size_conflict(self):
+        raise NotImplementedError()
+    def create(self, progresscb):
+        raise NotImplementedError()
+    def will_create_storage(self):
+        raise NotImplementedError()
 
 
-class StorageCreator(_StorageBase):
-    def __init__(self, conn, path, pool,
-                 vol_install, clone_path, backing_store,
-                 size, sparse, fmt):
-        _StorageBase.__init__(self)
+class _StorageCreator(_StorageBase):
+    """
+    Base object for classes that will actually create storage on disk
+    """
+    def __init__(self, conn):
+        _StorageBase.__init__(self, conn)
 
-        self._conn = conn
-        self._pool = pool
-        self._vol_install = vol_install
-        self._path = path
-        self._size = size
-        self._sparse = sparse
-        self._clone_path = clone_path
-        self.fake = False
-
-        if not self._vol_install and self._pool:
-            self._vol_install = build_vol_install(conn, path, pool,
-                                                   size, sparse)
-        self._set_format(fmt)
-        self._set_backing_store(backing_store)
-
-        if self._vol_install:
-            self._path = None
-            self._size = None
-
-        # Cached bits
+        self._pool = None
+        self._vol_install = None
+        self._path = None
+        self._size = None
         self._dev_type = None
-
-
-    ###############
-    # Private API #
-    ###############
-
-    def _set_format(self, val):
-        if val is None:
-            return
-
-        if self._vol_install:
-            if not self._vol_install.supports_property("format"):
-                raise ValueError(_("Storage type does not support format "
-                                   "parameter."))
-            if self._vol_install.format != val:
-                self._vol_install.format = val
-
-        elif val != "raw":
-            raise RuntimeError(_("Format cannot be specified for "
-                                 "unmanaged storage."))
-
-    def _set_backing_store(self, val):
-        if val is None:
-            return
-        if not self._vol_install:
-            raise RuntimeError(_("Cannot set backing store for unmanaged "
-                                 "storage."))
-        self._vol_install.backing_store = val
 
 
     ##############
     # Public API #
     ##############
 
-    def _get_path(self):
+    def create(self, progresscb):
+        raise NotImplementedError()
+
+    def get_path(self):
         if self._vol_install and not self._path:
             xmlobj = StoragePool(self._conn,
                 parsexml=self._vol_install.pool.XMLDesc(0))
-            self._path = (xmlobj.target_path + "/" + self._vol_install.name)
+            if self.get_dev_type() == "network":
+                self._path = self._vol_install.name
+            else:
+                sep = "/"
+                if xmlobj.target_path == "" or xmlobj.target_path[-1] == '/':
+                    sep = ""
+                self._path = (xmlobj.target_path + sep +
+                              self._vol_install.name)
         return self._path
-    path = property(_get_path)
 
     def get_vol_install(self):
         return self._vol_install
-    def get_sparse(self):
-        return self._sparse
+    def get_vol_xml(self):
+        return self._vol_install
 
     def get_size(self):
         if self._size is None:
@@ -281,6 +259,9 @@ class StorageCreator(_StorageBase):
             if self._vol_install:
                 if self._vol_install.file_type == libvirt.VIR_STORAGE_VOL_FILE:
                     self._dev_type = "file"
+                elif (self._vol_install.file_type ==
+                      libvirt.VIR_STORAGE_VOL_NETWORK):
+                    self._dev_type = "network"
                 else:
                     self._dev_type = "block"
             else:
@@ -293,27 +274,56 @@ class StorageCreator(_StorageBase):
                 return self._vol_install.format
         return "raw"
 
-    def is_managed(self):
-        return bool(self._vol_install)
-
-    def validate(self, device, devtype):
-        if device in ["floppy", "cdrom"]:
+    def validate(self, disk):
+        if disk.device in ["floppy", "cdrom"]:
             raise ValueError(_("Cannot create storage for %s device.") %
-                               device)
+                             disk.device)
 
-        if self.is_managed():
-            return self._vol_install.validate()
-        if devtype == "block":
-            raise ValueError(_("Local block device path '%s' must "
-                               "exist.") % self.path)
-        if self._size is None:
-            raise ValueError(_("size is required for non-existent disk "
-                               "'%s'" % self.path))
+        if self._vol_install:
+            self._vol_install.validate()
+        else:
+            if disk.type == "block":
+                raise ValueError(_("Local block device path '%s' must "
+                                   "exist.") % self.get_path())
+            if self._size is None:
+                raise ValueError(_("size is required for non-existent disk "
+                                   "'%s'" % self.get_path()))
+
+        err, msg = self.is_size_conflict()
+        if err:
+            raise ValueError(msg)
+        if msg:
+            logging.warn(msg)
+
+    def will_create_storage(self):
+        return True
+    def get_vol_object(self):
+        return None
+    def get_parent_pool(self):
+        if self._vol_install:
+            return self._vol_install.pool
+        return None
+    def exists(self):
+        return False
+
+
+class CloneStorageCreator(_StorageCreator):
+    """
+    Handles manually copying local files for Cloner
+
+    Many clone scenarios will use libvirt storage APIs, which will use
+    the ManagedStorageCreator
+    """
+    def __init__(self, conn, output_path, input_path, size, sparse):
+        _StorageCreator.__init__(self, conn)
+
+        self._path = output_path
+        self._output_path = output_path
+        self._input_path = input_path
+        self._size = size
+        self._sparse = sparse
 
     def is_size_conflict(self):
-        if self._vol_install:
-            return self._vol_install.is_size_conflict()
-
         ret = False
         msg = None
         vfs = os.statvfs(os.path.dirname(self._path))
@@ -334,55 +344,36 @@ class StorageCreator(_StorageBase):
                         ((need / (1024 * 1024)), (avail / (1024 * 1024))))
         return (ret, msg)
 
-
-    #############################
-    # Storage creation routines #
-    #############################
-
     def create(self, progresscb):
-        if self.fake:
-            raise RuntimeError("Storage creator is fake but creation "
-                               "requested.")
-
-        # If a clone_path is specified, but not vol_install.input_vol,
-        # that means we are cloning unmanaged -> managed, so skip this
-        if (self._vol_install and
-            (not self._clone_path or self._vol_install.input_vol)):
-            return self._vol_install.install(meter=progresscb)
-
-        if not self._clone_path:
-            raise RuntimeError("Local storage creation requested, "
-                "this shouldn't happen.")
-
         text = (_("Cloning %(srcfile)s") %
-                {'srcfile' : os.path.basename(self._clone_path)})
+                {'srcfile' : os.path.basename(self._input_path)})
 
         size_bytes = long(self.get_size() * 1024L * 1024L * 1024L)
-        progresscb.start(filename=self._path, size=long(size_bytes),
+        progresscb.start(filename=self._output_path, size=long(size_bytes),
                          text=text)
 
         # Plain file clone
         self._clone_local(progresscb, size_bytes)
 
     def _clone_local(self, meter, size_bytes):
-        if self._clone_path == "/dev/null":
+        if self._input_path == "/dev/null":
             # Not really sure why this check is here,
             # but keeping for compat
             logging.debug("Source dev was /dev/null. Skipping")
             return
-        if self._clone_path == self._path:
+        if self._input_path == self._output_path:
             logging.debug("Source and destination are the same. Skipping.")
             return
 
-        # if a destination file exists and sparse flg is True,
-        # this priority takes a existing file.
+        # If a destination file exists and sparse flag is True,
+        # this priority takes an existing file.
 
-        if (not os.path.exists(self._path) and self._sparse):
+        if (not os.path.exists(self._output_path) and self._sparse):
             clone_block_size = 4096
             sparse = True
             fd = None
             try:
-                fd = os.open(self._path, os.O_WRONLY | os.O_CREAT)
+                fd = os.open(self._output_path, os.O_WRONLY | os.O_CREAT, 0640)
                 os.ftruncate(fd, size_bytes)
             finally:
                 if fd:
@@ -392,15 +383,17 @@ class StorageCreator(_StorageBase):
             sparse = False
 
         logging.debug("Local Cloning %s to %s, sparse=%s, block_size=%s",
-                      self._clone_path, self._path, sparse, clone_block_size)
+                      self._input_path, self._output_path,
+                      sparse, clone_block_size)
 
         zeros = '\0' * 4096
 
         src_fd, dst_fd = None, None
         try:
             try:
-                src_fd = os.open(self._clone_path, os.O_RDONLY)
-                dst_fd = os.open(self._path, os.O_WRONLY | os.O_CREAT)
+                src_fd = os.open(self._input_path, os.O_RDONLY)
+                dst_fd = os.open(self._output_path,
+                                 os.O_WRONLY | os.O_CREAT, 0640)
 
                 i = 0
                 while 1:
@@ -422,7 +415,7 @@ class StorageCreator(_StorageBase):
                         meter.update(i)
             except OSError, e:
                 raise RuntimeError(_("Error cloning diskimage %s to %s: %s") %
-                                   (self._clone_path, self._path, str(e)))
+                                (self._input_path, self._output_path, str(e)))
         finally:
             if src_fd is not None:
                 os.close(src_fd)
@@ -430,64 +423,70 @@ class StorageCreator(_StorageBase):
                 os.close(dst_fd)
 
 
+class ManagedStorageCreator(_StorageCreator):
+    """
+    Handles storage creation via libvirt APIs. All the actual creation
+    logic lives in StorageVolume, this is mostly about pulling out bits
+    from that class and mapping them to VirtualDisk elements
+    """
+    def __init__(self, conn, vol_install):
+        _StorageCreator.__init__(self, conn)
+
+        self._pool = vol_install.pool
+        self._vol_install = vol_install
+
+    def create(self, progresscb):
+        return self._vol_install.install(meter=progresscb)
+    def is_size_conflict(self):
+        return self._vol_install.is_size_conflict()
+
+
 class StorageBackend(_StorageBase):
     """
     Class that carries all the info about any existing storage that
     the disk references
     """
-    def __init__(self, conn, path, vol_object, pool_object):
-        _StorageBase.__init__(self)
+    def __init__(self, conn, path, vol_object, parent_pool):
+        _StorageBase.__init__(self, conn)
 
-        self._conn = conn
         self._vol_object = vol_object
-        self._pool_object = pool_object
+        self._parent_pool = parent_pool
         self._path = path
 
         if self._vol_object is not None:
-            self._pool_object = None
             self._path = None
-        elif self._pool_object is not None:
-            if self._path is None:
-                raise ValueError("path must be specified is backend is "
-                                 "pool object.")
+
+        if self._vol_object and not self._parent_pool:
+            raise RuntimeError(
+                "programming error: parent_pool must be specified")
 
         # Cached bits
-        self._pool_xml = None
         self._vol_xml = None
+        self._parent_pool_xml = None
         self._exists = None
         self._size = None
         self._dev_type = None
-
-
-    ################
-    # Internal API #
-    ################
-
-    def _get_pool_xml(self):
-        if self._pool_xml is None:
-            self._pool_xml = StoragePool(self._conn,
-                parsexml=self._pool_object.XMLDesc(0))
-        return self._pool_xml
-
-    def _get_vol_xml(self):
-        if self._vol_xml is None:
-            self._vol_xml = StorageVolume(self._conn,
-                parsexml=self._vol_object.XMLDesc(0))
-        return self._vol_xml
 
 
     ##############
     # Public API #
     ##############
 
-    def _get_path(self):
+    def get_path(self):
         if self._vol_object:
-            return self._vol_object.path()
+            return self.get_vol_xml().target_path
         return self._path
-    path = property(_get_path)
 
     def get_vol_object(self):
         return self._vol_object
+    def get_vol_xml(self):
+        if self._vol_xml is None:
+            self._vol_xml = StorageVolume(self._conn,
+                parsexml=self._vol_object.XMLDesc(0))
+        return self._vol_xml
+
+    def get_parent_pool(self):
+        return self._parent_pool
 
     def get_size(self):
         """
@@ -496,24 +495,27 @@ class StorageBackend(_StorageBase):
         if self._size is None:
             ret = 0
             if self._vol_object:
-                ret = self._get_vol_xml().capacity
-            elif self._pool_object:
-                ret = self._get_pool_xml().capacity
+                ret = self.get_vol_xml().capacity
             elif self._path:
-                ignore, ret = util.stat_disk(self.path)
+                ignore, ret = util.stat_disk(self._path)
             self._size = (float(ret) / 1024.0 / 1024.0 / 1024.0)
         return self._size
 
-    def exists(self, auto_check=True):
+    def exists(self):
         if self._exists is None:
-            if self.path is None:
+            if self._path is None:
                 self._exists = True
-            elif self._vol_object or self._pool_object:
+            elif self._vol_object:
                 self._exists = True
-            elif not self._conn.is_remote() and os.path.exists(self._path):
+            elif (not self.get_dev_type() == "network" and
+                  not self._conn.is_remote() and
+                  os.path.exists(self._path)):
                 self._exists = True
-            elif (auto_check and
-                  self._conn.is_remote() and
+            elif self._parent_pool:
+                self._exists = False
+            elif self.get_dev_type() == "network":
+                self._exists = True
+            elif (self._conn.is_remote() and
                   not _can_auto_manage(self._path)):
                 # This allows users to pass /dev/sdX and we don't try to
                 # validate it exists on the remote connection, since
@@ -530,16 +532,21 @@ class StorageBackend(_StorageBase):
         """
         if self._dev_type is None:
             if self._vol_object:
-                t = self._vol_object.info()[0]
-                if t == libvirt.VIR_STORAGE_VOL_FILE:
-                    self._dev_type = "file"
-                elif t == libvirt.VIR_STORAGE_VOL_BLOCK:
-                    self._dev_type = "block"
+                if self.get_vol_xml().type:
+                    self._dev_type = self.get_vol_xml().type
                 else:
-                    self._dev_type = "file"
+                    t = self._vol_object.info()[0]
+                    if t == StorageVolume.TYPE_FILE:
+                        self._dev_type = "file"
+                    elif t == StorageVolume.TYPE_BLOCK:
+                        self._dev_type = "block"
+                    elif t == StorageVolume.TYPE_NETWORK:
+                        self._dev_type = "network"
+                    else:
+                        self._dev_type = "file"
 
-            elif self._pool_object:
-                self._dev_type = self._get_pool_xml().get_vm_disk_type()
+            elif self._path and path_is_url(self._path):
+                self._dev_type = "network"
 
             elif self._path and not self._conn.is_remote():
                 if os.path.isdir(self._path):
@@ -555,8 +562,21 @@ class StorageBackend(_StorageBase):
 
     def get_driver_type(self):
         if self._vol_object:
-            return self._get_vol_xml().format
+            ret = self.get_vol_xml().format
+            if ret != "unknown":
+                return ret
         return None
 
-    def is_managed(self):
-        return bool(self._vol_object or self._pool_object)
+    def validate(self, disk):
+        ignore = disk
+        return
+    def get_vol_install(self):
+        return None
+    def is_size_conflict(self):
+        return (False, None)
+    def will_create_storage(self):
+        return False
+    def create(self, progresscb):
+        ignore = progresscb
+        raise RuntimeError("programming error: %s can't create storage" %
+            self.__class__.__name__)

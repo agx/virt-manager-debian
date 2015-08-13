@@ -32,7 +32,7 @@ import urlparse
 
 import urlgrabber.grabber as grabber
 
-from virtinst import osdict
+from .osdict import OSDB
 
 
 #########################################################################
@@ -50,6 +50,8 @@ class _ImageFetcher(object):
         self.meter = meter
         self.srcdir = None
 
+        logging.debug("Using scratchdir=%s", scratchdir)
+
     def _make_path(self, filename):
         path = self.srcdir or self.location
 
@@ -66,8 +68,8 @@ class _ImageFetcher(object):
 
         prefix = "virtinst-" + prefix
         if "VIRTINST_TEST_SUITE" in os.environ:
-            fn = os.path.join(".", prefix)
-            fd = os.open(fn, os.O_RDWR | os.O_CREAT)
+            fn = os.path.join("/tmp", prefix)
+            fd = os.open(fn, os.O_RDWR | os.O_CREAT, 0640)
         else:
             (fd, fn) = tempfile.mkstemp(prefix=prefix,
                                         dir=self.scratchdir)
@@ -84,7 +86,7 @@ class _ImageFetcher(object):
         return fn
 
     def prepareLocation(self):
-        return True
+        pass
 
     def cleanupLocation(self):
         pass
@@ -125,11 +127,6 @@ class _URIImageFetcher(_ImageFetcher):
     def hasFile(self, filename):
         raise NotImplementedError
 
-    def prepareLocation(self):
-        if not self.hasFile(""):
-            raise ValueError(_("Opening URL %s failed.") %
-                              (self.location))
-
 
 class _HTTPImageFetcher(_URIImageFetcher):
     def hasFile(self, filename):
@@ -145,15 +142,31 @@ class _HTTPImageFetcher(_URIImageFetcher):
 
 
 class _FTPImageFetcher(_URIImageFetcher):
-    def __init__(self, *args, **kwargs):
-        _URIImageFetcher.__init__(self, *args, **kwargs)
-
-        self.ftp = None
+    ftp = None
 
     def prepareLocation(self):
-        url = urlparse.urlparse(self._make_path(""))
-        self.ftp = ftplib.FTP(url[1])
-        self.ftp.login()
+        if self.ftp:
+            return
+
+        try:
+            url = urlparse.urlparse(self._make_path(""))
+            if not url[1]:
+                raise ValueError(_("Invalid install location"))
+            self.ftp = ftplib.FTP(url[1])
+            self.ftp.login()
+        except Exception, e:
+            raise ValueError(_("Opening URL %s failed: %s.") %
+                              (self.location, str(e)))
+
+    def cleanupLocation(self):
+        if not self.ftp:
+            return
+
+        try:
+            self.ftp.quit()
+        except:
+            logging.debug("Error quitting ftp connection", exc_info=True)
+
 
     def hasFile(self, filename):
         path = self._make_path(filename)
@@ -190,9 +203,11 @@ class _MountedImageFetcher(_LocalImageFetcher):
     or loopback mounted file, or local CDROM device
     """
     _in_test_suite = bool("VIRTINST_TEST_SUITE" in os.environ)
+    _mounted = False
 
     def prepareLocation(self):
-        cmd = None
+        if self._mounted:
+            return
 
         if self._in_test_suite:
             self.srcdir = os.environ["VIRTINST_TEST_URL_DIR"]
@@ -212,25 +227,30 @@ class _MountedImageFetcher(_LocalImageFetcher):
             cmd = [mountcmd, "-o", mountopt, self.location, self.srcdir]
 
         logging.debug("mount cmd: %s", cmd)
-
         if not self._in_test_suite:
             ret = subprocess.call(cmd)
             if ret != 0:
                 self.cleanupLocation()
                 raise ValueError(_("Mounting location '%s' failed") %
                                  (self.location))
-        return True
+
+        self._mounted = True
 
     def cleanupLocation(self):
-        logging.debug("Cleaning up mount at " + self.srcdir)
+        if not self._mounted:
+            return
 
-        if not self._in_test_suite:
-            cmd = ["/bin/umount", self.srcdir]
-            subprocess.call(cmd)
-            try:
-                os.rmdir(self.srcdir)
-            except:
-                pass
+        logging.debug("Cleaning up mount at " + self.srcdir)
+        try:
+            if not self._in_test_suite:
+                cmd = ["/bin/umount", self.srcdir]
+                subprocess.call(cmd)
+                try:
+                    os.rmdir(self.srcdir)
+                except:
+                    pass
+        finally:
+            self._mounted = False
 
 
 class _DirectImageFetcher(_LocalImageFetcher):
@@ -291,7 +311,92 @@ def _distroFromTreeinfo(fetcher, arch, vmtype=None):
     ob = dclass(fetcher, arch, vmtype)
     ob.treeinfo = treeinfo
 
-    # Explictly call this, so we populate variant info
+    # Explicitly call this, so we populate variant info
+    ob.isValidStore()
+
+    return ob
+
+
+def _distroFromSUSEContent(fetcher, arch, vmtype=None):
+    # Parse content file for the 'LABEL' field containing the distribution name
+    # None if no content, GenericDistro if unknown label type.
+    if not fetcher.hasFile("content"):
+        return None
+
+    distribution = None
+    distro_version = None
+    distro_summary = None
+    distro_distro = None
+    distro_arch = None
+    filename = fetcher.acquireFile("content")
+    cbuf = None
+    try:
+        cbuf = open(filename).read()
+    finally:
+        os.unlink(filename)
+
+    lines = cbuf.splitlines()[1:]
+    for line in lines:
+        if line.startswith("LABEL "):
+            distribution = line.split(' ', 1)
+        elif line.startswith("DISTRO "):
+            distro_distro = line.rsplit(',', 1)
+        elif line.startswith("VERSION "):
+            distro_version = line.split(' ', 1)
+        elif line.startswith("SUMMARY "):
+            distro_summary = line.split(' ', 1)
+        elif line.startswith("BASEARCHS "):
+            distro_arch = line.split(' ', 1)
+        elif line.startswith("DEFAULTBASE "):
+            distro_arch = line.split(' ', 1)
+        elif line.startswith("REPOID "):
+            distro_arch = line.rsplit('/', 1)
+        if distribution and distro_version and distro_arch:
+            break
+
+    if not distribution:
+        if distro_summary:
+            distribution = distro_summary
+        elif distro_distro:
+            distribution = distro_distro
+    if distro_arch:
+        arch = distro_arch[1].strip()
+        # Fix for 13.2 official oss repo
+        if arch.find("i586-x86_64") != -1:
+            arch = "x86_64"
+    else:
+        if cbuf.find("x86_64") != -1:
+            arch = "x86_64"
+        elif cbuf.find("i586") != -1:
+            arch = "i586"
+
+    dclass = GenericDistro
+    if distribution:
+        if re.match(".*SUSE Linux Enterprise Server*", distribution[1]) or \
+            re.match(".*SUSE SLES*", distribution[1]):
+            dclass = SLESDistro
+            if distro_version is None:
+                distro_version = ['VERSION', distribution[1].strip().rsplit(' ')[4]]
+        elif re.match(".*SUSE Linux Enterprise Desktop*", distribution[1]):
+            dclass = SLEDDistro
+            if distro_version is None:
+                distro_version = ['VERSION', distribution[1].strip().rsplit(' ')[4]]
+        elif re.match(".*openSUSE.*", distribution[1]):
+            dclass = OpensuseDistro
+            if distro_version is None:
+                distro_version = ['VERSION', distribution[0].strip().rsplit(':')[4]]
+                # For tumbleweed we only have an 8 character date string so default to 13.2
+                if distro_version[1] and len(distro_version[1]) == 8:
+                    distro_version = ['VERSION', '13.2']
+
+    if distro_version is None:
+        return None
+
+    ob = dclass(fetcher, arch, vmtype)
+    if dclass != GenericDistro:
+        ob.version_from_content = distro_version
+
+    # Explictly call this, so we populate os_type/variant info
     ob.isValidStore()
 
     return ob
@@ -306,15 +411,16 @@ def getDistroStore(guest, fetcher):
 
     urldistro = None
     if guest.os_variant:
-        urldistro = osdict.lookup_os(guest.os_variant).urldistro
+        urldistro = OSDB.lookup_os(guest.os_variant).urldistro
 
     dist = _distroFromTreeinfo(fetcher, arch, _type)
     if dist:
         return dist
 
-    # FIXME: This 'distro ==' doesn't cut it. 'distro' is from our os
-    # dictionary, so would look like 'fedora9' or 'rhel5', so this needs
-    # to be a bit more intelligent
+    dist = _distroFromSUSEContent(fetcher, arch, _type)
+    if dist:
+        return dist
+
     stores = _allstores[:]
 
     # If user manually specified an os_distro, bump it's URL class
@@ -340,27 +446,20 @@ def getDistroStore(guest, fetcher):
                           store.name, store.os_variant)
             return store
 
+    # No distro was detected. See if the URL even resolves, and if not
+    # give the user a hint that maybe they mistyped. This won't always
+    # be true since some webservers don't allow directory listing.
+    # http://www.redhat.com/archives/virt-tools-list/2014-December/msg00048.html
+    extramsg = ""
+    if not fetcher.hasFile(""):
+        extramsg = (": " +
+            _("The URL could not be accessed, maybe you mistyped?"))
+
     raise ValueError(
-        _("Could not find an installable distribution at '%s'\n"
-          "The location must be the root directory of an install tree." %
-          fetcher.location))
-
-
-def detectMediaDistro(guest, location):
-    """
-    Attempt to detect the os type + variant for the passed location
-    """
-    import urlgrabber
-    meter = urlgrabber.progress.BaseMeter()
-    scratchdir = "/var/tmp"
-    fetcher = fetcherForURI(location, scratchdir, meter)
-
-    try:
-        fetcher.prepareLocation()
-        store = getDistroStore(guest, fetcher)
-        return store.get_osdict_info()
-    finally:
-        fetcher.cleanupLocation()
+        _("Could not find an installable distribution at '%s'%s\n\n"
+          "The location must be the root directory of an install tree.\n"
+          "See virt-install man page for various distro examples." %
+          (fetcher.location, extramsg)))
 
 
 ##################
@@ -382,6 +481,7 @@ class Distro(object):
     _hvm_kernel_paths = []
     _xen_kernel_paths = []
     uses_treeinfo = False
+    version_from_content = None
 
     def __init__(self, fetcher, arch, vmtype):
         self.fetcher = fetcher
@@ -437,7 +537,7 @@ class Distro(object):
                                self.name))
 
     def _check_osvariant_valid(self, os_variant):
-        return osdict.lookup_os(os_variant) is not None
+        return OSDB.lookup_os(os_variant) is not None
 
     def get_osdict_info(self):
         """
@@ -656,14 +756,8 @@ class FedoraDistro(RedHatDistro):
         """
         Search osdict list, find newest fedora version listed
         """
-        ret = None
-        for osinfo in osdict.list_os(typename="linux"):
-            if osinfo.name.startswith("fedora"):
-                # First fedora* occurence should be the newest
-                ret = osinfo.name
-                break
-
-        return ret, int(ret[6:])
+        latest = OSDB.latest_fedora_version()
+        return latest, int(latest[6:])
 
     def isValidStore(self):
         if not self._hasTreeinfo():
@@ -674,15 +768,21 @@ class FedoraDistro(RedHatDistro):
 
         lateststr, latestnum = self._latestFedoraVariant()
         ver = self.treeinfo.get("general", "version")
+        if not ver:
+            return False
+
         if ver == "development" or ver == "rawhide":
-            vernum = latestnum
+            self._version_number = latestnum
             self.os_variant = lateststr
-        elif ver:
-            vernum = int(str(ver).split("-")[0])
-            if vernum > latestnum:
-                self.os_variant = lateststr
-            else:
-                self.os_variant = "fedora" + str(vernum)
+            return
+
+        if "_" in ver:
+            ver = ver.split("_")[0]
+        vernum = int(str(ver).split("-")[0])
+        if vernum > latestnum:
+            self.os_variant = lateststr
+        else:
+            self.os_variant = "fedora" + str(vernum)
 
         self._version_number = vernum
         return True
@@ -736,10 +836,19 @@ class RHELDistro(RedHatDistro):
 
     def _variantFromVersion(self):
         ver = self.treeinfo.get("general", "version")
+        name = None
+        if self.treeinfo.has_option("general", "name"):
+            name = self.treeinfo.get("general", "name")
         if not ver:
             return
 
-        version, update = self._parseTreeinfoVersion(ver)
+        if name and name.startswith("Red Hat Enterprise Linux Server for ARM"):
+            # Kind of a hack, but good enough for the time being
+            version = 7
+            update = 0
+        else:
+            version, update = self._parseTreeinfoVersion(ver)
+
         self._version_number = version
         self._setRHELVariant(version, update)
 
@@ -770,18 +879,21 @@ class RHELDistro(RedHatDistro):
 # CentOS distro check
 class CentOSDistro(RHELDistro):
     name = "CentOS"
-    urldistro = None
+    urldistro = "centos"
 
     def isValidStore(self):
-        if self._hasTreeinfo():
-            m = re.match(".*CentOS.*", self.treeinfo.get("general", "family"))
-            ret = (m is not None)
+        if not self._hasTreeinfo():
+            return self.fetcher.hasFile("CentOS")
 
-            if ret:
-                self._variantFromVersion()
-            return ret
-
-        return self.fetcher.hasFile("CentOS")
+        m = re.match(".*CentOS.*", self.treeinfo.get("general", "family"))
+        ret = (m is not None)
+        if ret:
+            self._variantFromVersion()
+            if self.os_variant:
+                new_variant = self.os_variant.replace("rhel", "centos")
+                if self._check_osvariant_valid(new_variant):
+                    self.os_variant = new_variant
+        return ret
 
 
 # Scientific Linux distro check
@@ -808,8 +920,6 @@ class SLDistro(RHELDistro):
 
 class SuseDistro(Distro):
     name = "SUSE"
-    urldistro = "suse"
-    os_variant = "linux"
 
     _boot_iso_paths   = ["boot/boot.iso"]
 
@@ -835,9 +945,30 @@ class SuseDistro(Distro):
         self._xen_kernel_paths = [("boot/%s/vmlinuz-xen" % self.arch,
                                     "boot/%s/initrd-xen" % self.arch)]
 
+    def _variantFromVersion(self):
+        distro_version = self.version_from_content[1].strip()
+        version = distro_version.split('.', 1)[0].strip()
+        self.os_variant = self.urldistro
+        if int(version) >= 10:
+            if self.os_variant.startswith(("sles", "sled")):
+                sp_version = None
+                if len(distro_version.split('.', 1)) == 2:
+                    sp_version = 'sp' + distro_version.split('.', 1)[1].strip()
+                self.os_variant += version
+                if sp_version:
+                    self.os_variant += sp_version
+            else:
+                self.os_variant += distro_version
+        else:
+            self.os_variant += "9"
+
     def isValidStore(self):
-        if not self.fetcher.hasFile("directory.yast"):
+        # self.version_from_content is the VERSION line from the contents file
+        if self.version_from_content is None or \
+            self.version_from_content[1] is None:
             return False
+
+        self._variantFromVersion()
 
         self.os_variant = self._detect_osdict_from_url()
         return True
@@ -851,14 +982,27 @@ class SuseDistro(Distro):
 
     def _detect_osdict_from_url(self):
         root = "opensuse"
-        our_os_vals = [n.name for n in osdict.list_os() if
-                       n.name.startswith(root)]
+        oses = [n for n in OSDB.list_os() if n.name.startswith(root)]
 
-        for name in our_os_vals:
-            codename = name[len(root):]
-            if re.search("/%s\.[1-9]/" % codename, self.uri):
-                return name
+        for osobj in oses:
+            codename = osobj.name[len(root):]
+            if re.search("/%s/" % codename, self.uri):
+                return osobj.name
         return self.os_variant
+
+
+class SLESDistro(SuseDistro):
+    urldistro = "sles"
+
+
+class SLEDDistro(SuseDistro):
+    urldistro = "sled"
+
+
+# Suse  image store is harder - we fetch the kernel RPM and a helper
+# RPM and then munge bits together to generate a initrd
+class OpensuseDistro(SuseDistro):
+    urldistro = "opensuse"
 
 
 class DebianDistro(Distro):
@@ -870,44 +1014,49 @@ class DebianDistro(Distro):
 
     def __init__(self, *args, **kwargs):
         Distro.__init__(self, *args, **kwargs)
-        if self.uri.count("i386"):
-            self._treeArch = "i386"
-        elif self.uri.count("amd64"):
-            self._treeArch = "amd64"
-        else:
-            self._treeArch = "i386"
 
-        if re.match(r'i[4-9]86', self.arch):
-            self.arch = 'i386'
+        # Pull the tree's arch out of the URL text
+        self._treeArch = "i386"
+        for pattern in ["^.*/installer-(\w+)/?$",
+                        "^.*/daily-images/(\w+)/?$"]:
+            arch = re.findall(pattern, self.uri)
+            if arch:
+                self._treeArch = arch[0]
+                break
 
-        self._installer_name = self.name.lower() + "-" + "installer"
-        self._prefix = 'current/images'
+        self._url_prefix = 'current/images'
+        self._installer_dirname = self.name.lower() + "-installer"
         self._set_media_paths()
 
     def _set_media_paths(self):
-        # Use self._prefix to set media paths
-        self._boot_iso_paths   = ["%s/netboot/mini.iso" % self._prefix]
-        hvmroot = "%s/netboot/%s/%s/" % (self._prefix,
-                                         self._installer_name,
+        self._boot_iso_paths   = ["%s/netboot/mini.iso" % self._url_prefix]
+
+        hvmroot = "%s/netboot/%s/%s/" % (self._url_prefix,
+                                         self._installer_dirname,
                                          self._treeArch)
-        xenroot = "%s/netboot/xen/" % self._prefix
-        self._hvm_kernel_paths = [(hvmroot + "linux", hvmroot + "initrd.gz")]
-        self._xen_kernel_paths = [(xenroot + "vmlinuz",
-                                    xenroot + "initrd.gz")]
+        initrd_basename = "initrd.gz"
+        kernel_basename = "linux"
+        if self._treeArch in ["ppc64el"]:
+            kernel_basename = "vmlinux"
+        self._hvm_kernel_paths = [
+            (hvmroot + kernel_basename, hvmroot + initrd_basename)]
+
+        xenroot = "%s/netboot/xen/" % self._url_prefix
+        self._xen_kernel_paths = [(xenroot + "vmlinuz", xenroot + "initrd.gz")]
 
     def isValidStore(self):
-        if self.fetcher.hasFile("%s/MANIFEST" % self._prefix):
+        if self.fetcher.hasFile("%s/MANIFEST" % self._url_prefix):
             # For regular trees
             pass
         elif self.fetcher.hasFile("daily/MANIFEST"):
             # For daily trees
-            self._prefix = "daily"
+            self._url_prefix = "daily"
             self._set_media_paths()
         else:
             return False
 
-        filename = "%s/MANIFEST" % self._prefix
-        regex = ".*%s.*" % self._installer_name
+        filename = "%s/MANIFEST" % self._url_prefix
+        regex = ".*%s.*" % self._installer_dirname
         if not self._fetchAndMatchRegex(filename, regex):
             logging.debug("Regex didn't match, not a %s distro", self.name)
             return False
@@ -922,15 +1071,19 @@ class DebianDistro(Distro):
 
     def _detect_osdict_from_url(self):
         root = self.name.lower()
-        our_os_vals = [n.name for n in osdict.list_os() if
-                       n.name.startswith(root)]
+        oses = [n for n in OSDB.list_os() if n.name.startswith(root)]
 
-        if self._prefix == "daily":
-            return our_os_vals[0]
-        for name in our_os_vals:
-            codename = name[len(root):]
+        if self._url_prefix == "daily":
+            return oses[0].name
+
+        for osobj in oses:
+            # name looks like 'Debian Sarge'
+            if " " not in osobj.label:
+                continue
+
+            codename = osobj.label.lower().split()[1]
             if ("/%s/" % codename) in self.uri:
-                return name
+                return osobj.name
         return self.os_variant
 
 
@@ -940,15 +1093,15 @@ class UbuntuDistro(DebianDistro):
     urldistro = "ubuntu"
 
     def isValidStore(self):
-        if self.fetcher.hasFile("%s/MANIFEST" % self._prefix):
+        if self.fetcher.hasFile("%s/MANIFEST" % self._url_prefix):
             # For regular trees
-            filename = "%s/MANIFEST" % self._prefix
-            regex = ".*%s.*" % self._installer_name
+            filename = "%s/MANIFEST" % self._url_prefix
+            regex = ".*%s.*" % self._installer_dirname
         elif self.fetcher.hasFile("install/netboot/version.info"):
             # For trees based on ISO's
-            self._prefix = "install"
+            self._url_prefix = "install"
             self._set_media_paths()
-            filename = "%s/netboot/version.info" % self._prefix
+            filename = "%s/netboot/version.info" % self._url_prefix
             regex = "%s*" % self.name
         else:
             return False

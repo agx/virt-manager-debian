@@ -6,16 +6,17 @@
   <vcpu>1</vcpu>
   <os>
     <type arch="x86_64">hvm</type>
-    <kernel>./virtinst-vmlinuz.</kernel>
-    <initrd>./virtinst-initrd.img.</initrd>
+    <kernel>/tmp/virtinst-vmlinuz.</kernel>
+    <initrd>/tmp/virtinst-initrd.img.</initrd>
   </os>
   <features>
     <acpi/>
     <apic/>
     <pae/>
+    <vmport state="off"/>
   </features>
   <cpu mode="custom" match="exact">
-    <model>core2duo</model>
+    <model>Opteron_G4</model>
   </cpu>
   <clock offset="utc">
     <timer name="rtc" tickpolicy="catchup"/>
@@ -25,11 +26,15 @@
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>destroy</on_reboot>
   <on_crash>destroy</on_crash>
+  <pm>
+    <suspend-to-mem enabled="no"/>
+    <suspend-to-disk enabled="no"/>
+  </pm>
   <devices>
     <emulator>/usr/bin/qemu-kvm</emulator>
     <disk type="file" device="cdrom">
       <driver name="qemu"/>
-      <source file="/tmp/fake.iso"/>
+      <source file="/tmp/__virtinst_cli_exist1.img"/>
       <target dev="hda" bus="ide"/>
       <readonly/>
     </disk>
@@ -43,13 +48,10 @@
     <controller type="usb" index="0" model="ich9-uhci3">
       <master startport="4"/>
     </controller>
-    <interface type="bridge">
-      <source bridge="eth0"/>
-      <mac address="00:11:22:33:44:55"/>
-      <model type="virtio"/>
-    </interface>
-    <input type="tablet" bus="usb"/>
-    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes"/>
+    <input type="mouse" bus="ps2"/>
+    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
+      <image compression="off"/>
+    </graphics>
     <console type="pty"/>
     <channel type="spicevmc">
       <target type="virtio" name="com.redhat.spice.0"/>
@@ -58,8 +60,6 @@
     <video>
       <model type="qxl"/>
     </video>
-    <redirdev bus="usb" type="spicevmc"/>
-    <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="spicevmc"/>
   </devices>
@@ -78,9 +78,10 @@
     <acpi/>
     <apic/>
     <pae/>
+    <vmport state="off"/>
   </features>
   <cpu mode="custom" match="exact">
-    <model>core2duo</model>
+    <model>Opteron_G4</model>
   </cpu>
   <clock offset="utc">
     <timer name="rtc" tickpolicy="catchup"/>
@@ -90,6 +91,10 @@
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
   <on_crash>restart</on_crash>
+  <pm>
+    <suspend-to-mem enabled="no"/>
+    <suspend-to-disk enabled="no"/>
+  </pm>
   <devices>
     <emulator>/usr/bin/qemu-kvm</emulator>
     <disk type="block" device="cdrom">
@@ -106,13 +111,10 @@
     <controller type="usb" index="0" model="ich9-uhci3">
       <master startport="4"/>
     </controller>
-    <interface type="bridge">
-      <source bridge="eth0"/>
-      <mac address="00:11:22:33:44:55"/>
-      <model type="virtio"/>
-    </interface>
-    <input type="tablet" bus="usb"/>
-    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes"/>
+    <input type="mouse" bus="ps2"/>
+    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
+      <image compression="off"/>
+    </graphics>
     <console type="pty"/>
     <channel type="spicevmc">
       <target type="virtio" name="com.redhat.spice.0"/>
@@ -121,8 +123,6 @@
     <video>
       <model type="qxl"/>
     </video>
-    <redirdev bus="usb" type="spicevmc"/>
-    <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="spicevmc"/>
   </devices>

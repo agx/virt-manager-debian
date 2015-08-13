@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2009, 2012-2013 Red Hat, Inc.
+# Copyright (C) 2009, 2012-2014 Red Hat, Inc.
 # Copyright (C) 2009 Cole Robinson <crobinso@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,10 +18,9 @@
 # MA 02110-1301 USA.
 #
 
-# pylint: disable=E0611
 from gi.repository import Gtk
 from gi.repository import Gdk
-# pylint: enable=E0611
+from gi.repository import Pango
 
 import os
 import stat
@@ -31,9 +30,9 @@ import logging
 import virtinst
 from virtinst import util
 
-from virtManager.asyncjob import vmmAsyncJob
-from virtManager.baseclass import vmmGObjectUI
-from virtManager import uiutil
+from .asyncjob import vmmAsyncJob
+from .baseclass import vmmGObjectUI
+from . import uiutil
 
 STORAGE_ROW_CONFIRM = 0
 STORAGE_ROW_CANT_DELETE = 1
@@ -93,6 +92,7 @@ class vmmDeleteDialog(vmmGObjectUI):
                      (_("Delete"), util.xml_escape(self.vm.get_name())))
         self.widget("header-label").set_markup(title_str)
 
+        self.topwin.resize(1, 1)
         self.widget("delete-cancel").grab_focus()
 
         # Show warning message if VM is running
@@ -234,8 +234,19 @@ def populate_storage_list(storage_list, vm, conn):
     model = storage_list.get_model()
     model.clear()
 
-    diskdata = [(disk.target, disk.path, disk.read_only, disk.shareable) for
-                disk in vm.get_disk_devices()]
+    def get_path(disk):
+        if disk.source_pool:
+            pool = conn.get_pool(disk.source_pool)
+            if pool is None:
+                return disk.path
+            vol = pool.get_volume(disk.path)
+            if vol is None:
+                return disk.path
+            return vol.get_target_path()
+        return disk.path
+
+    diskdata = [(d.target, get_path(d), d.read_only, d.shareable) for
+                d in vm.get_disk_devices()]
 
     diskdata.append(("kernel", vm.get_xmlobj().os.kernel, True, False))
     diskdata.append(("initrd", vm.get_xmlobj().os.initrd, True, False))
@@ -286,9 +297,11 @@ def prepare_storage_list(storage_list):
     storage_list.set_tooltip_column(STORAGE_ROW_TOOLTIP)
 
     confirmCol = Gtk.TreeViewColumn()
-    pathCol = Gtk.TreeViewColumn(_("Storage Path"))
     targetCol = Gtk.TreeViewColumn(_("Target"))
     infoCol = Gtk.TreeViewColumn()
+    pathCol = Gtk.TreeViewColumn(_("Storage Path"))
+    pathCol.set_sizing(Gtk.TreeViewColumnSizing.AUTOSIZE)
+    pathCol.set_expand(True)
 
     storage_list.append_column(confirmCol)
     storage_list.append_column(pathCol)
@@ -307,6 +320,8 @@ def prepare_storage_list(storage_list):
     pathCol.pack_start(path_txt, True)
     pathCol.add_attribute(path_txt, 'text', STORAGE_ROW_PATH)
     pathCol.set_sort_column_id(STORAGE_ROW_PATH)
+    path_txt.set_property("width-chars", 50)
+    path_txt.set_property("ellipsize", Pango.EllipsizeMode.MIDDLE)
 
     target_txt = Gtk.CellRendererText()
     targetCol.pack_start(target_txt, False)

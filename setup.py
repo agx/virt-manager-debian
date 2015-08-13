@@ -1,10 +1,6 @@
 #!/usr/bin/env python2
 # Copyright (C) 2013, 2014 Red Hat, Inc.
 
-# pylint: disable=W0201
-# Attribute defined outside __init__: custom commands require breaking this
-
-import datetime
 import glob
 import fnmatch
 import os
@@ -19,8 +15,10 @@ from distutils.command.sdist import sdist
 from distutils.sysconfig import get_config_var
 sysprefix = get_config_var("prefix")
 
-from virtcli import cliconfig
+from virtcli import CLIConfig
 
+
+# pylint: disable=attribute-defined-outside-init
 
 def _generate_potfiles_in():
     def find(dirname, ext):
@@ -32,7 +30,7 @@ def _generate_potfiles_in():
         return ret
 
     scripts = ["virt-manager", "virt-install",
-               "virt-clone", "virt-image", "virt-convert", "virt-xml"]
+               "virt-clone", "virt-convert", "virt-xml"]
 
     potfiles = "\n".join(scripts) + "\n\n"
     potfiles += "\n".join(find("virtManager", "*.py")) + "\n\n"
@@ -145,13 +143,14 @@ class my_build(build):
 
     def _make_bin_wrappers(self):
         cmds = ["virt-manager", "virt-install", "virt-clone",
-                "virt-image", "virt-convert", "virt-xml"]
+                "virt-convert", "virt-xml"]
 
         if not os.path.exists("build"):
             os.mkdir("build")
 
         for app in cmds:
-            sharepath = os.path.join(cliconfig.install_asset_dir, app)
+            sharepath = os.path.join(CLIConfig.prefix,
+                "share", "virt-manager", app)
 
             wrapper = "#!/bin/sh\n\n"
             wrapper += "exec \"%s\" \"$@\"" % (sharepath)
@@ -164,22 +163,15 @@ class my_build(build):
     def _make_man_pages(self):
         for path in glob.glob("man/*.pod"):
             base = os.path.basename(path)
-
-            mantype = "1"
-            newbase = base
-            if base == "virt-image-xml.pod":
-                mantype = "5"
-                newbase = "virt-image.pod"
-
-            appname = os.path.splitext(newbase)[0]
+            appname = os.path.splitext(base)[0]
             newpath = os.path.join(os.path.dirname(path),
-                                   appname + "." + mantype)
+                                   appname + ".1")
 
             print "Generating %s" % newpath
             ret = os.system('pod2man '
                             '--center "Virtual Machine Manager" '
                             '--release %s --name %s '
-                            '< %s > %s' % (cliconfig.__version__,
+                            '< %s > %s' % (CLIConfig.version,
                                            appname.upper(),
                                            path, newpath))
             if ret != 0:
@@ -230,48 +222,31 @@ class my_install(install):
     """
     def finalize_options(self):
         if self.prefix is None:
-            if cliconfig.prefix != sysprefix:
-                print "Using prefix from 'configure': %s" % cliconfig.prefix
-                self.prefix = cliconfig.prefix
-        elif self.prefix != cliconfig.prefix:
+            if CLIConfig.prefix != sysprefix:
+                print "Using prefix from 'configure': %s" % CLIConfig.prefix
+                self.prefix = CLIConfig.prefix
+        elif self.prefix != CLIConfig.prefix:
             print("Install prefix=%s doesn't match configure prefix=%s\n"
                   "Pass matching --prefix to 'setup.py configure'" %
-                  (self.prefix, cliconfig.prefix))
+                  (self.prefix, CLIConfig.prefix))
             sys.exit(1)
+
+        if self.prefix != "/usr":
+            print ("WARNING: GSettings may not find your schema if it's\n"
+                   "not in /usr/share. You may need to manually play with\n"
+                   "GSETTINGS_SCHEMA_DIR and glib-compile-schemas.")
 
         install.finalize_options(self)
 
 
 class my_sdist(sdist):
-    user_options = sdist.user_options + [
-        ("snapshot", "s", "add snapshot id to version"),
-    ]
-
     description = "Update virt-manager.spec; build sdist-tarball."
 
-    def initialize_options(self):
-        self.snapshot = None
-        sdist.initialize_options(self)
-
-    def finalize_options(self):
-        if self.snapshot is not None:
-            self.snapshot = 1
-            cliconfig.__snapshot__ = 1
-        sdist.finalize_options(self)
-
     def run(self):
-        # Note: cliconfig.__snapshot__ by default is 0, it can be set to 1 by
-        #       either sdist or rpm and then the snapshot suffix is appended.
-        ver = cliconfig.__version__
-        if cliconfig.__snapshot__ == 1:
-            ver = ver + '.' + datetime.date.today().isoformat().replace('-', '')
-        cliconfig.__version__ = ver
-
-        setattr(self.distribution.metadata, 'version', ver)
         f1 = open('virt-manager.spec.in', 'r')
         f2 = open('virt-manager.spec', 'w')
         for line in f1:
-            f2.write(line.replace('@VERSION@', ver))
+            f2.write(line.replace('@VERSION@', CLIConfig.version))
         f1.close()
         f2.close()
 
@@ -283,17 +258,13 @@ class my_sdist(sdist):
 ###################
 
 class my_rpm(Command):
-    user_options = [("snapshot", "s", "add snapshot id to version")]
-
+    user_options = []
     description = "Build src and noarch rpms."
 
     def initialize_options(self):
-        self.snapshot = None
-
+        pass
     def finalize_options(self):
-        if self.snapshot is not None:
-            self.snapshot = 1
-            cliconfig.__snapshot__ = 1
+        pass
 
     def run(self):
         """
@@ -301,13 +272,12 @@ class my_rpm(Command):
         """
         self.run_command('sdist')
         os.system('rpmbuild -ta --clean dist/virt-manager-%s.tar.gz' %
-                  cliconfig.__version__)
+                  CLIConfig.version)
 
 
 class configure(Command):
     user_options = [
         ("prefix=", None, "installation prefix"),
-        ("pkgversion=", None, "user specified version-id"),
         ("qemu-user=", None,
          "user libvirt uses to launch qemu processes (default=root)"),
         ("libvirt-package-names=", None,
@@ -324,6 +294,9 @@ class configure(Command):
          "Hide config bits that are not considered stable (default=no)"),
         ("default-graphics=", None,
          "Default graphics type (spice or vnc) (default=spice)"),
+        ("default-hvs=", None,
+         "Comma separated list of hypervisors shown in 'Open Connection' "
+         "wizard. (default=all hvs)"),
 
     ]
     description = "Configure the build, similar to ./configure"
@@ -333,7 +306,6 @@ class configure(Command):
 
     def initialize_options(self):
         self.prefix = sysprefix
-        self.pkgversion = None
         self.qemu_user = None
         self.libvirt_package_names = None
         self.kvm_package_names = None
@@ -341,14 +313,13 @@ class configure(Command):
         self.preferred_distros = None
         self.stable_defaults = None
         self.default_graphics = None
+        self.default_hvs = None
 
 
     def run(self):
         template = ""
         template += "[config]\n"
         template += "prefix = %s\n" % self.prefix
-        if self.pkgversion is not None:
-            template += "pkgversion = %s\n" % self.pkgversion
         if self.qemu_user is not None:
             template += "default_qemu_user = %s\n" % self.qemu_user
         if self.libvirt_package_names is not None:
@@ -364,9 +335,11 @@ class configure(Command):
                          self.stable_defaults)
         if self.default_graphics is not None:
             template += "default_graphics = %s\n" % self.default_graphics
+        if self.default_hvs is not None:
+            template += "default_hvs = %s\n" % self.default_hvs
 
-        file(cliconfig.cfgpath, "w").write(template)
-        print "Generated %s" % cliconfig.cfgpath
+        file(CLIConfig.cfgpath, "w").write(template)
+        print "Generated %s" % CLIConfig.cfgpath
 
 
 class TestBaseCommand(Command):
@@ -472,7 +445,7 @@ class TestCommand(TestBaseCommand):
         Finds all the tests modules in tests/, and runs them.
         '''
         testfiles = []
-        for t in glob.glob(os.path.join(self._dir, 'tests', '*.py')):
+        for t in sorted(glob.glob(os.path.join(self._dir, 'tests', '*.py'))):
             if (t.endswith("__init__.py") or
                 t.endswith("test_urls.py") or
                 t.endswith("test_inject.py")):
@@ -487,6 +460,19 @@ class TestCommand(TestBaseCommand):
                 continue
 
             testfiles.append('.'.join(['tests', os.path.splitext(base)[0]]))
+
+        # Put clitest at the end, since it takes the longest
+        for f in testfiles[:]:
+            if "clitest" in f:
+                testfiles.remove(f)
+                testfiles.append(f)
+
+        # Always want to put checkprops at the end to get accurate results
+        for f in testfiles[:]:
+            if "checkprops" in f:
+                testfiles.remove(f)
+                if not self.testfile and not self.skipcli:
+                    testfiles.append(f)
 
         if not testfiles:
             raise RuntimeError("--testfile didn't catch anything")
@@ -561,7 +547,7 @@ class CheckPylint(Command):
         pass
 
     def run(self):
-        files = ["setup.py", "virt-install", "virt-clone", "virt-image",
+        files = ["setup.py", "virt-install", "virt-clone",
                  "virt-convert", "virt-xml", "virt-manager",
                  "virtcli", "virtinst", "virtconv", "virtManager",
                  "tests"]
@@ -581,7 +567,7 @@ class CheckPylint(Command):
 
 setup(
     name="virt-manager",
-    version=cliconfig.__version__,
+    version=CLIConfig.version,
     author="Cole Robinson",
     author_email="virt-tools-list@redhat.com",
     url="http://virt-manager.org",
@@ -592,7 +578,6 @@ setup(
         "build/virt-manager",
         "build/virt-clone",
         "build/virt-install",
-        "build/virt-image",
         "build/virt-convert",
         "build/virt-xml"]),
 
@@ -601,23 +586,22 @@ setup(
             "virt-manager",
             "virt-install",
             "virt-clone",
-            "virt-image",
             "virt-convert",
             "virt-xml",
         ]),
         ("share/glib-2.0/schemas",
          ["data/org.virt-manager.virt-manager.gschema.xml"]),
+        ("share/GConf/gsettings",
+         ["data/org.virt-manager.virt-manager.convert"]),
         ("share/virt-manager/ui", glob.glob("ui/*.ui")),
 
         ("share/man/man1", [
             "man/virt-manager.1",
             "man/virt-install.1",
             "man/virt-clone.1",
-            "man/virt-image.1",
             "man/virt-convert.1",
             "man/virt-xml.1"
         ]),
-        ("share/man/man5", ["man/virt-image.5"]),
 
         ("share/virt-manager/virtManager", glob.glob("virtManager/*.py")),
 
@@ -625,8 +609,6 @@ setup(
          glob.glob("virtcli/*.py") + glob.glob("virtcli/cli.cfg")),
         ("share/virt-manager/virtinst", glob.glob("virtinst/*.py")),
         ("share/virt-manager/virtconv", glob.glob("virtconv/*.py")),
-        ("share/virt-manager/virtconv/parsers",
-         glob.glob("virtconv/parsers/*.py")),
     ],
 
     cmdclass={

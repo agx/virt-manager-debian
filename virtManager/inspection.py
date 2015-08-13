@@ -20,13 +20,12 @@
 from Queue import Queue, Empty
 from threading import Thread
 import logging
-import os
 import re
 
-from guestfs import GuestFS  # pylint: disable=F0401
+from guestfs import GuestFS  # pylint: disable=import-error
 
-from virtManager.baseclass import vmmGObject
-from virtManager.domain import vmmInspectionData
+from .baseclass import vmmGObject
+from .domain import vmmInspectionData
 
 
 class vmmInspection(vmmGObject):
@@ -64,9 +63,9 @@ class vmmInspection(vmmGObject):
         self._q.put(obj)
 
     # Called by the main thread whenever a VM is added to vmlist.
-    def vm_added(self, conn, uuid):
+    def vm_added(self, conn, connkey):
         ignore = conn
-        ignore = uuid
+        ignore = connkey
         obj = ("vm_added")
         self._q.put(obj)
 
@@ -118,7 +117,7 @@ class vmmInspection(vmmGObject):
     # Any VMs we've not seen yet?  If so, process them.
     def _process_vms(self):
         for conn in self._conns.itervalues():
-            for vmuuid in conn.list_vm_uuids():
+            for vm in conn.list_vms():
                 if not conn.is_active():
                     break
 
@@ -127,9 +126,9 @@ class vmmInspection(vmmGObject):
                     data.error = True
                     self._set_vm_inspection_data(vm, data)
 
+                vmuuid = vm.get_uuid()
                 prettyvm = vmuuid
                 try:
-                    vm = conn.get_vm(vmuuid)
                     prettyvm = conn.get_uri() + ":" + vm.get_name()
 
                     if vmuuid in self._vmseen:
@@ -145,7 +144,7 @@ class vmmInspection(vmmGObject):
                     # Whether success or failure, we've "seen" this VM now.
                     self._vmseen[vmuuid] = True
                     try:
-                        data = self._process(conn, vm, vmuuid)
+                        data = self._process(conn, vm)
                         if data:
                             self._set_vm_inspection_data(vm, data)
                         else:
@@ -157,7 +156,7 @@ class vmmInspection(vmmGObject):
                     logging.exception("%s: exception while processing",
                                       prettyvm)
 
-    def _process(self, conn, vm, vmuuid):
+    def _process(self, conn, vm):
         if re.search(r"^guestfs-", vm.get_name()):
             logging.debug("ignore libvirt/guestfs temporary VM %s",
                           vm.get_name())
@@ -165,30 +164,8 @@ class vmmInspection(vmmGObject):
 
         g = GuestFS(close_on_exit=False)
         prettyvm = conn.get_uri() + ":" + vm.get_name()
-        ignore = vmuuid
 
-        disks = []
-        for disk in vm.get_disk_devices():
-            if (disk.path and
-                (disk.type == "block" or disk.type == "file") and
-                not disk.device == "cdrom"):
-                disks.append(disk)
-
-        if not disks:
-            logging.debug("%s: nothing to inspect", prettyvm)
-            return None
-
-        # Add the disks.  Note they *must* be added with readonly flag set.
-        for disk in disks:
-            path = disk.path
-            driver_type = disk.driver_type
-
-            if not (os.path.exists(path) and os.access(path, os.R_OK)):
-                logging.debug("%s: cannot access '%s', skipping inspection",
-                              prettyvm, path)
-                return None
-
-            g.add_drive_opts(path, readonly=1, format=driver_type)
+        g.add_libvirt_dom(vm.get_backend(), readonly=1)
 
         g.launch()
 

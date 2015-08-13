@@ -24,7 +24,6 @@ import os
 import sys
 
 import libvirt
-import urlgrabber.progress as progress
 
 import virtinst
 from virtinst import cli
@@ -39,12 +38,14 @@ from virtinst.cli import fail, print_stdout, print_stderr
 def prompt_yes_or_no(msg):
     while 1:
         printmsg = msg + " (y/n): "
-        if "VIRTINST_TEST_SUITE" in os.environ:
-            printmsg += "\n"
         sys.stdout.write(printmsg)
         sys.stdout.flush()
 
-        inp = sys.stdin.readline().lower().strip()
+        if "VIRTINST_TEST_SUITE" in os.environ:
+            inp = "yes"
+        else:
+            inp = sys.stdin.readline().lower().strip()
+
         if inp in ["y", "yes"]:
             return True
         elif inp in ["n", "no"]:
@@ -241,18 +242,14 @@ def setup_device(dev):
 
     logging.debug("Doing setup for disk=%s", dev)
 
-    meter = ((cli.quiet or "VIRTINST_TEST_SUITE" in os.environ) and
-             progress.BaseMeter() or
-             progress.TextMeter(fo=sys.stdout))
-
-    dev.setup(meter)
+    dev.setup(cli.get_meter())
     dev.virt_xml_setup = True
 
 
 def define_changes(conn, inactive_xmlobj, devs, action, confirm):
     if confirm:
         if not prompt_yes_or_no(
-            _("Define '%s' with the changed XML?" % inactive_xmlobj.name)):
+            _("Define '%s' with the changed XML?") % inactive_xmlobj.name):
             return
 
     if action == "hotplug":
@@ -260,7 +257,7 @@ def define_changes(conn, inactive_xmlobj, devs, action, confirm):
             setup_device(dev)
 
     conn.defineXML(inactive_xmlobj.get_xml_config())
-    print_stdout(_("Domain '%s' defined successfully." % inactive_xmlobj.name))
+    print_stdout(_("Domain '%s' defined successfully.") % inactive_xmlobj.name)
 
 
 def update_changes(domain, devs, action, confirm):
@@ -268,8 +265,15 @@ def update_changes(domain, devs, action, confirm):
         xml = dev.get_xml_config()
 
         if confirm:
-            msg = ("%s\n\n%s this device on guest '%s'?" %
-                   (xml, action, domain.name()))
+            if action == "hotplug":
+                prep = "to"
+            elif action == "hotunplug":
+                prep = "from"
+            else:
+                prep = "for"
+
+            msg = ("%s\n\n%s this device %s guest '%s'?" %
+                   (xml, action.capitalize(), prep, domain.name()))
             if not prompt_yes_or_no(msg):
                 continue
 
@@ -287,6 +291,8 @@ def update_changes(domain, devs, action, confirm):
             fail(_("Error attempting device %s: %s") % (action, e))
 
         print_stdout(_("Device %s successful.") % action)
+        if confirm:
+            print_stdout("")
 
 
 #######################
@@ -347,7 +353,6 @@ def parse_args():
     cli.vcpu_cli_options(g, editexample=True)
     cli.add_guest_xml_options(g)
     cli.add_boot_options(g)
-    cli.add_fs_option(g)
     cli.add_device_options(g)
 
     misc = parser.add_argument_group(_("Miscellaneous Options"))

@@ -22,17 +22,11 @@
 # MA 02110-1301 USA.
 #
 
-# pylint: disable=E0611
 from gi.repository import Gdk
 from gi.repository import GLib
 from gi.repository import Gtk
-# pylint: enable=E0611
 
-from virtManager import uiutil
-
-# pylint: disable=E1101
-# pylint can't detect functions we inheirit from Gtk, ex:
-# OverBox.set_over: Instance of 'OverBox' has no 'remove' member
+from . import uiutil
 
 # pylint: disable=arguments-differ
 # Newer pylint can detect, but warns that overridden arguments are wrong
@@ -247,8 +241,8 @@ class OverBox(Gtk.Box):
         # There's something weird here with destroying this gdk window,
         # then destroying the over/under widgets. Error seems harmless
         # but lets shut it up anyways.
-        #self.underWin.destroy()
-        #self.overWin.destroy()
+        # self.underWin.destroy()
+        # self.overWin.destroy()
 
         self.underWin = None
         self.overWin = None

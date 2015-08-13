@@ -1,5 +1,5 @@
 #
-# Copyright 2006-2009, 2013 Red Hat, Inc.
+# Copyright 2006-2009, 2013, 2014 Red Hat, Inc.
 # Daniel P. Berrange <berrange@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -25,11 +25,12 @@ import tempfile
 
 import urlgrabber
 
-from virtinst import StoragePool, StorageVolume
-from virtinst import util
-from virtinst import Installer
-from virtinst import VirtualDisk
-from virtinst import urlfetcher
+from . import urlfetcher
+from . import util
+from .devicedisk import VirtualDisk
+from .installer import Installer
+from .osdict import OSDB
+from .storage import StoragePool, StorageVolume
 
 
 def _is_url(conn, url):
@@ -42,8 +43,8 @@ def _is_url(conn, url):
         else:
             return False
 
-    return (url.startswith("http://") or url.startswith("ftp://") or
-            url.startswith("nfs:"))
+    return (url.startswith("http://") or url.startswith("https://") or
+            url.startswith("ftp://") or url.startswith("nfs:"))
 
 
 def _sanitize_url(url):
@@ -105,9 +106,6 @@ def _upload_file(conn, meter, destpool, src):
     # Build placeholder volume
     size = os.path.getsize(src)
     basename = os.path.basename(src)
-    xmlobj = StoragePool(conn, parsexml=destpool.XMLDesc(0))
-    poolpath = xmlobj.target_path
-
     name = StorageVolume.find_free_name(destpool, basename)
     if name != basename:
         logging.debug("Generated non-colliding volume name %s", name)
@@ -116,8 +114,7 @@ def _upload_file(conn, meter, destpool, src):
                     (float(size) / 1024.0 / 1024.0 / 1024.0), True)
 
     disk = VirtualDisk(conn)
-    disk.path = os.path.join(poolpath, name)
-    disk.set_create_storage(vol_install=vol_install)
+    disk.set_vol_install(vol_install)
     disk.validate()
 
     disk.setup(meter=meter)
@@ -166,7 +163,7 @@ def _rhel4_initrd_inject(initrd, injections):
         file_proc = subprocess.Popen(["file", "-z", initrd],
                                      stdout=subprocess.PIPE,
                                      stderr=subprocess.PIPE)
-        if not "ext2 filesystem" in file_proc.communicate()[0]:
+        if "ext2 filesystem" not in file_proc.communicate()[0]:
             return False
     except:
         logging.exception("Failed to file command for rhel4 initrd detection")
@@ -312,11 +309,14 @@ class DistroInstaller(Installer):
         Installer.__init__(self, *args, **kwargs)
 
         self.livecd = False
+        self._cached_fetcher = None
+        self._cached_store = None
+        self._cdrom_path = None
 
 
-    #######################
-    # Install prepartions #
-    #######################
+    ########################
+    # Install preparations #
+    ########################
 
     def _get_media_type(self):
         if self.cdrom and not self.location:
@@ -331,28 +331,37 @@ class DistroInstaller(Installer):
             return MEDIA_LOCATION_DIR
         return MEDIA_LOCATION_CDROM
 
+    def _get_fetcher(self, guest, meter):
+        if not meter:
+            meter = urlgrabber.progress.BaseMeter()
+
+        if not self._cached_fetcher:
+            scratchdir = util.make_scratchdir(guest.conn, guest.type)
+
+            self._cached_fetcher = urlfetcher.fetcherForURI(
+                self.location, scratchdir, meter)
+
+        self._cached_fetcher.meter = meter
+        return self._cached_fetcher
+
+    def _get_store(self, guest, fetcher):
+        # Caller is responsible for calling fetcher prepare/cleanup if needed
+        if not self._cached_store:
+            self._cached_store = urlfetcher.getDistroStore(guest, fetcher)
+        return self._cached_store
+
     def _prepare_local(self):
-        transient = True
-        if self.cdrom:
-            transient = not self.livecd
-        return self._make_cdrom_dev(self.location, transient=transient)
+        return self.location
 
     def _prepare_cdrom_url(self, guest, fetcher):
-        store = urlfetcher.getDistroStore(guest, fetcher)
+        store = self._get_store(guest, fetcher)
         media = store.acquireBootDisk(guest)
         self._tmpfiles.append(media)
-        return self._make_cdrom_dev(media, transient=True)
+        return media
 
     def _prepare_kernel_url(self, guest, fetcher):
-        store = urlfetcher.getDistroStore(guest, fetcher)
+        store = self._get_store(guest, fetcher)
         kernel, initrd, args = store.acquireKernel(guest)
-        os_variant = store.get_osdict_info()
-
-        if guest.os_autodetect:
-            if os_variant:
-                logging.debug("Auto detected OS variant as: %s", os_variant)
-                guest.os_variant = os_variant
-
         self._tmpfiles.append(kernel)
         if initrd:
             self._tmpfiles.append(initrd)
@@ -399,54 +408,55 @@ class DistroInstaller(Installer):
 
         2) http, ftp, or nfs path for an install tree
         """
+        self._cached_store = None
+        self._cached_fetcher = None
+
         if _is_url(self.conn, val):
             logging.debug("DistroInstaller location is a network source.")
             return _sanitize_url(val)
 
         try:
-            d = self._make_cdrom_dev(val)
-            val = d.path
-        except:
+            dev = VirtualDisk(self.conn)
+            dev.device = dev.DEVICE_CDROM
+            dev.path = val
+            dev.validate()
+
+            val = dev.path
+        except Exception, e:
             logging.debug("Error validating install location", exc_info=True)
-            raise ValueError(_("Checking installer location failed: "
-                               "Could not find media '%s'." % str(val)))
+            raise ValueError(_("Validating install media '%s' failed: %s") %
+                (str(val), e))
 
         return val
 
-    def _prepare(self, guest, meter, scratchdir):
-        logging.debug("Using scratchdir=%s", scratchdir)
+    def _prepare(self, guest, meter):
         mediatype = self._get_media_type()
-
-        # Test suite manually injected a boot kernel
-        if self._install_kernel and not self.scratchdir_required():
-            return
 
         if mediatype == MEDIA_CDROM_IMPLIED:
             return
 
-        dev = None
+        cdrom_path = None
         if mediatype == MEDIA_CDROM_PATH or mediatype == MEDIA_LOCATION_CDROM:
-            dev = self._prepare_local()
+            cdrom_path = self.location
 
         if mediatype != MEDIA_CDROM_PATH:
-            fetcher = urlfetcher.fetcherForURI(self.location,
-                                               scratchdir, meter)
+            fetcher = self._get_fetcher(guest, meter)
             try:
                 try:
                     fetcher.prepareLocation()
                 except ValueError, e:
-                    logging.exception("Error preparing install location")
+                    logging.debug("Error preparing install location",
+                        exc_info=True)
                     raise ValueError(_("Invalid install location: ") + str(e))
 
                 if mediatype == MEDIA_CDROM_URL:
-                    dev = self._prepare_cdrom_url(guest, fetcher)
+                    cdrom_path = self._prepare_cdrom_url(guest, fetcher)
                 else:
                     self._prepare_kernel_url(guest, fetcher)
             finally:
                 fetcher.cleanupLocation()
 
-        if dev:
-            self.install_devices.append(dev)
+        self._cdrom_path = cdrom_path
 
 
 
@@ -454,10 +464,18 @@ class DistroInstaller(Installer):
     # Public installer impls #
     ##########################
 
-    def scratchdir_required(self):
-        if not self.location:
-            return False
+    def has_install_phase(self):
+        return not self.livecd
 
+    def needs_cdrom(self):
+        mediatype = self._get_media_type()
+        return mediatype in [MEDIA_CDROM_PATH, MEDIA_LOCATION_CDROM,
+                             MEDIA_CDROM_URL]
+
+    def cdrom_path(self):
+        return self._cdrom_path
+
+    def scratchdir_required(self):
         mediatype = self._get_media_type()
         return mediatype in [MEDIA_CDROM_URL, MEDIA_LOCATION_URL,
                              MEDIA_LOCATION_DIR, MEDIA_LOCATION_CDROM]
@@ -467,15 +485,35 @@ class DistroInstaller(Installer):
         if mediatype not in [MEDIA_CDROM_URL, MEDIA_LOCATION_URL]:
             return True
 
-        # This will throw an error for us
-        urlfetcher.detectMediaDistro(guest, self.location)
+        try:
+            fetcher = self._get_fetcher(guest, None)
+            fetcher.prepareLocation()
+
+            # This will throw an error for us
+            ignore = self._get_store(guest, fetcher)
+        finally:
+            fetcher.cleanupLocation()
         return True
 
     def detect_distro(self, guest):
+        distro = None
         try:
-            ret = urlfetcher.detectMediaDistro(guest, self.location)
-            logging.debug("installer.detect_distro returned=%s", ret)
-            return ret
+            if _is_url(self.conn, self.location):
+                try:
+                    fetcher = self._get_fetcher(guest, None)
+                    fetcher.prepareLocation()
+
+                    store = self._get_store(guest, fetcher)
+                    distro = store.get_osdict_info()
+                finally:
+                    fetcher.cleanupLocation()
+            elif self.conn.is_remote():
+                logging.debug("Can't detect distro for media on "
+                    "remote connection.")
+            else:
+                distro = OSDB.lookup_os_by_media(self.location)
         except:
-            logging.exception("Error attempting to detect distro.")
-            return None
+            logging.debug("Error attempting to detect distro.", exc_info=True)
+
+        logging.debug("installer.detect_distro returned=%s", distro)
+        return distro

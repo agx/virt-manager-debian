@@ -21,7 +21,7 @@
 
 import libvirt
 
-from virtinst import util
+from . import util
 
 
 # Check that command is present in the python bindings, and return the
@@ -53,16 +53,16 @@ def _get_flag(flag_name):
 
 # Try to call the passed function, and look for signs that libvirt or driver
 # doesn't support it
-def _try_command(func, args, check_all_error=False):
+def _try_command(func, run_args, check_all_error=False):
     try:
-        func(*args)
+        func(*run_args)
     except libvirt.libvirtError, e:
         if util.is_error_nosupport(e):
             return False
 
         if check_all_error:
             return False
-    except Exception:
+    except Exception, e:
         # Other python exceptions likely mean the bindings are horked
         return False
     return True
@@ -80,7 +80,7 @@ def _split_function_name(function):
         return (output[0], output[1])
 
 
-def _check_function(function, flag, args, data):
+def _check_function(function, flag, run_args, data):
     object_name, function_name = _split_function_name(function)
     if not function_name:
         return None
@@ -98,7 +98,7 @@ def _check_function(function, flag, args, data):
             return False
         flag_tuple = (found_flag,)
 
-    if args is None:
+    if run_args is None:
         return None
 
     # If function requires an object, make sure the passed obj
@@ -113,7 +113,7 @@ def _check_function(function, flag, args, data):
     cmd = _get_command(function_name, obj=data)
 
     # Function with args specified is all the proof we need
-    return _try_command(cmd, args + flag_tuple,
+    return _try_command(cmd, run_args + flag_tuple,
                         check_all_error=bool(flag_tuple))
 
 
@@ -262,6 +262,7 @@ SUPPORT_CONN_DEFAULT_QCOW2 = _make(
 SUPPORT_CONN_DEFAULT_USB2 = _make(
     version="0.9.7", hv_version={"qemu": "1.0.0", "test": 0})
 SUPPORT_CONN_CAN_ACPI = _make(hv_version={"xen": "3.1.0", "all": 0})
+SUPPORT_CONN_WORKING_XEN_EVENTS = _make(hv_version={"xen": "4.0.0", "all": 0})
 SUPPORT_CONN_SOUND_AC97 = _make(
     version="0.8.0", hv_version={"qemu": "0.11.0"})
 SUPPORT_CONN_SOUND_ICH6 = _make(
@@ -293,6 +294,19 @@ SUPPORT_CONN_INPUT_KEYBOARD = _make(
 SUPPORT_CONN_POOL_GLUSTERFS = _make(version="1.2.0")
 SUPPORT_CONN_CPU_MODEL_NAMES = _make(function="virConnect.getCPUModelNames",
                                      run_args=("x86_64", 0))
+SUPPORT_CONN_HYPERV_VAPIC = _make(
+    version="1.1.0", hv_version={"qemu": "1.1.0", "test": 0})
+SUPPORT_CONN_HYPERV_CLOCK = _make(
+    version="1.2.2", hv_version={"qemu": "2.0.0", "test": 0})
+SUPPORT_CONN_LOADER_ROM = _make(version="1.2.9")
+SUPPORT_CONN_DOMAIN_CAPABILITIES = _make(
+    function="virConnect.getDomainCapabilities",
+    run_args=(None, None, None, None))
+SUPPORT_CONN_VIDEO_NEW_RAM_OUTPUT = _make(version="1.2.11")
+SUPPORT_CONN_DOMAIN_RESET = _make(version="0.9.7", hv_version={"qemu": 0})
+SUPPORT_CONN_SPICE_COMPRESSION = _make(version="0.9.1")
+SUPPORT_CONN_VMPORT = _make(
+    version="1.2.16", hv_version={"qemu": "2.2.0", "test": 0})
 
 
 # Domain checks
@@ -331,6 +345,9 @@ SUPPORT_POOL_LISTALLVOLUMES = _make(
 SUPPORT_POOL_METADATA_PREALLOC = _make(
     flag="VIR_STORAGE_VOL_CREATE_PREALLOC_METADATA",
     version="1.0.1")
+SUPPORT_POOL_REFLINK = _make(
+    flag="VIR_STORAGE_VOL_CREATE_REFLINK",
+    version="1.2.13")
 
 
 # Interface checks

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.16.1 -->
+<!-- Generated with glade 3.18.3 -->
 <interface>
-  <requires lib="gtk+" version="3.0"/>
+  <requires lib="gtk+" version="3.8"/>
   <object class="GtkAdjustment" id="adjustment1">
     <property name="upper">67000</property>
     <property name="step_increment">1</property>
@@ -41,6 +41,7 @@
             <property name="spacing">12</property>
             <child>
               <object class="GtkScrolledWindow" id="scrolledwindow1">
+                <property name="width_request">50</property>
                 <property name="visible">True</property>
                 <property name="can_focus">True</property>
                 <property name="hscrollbar_policy">never</property>
@@ -104,6 +105,7 @@
                       <object class="GtkNotebook" id="create-pages">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tab_pos">left</property>
                         <property name="show_border">False</property>
                         <child>
                           <object class="GtkLabel" id="hardware-info">
@@ -156,12 +158,11 @@
                                     <property name="xalign">0</property>
                                     <property name="label" translatable="yes">_Device type:</property>
                                     <property name="use_underline">True</property>
+                                    <property name="mnemonic_widget">config-storage-devtype</property>
                                   </object>
                                   <packing>
                                     <property name="left_attach">0</property>
-                                    <property name="top_attach">1</property>
-                                    <property name="width">1</property>
-                                    <property name="height">1</property>
+                                    <property name="top_attach">0</property>
                                   </packing>
                                 </child>
                                 <child>
@@ -178,9 +179,7 @@
                                   </object>
                                   <packing>
                                     <property name="left_attach">1</property>
-                                    <property name="top_attach">1</property>
-                                    <property name="width">1</property>
-                                    <property name="height">1</property>
+                                    <property name="top_attach">0</property>
                                   </packing>
                                 </child>
                                 <child>
@@ -194,9 +193,7 @@
                                   </object>
                                   <packing>
                                     <property name="left_attach">0</property>
-                                    <property name="top_attach">0</property>
-                                    <property name="width">1</property>
-                                    <property name="height">1</property>
+                                    <property name="top_attach">1</property>
                                   </packing>
                                 </child>
                                 <child>
@@ -204,13 +201,10 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="halign">start</property>
-                                    <signal name="changed" handler="on_config_storage_bustype_changed" swapped="no"/>
                                   </object>
                                   <packing>
                                     <property name="left_attach">1</property>
-                                    <property name="top_attach">0</property>
-                                    <property name="width">1</property>
-                                    <property name="height">1</property>
+                                    <property name="top_attach">1</property>
                                   </packing>
                                 </child>
                               </object>
@@ -235,14 +229,13 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="xalign">0</property>
-                                        <property name="label" translatable="yes">S_torage format:</property>
+                                        <property name="label" translatable="yes">Stor_age format:</property>
                                         <property name="use_underline">True</property>
+                                        <property name="mnemonic_widget">storage-format-combobox-entry</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
                                         <property name="top_attach">1</property>
-                                        <property name="width">1</property>
-                                        <property name="height">1</property>
                                       </packing>
                                     </child>
                                     <child>
@@ -257,8 +250,6 @@
                                       <packing>
                                         <property name="left_attach">0</property>
                                         <property name="top_attach">0</property>
-                                        <property name="width">1</property>
-                                        <property name="height">1</property>
                                       </packing>
                                     </child>
                                     <child>
@@ -267,7 +258,7 @@
                                         <property name="can_focus">False</property>
                                         <property name="has_entry">True</property>
                                         <child internal-child="entry">
-                                          <object class="GtkEntry" id="combobox-entry2">
+                                          <object class="GtkEntry" id="storage-format-combobox-entry">
                                             <property name="can_focus">False</property>
                                           </object>
                                         </child>
@@ -275,8 +266,6 @@
                                       <packing>
                                         <property name="left_attach">1</property>
                                         <property name="top_attach">1</property>
-                                        <property name="width">1</property>
-                                        <property name="height">1</property>
                                       </packing>
                                     </child>
                                     <child>
@@ -287,8 +276,6 @@
                                       <packing>
                                         <property name="left_attach">1</property>
                                         <property name="top_attach">0</property>
-                                        <property name="width">1</property>
-                                        <property name="height">1</property>
                                       </packing>
                                     </child>
                                   </object>
@@ -323,6 +310,99 @@
                           </object>
                           <packing>
                             <property name="position">1</property>
+                            <property name="tab_fill">False</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkGrid" id="grid5">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="valign">start</property>
+                            <property name="vexpand">False</property>
+                            <property name="row_spacing">6</property>
+                            <property name="column_spacing">6</property>
+                            <child>
+                              <object class="GtkLabel" id="label29">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="xalign">0</property>
+                                <property name="label" translatable="yes">_Type:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">controller-type</property>
+                              </object>
+                              <packing>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="controller-model-label">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="xalign">0</property>
+                                <property name="label" translatable="yes">_Model:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">controller-model</property>
+                              </object>
+                              <packing>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkComboBox" id="controller-type">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <signal name="changed" handler="on_controller_type_changed" swapped="no"/>
+                              </object>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="top_attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkImage" id="controller-tooltip">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="stock">gtk-info</property>
+                              </object>
+                              <packing>
+                                <property name="left_attach">2</property>
+                                <property name="top_attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkComboBox" id="controller-model">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="has_entry">True</property>
+                                <child internal-child="entry">
+                                  <object class="GtkEntry" id="combobox-entry4">
+                                    <property name="can_focus">True</property>
+                                  </object>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="top_attach">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <placeholder/>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="position">2</property>
+                          </packing>
+                        </child>
+                        <child type="tab">
+                          <object class="GtkLabel" id="label24">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="label" translatable="yes">ctrl</property>
+                          </object>
+                          <packing>
+                            <property name="position">2</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>
@@ -382,8 +462,6 @@
                                   <packing>
                                     <property name="left_attach">1</property>
                                     <property name="top_attach">1</property>
-                                    <property name="width">1</property>
-                                    <property name="height">1</property>
                                   </packing>
                                 </child>
                                 <child>
@@ -399,8 +477,6 @@
                                   <packing>
                                     <property name="left_attach">0</property>
                                     <property name="top_attach">1</property>
-                                    <property name="width">1</property>
-                                    <property name="height">1</property>
                                   </packing>
                                 </child>
                                 <child>
@@ -415,21 +491,6 @@
                                   <packing>
                                     <property name="left_attach">0</property>
                                     <property name="top_attach">2</property>
-                                    <property name="width">1</property>
-                                    <property name="height">1</property>
-                                  </packing>
-                                </child>
-                                <child>
-                                  <object class="GtkComboBox" id="net-model">
-                                    <property name="visible">True</property>
-                                    <property name="can_focus">False</property>
-                                    <property name="halign">start</property>
-                                  </object>
-                                  <packing>
-                                    <property name="left_attach">1</property>
-                                    <property name="top_attach">2</property>
-                                    <property name="width">1</property>
-                                    <property name="height">1</property>
                                   </packing>
                                 </child>
                                 <child>
@@ -445,8 +506,6 @@
                                   <packing>
                                     <property name="left_attach">0</property>
                                     <property name="top_attach">0</property>
-                                    <property name="width">1</property>
-                                    <property name="height">1</property>
                                   </packing>
                                 </child>
                                 <child>
@@ -462,8 +521,23 @@
                                   <packing>
                                     <property name="left_attach">1</property>
                                     <property name="top_attach">0</property>
-                                    <property name="width">1</property>
-                                    <property name="height">1</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkComboBox" id="net-model">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="halign">start</property>
+                                    <property name="has_entry">True</property>
+                                    <child internal-child="entry">
+                                      <object class="GtkEntry" id="combobox-entry3">
+                                        <property name="can_focus">True</property>
+                                      </object>
+                                    </child>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">1</property>
+                                    <property name="top_attach">2</property>
                                   </packing>
                                 </child>
                               </object>
@@ -491,7 +565,7 @@
                             </child>
                           </object>
                           <packing>
-                            <property name="position">2</property>
+                            <property name="position">3</property>
                           </packing>
                         </child>
                         <child type="tab">
@@ -501,7 +575,7 @@
                             <property name="label">net</property>
                           </object>
                           <packing>
-                            <property name="position">2</property>
+                            <property name="position">3</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>
@@ -519,6 +593,7 @@
                                 <property name="xalign">1</property>
                                 <property name="label" translatable="yes">_Type:</property>
                                 <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">input-type</property>
                               </object>
                               <packing>
                                 <property name="x_options">GTK_FILL</property>
@@ -539,7 +614,7 @@
                             </child>
                           </object>
                           <packing>
-                            <property name="position">3</property>
+                            <property name="position">4</property>
                           </packing>
                         </child>
                         <child type="tab">
@@ -549,7 +624,7 @@
                             <property name="label">input</property>
                           </object>
                           <packing>
-                            <property name="position">3</property>
+                            <property name="position">4</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>
@@ -562,7 +637,7 @@
                             </child>
                           </object>
                           <packing>
-                            <property name="position">4</property>
+                            <property name="position">5</property>
                           </packing>
                         </child>
                         <child type="tab">
@@ -572,7 +647,7 @@
                             <property name="label">gfx</property>
                           </object>
                           <packing>
-                            <property name="position">4</property>
+                            <property name="position">5</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>
@@ -611,7 +686,7 @@
                             </child>
                           </object>
                           <packing>
-                            <property name="position">5</property>
+                            <property name="position">6</property>
                           </packing>
                         </child>
                         <child type="tab">
@@ -621,7 +696,7 @@
                             <property name="label">sound</property>
                           </object>
                           <packing>
-                            <property name="position">5</property>
+                            <property name="position">6</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>
@@ -671,7 +746,7 @@
                             </child>
                           </object>
                           <packing>
-                            <property name="position">6</property>
+                            <property name="position">7</property>
                           </packing>
                         </child>
                         <child type="tab">
@@ -681,7 +756,7 @@
                             <property name="label">host</property>
                           </object>
                           <packing>
-                            <property name="position">6</property>
+                            <property name="position">7</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>
@@ -699,8 +774,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">4</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -713,9 +786,7 @@
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
-                                <property name="top_attach">8</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
+                                <property name="top_attach">9</property>
                               </packing>
                             </child>
                             <child>
@@ -726,9 +797,7 @@
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
-                                <property name="top_attach">5</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
+                                <property name="top_attach">7</property>
                               </packing>
                             </child>
                             <child>
@@ -778,8 +847,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">6</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -828,9 +895,7 @@
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
-                                <property name="top_attach">7</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
+                                <property name="top_attach">8</property>
                               </packing>
                             </child>
                             <child>
@@ -845,8 +910,6 @@
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">4</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -860,9 +923,7 @@
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
-                                <property name="top_attach">5</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
+                                <property name="top_attach">8</property>
                               </packing>
                             </child>
                             <child>
@@ -877,8 +938,6 @@
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">6</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -888,13 +947,11 @@
                                 <property name="xalign">0</property>
                                 <property name="label" translatable="yes">_Bind Host:</property>
                                 <property name="use_underline">True</property>
-                                <property name="mnemonic_widget">char-bind-host</property>
+                                <property name="mnemonic_widget">char-mode</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">7</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -908,9 +965,7 @@
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
-                                <property name="top_attach">8</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
+                                <property name="top_attach">9</property>
                               </packing>
                             </child>
                             <child>
@@ -925,8 +980,6 @@
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">1</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -939,8 +992,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">1</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -955,8 +1006,6 @@
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">2</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -968,8 +1017,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">2</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -979,12 +1026,11 @@
                                 <property name="xalign">0</property>
                                 <property name="label" translatable="yes">_Name:</property>
                                 <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">combobox-entry</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">0</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1004,8 +1050,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">0</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1019,8 +1063,6 @@
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">3</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1035,13 +1077,35 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">3</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkLabel" id="char-channel-label">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="xalign">0</property>
+                                <property name="label" translatable="yes">_Channel:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">char-channel</property>
+                              </object>
+                              <packing>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">5</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkEntry" id="char-channel">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                              </object>
+                              <packing>
+                                <property name="left_attach">1</property>
+                                <property name="top_attach">5</property>
                               </packing>
                             </child>
                           </object>
                           <packing>
-                            <property name="position">7</property>
+                            <property name="position">8</property>
                           </packing>
                         </child>
                         <child type="tab">
@@ -1051,7 +1115,7 @@
                             <property name="label">char</property>
                           </object>
                           <packing>
-                            <property name="position">7</property>
+                            <property name="position">8</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>
@@ -1090,7 +1154,7 @@
                             </child>
                           </object>
                           <packing>
-                            <property name="position">8</property>
+                            <property name="position">9</property>
                           </packing>
                         </child>
                         <child type="tab">
@@ -1100,7 +1164,7 @@
                             <property name="label">vid</property>
                           </object>
                           <packing>
-                            <property name="position">8</property>
+                            <property name="position">9</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>
@@ -1169,7 +1233,7 @@
                             </child>
                           </object>
                           <packing>
-                            <property name="position">9</property>
+                            <property name="position">10</property>
                           </packing>
                         </child>
                         <child type="tab">
@@ -1179,7 +1243,7 @@
                             <property name="label">wdog</property>
                           </object>
                           <packing>
-                            <property name="position">9</property>
+                            <property name="position">10</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>
@@ -1193,7 +1257,7 @@
                             </child>
                           </object>
                           <packing>
-                            <property name="position">10</property>
+                            <property name="position">11</property>
                           </packing>
                         </child>
                         <child type="tab">
@@ -1203,7 +1267,7 @@
                             <property name="label">fs</property>
                           </object>
                           <packing>
-                            <property name="position">10</property>
+                            <property name="position">11</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>
@@ -1242,7 +1306,7 @@
                             </child>
                           </object>
                           <packing>
-                            <property name="position">11</property>
+                            <property name="position">12</property>
                           </packing>
                         </child>
                         <child type="tab">
@@ -1252,7 +1316,7 @@
                             <property name="label">sc</property>
                           </object>
                           <packing>
-                            <property name="position">11</property>
+                            <property name="position">12</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>
@@ -1311,8 +1375,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">1</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1322,12 +1384,11 @@
                                 <property name="xalign">1</property>
                                 <property name="label" translatable="yes">_Type:</property>
                                 <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">usbredir-list</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">0</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1342,8 +1403,6 @@
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">1</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1356,13 +1415,11 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">0</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                           </object>
                           <packing>
-                            <property name="position">12</property>
+                            <property name="position">13</property>
                           </packing>
                         </child>
                         <child type="tab">
@@ -1372,7 +1429,7 @@
                             <property name="label">usbr</property>
                           </object>
                           <packing>
-                            <property name="position">12</property>
+                            <property name="position">13</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>
@@ -1392,8 +1449,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">1</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1401,13 +1456,13 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Device Path:</property>
+                                <property name="label" translatable="yes">Device _Path:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">tpm-device-path</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">1</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1419,8 +1474,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">0</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1435,13 +1488,11 @@
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">0</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                           </object>
                           <packing>
-                            <property name="position">13</property>
+                            <property name="position">14</property>
                           </packing>
                         </child>
                         <child type="tab">
@@ -1451,7 +1502,7 @@
                             <property name="label">tpm</property>
                           </object>
                           <packing>
-                            <property name="position">13</property>
+                            <property name="position">14</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>
@@ -1468,13 +1519,11 @@
                                 <property name="xalign">0</property>
                                 <property name="label" translatable="yes">_Type:</property>
                                 <property name="use_underline">True</property>
-                                <property name="mnemonic_widget">tpm-type</property>
+                                <property name="mnemonic_widget">rng-type</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">0</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1486,8 +1535,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">0</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1495,13 +1542,13 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Backend Type:</property>
+                                <property name="label" translatable="yes">_Backend Type:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">rng-backend-type</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">1</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1513,8 +1560,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">1</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1522,13 +1567,13 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Backend Mode:</property>
+                                <property name="label" translatable="yes">Backend _Mode:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">rng-backend-mode</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">3</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1540,8 +1585,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">3</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1549,14 +1592,13 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Host:</property>
+                                <property name="label" translatable="yes">_Host:</property>
                                 <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">rng-connect-host</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">4</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1583,7 +1625,7 @@
                                     <property name="xalign">0</property>
                                     <property name="label" translatable="yes">_Port:</property>
                                     <property name="use_underline">True</property>
-                                    <property name="mnemonic_widget">char-port</property>
+                                    <property name="mnemonic_widget">rng-connect-service</property>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -1608,8 +1650,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">4</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1617,14 +1657,13 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Bind Host:</property>
+                                <property name="label" translatable="yes">B_ind Host:</property>
                                 <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">rng-bind-host</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">5</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1649,9 +1688,9 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="xalign">0</property>
-                                    <property name="label" translatable="yes">_Port:</property>
+                                    <property name="label" translatable="yes">P_ort:</property>
                                     <property name="use_underline">True</property>
-                                    <property name="mnemonic_widget">char-port</property>
+                                    <property name="mnemonic_widget">rng-bind-service</property>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -1676,8 +1715,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">5</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1685,13 +1722,13 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Device:</property>
+                                <property name="label" translatable="yes">_Device:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">rng-device</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">2</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1703,13 +1740,11 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">2</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                           </object>
                           <packing>
-                            <property name="position">14</property>
+                            <property name="position">15</property>
                           </packing>
                         </child>
                         <child type="tab">
@@ -1719,7 +1754,7 @@
                             <property name="label" translatable="yes">rng</property>
                           </object>
                           <packing>
-                            <property name="position">14</property>
+                            <property name="position">15</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>
@@ -1730,18 +1765,17 @@
                             <property name="row_spacing">6</property>
                             <property name="column_spacing">6</property>
                             <child>
-                              <object class="GtkLabel" id="label14">
+                              <object class="GtkLabel" id="panic-type-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="xalign">0</property>
                                 <property name="label" translatable="yes">Address _Type:</property>
                                 <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">panic-type</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">0</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1752,23 +1786,20 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">0</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkLabel" id="label16">
+                              <object class="GtkLabel" id="panic-iobase-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="xalign">0</property>
                                 <property name="label" translatable="yes">_IO Base:</property>
                                 <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">panic-iobase</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">1</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -1780,13 +1811,11 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">1</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                           </object>
                           <packing>
-                            <property name="position">15</property>
+                            <property name="position">16</property>
                           </packing>
                         </child>
                         <child type="tab">
@@ -1796,7 +1825,7 @@
                             <property name="label" translatable="yes">panic</property>
                           </object>
                           <packing>
-                            <property name="position">15</property>
+                            <property name="position">16</property>
                             <property name="tab_fill">False</property>
                           </packing>
                         </child>

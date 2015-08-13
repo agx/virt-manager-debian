@@ -6,7 +6,7 @@
    <numatune>
      <memory mode="interleave" placement="auto"/>
    </numatune>
-@@ -53,6 +53,7 @@
+@@
      <feature policy="require" name="ds_cpl"/>
      <feature policy="require" name="xtpr"/>
      <feature policy="require" name="acpi"/>
@@ -15,5 +15,5 @@
    <clock offset="utc">
      <timer name="rtc" tickpolicy="catchup"/>
 
-Domain 'test-many-devices' defined successfully.
+Domain 'test-for-virtxml' defined successfully.
 Changes will take effect after the next domain shutdown.

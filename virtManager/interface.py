@@ -20,77 +20,68 @@
 
 from virtinst import Interface
 
-from virtManager.libvirtobject import vmmLibvirtObject
+from .libvirtobject import vmmLibvirtObject
 
 
 class vmmInterface(vmmLibvirtObject):
     def __init__(self, conn, backend, key):
         vmmLibvirtObject.__init__(self, conn, backend, key, Interface)
 
-        self._name = key
-        self._active = True
 
-        (self._inactive_xml_flags,
-         self._active_xml_flags) = self.conn.get_interface_flags(self._backend)
-
-        self._support_isactive = None
-
-        self.tick()
-        self.refresh_xml()
+    ##########################
+    # Required class methods #
+    ##########################
 
     # Routines from vmmLibvirtObject
+    def _conn_tick_poll_param(self):
+        return "polliface"
+    def class_name(self):
+        return "interface"
+
     def _XMLDesc(self, flags):
         return self._backend.XMLDesc(flags)
     def _define(self, xml):
         return self.conn.define_interface(xml)
+    def _check_supports_isactive(self):
+        return self.conn.check_support(
+            self.conn.SUPPORT_INTERFACE_ISACTIVE, self._backend)
+    def _get_backend_status(self):
+        return self._backend_get_active()
 
-    def set_active(self, state):
-        if state == self._active:
-            return
+    def tick(self, stats_update=True):
+        ignore = stats_update
+        self._refresh_status()
 
-        self.idle_emit(state and "started" or "stopped")
-        self._active = state
-        self.refresh_xml()
+    def _init_libvirt_state(self):
+        (self._inactive_xml_flags,
+         self._active_xml_flags) = self.conn.get_interface_flags(self._backend)
 
-    def _backend_get_active(self):
-        ret = True
-        if self._support_isactive is None:
-            self._support_isactive = self.conn.check_support(
-                self.conn.SUPPORT_INTERFACE_ISACTIVE, self._backend)
+        self.tick()
 
-        if not self._support_isactive:
-            return True
-        return bool(self._backend.isActive())
 
-    def tick(self):
-        self.set_active(self._backend_get_active())
+    #####################
+    # Object operations #
+    #####################
 
-    def is_active(self):
-        return self._active
+    @vmmLibvirtObject.lifecycle_action
+    def start(self):
+        self._backend.create(0)
 
-    def get_name(self):
-        return self._name
+    @vmmLibvirtObject.lifecycle_action
+    def stop(self):
+        self._backend.destroy(0)
+
+    @vmmLibvirtObject.lifecycle_action
+    def delete(self, force=True):
+        self._backend.undefine()
+
+
+    ################
+    # XML routines #
+    ################
 
     def get_mac(self):
         return self.get_xmlobj().macaddr
-
-    def _kick_conn(self):
-        self.conn.schedule_priority_tick(polliface=True)
-
-    def start(self):
-        self._backend.create(0)
-        self.idle_add(self.refresh_xml)
-        self._kick_conn()
-
-    def stop(self):
-        self._backend.destroy(0)
-        self.idle_add(self.refresh_xml)
-        self._kick_conn()
-
-    def delete(self, force=True):
-        ignore = force
-        self._backend.undefine()
-        self._kick_conn()
 
     def is_bridge(self):
         typ = self.get_type()
@@ -110,13 +101,12 @@ class vmmInterface(vmmLibvirtObject):
             return "Interface"
 
     def get_startmode(self):
-        return self.get_xmlobj().start_mode or "none"
+        return self.get_xmlobj(inactive=True).start_mode or "none"
 
     def set_startmode(self, newmode):
-        def change(obj):
-            obj.start_mode = newmode
-        self._redefine(change)
-        self.redefine_cached()
+        xmlobj = self._make_xmlobj_to_define()
+        xmlobj.start_mode = newmode
+        self._redefine_xmlobj(xmlobj)
 
     def get_slaves(self):
         return [[obj.name, obj.type or "Unknown"] for obj in
@@ -162,5 +152,5 @@ class vmmInterface(vmmLibvirtObject):
             return []
         return [proto.dhcp, proto.autoconf, ips]
 
-    def get_protocol_xml(self):
-        return self.get_xmlobj().protocols[:]
+    def get_protocol_xml(self, inactive=False):
+        return self.get_xmlobj(inactive=inactive).protocols[:]

@@ -25,7 +25,6 @@ import re
 import stat
 
 import libvirt
-import libxml2
 
 
 _host_blktap_capable = None
@@ -143,6 +142,9 @@ def validate_name(name_type, val):
     # Rather than try and match libvirt's regex, just forbid things we
     # know don't work
     forbid = [" "]
+    if not val:
+        raise ValueError(
+            _("A name must be specified for the %s") % name_type)
     for c in forbid:
         if c not in val:
             continue
@@ -217,6 +219,9 @@ def generate_name(base, collision_cb, suffix="", lib_collision=True,
 
 
 def default_bridge(conn):
+    if "VIRTINST_TEST_SUITE" in os.environ:
+        return "eth0"
+
     if conn.is_remote():
         return None
 
@@ -226,7 +231,7 @@ def default_bridge(conn):
 
     # New style peth0 == phys dev, eth0 == bridge, eth0 == default route
     if os.path.exists("/sys/class/net/%s/bridge" % dev):
-        return ["bridge", dev]
+        return dev
 
     # Old style, peth0 == phys dev, eth0 == netloop, xenbr0 == bridge,
     # vif0.0 == netloop enslaved, eth0 == default route
@@ -238,44 +243,8 @@ def default_bridge(conn):
     if (defn >= 0 and
         os.path.exists("/sys/class/net/peth%d/brport" % defn) and
         os.path.exists("/sys/class/net/xenbr%d/bridge" % defn)):
-        return ["bridge", "xenbr%d" % defn]
+        return "xenbr%d"
     return None
-
-
-def parse_node_helper(xml, root_name, callback, exec_class=ValueError):
-    """
-    Parse the passed XML, expecting root as root_name, and pass the
-    root node to callback
-    """
-    class ErrorHandler(object):
-        def __init__(self):
-            self.msg = ""
-        def handler(self, ignore, s):
-            self.msg += s
-    error = ErrorHandler()
-    libxml2.registerErrorHandler(error.handler, None)
-
-    try:
-        try:
-            doc = libxml2.readMemory(xml, len(xml),
-                                     None, None,
-                                     libxml2.XML_PARSE_NOBLANKS)
-        except (libxml2.parserError, libxml2.treeError), e:
-            raise exec_class("%s\n%s" % (e, error.msg))
-    finally:
-        libxml2.registerErrorHandler(None, None)
-
-    ret = None
-    try:
-        root = doc.getRootElement()
-        if root.name != root_name:
-            raise ValueError("Root element is not '%s'" % root_name)
-
-        ret = callback(root)
-    finally:
-        doc.freeDoc()
-
-    return ret
 
 
 def generate_uuid(conn):
@@ -311,11 +280,11 @@ def default_route():
 
 def default_network(conn):
     ret = default_bridge(conn)
-    if not ret:
-        # FIXME: Check that this exists
-        ret = ["network", "default"]
+    if ret:
+        return ["bridge", ret]
 
-    return ret
+    # FIXME: Check that this exists
+    return ["network", "default"]
 
 
 def is_blktap_capable(conn):
@@ -327,11 +296,12 @@ def is_blktap_capable(conn):
     if _host_blktap_capable is not None:
         return _host_blktap_capable
 
-    lines = file("/proc/modules").readlines()
-    for line in lines:
-        if line.startswith("blktap ") or line.startswith("xenblktap "):
-            _host_blktap_capable = True
-            break
+    if "VIRTINST_TEST_SUITE" not in os.environ:
+        lines = file("/proc/modules").readlines()
+        for line in lines:
+            if line.startswith("blktap ") or line.startswith("xenblktap "):
+                _host_blktap_capable = True
+                break
 
     if not _host_blktap_capable:
         _host_blktap_capable = False
@@ -363,41 +333,6 @@ def xml_escape(xml):
     xml = xml.replace("<", "&lt;")
     xml = xml.replace(">", "&gt;")
     return xml
-
-
-def uri_split(uri):
-    """
-    Parse a libvirt hypervisor uri into it's individual parts
-    @returns: tuple of the form (scheme (ex. 'qemu', 'xen+ssh'), username,
-                                 hostname, path (ex. '/system'), query,
-                                 fragment)
-    """
-    def splitnetloc(url, start=0):
-        for c in '/?#':  # the order is important!
-            delim = url.find(c, start)
-            if delim >= 0:
-                break
-        else:
-            delim = len(url)
-        return url[start:delim], url[delim:]
-
-    username = netloc = query = fragment = ''
-    i = uri.find(":")
-    if i > 0:
-        scheme, uri = uri[:i].lower(), uri[i + 1:]
-        if uri[:2] == '//':
-            netloc, uri = splitnetloc(uri, 2)
-            offset = netloc.find("@")
-            if offset > 0:
-                username = netloc[0:offset]
-                netloc = netloc[offset + 1:]
-        if '#' in uri:
-            uri, fragment = uri.split('#', 1)
-        if '?' in uri:
-            uri, query = uri.split('?', 1)
-    else:
-        scheme = uri.lower()
-    return scheme, username, netloc, uri, query, fragment
 
 
 def is_error_nosupport(err):
@@ -434,20 +369,6 @@ def local_libvirt_version():
     return getattr(libvirt, key)
 
 
-def uuidstr(rawuuid):
-    hx = ['0', '1', '2', '3', '4', '5', '6', '7',
-          '8', '9', 'a', 'b', 'c', 'd', 'e', 'f']
-    uuid = []
-    for i in range(16):
-        uuid.append(hx[((ord(rawuuid[i]) >> 4) & 0xf)])
-        uuid.append(hx[(ord(rawuuid[i]) & 0xf)])
-        if i == 3 or i == 5 or i == 7 or i == 9:
-            uuid.append('-')
-    return "".join(uuid)
-
-
-
-
 def get_system_scratchdir(hvtype):
     if "VIRTINST_TEST_SUITE" in os.environ:
         return os.getcwd()
@@ -478,24 +399,24 @@ def make_scratchdir(conn, hvtype):
 def pretty_mem(val):
     val = int(val)
     if val > (10 * 1024 * 1024):
-        return "%2.2f GB" % (val / (1024.0 * 1024.0))
+        return "%2.2f GiB" % (val / (1024.0 * 1024.0))
     else:
-        return "%2.0f MB" % (val / 1024.0)
+        return "%2.0f MiB" % (val / 1024.0)
 
 
 def pretty_bytes(val):
     val = int(val)
     if val > (1024 * 1024 * 1024):
-        return "%2.2f GB" % (val / (1024.0 * 1024.0 * 1024.0))
+        return "%2.2f GiB" % (val / (1024.0 * 1024.0 * 1024.0))
     else:
-        return "%2.2f MB" % (val / (1024.0 * 1024.0))
+        return "%2.2f MiB" % (val / (1024.0 * 1024.0))
 
 
 def get_cache_dir():
     ret = ""
     try:
         # We don't want to depend on glib for virt-install
-        from gi.repository import GLib  # pylint: disable=E0611
+        from gi.repository import GLib
         ret = GLib.get_user_cache_dir()
     except ImportError:
         pass
@@ -531,3 +452,13 @@ def convert_units(value, old_unit, new_unit):
     power = get_power(new_unit)
 
     return in_bytes / pow(factor, power)
+
+
+def register_libvirt_error_handler():
+    """
+    Ignore libvirt error reporting, we just use exceptions
+    """
+    def libvirt_callback(userdata, err):
+        ignore = userdata
+        ignore = err
+    libvirt.registerErrorHandler(f=libvirt_callback, ctx=None)

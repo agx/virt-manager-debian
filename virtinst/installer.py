@@ -22,8 +22,8 @@
 import os
 import logging
 
-import virtinst
-from virtinst import OSXML
+from .devicedisk import VirtualDisk
+from .osxml import OSXML
 
 
 class Installer(object):
@@ -58,15 +58,13 @@ class Installer(object):
         self._location = None
 
         self.cdrom = False
+        self.livecd = False
         self.extraargs = None
 
         self.initrd_injections = []
 
         self._install_kernel = None
         self._install_initrd = None
-
-        # Devices created/added during the prepare() stage
-        self.install_devices = []
 
         self._tmpfiles = []
         self._tmpvols = []
@@ -101,17 +99,7 @@ class Installer(object):
                 break
         return bootorder
 
-    def _make_cdrom_dev(self, path, transient=False):
-        dev = virtinst.VirtualDisk(self.conn)
-        dev.path = path
-        dev.device = dev.DEVICE_CDROM
-        dev.read_only = True
-        dev.transient = transient
-
-        dev.validate()
-        return dev
-
-    def alter_bootconfig(self, guest, isinstall, bootconfig):
+    def alter_bootconfig(self, guest, isinstall):
         """
         Generate the portion of the guest xml that determines boot devices
         and parameters. (typically the <os></os> block)
@@ -127,20 +115,20 @@ class Installer(object):
 
         bootorder = self._build_boot_order(isinstall, guest)
 
-        if not bootconfig.bootorder:
+        if not guest.os.bootorder:
             # Per device <boot order> is not compatible with os/boot.
             if not any(d.boot.order for d in guest.get_all_devices()):
-                bootconfig.bootorder = bootorder
+                guest.os.bootorder = bootorder
 
         if not isinstall:
             return
 
         if self._install_kernel:
-            bootconfig.kernel = self._install_kernel
+            guest.os.kernel = self._install_kernel
         if self._install_initrd:
-            bootconfig.initrd = self._install_initrd
+            guest.os.initrd = self._install_initrd
         if self.extraargs:
-            bootconfig.kernel_args = self.extraargs
+            guest.os.kernel_args = self.extraargs
 
 
     ##########################
@@ -153,10 +141,9 @@ class Installer(object):
     def _validate_location(self, val):
         return val
 
-    def _prepare(self, guest, meter, scratchdir):
+    def _prepare(self, guest, meter):
         ignore = guest
         ignore = meter
-        ignore = scratchdir
 
 
     ##############
@@ -179,6 +166,19 @@ class Installer(object):
         """
         return self._has_install_phase
 
+    def needs_cdrom(self):
+        """
+        If this installer uses cdrom media, so it needs a cdrom device
+        attached to the VM
+        """
+        return False
+
+    def cdrom_path(self):
+        """
+        Return the cdrom path needed for needs_cdrom() installs
+        """
+        return None
+
     def cleanup(self):
         """
         Remove any temporary files retrieved during installation
@@ -193,12 +193,11 @@ class Installer(object):
 
         self._tmpvols = []
         self._tmpfiles = []
-        self.install_devices = []
 
-    def prepare(self, guest, meter, scratchdir):
+    def prepare(self, guest, meter):
         self.cleanup()
         try:
-            self._prepare(guest, meter, scratchdir)
+            self._prepare(guest, meter)
         except:
             self.cleanup()
             raise
@@ -215,12 +214,13 @@ class Installer(object):
         """
         Attempt to detect the distro for the Installer's 'location'. If
         an error is encountered in the detection process (or if detection
-        is not relevant for the Installer type), (None, None) is returned
+        is not relevant for the Installer type), None is returned.
 
-        @returns: (distro type, distro variant) tuple
+        @returns: distro variant string, or None
         """
         ignore = guest
-        return (None, None)
+        logging.debug("distro detection not available for this installer.")
+        return None
 
 
 class ContainerInstaller(Installer):
@@ -244,21 +244,6 @@ class PXEInstaller(Installer):
         return bootdev
 
 
-class LiveCDInstaller(Installer):
-    _has_install_phase = False
-    cdrom = True
-
-    def _validate_location(self, val):
-        return self._make_cdrom_dev(val).path
-    def _prepare(self, guest, meter, scratchdir):
-        ignore = guest
-        ignore = meter
-        ignore = scratchdir
-        self.install_devices.append(self._make_cdrom_dev(self.location))
-    def _get_bootdev(self, isinstall, guest):
-        return OSXML.BOOT_DEVICE_CDROM
-
-
 class ImportInstaller(Installer):
     _has_install_phase = False
 
@@ -270,11 +255,11 @@ class ImportInstaller(Installer):
         return self._disk_to_bootdev(disks[0])
 
     def _disk_to_bootdev(self, disk):
-        if disk.device == virtinst.VirtualDisk.DEVICE_DISK:
+        if disk.device == VirtualDisk.DEVICE_DISK:
             return OSXML.BOOT_DEVICE_HARDDISK
-        elif disk.device == virtinst.VirtualDisk.DEVICE_CDROM:
+        elif disk.device == VirtualDisk.DEVICE_CDROM:
             return OSXML.BOOT_DEVICE_CDROM
-        elif disk.device == virtinst.VirtualDisk.DEVICE_FLOPPY:
+        elif disk.device == VirtualDisk.DEVICE_FLOPPY:
             return OSXML.BOOT_DEVICE_FLOPPY
         else:
             return OSXML.BOOT_DEVICE_HARDDISK

@@ -19,25 +19,24 @@
 #
 
 import logging
-import re
 
 import ipaddr
 
-# pylint: disable=E0611
 from gi.repository import Gtk
 from gi.repository import Gdk
-# pylint: enable=E0611
 
 from virtinst import Network
 
-from virtManager import uiutil
-from virtManager.asyncjob import vmmAsyncJob
-from virtManager.baseclass import vmmGObjectUI
+from . import uiutil
+from .asyncjob import vmmAsyncJob
+from .baseclass import vmmGObjectUI
 
 (PAGE_NAME,
 PAGE_IPV4,
 PAGE_IPV6,
 PAGE_MISC) = range(4)
+
+PAGE_MAX = PAGE_MISC
 
 _green = Gdk.Color.parse("#c0ffc0")[1]
 _red = Gdk.Color.parse("#ffc0c0")[1]
@@ -124,13 +123,13 @@ class vmmCreateNetwork(vmmGObjectUI):
         fw_list = self.widget("net-forward")
         fw_model = Gtk.ListStore(str, str)
         fw_list.set_model(fw_model)
-        uiutil.set_combo_text_column(fw_list, 0)
+        uiutil.init_combo_text_column(fw_list, 0)
 
         # [ label, mode ]
         mode_list = self.widget("net-forward-mode")
         mode_model = Gtk.ListStore(str, str)
         mode_list.set_model(mode_model)
-        uiutil.set_combo_text_column(mode_list, 0)
+        uiutil.init_combo_text_column(mode_list, 0)
 
         mode_model.append([_("NAT"), "nat"])
         mode_model.append([_("Routed"), "route"])
@@ -171,10 +170,16 @@ class vmmCreateNetwork(vmmGObjectUI):
         fw_model = self.widget("net-forward").get_model()
         fw_model.clear()
         fw_model.append([_("Any physical device"), None])
-        for path in self.conn.list_net_device_paths():
-            net = self.conn.get_net_device(path)
-            fw_model.append([_("Physical device %s") % (net.get_name()),
-                             net.get_name()])
+
+        devnames = []
+        for nodedev in self.conn.filter_nodedevs("net"):
+            devnames.append(nodedev.xmlobj.interface)
+        for iface in self.conn.list_interfaces():
+            if iface.get_name() not in devnames:
+                devnames.append(iface.get_name())
+
+        for name in devnames:
+            fw_model.append([_("Physical device %s") % name, name])
 
         self.widget("net-forward").set_active(0)
         self.widget("net-forward-mode").set_active(0)
@@ -221,8 +226,9 @@ class vmmCreateNetwork(vmmGObjectUI):
         if self.widget("net-forward-none").get_active():
             return [None, None]
 
-        name = uiutil.get_list_selection(self.widget("net-forward"), 1)
-        mode = uiutil.get_list_selection(self.widget("net-forward-mode"), 1)
+        name = uiutil.get_list_selection(self.widget("net-forward"), column=1)
+        mode = uiutil.get_list_selection(
+            self.widget("net-forward-mode"), column=1)
         return [name, mode]
 
     def get_config_routev4_network(self):
@@ -268,9 +274,13 @@ class vmmCreateNetwork(vmmGObjectUI):
             return self.err.val_err(_("Invalid Network Address"),
                     _("The network must be an IPv4 address"))
 
-        if ip.numhosts < 16:
+        if ip.numhosts < 8:
             return self.err.val_err(_("Invalid Network Address"),
-                    _("The network must address at least 16 addresses."))
+                    _("The network must address at least 8 addresses."))
+
+        if ip.prefixlen < 15:
+            return self.err.val_err(_("Invalid Network Address"),
+                    _("The network prefix must be >= 15"))
 
         if not ip.is_private:
             res = self.err.yes_no(_("Check Network Address"),
@@ -415,16 +425,6 @@ class vmmCreateNetwork(vmmGObjectUI):
         return True
 
     def validate_miscellaneous(self):
-        domain_name = self.widget("net-domain-name").get_text()
-        if len(domain_name) > 0:
-            if len(domain_name) > 16:
-                return self.err.val_err(_("Invalid Domain Name"),
-                            _("Domain name must be less than 17 characters"))
-            if re.match("^[a-zA-Z0-9_]*$", domain_name) is None:
-                return self.err.val_err(_("Invalid Domain Name"),
-                            _("Domain name may contain alphanumeric and '_' "
-                              "characters only"))
-
         return True
 
     def validate(self, page_num):
@@ -562,7 +562,7 @@ class vmmCreateNetwork(vmmGObjectUI):
             src.modify_bg(Gtk.StateType.NORMAL, _red)
             return
 
-        valid_ip = (ip.numhosts >= 16 and ip.is_private)
+        valid_ip = (ip.numhosts >= 8 and ip.is_private)
         gateway = (ip.prefixlen != 32 and str(ip.network + 1) or "")
         info = (ip.is_private and _("Private") or _("Other/Public"))
         start = int(ip.numhosts / 2)
@@ -746,10 +746,13 @@ class vmmCreateNetwork(vmmGObjectUI):
         net.install()
 
     def finish(self, ignore):
+        if not self.validate(PAGE_MAX):
+            return
+
         try:
             net = self._build_xmlobj()
         except Exception, e:
-            self.err.show_erro(_("Error generating network xml: %s" % str(e)))
+            self.err.show_err(_("Error generating network xml: %s") % str(e))
             return
 
         self.topwin.set_sensitive(False)

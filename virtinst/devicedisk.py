@@ -28,10 +28,11 @@ import re
 
 import urlgrabber.progress as progress
 
-from virtinst import diskbackend
-from virtinst import util
-from virtinst import VirtualDevice
-from virtinst.xmlbuilder import XMLProperty
+from . import diskbackend
+from . import util
+from .device import VirtualDevice
+from .uri import URISplit
+from .xmlbuilder import XMLProperty
 
 
 def _qemu_sanitize_drvtype(phystype, fmt, manual_format=False):
@@ -97,51 +98,6 @@ def _is_dir_searchable(uid, username, path):
     return bool(re.search("user:%s:..x" % username, out))
 
 
-def _distill_storage(conn, do_create, nomanaged,
-                     path, vol_object, vol_install,
-                     clone_path, backing_store,
-                     *args):
-    """
-    Validates and updates params when the backing storage is changed
-    """
-    pool = None
-    path_is_pool = False
-    storage_capable = conn.check_support(conn.SUPPORT_CONN_STORAGE)
-
-    if vol_object:
-        pass
-    elif not storage_capable:
-        pass
-    elif path and not nomanaged:
-        path = os.path.abspath(path)
-        (vol_object, pool, path_is_pool) = diskbackend.manage_path(conn, path)
-
-
-    creator = None
-    backend = diskbackend.StorageBackend(conn, path, vol_object,
-                                         path_is_pool and pool or None)
-    if not do_create:
-        return backend, None
-
-    if backend.exists(auto_check=False) and path is not None:
-        if not clone_path:
-            return backend, None
-
-    if path and not (vol_install or pool or clone_path):
-        raise RuntimeError(_("Don't know how to create storage for "
-            "path '%s'. Use libvirt APIs to manage the parent directory "
-            "as a pool first.") % path)
-
-    if path or vol_install or pool or clone_path:
-        creator = diskbackend.StorageCreator(conn, path, pool,
-                                             vol_install, clone_path,
-                                             backing_store, *args)
-    return backend, creator
-
-
-_TARGET_PROPS = ["file", "dev", "dir"]
-
-
 class VirtualDisk(VirtualDevice):
     virtual_device_type = VirtualDevice.VIRTUAL_DEV_DISK
 
@@ -158,8 +114,9 @@ class VirtualDisk(VirtualDevice):
     DRIVER_TAP_QCOW = "qcow"
     DRIVER_TAP_VMDK = "vmdk"
     DRIVER_TAP_VDISK = "vdisk"
+    DRIVER_TAP_QED = "qed"
     driver_types = [DRIVER_TAP_RAW, DRIVER_TAP_QCOW,
-        DRIVER_TAP_VMDK, DRIVER_TAP_VDISK]
+        DRIVER_TAP_VMDK, DRIVER_TAP_VDISK, DRIVER_TAP_QED]
 
     CACHE_MODE_NONE = "none"
     CACHE_MODE_WRITETHROUGH = "writethrough"
@@ -168,6 +125,10 @@ class VirtualDisk(VirtualDevice):
     CACHE_MODE_UNSAFE = "unsafe"
     cache_types = [CACHE_MODE_NONE, CACHE_MODE_WRITETHROUGH,
         CACHE_MODE_WRITEBACK, CACHE_MODE_DIRECTSYNC, CACHE_MODE_UNSAFE]
+
+    DISCARD_MODE_IGNORE = "ignore"
+    DISCARD_MODE_UNMAP = "unmap"
+    discard_types = [DISCARD_MODE_IGNORE, DISCARD_MODE_UNMAP]
 
     DEVICE_DISK = "disk"
     DEVICE_LUN = "lun"
@@ -178,7 +139,9 @@ class VirtualDisk(VirtualDevice):
     TYPE_FILE = "file"
     TYPE_BLOCK = "block"
     TYPE_DIR = "dir"
-    types = [TYPE_FILE, TYPE_BLOCK, TYPE_DIR]
+    TYPE_VOLUME = "volume"
+    TYPE_NETWORK = "network"
+    types = [TYPE_FILE, TYPE_BLOCK, TYPE_DIR, TYPE_NETWORK]
 
     IO_MODE_NATIVE = "native"
     IO_MODE_THREADS = "threads"
@@ -199,33 +162,38 @@ class VirtualDisk(VirtualDevice):
         return "file"
 
     @staticmethod
-    def disk_type_to_target_prop(disk_type):
-        """
-        Convert a value of VirtualDisk.type to it's associated XML
-        target property name
-        """
-        if disk_type == VirtualDisk.TYPE_FILE:
-            return "file"
-        elif disk_type == VirtualDisk.TYPE_BLOCK:
-            return "dev"
-        elif disk_type == VirtualDisk.TYPE_DIR:
-            return "dir"
-        return "file"
+    def pretty_disk_bus(bus):
+        if bus in ["ide", "sata", "scsi", "usb", "sd"]:
+            return bus.upper()
+        if bus in ["xen"]:
+            return bus.capitalize()
+        if bus == "virtio":
+            return "VirtIO"
+        if bus == "spapr-vscsi":
+            return "vSCSI"
+        return bus
 
     @staticmethod
-    def path_exists(conn, path):
+    def path_definitely_exists(conn, path):
         """
-        Check if path exists. If we can't determine, return False
+        Check if path exists.
+
+        return True if we are certain, False otherwise. Path may in fact
+        exist if we return False, but we can't exhaustively know in all
+        cases.
+
+        (In fact if cached storage volume data is out of date, the volume
+         may have disappeared behind out back, but that shouldn't have bad
+         effects in practice.)
         """
         if path is None:
             return False
 
         try:
-            (vol, pool, path_is_pool) = diskbackend.check_if_path_managed(
-                conn, path)
+            (vol, pool) = diskbackend.check_if_path_managed(conn, path)
             ignore = pool
 
-            if vol or path_is_pool:
+            if vol:
                 return True
 
             if not conn.is_remote():
@@ -249,6 +217,8 @@ class VirtualDisk(VirtualDevice):
         if conn.is_remote():
             return []
         if username == "root":
+            return []
+        if diskbackend.path_is_url(path):
             return []
 
         try:
@@ -279,15 +249,18 @@ class VirtualDisk(VirtualDevice):
         if conn.is_remote() or not conn.is_qemu_system():
             return None, []
 
-        from virtcli import cliconfig
-        user = cliconfig.default_qemu_user
+        from virtcli import CLIConfig
+        user = CLIConfig.default_qemu_user
         try:
-            for i in conn.caps.host.secmodels:
-                if i.model != "dac":
+            for secmodel in conn.caps.host.secmodels:
+                if secmodel.model != "dac":
                     continue
 
-                label = (i.baselabels.get("kvm") or
-                         i.baselabels.get("qemu"))
+                label = None
+                for baselabel in secmodel.baselabels:
+                    if baselabel.type in ["qemu", "kvm"]:
+                        label = baselabel.content
+                        break
                 if not label:
                     continue
 
@@ -429,22 +402,50 @@ class VirtualDisk(VirtualDevice):
             return (True, 0)
 
     @staticmethod
-    def lookup_vol_object(conn, name_tuple):
+    def build_vol_install(conn, volname, poolobj, size, sparse,
+                          fmt=None, backing_store=None):
         """
-        Return a volume instance from a pool name, vol name tuple
+        Helper for building a StorageVolume instance to pass to VirtualDisk
+        for eventual storage creation.
+
+        :param volname: name of the volume to be created
+        :param size: size in bytes
         """
-        if not conn.check_support(conn.SUPPORT_CONN_STORAGE):
-            raise ValueError(_("Connection does not support storage lookup."))
+        from .storage import StorageVolume
 
-        try:
-            pool = conn.storagePoolLookupByName(name_tuple[0])
-            return pool.storageVolLookupByName(name_tuple[1])
-        except Exception, e:
-            raise ValueError(_("Couldn't lookup volume object: %s" % str(e)))
+        if size is None:
+            raise ValueError(_("Size must be specified for non "
+                               "existent volume '%s'" % volname))
 
-    @staticmethod
-    def build_vol_install(*args, **kwargs):
-        return diskbackend.build_vol_install(*args, **kwargs)
+        # This catches --disk /dev/idontexist,size=1 if /dev is unmanaged
+        if not poolobj:
+            raise RuntimeError(_("Don't know how to create storage for "
+                "path '%s'. Use libvirt APIs to manage the parent directory "
+                "as a pool first.") % volname)
+
+        logging.debug("Creating volume '%s' on pool '%s'",
+                      volname, poolobj.name())
+
+        cap = (size * 1024 * 1024 * 1024)
+        if sparse:
+            alloc = 0
+        else:
+            alloc = cap
+
+        volinst = StorageVolume(conn)
+        volinst.pool = poolobj
+        volinst.name = volname
+        volinst.capacity = cap
+        volinst.allocation = alloc
+        volinst.backing_store = backing_store
+
+        if fmt:
+            if not volinst.supports_property("format"):
+                raise ValueError(_("Format attribute not supported for this "
+                                   "volume type"))
+            volinst.format = fmt
+
+        return volinst
 
     @staticmethod
     def num_to_target(num):
@@ -494,18 +495,18 @@ class VirtualDisk(VirtualDevice):
     _XML_PROP_ORDER = [
         "type", "device",
         "driver_name", "driver_type",
-        "driver_cache", "driver_io", "error_policy",
-        "_xmlpath", "target", "bus",
+        "driver_cache", "driver_discard", "driver_io", "error_policy",
+        "_source_file", "_source_dev", "_source_dir",
+        "source_volume", "source_pool", "source_protocol", "source_name",
+        "source_host_name", "source_host_port",
+        "source_host_transport", "source_host_socket",
+        "target", "bus",
     ]
 
     def __init__(self, *args, **kwargs):
         VirtualDevice.__init__(self, *args, **kwargs)
 
-        self.__storage_backend = None
-        self._storage_creator = None
-
-        self.nomanaged = False
-        self.transient = False
+        self._storage_backend = None
 
 
     #############################
@@ -513,44 +514,58 @@ class VirtualDisk(VirtualDevice):
     #############################
 
     def _get_path(self):
-        if self._storage_creator:
-            return self._storage_creator.path
-        return self._storage_backend.path
-    def _set_path(self, val):
-        if self._storage_creator:
+        if not self._storage_backend:
+            xmlpath = self._get_xmlpath()
+            if xmlpath:
+                return xmlpath
+
+            self._set_default_storage_backend()
+        return self._storage_backend.get_path()
+    def _set_path(self, newpath):
+        if (self._storage_backend and
+            self._storage_backend.will_create_storage()):
             raise ValueError("Can't change disk path if storage creation info "
                              "has been set.")
-        self._change_backend(val, None)
-        self._xmlpath = self.path
+
+        # User explicitly changed 'path', so try to lookup its storage
+        # object since we may need it
+        (vol_object, parent_pool) = diskbackend.manage_path(self.conn, newpath)
+
+        self._change_backend(newpath, vol_object, parent_pool)
+        self._set_xmlpath(self.path)
     path = property(_get_path, _set_path)
 
+    def set_vol_object(self, vol_object, parent_pool):
+        logging.debug("disk.set_vol_object: volxml=\n%s",
+            vol_object.XMLDesc(0))
+        logging.debug("disk.set_vol_object: poolxml=\n%s",
+            parent_pool.XMLDesc(0))
+        self._change_backend(None, vol_object, parent_pool)
+        self._set_xmlpath(self.path)
 
-    def get_sparse(self):
-        if self._storage_creator:
-            return self._storage_creator.get_sparse()
-        return None
+    def set_vol_install(self, vol_install):
+        logging.debug("disk.set_vol_install: name=%s poolxml=\n%s",
+            vol_install.name, vol_install.pool.XMLDesc(0))
+        self._storage_backend = diskbackend.ManagedStorageCreator(
+            self.conn, vol_install)
+        self._set_xmlpath(self.path)
 
     def get_vol_object(self):
         return self._storage_backend.get_vol_object()
     def get_vol_install(self):
-        if not self._storage_creator:
-            return None
-        return self._storage_creator.get_vol_install()
+        return self._storage_backend.get_vol_install()
+    def get_parent_pool(self):
+        if self.get_vol_install():
+            return self.get_vol_install().pool
+        return self._storage_backend.get_parent_pool()
 
     def get_size(self):
-        if self._storage_creator:
-            return self._storage_creator.get_size()
         return self._storage_backend.get_size()
 
 
     #############################
     # Internal defaults helpers #
     #############################
-
-    def _get_default_type(self):
-        if self._storage_creator:
-            return self._storage_creator.get_dev_type()
-        return self._storage_backend.get_dev_type()
 
     def _get_default_driver_name(self):
         if not self.path:
@@ -572,33 +587,165 @@ class VirtualDisk(VirtualDevice):
         if self.driver_name != self.DRIVER_QEMU:
             return None
 
-        if self._storage_creator:
-            drvtype = self._storage_creator.get_driver_type()
-        else:
-            drvtype = self._storage_backend.get_driver_type()
+        drvtype = self._storage_backend.get_driver_type()
         return _qemu_sanitize_drvtype(self.type, drvtype)
+
+
+    #############################
+    # XML source media handling #
+    #############################
+
+    _source_file = XMLProperty("./source/@file")
+    _source_dev = XMLProperty("./source/@dev")
+    _source_dir = XMLProperty("./source/@dir")
+
+    source_pool = XMLProperty("./source/@pool")
+    source_volume = XMLProperty("./source/@volume")
+
+    source_name = XMLProperty("./source/@name")
+    source_protocol = XMLProperty("./source/@protocol")
+    # Technically multiple host lines can be listed
+    source_host_name = XMLProperty("./source/host/@name")
+    source_host_port = XMLProperty("./source/host/@port", is_int=True)
+    source_host_transport = XMLProperty("./source/host/@transport")
+    source_host_socket = XMLProperty("./source/host/@socket")
+
+    def _set_source_network_from_url(self, uri):
+        uriinfo = URISplit(uri)
+        if uriinfo.scheme:
+            self.source_protocol = uriinfo.scheme
+        if uriinfo.transport:
+            self.source_host_transport = uriinfo.transport
+        if uriinfo.hostname:
+            self.source_host_name = uriinfo.hostname
+        if uriinfo.port:
+            self.source_host_port = uriinfo.port
+        if uriinfo.path:
+            if self.source_host_transport:
+                self.source_host_socket = uriinfo.path
+            else:
+                self.source_name = uriinfo.path
+                if self.source_name.startswith("/"):
+                    self.source_name = self.source_name[1:]
+
+    def _set_source_network_from_storage(self, volxml, poolxml):
+        self.source_protocol = poolxml.type
+        if poolxml.hosts:
+            self.source_host_name = poolxml.hosts[0].name
+            self.source_host_port = poolxml.hosts[0].port
+
+        path = ""
+        if poolxml.source_name:
+            path += poolxml.source_name
+            if poolxml.source_path:
+                path += poolxml.source_path
+            if not path.endswith('/'):
+                path += "/"
+        path += volxml.name
+        self.source_name = path
+        self.type = "network"
+
+    def _set_network_source_from_backend(self):
+        if (self._storage_backend.get_vol_object() or
+            self._storage_backend.get_vol_install()):
+            volxml = self._storage_backend.get_vol_xml()
+            poolxml = self._storage_backend.get_parent_pool_xml()
+            self._set_source_network_from_storage(volxml, poolxml)
+        elif self._storage_backend.get_path():
+            self._set_source_network_from_url(self._storage_backend.get_path())
+
+    def _build_url_from_network_source(self):
+        ret = self.source_protocol
+        if self.source_host_transport:
+            ret += "+%s" % self.source_host_transport
+        ret += "://"
+        if self.source_host_name:
+            ret += self.source_host_name
+            if self.source_host_port:
+                ret += ":" + str(self.source_host_port)
+        if self.source_name:
+            if not self.source_name.startswith("/"):
+                ret += "/"
+            ret += self.source_name
+        elif self.source_host_socket:
+            if not self.source_host_socket.startswith("/"):
+                ret += "/"
+            ret += self.source_host_socket
+        return ret
+
+    def _get_default_type(self):
+        if self.source_pool or self.source_volume:
+            return VirtualDisk.TYPE_VOLUME
+        if self._storage_backend:
+            return self._storage_backend.get_dev_type()
+        if self.source_protocol:
+            return VirtualDisk.TYPE_NETWORK
+        return self.TYPE_FILE
+    type = XMLProperty("./@type", default_cb=_get_default_type)
+
+    def _clear_source_xml(self):
+        """
+        Unset all XML properties that describe the actual source media
+        """
+        self._source_file = None
+        self._source_dev = None
+        self._source_dir = None
+        self.source_volume = None
+        self.source_pool = None
+        self.source_name = None
+        self.source_protocol = None
+        self.source_host_name = None
+        self.source_host_port = None
+        self.source_host_transport = None
+        self.source_host_socket = None
+
+    def _disk_type_to_object_prop_name(self):
+        disk_type = self.type
+        if disk_type == VirtualDisk.TYPE_BLOCK:
+            return "_source_dev"
+        elif disk_type == VirtualDisk.TYPE_DIR:
+            return "_source_dir"
+        elif disk_type == VirtualDisk.TYPE_FILE:
+            return "_source_file"
+        return None
+
+
+    # _xmlpath is an abstraction for source file/block/dir paths, since
+    # they don't have any special properties aside from needing to match
+    # 'type' value with the source property used.
+    def _get_xmlpath(self):
+        if self._source_file:
+            return self._source_file
+        if self._source_dev:
+            return self._source_dev
+        if self._source_dir:
+            return self._source_dir
+        return None
+    def _set_xmlpath(self, val):
+        self._clear_source_xml()
+
+        if self._storage_backend.get_dev_type() == "network":
+            self._set_network_source_from_backend()
+            return
+
+        propname = self._disk_type_to_object_prop_name()
+        if not propname:
+            return
+        return setattr(self, propname, val)
 
 
     ##################
     # XML properties #
     ##################
 
-    def _make_source_xpath(self):
-        return "./source/@" + self.disk_type_to_target_prop(self.type)
-    _xmlpath = XMLProperty(name="disk path",
-                           make_xpath_cb=_make_source_xpath,
-                           clear_first=["./source/@" + target for target in
-                                        _TARGET_PROPS])
-
-    sourceStartupPolicy = XMLProperty("./source/@startupPolicy")
     device = XMLProperty("./@device",
                          default_cb=lambda s: s.DEVICE_DISK)
-    type = XMLProperty("./@type", default_cb=_get_default_type)
     driver_name = XMLProperty("./driver/@name",
                               default_cb=_get_default_driver_name)
     driver_type = XMLProperty("./driver/@type",
                               default_cb=_get_default_driver_type)
 
+    sgio = XMLProperty("./@sgio")
 
     bus = XMLProperty("./target/@bus")
     target = XMLProperty("./target/@dev")
@@ -607,10 +754,12 @@ class VirtualDisk(VirtualDevice):
     read_only = XMLProperty("./readonly", is_bool=True)
     shareable = XMLProperty("./shareable", is_bool=True)
     driver_cache = XMLProperty("./driver/@cache")
+    driver_discard = XMLProperty("./driver/@discard")
     driver_io = XMLProperty("./driver/@io")
 
     error_policy = XMLProperty("./driver/@error_policy")
     serial = XMLProperty("./serial")
+    startup_policy = XMLProperty("./source/@startupPolicy")
 
     iotune_rbs = XMLProperty("./iotune/read_bytes_sec", is_int=True)
     iotune_ris = XMLProperty("./iotune/read_iops_sec", is_int=True)
@@ -624,76 +773,40 @@ class VirtualDisk(VirtualDevice):
     # Validation assistance methods #
     #################################
 
-    def _get_storage_backend(self):
-        if self.__storage_backend is None:
-            self.__storage_backend = diskbackend.StorageBackend(self.conn,
-                                                                self._xmlpath,
-                                                                None, None)
-        return self.__storage_backend
-    def _set_storage_backend(self, val):
-        self.__storage_backend = val
-    _storage_backend = property(_get_storage_backend, _set_storage_backend)
+    def _set_default_storage_backend(self):
+        path = None
+        vol_object = None
+        parent_pool = None
+        typ = self._get_default_type()
 
-    def set_create_storage(self, size=None, sparse=True,
-                           fmt=None, vol_install=None,
-                           clone_path=None, backing_store=None,
-                           fake=False):
-        """
-        Function that sets storage creation parameters. If this isn't
-        called, we assume that no storage creation is taking place and
-        will error accordingly.
+        if self.type == VirtualDisk.TYPE_NETWORK:
+            # Fill in a completed URL for virt-manager UI, path comparison, etc
+            path = self._build_url_from_network_source()
 
-        @size is in gigs
-        @fake: If true, make like we are creating storage but fail
-            if we ever asked to do so.
-        """
-        def _validate_path(p):
-            if p is None:
-                return
+        if typ == VirtualDisk.TYPE_VOLUME:
+            conn = self.conn
+            if "weakref" in str(type(conn)):
+                conn = conn()
+
             try:
-                d = VirtualDisk(self.conn)
-                d.path = p
+                parent_pool = conn.storagePoolLookupByName(self.source_pool)
+                vol_object = parent_pool.storageVolLookupByName(
+                    self.source_volume)
+            except:
+                logging.debug("Error fetching source pool=%s vol=%s",
+                    self.source_pool, self.source_volume, exc_info=True)
 
-                # If this disk isn't managed, make sure we only perform
-                # non-managed lookup.
-                if (self._storage_creator or
-                    (self.path and self._storage_backend.exists())):
-                    d.nomanaged = not self.__managed_storage()
-                d.set_create_storage(fake=True)
-                d.validate()
-            except Exception, e:
-                raise ValueError(_("Error validating path %s: %s") % (p, e))
+        if vol_object is None and path is None:
+            path = self._get_xmlpath()
 
-        path = self.path
+        self._change_backend(path, vol_object, parent_pool)
 
-        # Validate clone_path
-        if clone_path is not None:
-            clone_path = os.path.abspath(clone_path)
-        if backing_store is not None:
-            backing_store = os.path.abspath(backing_store)
-
-        if not fake:
-            _validate_path(clone_path)
-            _validate_path(backing_store)
-
-        if fake and size is None:
-            size = .000001
-
-        ignore, creator = _distill_storage(
-            self.conn, True, self.nomanaged, path, None,
-            vol_install, clone_path, backing_store,
-            size, sparse, fmt)
-
-        self._storage_creator = creator
-        if self._storage_creator:
-            self._storage_creator.fake = bool(fake)
-            self._xmlpath = self.path
-        else:
-            if (vol_install or clone_path):
-                raise RuntimeError("Need storage creation but it "
-                                   "didn't happen.")
-            if fmt and self.driver_name == self.DRIVER_QEMU:
-                self.driver_type = fmt
+    def set_local_disk_to_clone(self, disk, sparse):
+        """
+        Set a path to manually clone (as in, not through libvirt)
+        """
+        self._storage_backend = diskbackend.CloneStorageCreator(self.conn,
+            self.path, disk.path, disk.get_size(), sparse)
 
     def is_cdrom(self):
         return self.device == self.DEVICE_CDROM
@@ -705,10 +818,9 @@ class VirtualDisk(VirtualDevice):
     def can_be_empty(self):
         return self.is_floppy() or self.is_cdrom()
 
-    def _change_backend(self, path, vol_object):
-        backend, ignore = _distill_storage(
-                                self.conn, False, self.nomanaged,
-                                path, vol_object, None, None, None)
+    def _change_backend(self, path, vol_object, parent_pool):
+        backend = diskbackend.StorageBackend(self.conn, path,
+                                             vol_object, parent_pool)
         self._storage_backend = backend
 
     def sync_path_props(self):
@@ -717,77 +829,47 @@ class VirtualDisk(VirtualDevice):
         the associated backing storage. This needs to be manually called
         if changing an existing disk's media.
         """
+        path = self._get_xmlpath()
+
         self.type = self._get_default_type()
         self.driver_name = self._get_default_driver_name()
         self.driver_type = self._get_default_driver_type()
 
-    def __managed_storage(self):
-        """
-        Return bool representing if managed storage parameters have
-        been explicitly specified or filled in
-        """
-        if self._storage_creator:
-            return self._storage_creator.is_managed()
-        return self._storage_backend.is_managed()
+        # Need to retrigger this if self.type changed
+        if path:
+            self._set_xmlpath(path)
 
-    def creating_storage(self):
+    def wants_storage_creation(self):
         """
-        Return True if the user requested us to create a device
+        If true, this disk needs storage creation parameters or things
+        will error.
         """
-        return bool(self._storage_creator)
+        return (self._storage_backend and
+                not self._storage_backend.exists())
 
     def validate(self):
-        """
-        function to validate all the complex interaction between the various
-        disk parameters.
-        """
-        # No storage specified for a removable device type (CDROM, floppy)
         if self.path is None:
             if not self.can_be_empty():
                 raise ValueError(_("Device type '%s' requires a path") %
                                  self.device)
 
-            return True
+            return
 
-        storage_capable = self.conn.check_support(
-                                        self.conn.SUPPORT_CONN_STORAGE)
+        if (self.type == VirtualDisk.TYPE_DIR and
+            not self.is_floppy()):
+            raise ValueError(_("The path '%s' must be a file or a "
+                               "device, not a directory") % self.path)
 
-        if self.conn.is_remote():
-            if not storage_capable:
-                raise ValueError(_("Connection doesn't support remote "
-                                   "storage."))
+        if not self._storage_backend:
+            return
 
-        # The main distinctions from this point forward:
-        # - Are we doing storage API operations or local media checks?
-        # - Do we need to create the storage?
+        if (not self._storage_backend.will_create_storage() and
+            not self._storage_backend.exists()):
+            raise ValueError(
+                _("Must specify storage creation parameters for "
+                  "non-existent path '%s'.") % self.path)
 
-        managed_storage = self.__managed_storage()
-        create_media = self.creating_storage()
-
-        # If not creating the storage, our job is easy
-        if not create_media:
-            if not self._storage_backend.exists():
-                raise ValueError(
-                    _("Must specify storage creation parameters for "
-                      "non-existent path '%s'.") % self.path)
-
-            # Make sure we have access to the local path
-            if not managed_storage:
-                if (os.path.isdir(self.path) and not self.is_floppy()):
-                    raise ValueError(_("The path '%s' must be a file or a "
-                                       "device, not a directory") % self.path)
-
-            return True
-
-        self._storage_creator.validate(self.device, self.type)
-
-        # Applicable for managed or local storage
-        ret = self.is_size_conflict()
-        if ret[0]:
-            raise ValueError(ret[1])
-        elif ret[1]:
-            logging.warn(ret[1])
-
+        self._storage_backend.validate(self)
 
     def setup(self, meter=None):
         """
@@ -801,13 +883,15 @@ class VirtualDisk(VirtualDevice):
         """
         if not meter:
             meter = progress.BaseMeter()
-        if not self._storage_creator:
+        if not self._storage_backend.will_create_storage():
             return
 
-        volobj = self._storage_creator.create(meter)
-        self._storage_creator = None
-        if volobj:
-            self._change_backend(None, volobj)
+        vol_object = self._storage_backend.create(meter)
+        if not vol_object:
+            return
+
+        parent_pool = self.get_vol_install().pool
+        self._change_backend(None, vol_object, parent_pool)
 
     def set_defaults(self, guest):
         if self.is_cdrom():
@@ -844,9 +928,7 @@ class VirtualDisk(VirtualDevice):
         Non fatal conflicts (sparse disk exceeds available space) will
         return (False, "description of collision")
         """
-        if not self._storage_creator:
-            return (False, None)
-        return self._storage_creator.is_size_conflict()
+        return self._storage_backend.is_size_conflict()
 
     def is_conflict_disk(self, conn=None):
         """

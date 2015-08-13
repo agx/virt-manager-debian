@@ -19,10 +19,12 @@
 
 import logging
 
-from virtinst import util
+
+# Debugging helper to force old style polling
+_force_old_poll = False
 
 
-def _new_poll_helper(origmap, typename, listfunc, keyfunc, buildfunc):
+def _new_poll_helper(origmap, typename, listfunc, buildfunc):
     """
     Helper for new style listAll* APIs
     """
@@ -36,18 +38,18 @@ def _new_poll_helper(origmap, typename, listfunc, keyfunc, buildfunc):
         logging.debug("Unable to list all %ss: %s", typename, e)
 
     for obj in objs:
-        key = getattr(obj, keyfunc)()
+        connkey = obj.name()
 
-        if key not in origmap:
+        if connkey not in origmap:
             # Object is brand new this period
-            current[key] = buildfunc(obj, key)
-            new[key] = current[key]
+            current[connkey] = buildfunc(obj, connkey)
+            new[connkey] = current[connkey]
         else:
             # Previously known object
-            current[key] = origmap[key]
-            del origmap[key]
+            current[connkey] = origmap[connkey]
+            del(origmap[connkey])
 
-    return (origmap, new, current)
+    return (origmap.values(), new.values(), current.values())
 
 
 def _old_poll_helper(origmap, typename,
@@ -55,7 +57,7 @@ def _old_poll_helper(origmap, typename,
                      lookup_func, build_func):
     """
     Helper routine for old style split API libvirt polling.
-    @origmap: Pre-existing mapping of objects, with key->obj mapping.
+    @origmap: Pre-existing mapping of objects, with connkey->obj mapping.
         objects must have an is_active and set_active API
     @typename: string describing type of objects we are polling for use
         in debug messages.
@@ -63,7 +65,7 @@ def _old_poll_helper(origmap, typename,
     @inactive_list: Function that returns the list of inactive objects
     @lookup_func: Function to get an object handle for the passed name
     @build_func: Function that builds a new object class. It is passed
-        args of (raw libvirt object, key (usually UUID))
+        args of (raw libvirt object, connkey)
     """
     current = {}
     new = {}
@@ -79,22 +81,25 @@ def _old_poll_helper(origmap, typename,
     except Exception, e:
         logging.debug("Unable to list inactive %ss: %s", typename, e)
 
-    def check_obj(key):
-        if key not in origmap:
+    def check_obj(name):
+        obj = None
+        connkey = name
+
+        if connkey not in origmap:
             try:
-                obj = lookup_func(key)
+                obj = lookup_func(name)
             except Exception, e:
                 logging.debug("Could not fetch %s '%s': %s",
-                              typename, key, e)
+                              typename, connkey, e)
                 return
 
             # Object is brand new this period
-            current[key] = build_func(obj, key)
-            new[key] = current[key]
+            current[connkey] = build_func(obj, connkey)
+            new[connkey] = current[connkey]
         else:
             # Previously known object
-            current[key] = origmap[key]
-            del origmap[key]
+            current[connkey] = origmap[connkey]
+            del(origmap[connkey])
 
     for name in newActiveNames + newInactiveNames:
         try:
@@ -102,17 +107,16 @@ def _old_poll_helper(origmap, typename,
         except:
             logging.exception("Couldn't fetch %s '%s'", typename, name)
 
-    return (origmap, new, current)
+    return (origmap.values(), new.values(), current.values())
 
 
 def fetch_nets(backend, origmap, build_func):
     name = "network"
 
     if backend.check_support(
-            backend.SUPPORT_CONN_LISTALLNETWORKS):
+        backend.SUPPORT_CONN_LISTALLNETWORKS) and not _force_old_poll:
         return _new_poll_helper(origmap, name,
-                                backend.listAllNetworks,
-                                "UUIDString", build_func)
+                                backend.listAllNetworks, build_func)
     else:
         active_list = backend.listNetworks
         inactive_list = backend.listDefinedNetworks
@@ -127,10 +131,9 @@ def fetch_pools(backend, origmap, build_func):
     name = "pool"
 
     if backend.check_support(
-            backend.SUPPORT_CONN_LISTALLSTORAGEPOOLS):
+        backend.SUPPORT_CONN_LISTALLSTORAGEPOOLS) and not _force_old_poll:
         return _new_poll_helper(origmap, name,
-                                backend.listAllStoragePools,
-                                "UUIDString", build_func)
+                                backend.listAllStoragePools, build_func)
     else:
         active_list = backend.listStoragePools
         inactive_list = backend.listDefinedStoragePools
@@ -145,10 +148,9 @@ def fetch_volumes(backend, pool, origmap, build_func):
     name = "volume"
 
     if backend.check_support(
-        backend.SUPPORT_POOL_LISTALLVOLUMES, pool):
+        backend.SUPPORT_POOL_LISTALLVOLUMES, pool) and not _force_old_poll:
         return _new_poll_helper(origmap, name,
-                                pool.listAllVolumes,
-                                "name", build_func)
+                                pool.listAllVolumes, build_func)
     else:
         active_list = pool.listVolumes
         inactive_list = lambda: []
@@ -162,10 +164,9 @@ def fetch_interfaces(backend, origmap, build_func):
     name = "interface"
 
     if backend.check_support(
-            backend.SUPPORT_CONN_LISTALLINTERFACES):
+        backend.SUPPORT_CONN_LISTALLINTERFACES) and not _force_old_poll:
         return _new_poll_helper(origmap, name,
-                                backend.listAllInterfaces,
-                                "name", build_func)
+                                backend.listAllInterfaces, build_func)
     else:
         active_list = backend.listInterfaces
         inactive_list = backend.listDefinedInterfaces
@@ -179,10 +180,9 @@ def fetch_interfaces(backend, origmap, build_func):
 def fetch_nodedevs(backend, origmap, build_func):
     name = "nodedev"
     if backend.check_support(
-            backend.SUPPORT_CONN_LISTALLDEVICES):
+        backend.SUPPORT_CONN_LISTALLDEVICES) and not _force_old_poll:
         return _new_poll_helper(origmap, name,
-                                backend.listAllDevices,
-                                "name", build_func)
+                                backend.listAllDevices, build_func)
     else:
         active_list = lambda: backend.listDevices(None, 0)
         inactive_list = lambda: []
@@ -205,8 +205,7 @@ def _old_fetch_vms(backend, origmap, build_func):
     new = {}
 
     # Build list of previous vms with proper id/name mappings
-    for uuid in origmap:
-        vm = origmap[uuid]
+    for vm in origmap.values():
         if vm.is_active():
             oldActiveIDs[vm.get_id()] = vm
         else:
@@ -223,20 +222,20 @@ def _old_fetch_vms(backend, origmap, build_func):
         logging.exception("Unable to list inactive domains: %s", e)
 
     def add_vm(vm):
-        uuid = vm.get_uuid()
+        connkey = vm.get_name()
 
-        current[uuid] = vm
-        del(origmap[uuid])
+        current[connkey] = vm
+        del(origmap[connkey])
 
-    def check_new(rawvm, uuid):
-        if uuid in origmap:
-            vm = origmap[uuid]
-            del(origmap[uuid])
+    def check_new(rawvm, connkey):
+        if connkey in origmap:
+            vm = origmap[connkey]
+            del(origmap[connkey])
         else:
-            vm = build_func(rawvm, uuid)
-            new[uuid] = vm
+            vm = build_func(rawvm, connkey)
+            new[connkey] = vm
 
-        current[uuid] = vm
+        current[connkey] = vm
 
     for _id in newActiveIDs:
         if _id in oldActiveIDs:
@@ -247,9 +246,9 @@ def _old_fetch_vms(backend, origmap, build_func):
             # Check if domain is brand new, or old one that changed state
             try:
                 vm = backend.lookupByID(_id)
-                uuid = util.uuidstr(vm.UUID())
+                connkey = vm.name()
 
-                check_new(vm, uuid)
+                check_new(vm, connkey)
             except:
                 logging.exception("Couldn't fetch domain id '%s'", _id)
 
@@ -263,21 +262,20 @@ def _old_fetch_vms(backend, origmap, build_func):
             # Check if domain is brand new, or old one that changed state
             try:
                 vm = backend.lookupByName(name)
-                uuid = util.uuidstr(vm.UUID())
+                connkey = name
 
-                check_new(vm, uuid)
+                check_new(vm, connkey)
             except:
                 logging.exception("Couldn't fetch domain '%s'", name)
 
-    return (origmap, new, current)
+    return (origmap.values(), new.values(), current.values())
 
 
 def fetch_vms(backend, origmap, build_func):
     name = "domain"
     if backend.check_support(
-            backend.SUPPORT_CONN_LISTALLDOMAINS):
+        backend.SUPPORT_CONN_LISTALLDOMAINS):
         return _new_poll_helper(origmap, name,
-                                backend.listAllDomains,
-                                "UUIDString", build_func)
+                                backend.listAllDomains, build_func)
     else:
         return _old_fetch_vms(backend, origmap, build_func)

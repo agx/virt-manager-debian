@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2006, 2012-2014 Red Hat, Inc.
+# Copyright (C) 2006, 2012-2015 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -20,14 +20,12 @@
 import os
 import logging
 
-# pylint: disable=E0611
 from gi.repository import Gio
 from gi.repository import GLib
 from gi.repository import Gtk
-# pylint: enable=E0611
 
 from virtinst import CPU
-from virtManager.keyring import vmmKeyring, vmmSecret
+from .keyring import vmmKeyring, vmmSecret
 
 running_config = None
 
@@ -52,15 +50,31 @@ class SettingsWrapper(object):
         return settingskey, value
 
     def make_vm_settings(self, key):
+        """
+        Initialize per-VM relocatable schema if necessary
+        """
         settingskey = self._parse_key(key)[0]
-
         if settingskey in self._settingsmap:
             return True
 
         schema = self._root + ".vm"
         path = "/" + self._root.replace(".", "/") + key.rsplit("/", 1)[0] + "/"
-        self._settingsmap[settingskey] = Gio.Settings.new_with_path(schema,
-                                                                    path)
+        self._settingsmap[settingskey] = Gio.Settings.new_with_path(
+                schema, path)
+        return True
+
+    def make_conn_settings(self, key):
+        """
+        Initialize per-conn relocatable schema if necessary
+        """
+        settingskey = self._parse_key(key)[0]
+        if settingskey in self._settingsmap:
+            return True
+
+        schema = self._root + ".connection"
+        path = "/" + self._root.replace(".", "/") + key.rsplit("/", 1)[0] + "/"
+        self._settingsmap[settingskey] = Gio.Settings.new_with_path(
+                schema, path)
         return True
 
     def _find_settings(self, key):
@@ -96,8 +110,6 @@ class vmmConfig(object):
     CONFIG_DIR_IMAGE = "image"
     CONFIG_DIR_ISO_MEDIA = "isomedia"
     CONFIG_DIR_FLOPPY_MEDIA = "floppymedia"
-    CONFIG_DIR_SAVE = "save"
-    CONFIG_DIR_RESTORE = "restore"
     CONFIG_DIR_SCREENSHOT = "screenshot"
     CONFIG_DIR_FS = "fs"
 
@@ -136,33 +148,27 @@ class vmmConfig(object):
     CONSOLE_SCALE_FULLSCREEN = 1
     CONSOLE_SCALE_ALWAYS = 2
 
-    DEFAULT_XEN_IMAGE_DIR = "/var/lib/xen/images"
-    DEFAULT_XEN_SAVE_DIR = "/var/lib/xen/dump"
-
-    DEFAULT_VIRT_IMAGE_DIR = "/var/lib/libvirt/images"
-    DEFAULT_VIRT_SAVE_DIR = "/var/lib/libvirt"
-
-    def __init__(self, appname, cliconfig, test_first_run=False):
+    def __init__(self, appname, CLIConfig, test_first_run=False):
         self.appname = appname
-        self.appversion = cliconfig.__version__
+        self.appversion = CLIConfig.version
         self.conf_dir = "/org/virt-manager/%s/" % self.appname
-        self.ui_dir = os.path.join(cliconfig.asset_dir, "ui")
+        self.ui_dir = CLIConfig.ui_dir
         self.test_first_run = bool(test_first_run)
 
         self.conf = SettingsWrapper("org.virt-manager.virt-manager")
 
         # We don't create it straight away, since we don't want
-        # to block the app pending user authorizaation to access
+        # to block the app pending user authorization to access
         # the keyring
         self.keyring = None
 
-        self.default_qemu_user = cliconfig.default_qemu_user
-        self.stable_defaults = cliconfig.stable_defaults
-        self.preferred_distros = cliconfig.preferred_distros
-        self.hv_packages = cliconfig.hv_packages
-        self.libvirt_packages = cliconfig.libvirt_packages
-        self.askpass_package = cliconfig.askpass_package
-        self.default_graphics_from_config = cliconfig.default_graphics
+        self.default_qemu_user = CLIConfig.default_qemu_user
+        self.preferred_distros = CLIConfig.preferred_distros
+        self.hv_packages = CLIConfig.hv_packages
+        self.libvirt_packages = CLIConfig.libvirt_packages
+        self.askpass_package = CLIConfig.askpass_package
+        self.default_graphics_from_config = CLIConfig.default_graphics
+        self.default_hvs = CLIConfig.default_hvs
         self.cli_usbredir = None
 
         self.default_storage_format_from_config = "qcow2"
@@ -183,13 +189,13 @@ class vmmConfig(object):
     def check_inspection(self):
         try:
             # Check we can open the Python guestfs module.
-            from guestfs import GuestFS  # pylint: disable=F0401
-            GuestFS(close_on_exit=False)
-            return True
+            from guestfs import GuestFS  # pylint: disable=import-error
+            g = GuestFS(close_on_exit=False)
+            return bool(getattr(g, "add_libvirt_dom", None))
         except:
             return False
 
-    # General app wide helpers (gconf agnostic)
+    # General app wide helpers (gsettings agnostic)
 
     def get_appname(self):
         return self.appname
@@ -214,6 +220,11 @@ class vmmConfig(object):
     def get_objects(self):
         return self._objects[:]
 
+
+    #####################################
+    # Wrappers for setting per-VM value #
+    #####################################
+
     def _make_pervm_key(self, uuid, key):
         return "/vms/%s%s" % (uuid.replace("-", ""), key)
 
@@ -231,6 +242,30 @@ class vmmConfig(object):
     def get_pervm(self, uuid, key):
         key = self._make_pervm_key(uuid, key)
         self.conf.make_vm_settings(key)
+        return self.conf.get(key)
+
+
+    ########################################
+    # Wrappers for setting per-conn values #
+    ########################################
+
+    def _make_perconn_key(self, uri, key):
+        return "/conns/%s%s" % (uri.replace("/", ""), key)
+
+    def listen_perconn(self, uri, key, *args, **kwargs):
+        key = self._make_perconn_key(uri, key)
+        self.conf.make_conn_settings(key)
+        return self.conf.notify_add(key, *args, **kwargs)
+
+    def set_perconn(self, uri, key, *args, **kwargs):
+        key = self._make_perconn_key(uri, key)
+        self.conf.make_conn_settings(key)
+        ret = self.conf.set(key, *args, **kwargs)
+        return ret
+
+    def get_perconn(self, uri, key):
+        key = self._make_perconn_key(uri, key)
+        self.conf.make_conn_settings(key)
         return self.conf.get(key)
 
 
@@ -287,11 +322,11 @@ class vmmConfig(object):
         return self.conf.notify_add("/console/grab-keys", cb)
 
     # This key is not intended to be exposed in the UI yet
-    def get_grab_keyboard(self):
+    def get_keyboard_grab_default(self):
         return self.conf.get("/console/grab-keyboard")
-    def set_grab_keyboard(self, val):
+    def set_keyboard_grab_default(self, val):
         self.conf.set("/console/grab-keyboard", val)
-    def on_grab_keyboard_changed(self, cb):
+    def on_keyboard_grab_default_changed(self, cb):
         return self.conf.notify_add("/console/grab-keyboard", cb)
 
     # Confirmation preferences
@@ -494,9 +529,9 @@ class vmmConfig(object):
 
 
     # URL/Media path history
-    def _url_add_helper(self, gconf_path, url):
+    def _url_add_helper(self, gsettings_path, url):
         maxlength = 10
-        urls = self.conf.get(gconf_path)
+        urls = self.conf.get(gsettings_path)
         if urls is None:
             urls = []
 
@@ -505,7 +540,7 @@ class vmmConfig(object):
             urls.insert(0, url)
             if len(urls) > maxlength:
                 del urls[len(urls) - 1]
-            self.conf.set(gconf_path, urls)
+            self.conf.set(gsettings_path, urls)
 
     def add_media_url(self, url):
         self._url_add_helper("/urls/urls", url)
@@ -606,6 +641,7 @@ class vmmConfig(object):
         return None
 
     def get_default_directory(self, conn, _type):
+        ignore = conn
         key = self._get_default_dir_key(_type)
         path = None
 
@@ -616,10 +652,7 @@ class vmmConfig(object):
             if (_type == self.CONFIG_DIR_IMAGE or
                 _type == self.CONFIG_DIR_ISO_MEDIA or
                 _type == self.CONFIG_DIR_FLOPPY_MEDIA):
-                path = self.get_default_image_dir(conn)
-            if (_type == self.CONFIG_DIR_SAVE or
-                _type == self.CONFIG_DIR_RESTORE):
-                path = self.get_default_save_dir(conn)
+                path = os.getcwd()
 
         logging.debug("directory for type=%s returning=%s", _type, path)
         return path
@@ -631,27 +664,6 @@ class vmmConfig(object):
 
         logging.debug("saving directory for type=%s to %s", key, folder)
         self.conf.set("/paths/%s-default" % key, folder)
-
-    def get_default_image_dir(self, conn):
-        if conn.is_xen():
-            return self.DEFAULT_XEN_IMAGE_DIR
-
-        if (conn.is_qemu_session() or
-            not os.access(self.DEFAULT_VIRT_IMAGE_DIR, os.W_OK)):
-            return os.getcwd()
-
-        # Just return the default dir since the intention is that it
-        # is a managed pool and the user will be able to install to it.
-        return self.DEFAULT_VIRT_IMAGE_DIR
-
-    def get_default_save_dir(self, conn):
-        if conn.is_xen():
-            return self.DEFAULT_XEN_SAVE_DIR
-        elif os.access(self.DEFAULT_VIRT_SAVE_DIR, os.W_OK):
-            return self.DEFAULT_VIRT_SAVE_DIR
-        else:
-            return os.getcwd()
-
 
     # Keyring / VNC password dealings
     def get_secret_name(self, vm):

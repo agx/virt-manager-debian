@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2006, 2013 Red Hat, Inc.
+# Copyright (C) 2006, 2013-2014 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,36 +18,32 @@
 # MA 02110-1301 USA.
 #
 
-# pylint: disable=E0611
 from gi.repository import GLib
 from gi.repository import GObject
 from gi.repository import Gtk
-# pylint: enable=E0611
 
 import logging
 import re
 import Queue
 import threading
+import traceback
 
-import libvirt
-from virtinst import util
-
-from virtManager import packageutils
-from virtManager.about import vmmAbout
-from virtManager.baseclass import vmmGObject
-from virtManager.clone import vmmCloneVM
-from virtManager.connect import vmmConnect
-from virtManager.connection import vmmConnection
-from virtManager.preferences import vmmPreferences
-from virtManager.manager import vmmManager
-from virtManager.migrate import vmmMigrateDialog
-from virtManager.details import vmmDetails
-from virtManager.asyncjob import vmmAsyncJob
-from virtManager.create import vmmCreate
-from virtManager.host import vmmHost
-from virtManager.error import vmmErrorDialog
-from virtManager.systray import vmmSystray
-from virtManager.delete import vmmDeleteDialog
+from . import packageutils
+from .about import vmmAbout
+from .baseclass import vmmGObject
+from .clone import vmmCloneVM
+from .connect import vmmConnect
+from .connection import vmmConnection
+from .preferences import vmmPreferences
+from .manager import vmmManager
+from .migrate import vmmMigrateDialog
+from .details import vmmDetails
+from .asyncjob import vmmAsyncJob
+from .create import vmmCreate
+from .host import vmmHost
+from .error import vmmErrorDialog
+from .systray import vmmSystray
+from .delete import vmmDeleteDialog
 
 # Enable this to get a report of leaked objects on app shutdown
 # gtk3/pygobject has issues here as of Fedora 18
@@ -79,6 +75,7 @@ class vmmEngine(vmmGObject):
 
         self.conns = {}
         self.err = vmmErrorDialog()
+        self.err.set_find_parent_cb(self._find_error_parent_cb)
 
         self.timer = None
         self.last_timeout = 0
@@ -115,9 +112,9 @@ class vmmEngine(vmmGObject):
 
         self.init_systray()
 
-        self.add_gconf_handle(
+        self.add_gsettings_handle(
             self.config.on_stats_update_interval_changed(self.reschedule_timer))
-        self.add_gconf_handle(
+        self.add_gsettings_handle(
             self.config.on_view_system_tray_changed(self.system_tray_changed))
 
         self.schedule_timer()
@@ -138,7 +135,7 @@ class vmmEngine(vmmGObject):
             conn = self.make_conn(self.uri_at_startup)
             self.register_conn(conn, skip_config=True)
             if conn and self.uri_cb:
-                conn.connect_opt_out("resources-sampled", self.uri_cb)
+                conn.connect_opt_out("state-changed", self.uri_cb)
 
             self.connect_to_uri(self.uri_at_startup)
 
@@ -202,7 +199,7 @@ class vmmEngine(vmmGObject):
         if ret:
             tryuri = "qemu:///system"
         else:
-            tryuri = vmmConnect.default_uri(always_system=True)
+            tryuri = vmmConnect.default_uri()
 
         if tryuri is None:
             manager.set_startup_error(msg)
@@ -248,8 +245,7 @@ class vmmEngine(vmmGObject):
                 queue.put(auto_conns.pop(0))
 
         def state_change_cb(conn):
-            if (conn.get_state() == conn.STATE_ACTIVE or
-                conn.get_state() == conn.STATE_INACTIVE):
+            if conn.is_active():
                 add_next_to_queue()
                 conn.disconnect_by_func(state_change_cb)
 
@@ -270,30 +266,26 @@ class vmmEngine(vmmGObject):
                 self.idle_add(connect, uri)
 
         add_next_to_queue()
-        thread = threading.Thread(name="Autostart thread",
-            target=handle_queue, args=())
-        thread.daemon = True
-        thread.start()
+        self._start_thread(handle_queue, "Conn autostart thread")
 
 
-    def _do_vm_removed(self, conn, vmuuid):
+    def _do_vm_removed(self, conn, connkey):
         hvuri = conn.get_uri()
-        if vmuuid not in self.conns[hvuri]["windowDetails"]:
+        if connkey not in self.conns[hvuri]["windowDetails"]:
             return
 
-        self.conns[hvuri]["windowDetails"][vmuuid].cleanup()
-        del(self.conns[hvuri]["windowDetails"][vmuuid])
+        self.conns[hvuri]["windowDetails"][connkey].cleanup()
+        del(self.conns[hvuri]["windowDetails"][connkey])
 
     def _do_conn_changed(self, conn):
-        if (conn.get_state() == conn.STATE_ACTIVE or
-            conn.get_state() == conn.STATE_CONNECTING):
+        if conn.is_active() or conn.is_connecting():
             return
 
         hvuri = conn.get_uri()
 
-        for vmuuid in self.conns[hvuri]["windowDetails"].keys():
-            self.conns[hvuri]["windowDetails"][vmuuid].cleanup()
-            del(self.conns[hvuri]["windowDetails"][vmuuid])
+        for connkey in self.conns[hvuri]["windowDetails"].keys():
+            self.conns[hvuri]["windowDetails"][connkey].cleanup()
+            del(self.conns[hvuri]["windowDetails"][connkey])
 
         if (self.windowCreate and
             self.windowCreate.conn and
@@ -336,47 +328,27 @@ class vmmEngine(vmmGObject):
                                         stats_update=True, pollvm=True)
         return 1
 
+    def _handle_tick_error(self, msg, details):
+        if self.windows <= 0:
+            # This means the systray icon is running. Don't raise an error
+            # here to avoid spamming dialogs out of nowhere.
+            logging.debug(msg + "\n\n" + details)
+            return
+        self.err.show_err(msg, details=details)
+
     def _handle_tick_queue(self):
         while True:
-            ignore1, ignore2, obj, kwargs = self._tick_queue.get()
-            self._tick_single_conn(obj, kwargs)
+            ignore1, ignore2, conn, kwargs = self._tick_queue.get()
+            try:
+                conn.tick_from_engine(**kwargs)
+            except Exception, e:
+                tb = "".join(traceback.format_exc())
+                error_msg = (_("Error polling connection '%s': %s")
+                    % (conn.get_uri(), e))
+                self.idle_add(self._handle_tick_error, error_msg, tb)
+
             self._tick_queue.task_done()
         return 1
-
-    def _tick_single_conn(self, conn, kwargs):
-        e = None
-        try:
-            conn.tick(**kwargs)
-        except KeyboardInterrupt:
-            raise
-        except Exception, e:
-            pass
-
-        if e is None:
-            return
-
-        from_remote = getattr(libvirt, "VIR_FROM_REMOTE", None)
-        from_rpc = getattr(libvirt, "VIR_FROM_RPC", None)
-        sys_error = getattr(libvirt, "VIR_ERR_SYSTEM_ERROR", None)
-
-        dom = -1
-        code = -1
-        if isinstance(e, libvirt.libvirtError):
-            dom = e.get_error_domain()
-            code = e.get_error_code()
-
-        if (dom in [from_remote, from_rpc] and
-            code in [sys_error]):
-            logging.exception("Could not refresh connection %s",
-                              conn.get_uri())
-            logging.debug("Closing connection since libvirtd "
-                          "appears to have stopped")
-        else:
-            error_msg = _("Error polling connection '%s': %s") \
-                % (conn.get_uri(), e)
-            self.idle_add(lambda: self.err.show_err(error_msg))
-
-        self.idle_add(conn.close)
 
 
     def increment_window_counter(self, src):
@@ -485,13 +457,36 @@ class vmmEngine(vmmGObject):
         if not self.config.support_inspection:
             return
 
-        from virtManager.inspection import vmmInspection
+        from .inspection import vmmInspection
         self.inspection = vmmInspection()
         self.inspection.start()
         self.connect("conn-added", self.inspection.conn_added)
         self.connect("conn-removed", self.inspection.conn_removed)
         return
 
+    def _find_error_parent_cb(self):
+        """
+        Search over the toplevel windows for any that are visible or have
+        focus, and use that
+        """
+        windowlist = [self.windowManager]
+        for conndict in self.conns.values():
+            windowlist.extend(conndict["windowDetails"].values())
+        windowlist.extend(
+            [conndict["windowHost"] for conndict in self.conns.values()])
+
+        use_win = None
+        for window in windowlist:
+            if not window:
+                continue
+            if window.topwin.has_focus():
+                use_win = window
+                break
+            if not use_win and window.is_visible():
+                use_win = window
+
+        if use_win:
+            return use_win.topwin
 
     def make_conn(self, uri, probe=False):
         conn = self._check_conn(uri)
@@ -598,12 +593,13 @@ class vmmEngine(vmmGObject):
         show_errmsg = True
 
         if conn.is_remote():
-            logging.debug(conn.get_transport())
+            logging.debug("connect_error: conn transport=%s",
+                conn.get_uri_transport())
             if re.search(r"nc: .* -- 'U'", tb):
                 hint += _("The remote host requires a version of netcat/nc\n"
                           "which supports the -U option.")
                 show_errmsg = False
-            elif (conn.get_transport()[0] == "ssh" and
+            elif (conn.get_uri_transport() == "ssh" and
                   re.search(r"ssh-askpass", tb)):
 
                 if self.config.askpass_package:
@@ -652,7 +648,8 @@ class vmmEngine(vmmGObject):
         details += tb
 
         if probe_connection:
-            msg += "\n\n%s" % _("Would you still like to remember this connection?")
+            msg += "\n\n"
+            msg += _("Would you still like to remember this connection?")
 
         title = _("Virtual Machine Manager Connection Failure")
         if probe_connection:
@@ -669,6 +666,7 @@ class vmmEngine(vmmGObject):
                 self.idle_add(self.exit_app, conn)
             else:
                 self.err.show_err(msg, details, title)
+
 
     ####################
     # Dialog launchers #
@@ -700,12 +698,11 @@ class vmmEngine(vmmGObject):
         if self.conns[uri]["windowHost"]:
             return self.conns[uri]["windowHost"]
 
-        con = self._lookup_conn(uri)
-        obj = vmmHost(con)
+        conn = self._lookup_conn(uri)
+        obj = vmmHost(conn)
 
         obj.connect("action-exit-app", self.exit_app)
         obj.connect("action-view-manager", self._do_show_manager)
-        obj.connect("action-restore-domain", self._do_restore_domain)
         obj.connect("host-opened", self.increment_window_counter)
         obj.connect("host-closed", self.decrement_window_counter)
 
@@ -751,13 +748,13 @@ class vmmEngine(vmmGObject):
             self.remove_conn(None, connection.get_uri())
 
 
-    def _get_details_dialog(self, uri, uuid):
-        if uuid in self.conns[uri]["windowDetails"]:
-            return self.conns[uri]["windowDetails"][uuid]
+    def _get_details_dialog(self, uri, connkey):
+        if connkey in self.conns[uri]["windowDetails"]:
+            return self.conns[uri]["windowDetails"][connkey]
 
-        con = self._lookup_conn(uri)
+        conn = self._lookup_conn(uri)
 
-        obj = vmmDetails(con.get_vm(uuid))
+        obj = vmmDetails(conn.get_vm(connkey))
         obj.connect("action-save-domain", self._do_save_domain)
         obj.connect("action-destroy-domain", self._do_destroy_domain)
         obj.connect("action-reset-domain", self._do_reset_domain)
@@ -774,33 +771,12 @@ class vmmEngine(vmmGObject):
         obj.connect("details-opened", self.increment_window_counter)
         obj.connect("details-closed", self.decrement_window_counter)
 
-        self.conns[uri]["windowDetails"][uuid] = obj
-        return self.conns[uri]["windowDetails"][uuid]
+        self.conns[uri]["windowDetails"][connkey] = obj
+        return self.conns[uri]["windowDetails"][connkey]
 
-    def _find_vm_by_id(self, uri, domstr):
-        vms = self.conns[uri]["conn"].vms
-        if domstr in vms:
-            return domstr
-        for vm in vms.values():
-            if domstr.isdigit():
-                if int(domstr) == vm.get_id():
-                    return vm.get_uuid()
-            elif domstr == vm.get_name():
-                return vm.get_uuid()
-
-    def _show_vm_helper(self, src, uri, domstr, page=None, forcepage=False):
+    def _show_vm_helper(self, src, uri, vm, page, forcepage):
         try:
-            uuid = self._find_vm_by_id(uri, domstr)
-            if not uuid:
-                # This will only happen if --show-* option was used during
-                # virt-manager launch and an invalid UUID is passed.
-                # The error message must be sync otherwise the user will not
-                # know why the application ended.
-                self.err.show_err("%s does not have VM '%s'" %
-                    (uri, domstr), modal=True)
-                return
-
-            details = self._get_details_dialog(uri, uuid)
+            details = self._get_details_dialog(uri, vm.get_connkey())
 
             if forcepage or not details.is_visible():
                 if page == DETAILS_PERF:
@@ -819,8 +795,10 @@ class vmmEngine(vmmGObject):
             if self._can_exit():
                 self.idle_add(self.exit_app, src)
 
-    def _do_show_vm(self, src, uri, uuid):
-        self._show_vm_helper(src, uri, uuid)
+    def _do_show_vm(self, src, uri, connkey):
+        conn = self._lookup_conn(uri)
+        vm = conn.get_vm(connkey)
+        self._show_vm_helper(src, uri, vm, None, False)
 
     def get_manager(self):
         if self.windowManager:
@@ -852,6 +830,8 @@ class vmmEngine(vmmGObject):
 
         self.connect("conn-added", obj.add_conn)
         self.connect("conn-removed", obj.remove_conn)
+
+        obj.set_initial_selection(self.uri_at_startup)
 
         self.windowManager = obj
         return self.windowManager
@@ -887,22 +867,21 @@ class vmmEngine(vmmGObject):
         except Exception, e:
             src.err.show_err(_("Error launching manager: %s") % str(e))
 
-    def _do_show_migrate(self, src, uri, uuid):
+    def _do_show_migrate(self, src, uri, connkey):
         try:
             conn = self._lookup_conn(uri)
-            vm = conn.get_vm(uuid)
+            vm = conn.get_vm(connkey)
 
             if not self.windowMigrate:
-                self.windowMigrate = vmmMigrateDialog(vm, self)
+                self.windowMigrate = vmmMigrateDialog(self)
 
-            self.windowMigrate.set_state(vm)
-            self.windowMigrate.show(src.topwin)
+            self.windowMigrate.show(src.topwin, vm)
         except Exception, e:
             src.err.show_err(_("Error launching migrate dialog: %s") % str(e))
 
-    def _do_show_clone(self, src, uri, uuid):
-        con = self._lookup_conn(uri)
-        orig_vm = con.get_vm(uuid)
+    def _do_show_clone(self, src, uri, connkey):
+        conn = self._lookup_conn(uri)
+        orig_vm = conn.get_vm(connkey)
         clone_window = self.conns[uri]["windowClone"]
 
         try:
@@ -930,54 +909,64 @@ class vmmEngine(vmmGObject):
         self.show_manager()
         self._do_show_create(self.get_manager(), uri)
 
-    def show_domain_console(self, uri, uuid):
-        self.idle_add(self._show_vm_helper, self.get_manager(), uri, uuid,
-                      page=DETAILS_CONSOLE, forcepage=True)
 
-    def show_domain_editor(self, uri, uuid):
-        self.idle_add(self._show_vm_helper, self.get_manager(), uri, uuid,
-                      page=DETAILS_CONFIG, forcepage=True)
+    def _find_vm_by_cli_str(self, uri, clistr):
+        """
+        Lookup a VM by a string passed in on the CLI. Can be either
+        ID, domain name, or UUID
+        """
+        if clistr.isdigit():
+            clistr = int(clistr)
 
-    def show_domain_performance(self, uri, uuid):
-        self.idle_add(self._show_vm_helper, self.get_manager(), uri, uuid,
-                      page=DETAILS_PERF, forcepage=True)
+        for vm in self.conns[uri]["conn"].list_vms():
+            if clistr == vm.get_id():
+                return vm
+            elif clistr == vm.get_name():
+                return vm
+            elif clistr == vm.get_uuid():
+                return vm
+
+    def _cli_show_vm_helper(self, uri, clistr, page):
+        src = self.get_manager()
+
+        vm = self._find_vm_by_cli_str(uri, clistr)
+        if not vm:
+            src.err.show_err("%s does not have VM '%s'" %
+                (uri, clistr), modal=True)
+            self.exit_app(src.err)
+            return
+
+        self._show_vm_helper(src, uri, vm, page, True)
+
+    def show_domain_console(self, uri, clistr):
+        self.idle_add(self._cli_show_vm_helper, uri, clistr, DETAILS_CONSOLE)
+
+    def show_domain_editor(self, uri, clistr):
+        self.idle_add(self._cli_show_vm_helper, uri, clistr, DETAILS_CONFIG)
+
+    def show_domain_performance(self, uri, clistr):
+        self.idle_add(self._cli_show_vm_helper, uri, clistr, DETAILS_PERF)
 
 
     #######################################
     # Domain actions run/destroy/save ... #
     #######################################
 
-    def _do_save_domain(self, src, uri, uuid):
+    def _do_save_domain(self, src, uri, connkey):
         conn = self._lookup_conn(uri)
-        vm = conn.get_vm(uuid)
-        managed = bool(vm.managedsave_supported)
-
-        if not managed and conn.is_remote():
-            src.err.val_err(_("Saving virtual machines over remote "
-                              "connections is not supported with this "
-                              "libvirt version or hypervisor."))
-            return
+        vm = conn.get_vm(connkey)
 
         if not src.err.chkbox_helper(self.config.get_confirm_poweroff,
             self.config.set_confirm_poweroff,
-            text1=_("Are you sure you want to save '%s'?" % vm.get_name())):
+            text1=_("Are you sure you want to save '%s'?") % vm.get_name()):
             return
-
-        path = None
-        if not managed:
-            path = src.err.browse_local(
-                conn, _("Save Virtual Machine"),
-                dialog_type=Gtk.FileChooserAction.SAVE,
-                browse_reason=self.config.CONFIG_DIR_SAVE)
-            if not path:
-                return
 
         _cancel_cb = None
         if vm.getjobinfo_supported:
             _cancel_cb = (self._save_cancel, vm)
 
         def cb(asyncjob):
-            vm.save(path, meter=asyncjob.get_meter())
+            vm.save(meter=asyncjob.get_meter())
         def finish_cb(error, details):
             if error is not None:
                 error = _("Error saving domain: %s") % error
@@ -1005,26 +994,9 @@ class vmmEngine(vmmGObject):
         asyncjob.job_canceled = True
         return
 
-    def _do_restore_domain(self, src, uri):
+    def _do_destroy_domain(self, src, uri, connkey):
         conn = self._lookup_conn(uri)
-        if conn.is_remote():
-            src.err.val_err(_("Restoring virtual machines over remote "
-                              "connections is not yet supported"))
-            return
-
-        path = src.err.browse_local(
-            conn, _("Restore Virtual Machine"),
-            browse_reason=self.config.CONFIG_DIR_RESTORE)
-
-        if not path:
-            return
-
-        vmmAsyncJob.simple_async_noshow(conn.restore, [path], src,
-                                        _("Error restoring domain"))
-
-    def _do_destroy_domain(self, src, uri, uuid):
-        conn = self._lookup_conn(uri)
-        vm = conn.get_vm(uuid)
+        vm = conn.get_vm(connkey)
 
         if not src.err.chkbox_helper(
             self.config.get_confirm_forcepoweroff,
@@ -1039,9 +1011,9 @@ class vmmEngine(vmmGObject):
         vmmAsyncJob.simple_async_noshow(vm.destroy, [], src,
                                         _("Error shutting down domain"))
 
-    def _do_suspend_domain(self, src, uri, uuid):
+    def _do_suspend_domain(self, src, uri, connkey):
         conn = self._lookup_conn(uri)
-        vm = conn.get_vm(uuid)
+        vm = conn.get_vm(connkey)
 
         if not src.err.chkbox_helper(self.config.get_confirm_pause,
             self.config.set_confirm_pause,
@@ -1053,21 +1025,21 @@ class vmmEngine(vmmGObject):
         vmmAsyncJob.simple_async_noshow(vm.suspend, [], src,
                                         _("Error pausing domain"))
 
-    def _do_resume_domain(self, src, uri, uuid):
+    def _do_resume_domain(self, src, uri, connkey):
         conn = self._lookup_conn(uri)
-        vm = conn.get_vm(uuid)
+        vm = conn.get_vm(connkey)
 
         logging.debug("Unpausing vm '%s'", vm.get_name())
         vmmAsyncJob.simple_async_noshow(vm.resume, [], src,
                                         _("Error unpausing domain"))
 
-    def _do_run_domain(self, src, uri, uuid):
+    def _do_run_domain(self, src, uri, connkey):
         conn = self._lookup_conn(uri)
-        vm = conn.get_vm(uuid)
+        vm = conn.get_vm(connkey)
 
         logging.debug("Starting vm '%s'", vm.get_name())
 
-        if vm.hasSavedImage():
+        if vm.has_managed_save():
             def errorcb(error, details):
                 # This is run from the main thread
                 res = src.err.show_err(
@@ -1085,8 +1057,8 @@ class vmmEngine(vmmGObject):
                     return
 
                 try:
-                    vm.removeSavedImage()
-                    self._do_run_domain(src, uri, uuid)
+                    vm.remove_saved_image()
+                    self._do_run_domain(src, uri, connkey)
                 except Exception, e:
                     src.err.show_err(_("Error removing domain state: %s")
                                      % str(e))
@@ -1102,9 +1074,9 @@ class vmmEngine(vmmGObject):
             errorintro  = _("Error starting domain")
             vmmAsyncJob.simple_async_noshow(vm.startup, [], src, errorintro)
 
-    def _do_shutdown_domain(self, src, uri, uuid):
+    def _do_shutdown_domain(self, src, uri, connkey):
         conn = self._lookup_conn(uri)
-        vm = conn.get_vm(uuid)
+        vm = conn.get_vm(connkey)
 
         if not src.err.chkbox_helper(self.config.get_confirm_poweroff,
             self.config.set_confirm_poweroff,
@@ -1116,9 +1088,9 @@ class vmmEngine(vmmGObject):
         vmmAsyncJob.simple_async_noshow(vm.shutdown, [], src,
                                         _("Error shutting down domain"))
 
-    def _do_reboot_domain(self, src, uri, uuid):
+    def _do_reboot_domain(self, src, uri, connkey):
         conn = self._lookup_conn(uri)
-        vm = conn.get_vm(uuid)
+        vm = conn.get_vm(connkey)
 
         if not src.err.chkbox_helper(self.config.get_confirm_poweroff,
             self.config.set_confirm_poweroff,
@@ -1127,37 +1099,12 @@ class vmmEngine(vmmGObject):
             return
 
         logging.debug("Rebooting vm '%s'", vm.get_name())
+        vmmAsyncJob.simple_async_noshow(vm.reboot, [], src,
+            _("Error rebooting domain"))
 
-        def reboot_cb():
-            no_support = False
-            reboot_err = None
-            try:
-                vm.reboot()
-            except Exception, reboot_err:
-                no_support = util.is_error_nosupport(reboot_err)
-                if not no_support:
-                    raise RuntimeError(_("Error rebooting domain: %s" %
-                                       str(reboot_err)))
-
-            if not no_support:
-                return
-
-            # Reboot isn't supported. Let's try to emulate it
-            logging.debug("Hypervisor doesn't support reboot, let's fake it")
-            try:
-                vm.manual_reboot()
-            except:
-                logging.exception("Could not fake a reboot")
-
-                # Raise the original error message
-                raise RuntimeError(_("Error rebooting domain: %s" %
-                                   str(reboot_err)))
-
-        vmmAsyncJob.simple_async_noshow(reboot_cb, [], src, "")
-
-    def _do_reset_domain(self, src, uri, uuid):
+    def _do_reset_domain(self, src, uri, connkey):
         conn = self._lookup_conn(uri)
-        vm = conn.get_vm(uuid)
+        vm = conn.get_vm(connkey)
 
         if not src.err.chkbox_helper(
             self.config.get_confirm_forcepoweroff,
@@ -1172,10 +1119,13 @@ class vmmEngine(vmmGObject):
         vmmAsyncJob.simple_async_noshow(vm.reset, [], src,
                                         _("Error resetting domain"))
 
-    def _do_delete_domain(self, src, uri, uuid):
+    def _do_delete_domain(self, src, uri, connkey):
         conn = self._lookup_conn(uri)
-        vm = conn.get_vm(uuid)
+        vm = conn.get_vm(connkey)
 
-        if not self.delete_dialog:
-            self.delete_dialog = vmmDeleteDialog()
-        self.delete_dialog.show(vm, src.topwin)
+        try:
+            if not self.delete_dialog:
+                self.delete_dialog = vmmDeleteDialog()
+            self.delete_dialog.show(vm, src.topwin)
+        except Exception, e:
+            src.err.show_err(_("Error launching delete dialog: %s") % str(e))

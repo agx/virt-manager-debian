@@ -21,14 +21,12 @@ import logging
 import os
 import statvfs
 
-# pylint: disable=E0611
 from gi.repository import GObject
 from gi.repository import Gtk
-# pylint: enable=E0611
 
 import virtinst
-from virtManager import uiutil
-from virtManager.baseclass import vmmGObjectUI
+from . import uiutil
+from .baseclass import vmmGObjectUI
 
 
 class vmmAddStorage(vmmGObjectUI):
@@ -41,7 +39,6 @@ class vmmAddStorage(vmmGObjectUI):
         vmmGObjectUI.__init__(self, "addstorage.ui", None,
                               builder=builder, topwin=topwin)
         self.conn = conn
-        self.storage_browser = None
 
         self.builder.connect_signals({
             "on_config_storage_browse_clicked": self._browse_storage,
@@ -59,10 +56,7 @@ class vmmAddStorage(vmmGObjectUI):
     ##########################
 
     def _get_default_dir(self):
-        pool = self.conn.get_default_pool()
-        if pool:
-            return pool.get_target_path()
-        return self.config.get_default_image_dir(self.conn)
+        return virtinst.StoragePool.get_default_dir(self.conn.get_backend())
 
     def _get_ideal_path_info(self, name):
         path = self._get_default_dir()
@@ -80,9 +74,9 @@ class vmmAddStorage(vmmGObjectUI):
 
         avail = 0
         if pool and pool.is_active():
-            # FIXME: make sure not inactive?
-            # FIXME: use a conn specific function after we send pool-added
-            pool.refresh()
+            # Rate limit this, since it can be spammed at dialog startup time
+            if pool.secs_since_last_refresh() > 10:
+                pool.refresh()
             avail = int(pool.get_available())
 
         elif not self.conn.is_remote() and os.path.exists(path):
@@ -102,15 +96,12 @@ class vmmAddStorage(vmmGObjectUI):
             return
 
         def pretty_storage(size):
-            return "%.1f GB" % float(size)
+            return "%.1f GiB" % float(size)
 
         hd_label = ("%s available in the default location" %
                     pretty_storage(max_storage))
         hd_label = ("<span color='#484848'>%s</span>" % hd_label)
         widget.set_markup(hd_label)
-
-    def _is_default_storage(self):
-        return bool(self.widget("config-storage-create").get_active())
 
     def _check_default_pool_active(self):
         default_pool = self.conn.get_default_pool()
@@ -176,6 +167,7 @@ class vmmAddStorage(vmmGObjectUI):
             if path not in broken_paths:
                 continue
             details += "%s : %s\n" % (path, error)
+        details += "\nIt is very likely the VM fill fail to start up."
 
         logging.debug("Permission errors:\n%s", details)
 
@@ -271,7 +263,7 @@ class vmmAddStorage(vmmGObjectUI):
         do_exist = False
         ret = True
         try:
-            do_exist = virtinst.VirtualDisk.path_exists(conn, ideal)
+            do_exist = virtinst.VirtualDisk.path_definitely_exists(conn, ideal)
             ret = virtinst.VirtualDisk.path_in_use_by(conn, ideal)
         except:
             logging.exception("Error checking default path usage")
@@ -320,7 +312,7 @@ class vmmAddStorage(vmmGObjectUI):
                 if is_default:
                     path = self.get_default_path(vmname, collidelist)
                 else:
-                    path = self.widget("config-storage-entry").get_text()
+                    path = self.widget("config-storage-entry").get_text().strip()
 
             if is_default:
                 path = self._check_ideal_path(path, vmname, collidelist)
@@ -332,8 +324,13 @@ class vmmAddStorage(vmmGObjectUI):
             disk.path = path or None
             disk.read_only = readonly
             disk.device = device
-            disk.set_create_storage(size=size, sparse=sparse,
-                                    fmt=fmt or None)
+
+            if disk.wants_storage_creation():
+                pool = disk.get_parent_pool()
+                vol_install = virtinst.VirtualDisk.build_vol_install(
+                    disk.conn, os.path.basename(disk.path), pool,
+                    size, sparse, fmt=fmt or None)
+                disk.set_vol_install(vol_install)
 
             if not fmt:
                 fmt = self.conn.get_default_storage_format()

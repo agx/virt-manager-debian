@@ -20,15 +20,12 @@
 
 import logging
 
-# pylint: disable=E0611
 from gi.repository import GObject
-# pylint: enable=E0611
 
-from virtManager.baseclass import vmmGObjectUI
-from virtManager.mediadev import MEDIA_FLOPPY
-from virtManager.mediacombo import vmmMediaCombo
-from virtManager.storagebrowse import vmmStorageBrowser
-from virtManager.addstorage import vmmAddStorage
+from .baseclass import vmmGObjectUI
+from .mediacombo import vmmMediaCombo
+from .storagebrowse import vmmStorageBrowser
+from .addstorage import vmmAddStorage
 
 
 class vmmChooseCD(vmmGObjectUI):
@@ -76,7 +73,7 @@ class vmmChooseCD(vmmGObjectUI):
         self.reset_state()
         self.topwin.set_transient_for(parent)
         self.topwin.present()
-        self.conn.schedule_priority_tick(pollnodedev=True, pollmedia=True)
+        self.conn.schedule_priority_tick(pollnodedev=True)
 
     def _cleanup(self):
         self.vm = None
@@ -91,7 +88,7 @@ class vmmChooseCD(vmmGObjectUI):
             self.mediacombo = None
 
     def _init_ui(self):
-        if self.media_type == MEDIA_FLOPPY:
+        if self.media_type == vmmMediaCombo.MEDIA_FLOPPY:
             self.widget("physical-media").set_label(_("Floppy D_rive"))
             self.widget("iso-image").set_label(_("Floppy _Image"))
 
@@ -151,15 +148,14 @@ class vmmChooseCD(vmmGObjectUI):
     def _browse_file(self):
         if self.storage_browser is None:
             self.storage_browser = vmmStorageBrowser(self.conn)
-            self.storage_browser.connect("storage-browse-finish",
-                                         self.set_storage_path)
+            self.storage_browser.set_finish_cb(self.set_storage_path)
 
-        self.storage_browser.stable_defaults = self.vm.stable_defaults()
+        self.storage_browser.set_stable_defaults(self.vm.stable_defaults())
 
-        if self.media_type == MEDIA_FLOPPY:
+        if self.media_type == vmmMediaCombo.MEDIA_FLOPPY:
             self.storage_browser.set_browse_reason(
                                     self.config.CONFIG_DIR_FLOPPY_MEDIA)
         else:
             self.storage_browser.set_browse_reason(
                                     self.config.CONFIG_DIR_ISO_MEDIA)
-        self.storage_browser.show(self.topwin, self.conn)
+        self.storage_browser.show(self.topwin)

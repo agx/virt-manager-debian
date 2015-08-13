@@ -1,8 +1,7 @@
-# coding=utf-8
 #
 # Copyright 2011, 2013 Red Hat, Inc.
 # Cole Robinson <crobinso@redhat.com>
-# Marc-André Lureau <marcandre.lureau@redhat.com>
+# Marc-Andre Lureau <marcandre.lureau@redhat.com>
 #
 # Copyright 2013 IBM Corporation
 # Author: Stefan Berger <stefanb@linux.vnet.ibm.com>
@@ -22,8 +21,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
-from virtinst import VirtualDevice
-from virtinst.xmlbuilder import XMLProperty
+from .device import VirtualDevice
+from .xmlbuilder import XMLProperty
 
 
 class VirtualTPMDevice(VirtualDevice):

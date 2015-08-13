@@ -1,5 +1,3 @@
-Copying test.ovf-disk1.vmdk to /tmp/test.ovf-disk1
-Copying testfile to /tmp/testfile
 <domain type="kvm">
   <name>test.ovf</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
@@ -15,9 +13,10 @@ Copying testfile to /tmp/testfile
     <acpi/>
     <apic/>
     <pae/>
+    <vmport state="off"/>
   </features>
   <cpu mode="custom" match="exact">
-    <model>core2duo</model>
+    <model>Opteron_G4</model>
   </cpu>
   <clock offset="utc">
     <timer name="rtc" tickpolicy="catchup"/>
@@ -27,6 +26,10 @@ Copying testfile to /tmp/testfile
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
   <on_crash>restart</on_crash>
+  <pm>
+    <suspend-to-mem enabled="no"/>
+    <suspend-to-disk enabled="no"/>
+  </pm>
   <devices>
     <emulator>/usr/bin/qemu-kvm</emulator>
     <disk type="file" device="disk">
@@ -55,7 +58,9 @@ Copying testfile to /tmp/testfile
       <model type="e1000"/>
     </interface>
     <input type="mouse" bus="ps2"/>
-    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes"/>
+    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
+      <image compression="off"/>
+    </graphics>
     <console type="pty"/>
     <channel type="spicevmc">
       <target type="virtio" name="com.redhat.spice.0"/>
@@ -64,8 +69,6 @@ Copying testfile to /tmp/testfile
     <video>
       <model type="qxl"/>
     </video>
-    <redirdev bus="usb" type="spicevmc"/>
-    <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="spicevmc"/>
   </devices>

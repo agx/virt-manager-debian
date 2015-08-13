@@ -53,14 +53,10 @@ class parser_class(object):
         raise NotImplementedError
 
 
-from virtconv.vmx import vmx_parser as _vmx_parser
-from virtconv.ovf import ovf_parser as _ovf_parser
-
-
-_parsers = [
-    _vmx_parser,
-    _ovf_parser,
-]
+def _get_parsers():
+    from .vmx import vmx_parser
+    from .ovf import ovf_parser
+    return [vmx_parser, ovf_parser]
 
 
 def _is_test():
@@ -71,7 +67,7 @@ def _find_parser_by_name(input_name):
     """
     Return the parser of the given name.
     """
-    parsers = [p for p in _parsers if p.name == input_name]
+    parsers = [p for p in _get_parsers() if p.name == input_name]
     if len(parsers):
         return parsers[0]
     raise RuntimeError(_("No parser found for type '%s'") % input_name)
@@ -81,7 +77,7 @@ def _find_parser_by_file(input_file):
     """
     Return the parser that is capable of comprehending the given file.
     """
-    for p in _parsers:
+    for p in _get_parsers():
         if p.identify_file(input_file):
             return p
     raise RuntimeError(_("Don't know how to parse file %s") % input_file)
@@ -155,7 +151,7 @@ def _find_input(input_file, parser, print_cb):
                 parser = _find_parser_by_file(input_file)
             return input_file, parser, force_clean
 
-        parsers = parser and [parser] or _parsers
+        parsers = parser and [parser] or _get_parsers()
         for root, ignore, files in os.walk(input_file):
             for p in parsers:
                 for f in [f for f in files if f.endswith(p.suffix)]:
@@ -174,28 +170,31 @@ class VirtConverter(object):
     """
     Public interface for actually performing the conversion
     """
-    def __init__(self, conn, input_file, print_cb=None, input_name=None):
+    def __init__(self, conn, input_file, print_cb=-1, input_name=None):
         self.conn = conn
         self._err_clean = []
         self._force_clean = []
 
-        if print_cb is None:
+        if print_cb == -1 or print_cb is None:
             def cb(msg):
-                print msg
-            print_cb = cb
-        self.print_cb = print_cb
+                if print_cb == -1:
+                    print msg
+            self.print_cb = cb
+        else:
+            self.print_cb = print_cb
 
         parser = None
         if input_name:
             parser = _find_parser_by_name(input_name)
 
+        input_file = os.path.abspath(input_file)
         logging.debug("converter __init__ with input=%s parser=%s",
             input_file, parser)
 
         (self._input_file,
          self.parser,
          self._force_clean) = _find_input(input_file, parser, self.print_cb)
-        self._top_dir = os.path.dirname(self._input_file)
+        self._top_dir = os.path.dirname(os.path.abspath(self._input_file))
 
         logging.debug("converter not input_file=%s parser=%s",
             self._input_file, self.parser)
@@ -270,7 +269,7 @@ class VirtConverter(object):
             disk_format = None
 
         if destdir is None:
-            destdir = StoragePool.get_default_path(self.conn)
+            destdir = StoragePool.get_default_dir(self.conn, build=not dry)
 
         guest = self.get_guest()
         for disk in guest.get_devices("disk"):

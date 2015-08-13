@@ -1,10 +1,6 @@
   HACKING
   =======
 
-We use glade-3 for building virt-manager's UI. It is recommended you have
-a fairly recent version of glade-3: if a small UI change seems to rewrite the
-entire glade file, you likely have a too old (or too new :) glade version.
-
 The following commands will be useful for anyone writing patches:
 
     python setup.py test      : Run local unit test suite
@@ -17,10 +13,11 @@ Our pylint script uses a blacklist rather than a whitelist approach,
 so it could throw some false positives or useless messages. If you think
 your patch exposes one of these, bring it up on the mailing list.
 
-If 'python-coverage' is installed, you can run 'coverage -r' after 'test'
-to see a code coverage report.
+If 'python-coverage' is installed, you can run 'coverage -r' after
+'python setup.py test' finished to see a code coverage report.
 
 'test*' have a --debug option if you are hitting problems.
+For more options, use 'python setup.py test --help'.
 
 One useful way to manually test virt-manager's UI is using libvirt's
 unit test driver. From the source directory, Launch virt-manager like:
@@ -36,6 +33,10 @@ Also, there's a few standalone specialty tests:
     python setup.py test_urls       : Test fetching media from distro URLs
     python setup.py test_initrd_inject: Test --initrd-inject
 
+We use glade-3 for building virt-manager's UI. It is recommended you have
+a fairly recent version of glade-3: if a small UI change seems to rewrite the
+entire glade file, you likely have a too old (or too new :) glade version.
+
 
   Submitting patches
   ==================
@@ -45,7 +46,7 @@ release. The git repo is at
 
   git://git.fedorahosted.org/git/virt-manager.git
 
-For an web view, see:
+For a web view, see:
 
   https://git.fedorahosted.org/cgit/virt-manager.git/
 
@@ -58,4 +59,6 @@ format-patch output is fine too.
   ============
 
 For translations, please sign up for transifex.com and contribute to the
-virt-manager project.
+virt-manager project, see:
+
+  https://www.transifex.com/projects/p/virt-manager/

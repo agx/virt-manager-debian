@@ -18,18 +18,16 @@
 # MA 02110-1301 USA.
 #
 
-# pylint: disable=E0611
 from gi.repository import Gtk
 from gi.repository import Gdk
-# pylint: enable=E0611
 
 import logging
 
 from virtinst import Interface, InterfaceProtocol
 
-from virtManager import uiutil
-from virtManager.baseclass import vmmGObjectUI
-from virtManager.asyncjob import vmmAsyncJob
+from . import uiutil
+from .baseclass import vmmGObjectUI
+from .asyncjob import vmmAsyncJob
 
 PAGE_TYPE = 0
 PAGE_DETAILS = 1
@@ -139,7 +137,8 @@ class vmmCreateInterface(vmmGObjectUI):
         self.ip_config.show_all()
 
     def close(self, ignore1=None, ignore2=None):
-        logging.debug("Closing new interface wizard")
+        if self.topwin.is_visible():
+            logging.debug("Closing new interface wizard")
         self.ip_config.hide()
         self.bridge_config.hide()
         self.bond_config.hide()
@@ -168,8 +167,7 @@ class vmmCreateInterface(vmmGObjectUI):
     @staticmethod
     def iface_in_use_by(conn, name):
         use_str = ""
-        for i in conn.list_interface_names():
-            iface = conn.get_interface(i)
+        for iface in conn.list_interfaces():
             if name in iface.get_slave_names():
                 if use_str:
                     use_str += ", "
@@ -181,7 +179,7 @@ class vmmCreateInterface(vmmGObjectUI):
     def build_interface_startmode_combo(combo):
         model = Gtk.ListStore(str)
         combo.set_model(model)
-        uiutil.set_combo_text_column(combo, 0)
+        uiutil.init_combo_text_column(combo, 0)
 
         model.append(["none"])
         model.append(["onboot"])
@@ -198,7 +196,7 @@ class vmmCreateInterface(vmmGObjectUI):
         type_list = self.widget("interface-type")
         type_model = Gtk.ListStore(str, str)
         type_list.set_model(type_model)
-        uiutil.set_combo_text_column(type_list, 1)
+        uiutil.init_combo_text_column(type_list, 1)
         type_model.append([Interface.INTERFACE_TYPE_BRIDGE,
                            _("Bridge")])
         type_model.append([Interface.INTERFACE_TYPE_BOND,
@@ -214,7 +212,7 @@ class vmmCreateInterface(vmmGObjectUI):
 
         # Parent/slave Interface list
         slave_list = self.widget("interface-list")
-        # [ vmmInterface, selected, selectabel, name, type, is defined,
+        # [ vmmInterface, selected, selectable, name, type, is defined,
         #   is active, in use by str, mac]
         slave_model = Gtk.ListStore(object, bool, bool, str, str, bool, bool,
                                     str, str)
@@ -258,7 +256,7 @@ class vmmCreateInterface(vmmGObjectUI):
         mode_list = self.widget("bond-mode")
         mode_model = Gtk.ListStore(str, str)
         mode_list.set_model(mode_model)
-        uiutil.set_combo_text_column(mode_list, 0)
+        uiutil.init_combo_text_column(mode_list, 0)
         mode_model.append([_("System default"), None])
         for m in Interface.INTERFACE_BOND_MODES:
             mode_model.append([m, m])
@@ -266,7 +264,7 @@ class vmmCreateInterface(vmmGObjectUI):
         mon_list = self.widget("bond-monitor-mode")
         mon_model = Gtk.ListStore(str, str)
         mon_list.set_model(mon_model)
-        uiutil.set_combo_text_column(mon_list, 0)
+        uiutil.init_combo_text_column(mon_list, 0)
         mon_model.append([_("System default"), None])
         for m in Interface.INTERFACE_BOND_MONITOR_MODES:
             mon_model.append([m, m])
@@ -274,14 +272,14 @@ class vmmCreateInterface(vmmGObjectUI):
         validate_list = self.widget("arp-validate")
         validate_model = Gtk.ListStore(str)
         validate_list.set_model(validate_model)
-        uiutil.set_combo_text_column(validate_list, 0)
+        uiutil.init_combo_text_column(validate_list, 0)
         for m in Interface.INTERFACE_BOND_MONITOR_MODE_ARP_VALIDATE_MODES:
             validate_model.append([m])
 
         carrier_list = self.widget("mii-carrier")
         carrier_model = Gtk.ListStore(str)
         carrier_list.set_model(carrier_model)
-        uiutil.set_combo_text_column(carrier_list, 0)
+        uiutil.init_combo_text_column(carrier_list, 0)
         for m in Interface.INTERFACE_BOND_MONITOR_MODE_MII_CARRIER_TYPES:
             carrier_model.append([m])
 
@@ -289,13 +287,12 @@ class vmmCreateInterface(vmmGObjectUI):
         copy_iface = self.widget("ip-copy-interface-combo")
         copy_model = Gtk.ListStore(str, object, bool)
         copy_iface.set_model(copy_model)
-        uiutil.set_combo_text_column(copy_iface, 0)
-        copy_iface.add_attribute(txt, "sensitive", 2)
+        uiutil.init_combo_text_column(copy_iface, 0)
 
         ip_mode = self.widget("ipv4-mode")
         ip_model = Gtk.ListStore(str)
         ip_mode.set_model(ip_model)
-        uiutil.set_combo_text_column(ip_mode, 0)
+        uiutil.init_combo_text_column(ip_mode, 0)
         ip_model.insert(IP_DHCP, ["DHCP"])
         ip_model.insert(IP_STATIC, ["Static"])
         ip_model.insert(IP_NONE, ["No configuration"])
@@ -303,7 +300,7 @@ class vmmCreateInterface(vmmGObjectUI):
         ip_mode = self.widget("ipv6-mode")
         ip_model = Gtk.ListStore(str)
         ip_mode.set_model(ip_model)
-        uiutil.set_combo_text_column(ip_mode, 0)
+        uiutil.init_combo_text_column(ip_mode, 0)
         ip_model.insert(IP_DHCP, ["DHCP"])
         ip_model.insert(IP_STATIC, ["Static"])
         ip_model.insert(IP_NONE, ["No configuration"])
@@ -320,7 +317,6 @@ class vmmCreateInterface(vmmGObjectUI):
         txt_col.add_attribute(txt, "text", 0)
 
     def reset_state(self):
-
         self.widget("pages").set_current_page(PAGE_TYPE)
         self.page_changed(None, None, PAGE_TYPE)
 
@@ -504,15 +500,15 @@ class vmmCreateInterface(vmmGObjectUI):
         self.widget("interface-list-text").set_text(msg)
 
         nodedevs = {}
-        for phys in self.conn.get_nodedevs("net"):
-            nodedevs[phys.interface] = [None,
-                                        False, False, phys.interface,
-                                        "ethernet", False, True, None,
-                                        phys.address]
+        for phys in self.conn.filter_nodedevs("net"):
+            nodedevs[phys.xmlobj.interface] = [None,
+                False, False, phys.xmlobj.interface,
+                "ethernet", False, True, None,
+                phys.xmlobj.address]
 
         row_dict = {}
-        for name in self.conn.list_interface_names():
-            iface = self.conn.get_interface(name)
+        for iface in self.conn.list_interfaces():
+            name = iface.get_name()
             key = iface.get_xmlobj()
             iface_type = iface.get_type()
             active = iface.is_active()
@@ -593,7 +589,7 @@ class vmmCreateInterface(vmmGObjectUI):
     #########################
 
     def get_config_interface_type(self):
-        return uiutil.get_list_selection(self.widget("interface-type"), 0)
+        return uiutil.get_list_selection(self.widget("interface-type"))
 
     def set_interface_name(self, name):
         if self.widget("interface-name-entry").get_visible():
@@ -610,7 +606,7 @@ class vmmCreateInterface(vmmGObjectUI):
             return self.widget("interface-name-label").get_text()
 
     def get_config_interface_startmode(self):
-        return uiutil.get_list_selection(self.widget("interface-startmode"), 0)
+        return uiutil.get_list_selection(self.widget("interface-startmode"))
 
     def get_config_selected_interfaces(self):
         iface_list = self.widget("interface-list")
@@ -675,7 +671,7 @@ class vmmCreateInterface(vmmGObjectUI):
         self.set_interface_name(name)
 
     def bond_monitor_mode_changed(self, src):
-        value = uiutil.get_list_selection(src, 1)
+        value = uiutil.get_list_selection(src, column=1)
         bond_pages = self.widget("bond-pages")
 
         if value == "arpmon":
@@ -709,8 +705,9 @@ class vmmCreateInterface(vmmGObjectUI):
         self.widget("bridge-config-label").set_text(txt)
 
     def update_bond_desc(self):
-        mode = uiutil.get_list_selection(self.widget("bond-mode"), 0)
-        mon = uiutil.get_list_selection(self.widget("bond-monitor-mode"), 1)
+        mode = uiutil.get_list_selection(self.widget("bond-mode"))
+        mon = uiutil.get_list_selection(
+            self.widget("bond-monitor-mode"), column=1)
 
         txt = mode
         if mon:
@@ -764,7 +761,7 @@ class vmmCreateInterface(vmmGObjectUI):
     def build_ip_info(self):
         def build_ip(addr_str):
             if not addr_str:
-                return None, None
+                raise ValueError(_("Please enter an IP address"))
             ret = addr_str.rsplit("/", 1)
             address = ret[0]
             prefix = None
@@ -774,7 +771,7 @@ class vmmCreateInterface(vmmGObjectUI):
 
         is_manual = self.widget("ip-do-manual").get_active()
 
-        copy_row = uiutil.get_list_selection(
+        copy_row = uiutil.get_list_selected_row(
             self.widget("ip-copy-interface-combo"))
 
         v4_mode = self.widget("ipv4-mode").get_active()
@@ -792,9 +789,14 @@ class vmmCreateInterface(vmmGObjectUI):
         ipv6 = None
 
         if not is_manual:
-            if copy_row[1] and copy_row[2]:
-                copy_name = copy_row[1].get_name()
-                proto_xml = copy_row[1].get_protocol_xml()
+            copy_vmmiface = copy_row[1]
+            copy_cancopy = copy_row[2]
+            if copy_vmmiface and copy_cancopy:
+                copy_name = copy_vmmiface.get_name()
+                # We always want the inactive protocol XML, which
+                # will list the on disk config, not the run time config,
+                # which doesn't list DHCP
+                proto_xml = copy_vmmiface.get_protocol_xml(inactive=True)
 
         else:
             # Build IPv4 Info
@@ -818,9 +820,10 @@ class vmmCreateInterface(vmmGObjectUI):
                 if not ipv6.dhcp:
                     if v6_gate:
                         ipv6.gateway = v6_gate
-                    addr, prefix = build_ip(v4_addr)
-                    if addr:
-                        ipv6.add_ip(addr, prefix)
+                    for v6_addr in v6_addrlist:
+                        addr, prefix = build_ip(v6_addr)
+                        if addr:
+                            ipv6.add_ip(addr, prefix)
 
         return [is_manual, copy_name, ipv4, ipv6, proto_xml]
 
@@ -928,8 +931,19 @@ class vmmCreateInterface(vmmGObjectUI):
             if (itype == Interface.INTERFACE_TYPE_BRIDGE or
                 itype == Interface.INTERFACE_TYPE_BOND):
                 for row in ifaces:
-                    child = Interface(self.conn.get_backend(),
-                        parsexml=row[INTERFACE_ROW_KEY].get_xml_config())
+                    if row[INTERFACE_ROW_IS_DEFINED]:
+                        vmmiface = self.conn.get_interface(
+                            row[INTERFACE_ROW_NAME])
+
+                        # Use the inactive XML, which drops a bunch
+                        # elements that might cause netcf to choke on
+                        # for a sub-interface
+                        xml = vmmiface.get_xmlobj(
+                            inactive=True).get_xml_config()
+                    else:
+                        xml = row[INTERFACE_ROW_KEY].get_xml_config()
+
+                    child = Interface(self.conn.get_backend(), parsexml=xml)
                     iobj.add_interface(child)
                 check_conflict = True
 
@@ -1008,10 +1022,11 @@ class vmmCreateInterface(vmmGObjectUI):
 
 
     def validate_bond(self, iobj, ifaces):
-        mode = uiutil.get_list_selection(self.widget("bond-mode"), 1)
-        mon = uiutil.get_list_selection(self.widget("bond-monitor-mode"), 1)
-        arp_val = uiutil.get_list_selection(self.widget("arp-validate"), 0)
-        mii_car = uiutil.get_list_selection(self.widget("mii-carrier"), 0)
+        mode = uiutil.get_list_selection(self.widget("bond-mode"), column=1)
+        mon = uiutil.get_list_selection(
+            self.widget("bond-monitor-mode"), column=1)
+        arp_val = uiutil.get_list_selection(self.widget("arp-validate"))
+        mii_car = uiutil.get_list_selection(self.widget("mii-carrier"))
 
         # ARP params
         arp_int = self.widget("arp-interval").get_value()

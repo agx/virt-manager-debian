@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
-from virtinst.xmlbuilder import XMLBuilder, XMLProperty
+from .xmlbuilder import XMLBuilder, XMLProperty
 
 
 class DomainFeatures(XMLBuilder):
@@ -45,3 +45,6 @@ class DomainFeatures(XMLBuilder):
     hyperv_spinlocks = XMLProperty("./hyperv/spinlocks/@state", is_onoff=True)
     hyperv_spinlocks_retries = XMLProperty("./hyperv/spinlocks/@retries",
                                            is_int=True)
+
+    vmport = XMLProperty("./vmport/@state", is_onoff=True,
+                         default_name="default", default_cb=lambda s: False)

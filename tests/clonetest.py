@@ -1,4 +1,4 @@
-# Copyright (C) 2013 Red Hat, Inc.
+# Copyright (C) 2013, 2015 Red Hat, Inc.
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -41,16 +41,6 @@ DISKPOOL = "/dev/disk-pool"
 local_files = [FILE1, FILE2]
 
 clonexml_dir = os.path.join(os.getcwd(), "tests/clone-xml")
-clone_files = []
-
-for tmpf in os.listdir(clonexml_dir):
-    black_list = ["managed-storage", "cross-pool", "force", "skip",
-                   "fullpool"]
-    if tmpf.endswith("-out.xml"):
-        tmpf = tmpf[0:(len(tmpf) - len("-out.xml"))]
-        if tmpf not in clone_files and tmpf not in black_list:
-            clone_files.append(tmpf)
-
 conn = utils.open_testdriver()
 
 
@@ -65,7 +55,8 @@ class TestClone(unittest.TestCase):
             os.unlink(f)
 
     def _clone_helper(self, filebase, disks=None, force_list=None,
-                      skip_list=None, compare=True, useconn=None):
+                      skip_list=None, compare=True, useconn=None,
+                      clone_disks_file=None):
         """Helper for comparing clone input/output from 2 xml files"""
         infile = os.path.join(clonexml_dir, filebase + "-in.xml")
         in_content = utils.read_file(infile)
@@ -80,7 +71,8 @@ class TestClone(unittest.TestCase):
         cloneobj = self._default_clone_values(cloneobj, disks)
 
         if compare:
-            self._clone_compare(cloneobj, filebase)
+            self._clone_compare(cloneobj, filebase,
+                                clone_disks_file=clone_disks_file)
             self._clone_define(filebase)
         else:
             cloneobj.setup()
@@ -94,19 +86,24 @@ class TestClone(unittest.TestCase):
 
         if disks is None:
             disks = ["/dev/disk-pool/disk-vol1", "/tmp/clone2.img",
-                     "/tmp/clone3.img", "/tmp/clone4.img",
+                     "/clone3", "/tmp/clone4.img",
                      "/tmp/clone5.img", None]
 
         cloneobj.clone_paths = disks
         return cloneobj
 
-    def _clone_compare(self, cloneobj, outbase):
+    def _clone_compare(self, cloneobj, outbase, clone_disks_file=None):
         """Helps compare output from passed clone instance with an xml file"""
         outfile = os.path.join(clonexml_dir, outbase + "-out.xml")
 
         cloneobj.setup()
 
         utils.diff_compare(cloneobj.clone_xml, outfile)
+        if clone_disks_file:
+            xml_clone_disks = ""
+            for i in cloneobj.get_clone_disks():
+                xml_clone_disks += i.get_vol_install().get_xml_config()
+            utils.diff_compare(xml_clone_disks, clone_disks_file)
 
     def _clone_define(self, filebase):
         """Take the valid output xml and attempt to define it on the
@@ -114,32 +111,6 @@ class TestClone(unittest.TestCase):
         outfile = os.path.join(clonexml_dir, filebase + "-out.xml")
         outxml = utils.read_file(outfile)
         utils.test_create(conn, outxml)
-
-
-    # Skip this test, since libvirt can add new XML elements to the defined
-    # XML (<video>) that make roundtrip a pain
-    def notestCloneGuestLookup(self):
-        """Test using a vm name lookup for cloning"""
-        for base in clone_files:
-            infile = os.path.join(clonexml_dir, base + "-in.xml")
-
-            vm = None
-            try:
-                vm = conn.defineXML(utils.read_file(infile))
-
-                cloneobj = Cloner(conn)
-                cloneobj.original_guest = ORIG_NAME
-
-                cloneobj = self._default_clone_values(cloneobj)
-                self._clone_compare(cloneobj, base)
-            finally:
-                if vm:
-                    vm.undefine()
-
-    def testCloneFromFile(self):
-        """Test using files for input and output"""
-        for base in clone_files:
-            self._clone_helper(base)
 
     def testRemoteNoStorage(self):
         """Test remote clone where VM has no storage that needs cloning"""
@@ -174,14 +145,18 @@ class TestClone(unittest.TestCase):
 
     def testCloneStorageCrossPool(self):
         base = "cross-pool"
+        useconn = utils.open_test_remote()
+        clone_disks_file = os.path.join(clonexml_dir, base + "-disks-out.xml")
         self._clone_helper(base, ["%s/new1.img" % POOL2,
-                                  "%s/new2.img" % POOL2])
+                                  "%s/new2.img" % POOL1],
+                           clone_disks_file=clone_disks_file,
+                           useconn=useconn)
 
     def testCloneStorageForce(self):
         base = "force"
         self._clone_helper(base,
                            disks=["/dev/default-pool/1234.img",
-                                  None, "/tmp/clone2.img"],
+                                  None, "/clone2.img"],
                            force_list=["hda", "fdb", "sdb"])
 
     def testCloneStorageSkip(self):

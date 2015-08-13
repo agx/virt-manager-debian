@@ -21,16 +21,15 @@
 import logging
 import os
 import sys
+import threading
 import traceback
 
-from virtManager import config
+from . import config
 
-# pylint: disable=E0611
 from gi.repository import Gdk
 from gi.repository import GLib
 from gi.repository import GObject
 from gi.repository import Gtk
-# pylint: enable=E0611
 
 
 class vmmGObject(GObject.GObject):
@@ -55,7 +54,7 @@ class vmmGObject(GObject.GObject):
 
         self._gobject_handles = []
         self._gobject_timeouts = []
-        self._gconf_handles = []
+        self._gsettings_handles = []
 
         self._signal_id_map = {}
         self._next_signal_id = 1
@@ -70,8 +69,8 @@ class vmmGObject(GObject.GObject):
         # Do any cleanup required to drop reference counts so object is
         # actually reaped by python. Usually means unregistering callbacks
         try:
-            for h in self._gconf_handles[:]:
-                self.remove_gconf_handle(h)
+            for h in self._gsettings_handles[:]:
+                self.remove_gsettings_handle(h)
             for h in self._gobject_handles[:]:
                 if GObject.GObject.handler_is_connected(self, h):
                     self.disconnect(h)
@@ -98,11 +97,11 @@ class vmmGObject(GObject.GObject):
         self._gobject_handles.remove(handle)
         return ret
 
-    def add_gconf_handle(self, handle):
-        self._gconf_handles.append(handle)
-    def remove_gconf_handle(self, handle):
+    def add_gsettings_handle(self, handle):
+        self._gsettings_handles.append(handle)
+    def remove_gsettings_handle(self, handle):
         self.config.remove_notifier(handle)
-        self._gconf_handles.remove(handle)
+        self._gsettings_handles.remove(handle)
 
     def add_gobject_timeout(self, handle):
         self._gobject_timeouts.append(handle)
@@ -120,6 +119,13 @@ class vmmGObject(GObject.GObject):
     def _refcount(self):
         # Function generates 2 temporary refs, so adjust total accordingly
         return (sys.getrefcount(self) - 2)
+
+    def _start_thread(self, target=None, name=None, args=None, kwargs=None):
+        # Helper for starting a daemonized thread
+        t = threading.Thread(target=target, name=name,
+            args=args or [], kwargs=kwargs or {})
+        t.daemon = True
+        t.start()
 
     def connect_once(self, signal, func, *args):
         id_list = []
@@ -215,7 +221,7 @@ class vmmGObjectUI(vmmGObject):
 
     def _get_err(self):
         if self._err is None:
-            from virtManager import error
+            from . import error
             self._err = error.vmmErrorDialog(self.topwin)
         return self._err
     err = property(_get_err)
