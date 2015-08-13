@@ -8,10 +8,10 @@ Closes: #685749
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/virtinst/guest.py b/virtinst/guest.py
-index f1ed182..01dce40 100644
+index b0f14b0..5c33e71 100644
 --- a/virtinst/guest.py
 +++ b/virtinst/guest.py
-@@ -348,7 +348,7 @@ class Guest(XMLBuilder):
+@@ -358,7 +358,7 @@ class Guest(XMLBuilder):
          if (not install and
              self.os.is_xenpv() and
              not self.os.kernel):

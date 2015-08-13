@@ -1,40 +1,58 @@
 From: =?utf-8?q?Guido_G=C3=BCnther?= <agx@sigxcpu.org>
-Date: Fri, 7 Nov 2014 21:03:39 +0100
+Date: Thu, 13 Aug 2015 22:00:33 +0200
 Subject: Make SpiceClientGtk optional
 
+Not all architectures have it
 ---
- virtManager/console.py | 14 +++++++++++---
- 1 file changed, 11 insertions(+), 3 deletions(-)
+ virtManager/console.py |  9 +++++++--
+ virtManager/viewers.py | 10 +++++++---
+ 2 files changed, 14 insertions(+), 5 deletions(-)
 
 diff --git a/virtManager/console.py b/virtManager/console.py
-index b9f98de..edc76ca 100644
+index ab13d7b..689773e 100644
 --- a/virtManager/console.py
 +++ b/virtManager/console.py
-@@ -25,8 +25,13 @@ from gi.repository import GObject
- from gi.repository import Gtk
- from gi.repository import Gdk
+@@ -29,7 +29,7 @@ from .baseclass import vmmGObjectUI
+ from .details import DETAILS_PAGE_CONSOLE
+ from .serialcon import vmmSerialConsole
+ from .sshtunnels import ConnectionInfo
+-from .viewers import SpiceViewer, VNCViewer
++from .viewers import SpiceViewer, VNCViewer, have_spice_gtk
+ 
+ 
+ class vmmConsolePages(vmmGObjectUI):
+@@ -652,7 +652,12 @@ class vmmConsolePages(vmmGObjectUI):
+             if ginfo.gtype == "vnc":
+                 viewer_class = VNCViewer
+             elif ginfo.gtype == "spice":
+-                viewer_class = SpiceViewer
++                if have_spice_gtk:
++                    viewer_class = SpiceViewer
++                else:
++                    raise RuntimeError("Error opening Spice console, "
++                                       "SpiceClientGtk missing")
++
+ 
+             self._viewer = viewer_class(ginfo)
+             self._connect_viewer_signals()
+diff --git a/virtManager/viewers.py b/virtManager/viewers.py
+index f2b6d69..3000378 100644
+--- a/virtManager/viewers.py
++++ b/virtManager/viewers.py
+@@ -25,9 +25,13 @@ from gi.repository import Gdk
+ import gi
+ gi.require_version('GtkVnc', '2.0')
  from gi.repository import GtkVnc
+-gi.require_version('SpiceClientGtk', '3.0')
 -from gi.repository import SpiceClientGtk
 -from gi.repository import SpiceClientGLib
 +try:
++    gi.require_version('SpiceClientGtk', '3.0')
 +    from gi.repository import SpiceClientGtk
 +    from gi.repository import SpiceClientGLib
 +    have_spice_gtk = True
 +except ImportError:
 +    have_spice_gtk = False
-+
- # pylint: enable=E0611
  
- import libvirt
-@@ -1498,7 +1503,10 @@ class vmmConsolePages(vmmGObjectUI):
-                 self.widget("console-gfx-viewport").add(self.viewer.display)
-                 self.viewer.init_widget()
-             elif ginfo.gtype == "spice":
--                self.viewer = SpiceViewer(self)
-+                if have_spice_gtk:
-+                    self.viewer = SpiceViewer(self)
-+                else:
-+                    raise RuntimeError("Error opening Spice console, SpiceClientGtk missing")
- 
-             self.set_enable_accel()
- 
+ import logging
+ import socket

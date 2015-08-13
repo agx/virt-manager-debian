@@ -8,15 +8,15 @@ Closes: #781127
  1 file changed, 2 insertions(+)
 
 diff --git a/virtManager/serialcon.py b/virtManager/serialcon.py
-index 96e3d2f..ef4a394 100644
+index 320811b..062d2ac 100644
 --- a/virtManager/serialcon.py
 +++ b/virtManager/serialcon.py
-@@ -29,6 +29,8 @@ import logging
+@@ -28,6 +28,8 @@ import logging
  from gi.repository import Gdk
  from gi.repository import GLib
  from gi.repository import Gtk
 +import gi
 +gi.require_version('Vte', '2.90')
  from gi.repository import Vte
- # pylint: enable=E0611
  
+ import libvirt
