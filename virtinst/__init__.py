@@ -15,13 +15,29 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
-from virtcli import cliconfig, cliutils
-stable_defaults = cliconfig.stable_defaults
-cliutils.setup_i18n()
+from virtcli import CLIConfig as _CLIConfig
 
 
-from virtinst import util
+def _setup_i18n():
+    import gettext
+    import locale
+
+    try:
+        locale.setlocale(locale.LC_ALL, '')
+    except:
+        # Can happen if user passed a bogus LANG
+        pass
+
+    gettext.install("virt-manager", _CLIConfig.gettext_dir)
+    gettext.bindtextdomain("virt-manager", _CLIConfig.gettext_dir)
+
+_setup_i18n()
+stable_defaults = _CLIConfig.stable_defaults
+
+from . import util
 from virtinst import support
+from virtinst.uri import URISplit
+from virtinst.osdict import OSDB
 
 from virtinst.osxml import OSXML
 from virtinst.domainfeatures import DomainFeatures
@@ -29,13 +45,15 @@ from virtinst.domainnumatune import DomainNumatune
 from virtinst.domainblkiotune import DomainBlkiotune
 from virtinst.domainmemorytune import DomainMemorytune
 from virtinst.domainmemorybacking import DomainMemorybacking
+from virtinst.domainresource import DomainResource
 from virtinst.clock import Clock
 from virtinst.cpu import CPU, CPUFeature
 from virtinst.seclabel import Seclabel
 from virtinst.pm import PM
 from virtinst.idmap import IdMap
 
-import virtinst.capabilities as CapabilitiesParser
+from virtinst.capabilities import Capabilities
+from virtinst.domcapabilities import DomainCapabilities
 from virtinst.interface import Interface, InterfaceProtocol
 from virtinst.network import Network
 from virtinst.nodedev import NodeDevice
@@ -64,7 +82,7 @@ from virtinst.devicerng import VirtualRNGDevice
 from virtinst.devicepanic import VirtualPanicDevice
 
 from virtinst.installer import (ContainerInstaller, ImportInstaller,
-                                LiveCDInstaller, PXEInstaller, Installer)
+                                PXEInstaller, Installer)
 
 from virtinst.distroinstaller import DistroInstaller
 

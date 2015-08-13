@@ -17,15 +17,18 @@
 # MA 02110-1301 USA.
 #
 
-# pylint: disable=E0611
-from gi.repository import Gtk
-# pylint: enable=E0611
+import logging
 
-from virtManager import uiutil
-from virtManager.baseclass import vmmGObjectUI
+from gi.repository import Gtk
+
+from . import uiutil
+from .baseclass import vmmGObjectUI
 
 
 class vmmMediaCombo(vmmGObjectUI):
+    MEDIA_FLOPPY = "floppy"
+    MEDIA_CDROM = "cdrom"
+
     OPTICAL_FIELDS = 4
     (OPTICAL_DEV_PATH,
     OPTICAL_LABEL,
@@ -44,15 +47,10 @@ class vmmMediaCombo(vmmGObjectUI):
         self._init_ui()
 
     def _cleanup(self):
-        try:
-            self.conn.disconnect_by_func(self._mediadev_added)
-            self.conn.disconnect_by_func(self._mediadev_removed)
-        except:
-            pass
-
         self.conn = None
         self.top_box.destroy()
         self.top_box = None
+
 
     ##########################
     # Initialization methods #
@@ -70,8 +68,7 @@ class vmmMediaCombo(vmmGObjectUI):
         self.top_box.add(self._warn_icon)
         self.top_box.show_all()
 
-        # [Device path, pretty label, has_media?, device key, media key,
-        #  vmmMediaDevice, is valid device]
+        # [Device path, pretty label, has_media?, device key]
         fields = []
         fields.insert(self.OPTICAL_DEV_PATH, str)
         fields.insert(self.OPTICAL_LABEL, str)
@@ -83,9 +80,11 @@ class vmmMediaCombo(vmmGObjectUI):
         self.combo.pack_start(text, True)
         self.combo.add_attribute(text, 'text', self.OPTICAL_LABEL)
 
-        error = self.conn.mediadev_error
-        self._warn_icon.set_visible(bool(error))
+        error = None
+        if not self.conn.is_nodedev_capable():
+            error = _("Libvirt version does not support media listing.")
         self._warn_icon.set_tooltip_text(error)
+        self._warn_icon.set_visible(bool(error))
 
 
     def _set_mediadev_default(self):
@@ -100,11 +99,14 @@ class vmmMediaCombo(vmmGObjectUI):
         row[self.OPTICAL_DEV_KEY] = None
         model.append(row)
 
-    def _set_mediadev_row_from_object(self, row, obj):
-        row[self.OPTICAL_DEV_PATH] = obj.get_path()
-        row[self.OPTICAL_LABEL] = obj.pretty_label()
-        row[self.OPTICAL_HAS_MEDIA] = obj.has_media()
-        row[self.OPTICAL_DEV_KEY] = obj.get_key()
+    def _pretty_label(self, nodedev):
+        media_label = nodedev.xmlobj.media_label
+        if not nodedev.xmlobj.media_available:
+            media_label = _("No media detected")
+        elif not nodedev.xmlobj.media_label:
+            media_label = _("Media Unknown")
+
+        return "%s (%s)" % (media_label, nodedev.xmlobj.block)
 
     def _mediadev_set_default_selection(self):
         # Set the first active cdrom device as selected, otherwise none
@@ -125,73 +127,6 @@ class vmmMediaCombo(vmmGObjectUI):
 
         widget.set_active(0)
 
-    def _mediadev_media_changed(self, newobj):
-        widget = self.combo
-        model = widget.get_model()
-        active = widget.get_active()
-        idx = 0
-
-        # Search for the row with matching device node and
-        # fill in info about inserted media. If model has no current
-        # selection, select the new media.
-        for row in model:
-            if row[self.OPTICAL_DEV_PATH] == newobj.get_path():
-                self._set_mediadev_row_from_object(row, newobj)
-                has_media = row[self.OPTICAL_HAS_MEDIA]
-
-                if has_media and active == -1:
-                    widget.set_active(idx)
-                elif not has_media and active == idx:
-                    widget.set_active(-1)
-
-            idx = idx + 1
-
-        self._mediadev_set_default_selection()
-
-    def _mediadev_added(self, ignore, newobj):
-        widget = self.combo
-        model = widget.get_model()
-
-        if newobj.get_media_type() != self.media_type:
-            return
-        if model is None:
-            return
-
-        if len(model) == 1 and model[0][self.OPTICAL_DEV_PATH] is None:
-            # Only entry is the 'No device' entry
-            model.clear()
-
-        newobj.connect("media-added", self._mediadev_media_changed)
-        newobj.connect("media-removed", self._mediadev_media_changed)
-
-        # Brand new device
-        row = [None] * self.OPTICAL_FIELDS
-        self._set_mediadev_row_from_object(row, newobj)
-        model.append(row)
-
-        self._mediadev_set_default_selection()
-
-    def _mediadev_removed(self, ignore, key):
-        widget = self.combo
-        model = widget.get_model()
-        active = widget.get_active()
-        idx = 0
-
-        for row in model:
-            if row[self.OPTICAL_DEV_KEY] == key:
-                # Whole device removed
-                del(model[idx])
-
-                if idx > active and active != -1:
-                    widget.set_active(active - 1)
-                elif idx == active:
-                    widget.set_active(-1)
-
-            idx += 1
-
-        self._set_mediadev_default()
-        self._mediadev_set_default_selection()
-
     def _populate_media(self):
         if self._populated:
             return
@@ -199,10 +134,22 @@ class vmmMediaCombo(vmmGObjectUI):
         widget = self.combo
         model = widget.get_model()
         model.clear()
-        self._set_mediadev_default()
 
-        self.conn.connect("mediadev-added", self._mediadev_added)
-        self.conn.connect("mediadev-removed", self._mediadev_removed)
+        for nodedev in self.conn.filter_nodedevs(devtype="storage"):
+            if not (nodedev.xmlobj.device_type == "storage" and
+                    nodedev.xmlobj.drive_type in ["cdrom", "floppy"]):
+                continue
+            if nodedev.xmlobj.drive_type != self.media_type:
+                continue
+
+            row = [None] * self.OPTICAL_FIELDS
+            row[self.OPTICAL_DEV_PATH] = nodedev.xmlobj.block
+            row[self.OPTICAL_LABEL] = self._pretty_label(nodedev)
+            row[self.OPTICAL_HAS_MEDIA] = nodedev.xmlobj.media_available
+            row[self.OPTICAL_DEV_KEY] = nodedev.xmlobj.name
+            model.append(row)
+
+        self._set_mediadev_default()
 
         widget.set_active(-1)
         self._mediadev_set_default_selection()
@@ -214,10 +161,15 @@ class vmmMediaCombo(vmmGObjectUI):
     ##############
 
     def reset_state(self):
-        self._populate_media()
+        try:
+            self._populate_media()
+        except:
+            logging.debug("Error populating mediadev combo", exc_info=True)
 
     def get_path(self):
-        return uiutil.get_list_selection(self.combo, self.OPTICAL_DEV_PATH)
+        return uiutil.get_list_selection(
+            self.combo, column=self.OPTICAL_DEV_PATH)
 
     def has_media(self):
-        return uiutil.get_list_selection(self.combo, self.OPTICAL_HAS_MEDIA)
+        return uiutil.get_list_selection(
+            self.combo, column=self.OPTICAL_HAS_MEDIA) or False

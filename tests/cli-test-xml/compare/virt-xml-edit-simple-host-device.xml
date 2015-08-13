@@ -8,8 +8,8 @@
        </source>
 +      <driver name="vfio"/>
      </hostdev>
-     <hostdev mode="subsystem" type="usb" managed="yes">
+     <hostdev mode="subsystem" type="pci" managed="yes">
        <source>
 
-Domain 'test-many-devices' defined successfully.
+Domain 'test-for-virtxml' defined successfully.
 Changes will take effect after the next domain shutdown.

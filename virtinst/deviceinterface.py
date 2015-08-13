@@ -20,9 +20,9 @@
 import logging
 import random
 
-from virtinst import util
-from virtinst import VirtualDevice
-from virtinst.xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
+from . import util
+from .device import VirtualDevice
+from .xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
 
 
 def _random_mac(conn):
@@ -38,12 +38,12 @@ def _random_mac(conn):
 
     @return: MAC address string
     """
-    ouis = {'xen': [0x00, 0x16, 0x3E], 'qemu': [0x52, 0x54, 0x00]}
 
-    try:
-        oui = ouis[conn.getType().lower()]
-    except KeyError:
-        oui = ouis['xen']
+    if conn.is_qemu():
+        oui = [0x52, 0x54, 0x00]
+    else:
+        # Xen
+        oui = [0x00, 0x16, 0x3E]
 
     mac = oui + [
             random.randint(0x00, 0xff),
@@ -148,7 +148,7 @@ class VirtualNetworkInterface(VirtualDevice):
             ret = False
             default = util.default_bridge(self.conn)
             if default:
-                ret = default[1]
+                ret = default
 
         self._default_bridge = ret
         return ret or None
@@ -173,7 +173,7 @@ class VirtualNetworkInterface(VirtualDevice):
 
     def _get_source(self):
         """
-        Convenince function, try to return the relevant <source> value
+        Convenience function, try to return the relevant <source> value
         per the network type.
         """
         if self.type == self.TYPE_VIRTUAL:
@@ -187,7 +187,7 @@ class VirtualNetworkInterface(VirtualDevice):
         return self._network or self._bridge or self._source_dev
     def _set_source(self, newsource):
         """
-        Conveninece function, try to set the relevant <source> value
+        Convenience function, try to set the relevant <source> value
         per the network type
         """
         self._bridge = None
@@ -208,7 +208,7 @@ class VirtualNetworkInterface(VirtualDevice):
     ##################
 
     _XML_PROP_ORDER = [
-        "_bridge", "_network", "_source_dev", "source_mode",
+        "_bridge", "_network", "_source_dev", "source_mode", "portgroup",
         "macaddr", "target_dev", "model", "virtualport",
         "filterref"]
 
@@ -226,6 +226,7 @@ class VirtualNetworkInterface(VirtualDevice):
 
     source_mode = XMLProperty("./source/@mode",
                               default_cb=_default_source_mode)
+    portgroup = XMLProperty("./source/@portgroup")
     model = XMLProperty("./model/@type")
     target_dev = XMLProperty("./target/@dev")
     filterref = XMLProperty("./filterref/@filter")

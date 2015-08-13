@@ -25,16 +25,14 @@ import pty
 import fcntl
 import logging
 
-# pylint: disable=E0611
 from gi.repository import Gdk
 from gi.repository import GLib
 from gi.repository import Gtk
 from gi.repository import Vte
-# pylint: enable=E0611
 
 import libvirt
 
-from virtManager.baseclass import vmmGObject
+from .baseclass import vmmGObject
 
 
 class ConsoleConnection(vmmGObject):
@@ -207,8 +205,9 @@ class LibvirtConsoleConnection(ConsoleConnection):
         name = dev and dev.alias.name or None
         logging.debug("Opening console stream for dev=%s alias=%s",
                       dev, name)
-        if not name:
-            raise RuntimeError(_("Cannot open a device with no alias name"))
+        # libxl doesn't set aliases, their open_console just defaults to
+        # opening the first console device, so don't force prescence of
+        # an alias
 
         stream = self.conn.get_backend().newStream(libvirt.VIR_STREAM_NONBLOCK)
         self.vm.open_console(name, stream)
@@ -284,7 +283,7 @@ class vmmSerialConsole(vmmGObject):
                         "connection")
         elif not vm.is_active():
             err = _("Serial console not available for inactive guest")
-        elif not ctype in usable_types:
+        elif ctype not in usable_types:
             err = (_("Console for device type '%s' not yet supported") %
                      ctype)
         elif (not is_remote and
@@ -322,17 +321,12 @@ class vmmSerialConsole(vmmGObject):
         self.error_label = None
         self.init_ui()
 
-        self.vm.connect("status-changed", self.vm_status_changed)
+        self.vm.connect("state-changed", self.vm_status_changed)
 
     def init_terminal(self):
         self.terminal = Vte.Terminal()
-        self.terminal.set_cursor_blink_mode(Vte.TerminalCursorBlinkMode.ON)
-        self.terminal.set_emulation("xterm")
         self.terminal.set_scrollback_lines(1000)
         self.terminal.set_audible_bell(False)
-        self.terminal.set_visible_bell(True)
-        self.terminal.set_backspace_binding(
-            Vte.TerminalEraseBinding.ASCII_BACKSPACE)
 
         self.terminal.connect("button-press-event", self.show_serial_rcpopup)
         self.terminal.connect("commit", self.console.send_data, self.terminal)
@@ -378,6 +372,14 @@ class vmmSerialConsole(vmmGObject):
         self.box.append_page(self.error_label, Gtk.Label(""))
         self.box.show_all()
 
+        scrollbar.hide()
+        scrollbar.get_adjustment().connect(
+            "changed", self._scrollbar_adjustment_changed, scrollbar)
+
+    def _scrollbar_adjustment_changed(self, adjustment, scrollbar):
+        scrollbar.set_visible(
+            adjustment.get_upper() > adjustment.get_page_size())
+
     def _cleanup(self):
         self.console.cleanup()
         self.console = None
@@ -410,8 +412,8 @@ class vmmSerialConsole(vmmGObject):
 
         return False
 
-    def vm_status_changed(self, src_ignore, oldstatus_ignore, status):
-        if status in [libvirt.VIR_DOMAIN_RUNNING]:
+    def vm_status_changed(self, vm):
+        if vm.status() in [libvirt.VIR_DOMAIN_RUNNING]:
             self.open_console()
         else:
             self.console.close()

@@ -21,6 +21,10 @@
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
   <on_crash>restart</on_crash>
+  <pm>
+    <suspend-to-mem enabled="no"/>
+    <suspend-to-disk enabled="no"/>
+  </pm>
   <devices>
     <emulator>/usr/bin/qemu-kvm</emulator>
     <controller type="usb" index="0" model="ich9-ehci1"/>
@@ -39,9 +43,7 @@
       <model type="virtio"/>
     </interface>
     <input type="tablet" bus="usb"/>
-    <console type="pty">
-      <target type="virtio"/>
-    </console>
+    <console type="pty"/>
     <channel type="unix">
       <source mode="bind"/>
       <target type="virtio" name="org.qemu.guest_agent.0"/>

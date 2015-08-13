@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2013 Red Hat, Inc.
+# Copyright (C) 2013-2014 Red Hat, Inc.
 # Copyright (C) 2013 Cole Robinson <crobinso@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -24,19 +24,17 @@ import logging
 import os
 import StringIO
 
-# pylint: disable=E0611
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
 from gi.repository import Gtk
 from gi.repository import Pango
-# pylint: enable=E0611
 
 from virtinst import DomainSnapshot
 from virtinst import util
 
-from virtManager import uiutil
-from virtManager.baseclass import vmmGObjectUI
-from virtManager.asyncjob import vmmAsyncJob
+from . import uiutil
+from .baseclass import vmmGObjectUI
+from .asyncjob import vmmAsyncJob
 
 
 mimemap = {
@@ -64,6 +62,7 @@ class vmmSnapshotPage(vmmGObjectUI):
         self.vm = vm
 
         self._initial_populate = False
+        self._unapplied_changes = False
 
         self._snapmenu = None
         self._init_ui()
@@ -80,6 +79,7 @@ class vmmSnapshotPage(vmmGObjectUI):
             "on_snapshot_apply_clicked": self._on_apply_clicked,
             "on_snapshot_list_changed": self._snapshot_selected,
             "on_snapshot_list_button_press_event": self._popup_snapshot_menu,
+            "on_snapshot_refresh_clicked": self._refresh_snapshots,
 
             # 'Create' dialog
             "on_snapshot_new_delete_event": self._snapshot_new_close,
@@ -91,8 +91,10 @@ class vmmSnapshotPage(vmmGObjectUI):
 
         self.top_box = self.widget("snapshot-top-box")
         self.widget("snapshot-top-window").remove(self.top_box)
-        self.widget("snapshot-list").get_selection().emit("changed")
-
+        selection = self.widget("snapshot-list").get_selection()
+        selection.emit("changed")
+        selection.set_mode(Gtk.SelectionMode.MULTIPLE)
+        selection.set_select_function(self._confirm_changes, None)
 
     ##############
     # Init stuff #
@@ -179,18 +181,21 @@ class vmmSnapshotPage(vmmGObjectUI):
     # Functional bits #
     ###################
 
-    def _get_selected_snapshot(self):
-        name = uiutil.get_list_selection(self.widget("snapshot-list"), 0)
-        if not name:
-            return None
+    def _get_selected_snapshots(self):
+        selection = self.widget("snapshot-list").get_selection()
+        def add_snap(treemodel, path, it, snaps):
+            ignore = path
+            try:
+                name = treemodel[it][0]
+                for snap in self.vm.list_snapshots():
+                    if name == snap.get_name():
+                        snaps.append(snap)
+            except:
+                pass
 
-        try:
-            for snap in self.vm.list_snapshots():
-                if name == snap.get_name():
-                    return snap
-        except:
-            pass
-        return None
+        snaps = []
+        selection.selected_foreach(add_snap, snaps)
+        return snaps
 
     def _refresh_snapshots(self, select_name=None):
         self.vm.refresh_snapshots()
@@ -206,7 +211,10 @@ class vmmSnapshotPage(vmmGObjectUI):
         self.widget("snapshot-error-label").set_text(msg)
 
     def _populate_snapshot_list(self, select_name=None):
-        cursnap = self._get_selected_snapshot()
+        cursnaps = []
+        for i in self._get_selected_snapshots():
+            cursnaps.append(i.get_name())
+
         model = self.widget("snapshot-list").get_model()
         model.clear()
 
@@ -244,8 +252,19 @@ class vmmSnapshotPage(vmmGObjectUI):
         if has_internal and has_external:
             model.append([None, None, None, None, "2", False])
 
-        select_name = select_name or (cursnap and cursnap.get_name() or None)
-        uiutil.set_row_selection(self.widget("snapshot-list"), select_name)
+
+        def check_selection(treemodel, path, it, snaps):
+            if select_name:
+                if treemodel[it][0] == select_name:
+                    selection.select_path(path)
+            elif treemodel[it][0] in snaps:
+                selection.select_path(path)
+
+        selection = self.widget("snapshot-list").get_selection()
+        model = self.widget("snapshot-list").get_model()
+        selection.unselect_all()
+        model.foreach(check_selection, cursnaps)
+
         self._initial_populate = True
 
     def _make_screenshot_pixbuf(self, mime, sdata):
@@ -341,7 +360,27 @@ class vmmSnapshotPage(vmmGObjectUI):
         self.widget("snapshot-delete").set_sensitive(bool(snap))
         self.widget("snapshot-start").set_sensitive(bool(snap))
         self.widget("snapshot-apply").set_sensitive(False)
+        self._unapplied_changes = False
 
+    def _confirm_changes(self, sel, model, path, path_selected, user_data):
+        ignore1 = sel
+        ignore2 = path
+        ignore3 = model
+        ignore4 = user_data
+
+        if not self._unapplied_changes or not path_selected:
+            return True
+
+        if self.err.chkbox_helper(
+                self.config.get_confirm_unapplied,
+                self.config.set_confirm_unapplied,
+                text1=(_("There are unapplied changes. "
+                         "Would you like to apply them now?")),
+                chktext=_("Don't warn me again."),
+                default=False):
+            self._apply()
+
+        return True
 
     ##################
     # 'New' handling #
@@ -379,6 +418,11 @@ class vmmSnapshotPage(vmmGObjectUI):
             return
 
         try:
+            # Perform two screenshots, because qemu + qxl has a bug where
+            # screenshot generally only shows the data from the previous
+            # screenshot request:
+            # https://bugs.launchpad.net/qemu/+bug/1314293
+            self._take_screenshot()
             mime, sdata = self._take_screenshot()
         except:
             logging.exception("Error taking screenshot")
@@ -440,7 +484,7 @@ class vmmSnapshotPage(vmmGObjectUI):
             newsnap.get_xml_config()
             return newsnap
         except Exception, e:
-            return self.err.val_err(_("Error validating snapshot: %s" % e))
+            return self.err.val_err(_("Error validating snapshot: %s") % e)
 
     def _get_screenshot_data_for_save(self):
         snwidget = self.widget("snapshot-new-screenshot")
@@ -501,6 +545,28 @@ class vmmSnapshotPage(vmmGObjectUI):
                     self.topwin)
         progWin.run()
 
+    def _apply(self):
+        snaps = self._get_selected_snapshots()
+        if not snaps or len(snaps) > 1:
+            return False
+
+        snap = snaps[0]
+        desc_widget = self.widget("snapshot-description")
+        desc = desc_widget.get_buffer().get_property("text") or ""
+
+        xmlobj = snap.get_xmlobj()
+        origxml = xmlobj.get_xml_config()
+        xmlobj.description = desc
+        newxml = xmlobj.get_xml_config()
+
+        self.vm.log_redefine_xml_diff(snap, origxml, newxml)
+        if newxml == origxml:
+            return True
+
+        self.vm.create_snapshot(newxml, redefine=True)
+        snap.ensure_latest_xml()
+        return True
+
 
     #############
     # Listeners #
@@ -519,26 +585,17 @@ class vmmSnapshotPage(vmmGObjectUI):
         return 1
 
     def _description_changed(self, ignore):
-        self.widget("snapshot-apply").set_sensitive(True)
-
-    def _on_apply_clicked(self, ignore):
-        snap = self._get_selected_snapshot()
-        if not snap:
-            return
-
+        snaps = self._get_selected_snapshots()
         desc_widget = self.widget("snapshot-description")
         desc = desc_widget.get_buffer().get_property("text") or ""
 
-        xmlobj = snap.get_xmlobj()
-        origxml = xmlobj.get_xml_config()
-        xmlobj.description = desc
-        newxml = xmlobj.get_xml_config()
+        if len(snaps) == 1 and snaps[0].get_xmlobj().description != desc:
+            self._unapplied_changes = True
 
-        self.vm.log_redefine_xml_diff(snap, origxml, newxml)
-        if newxml == origxml:
-            return
-        self.vm.create_snapshot(newxml, redefine=True)
-        snap.refresh_xml()
+        self.widget("snapshot-apply").set_sensitive(True)
+
+    def _on_apply_clicked(self, ignore):
+        self._apply()
         self._refresh_snapshots()
 
     def _on_new_ok_clicked(self, ignore):
@@ -552,11 +609,20 @@ class vmmSnapshotPage(vmmGObjectUI):
         self.widget("snapshot-new-name").grab_focus()
 
     def _on_start_clicked(self, ignore):
-        snap = self._get_selected_snapshot()
-        result = self.err.yes_no(_("Are you sure you want to run "
-                                   "snapshot '%s'? All disk changes since "
-                                   "the last snapshot was created will be "
-                                   "discarded.") % snap.get_name())
+        snaps = self._get_selected_snapshots()
+        if not snaps or len(snaps) > 1:
+            return
+
+        snap = snaps[0]
+        msg = _("Are you sure you want to run snapshot '%s'? "
+            "All %s changes since the last snapshot was created will be "
+            "discarded.")
+        if self.vm.is_active():
+            msg = msg % (snap.get_name(), _("disk"))
+        else:
+            msg = msg % (snap.get_name(), _("disk and configuration"))
+
+        result = self.err.yes_no(msg)
         if not result:
             return
 
@@ -570,33 +636,39 @@ class vmmSnapshotPage(vmmGObjectUI):
                             finish_cb=self._refresh_snapshots)
 
     def _on_delete_clicked(self, ignore):
-        snap = self._get_selected_snapshot()
-        if not snap:
+        snaps = self._get_selected_snapshots()
+        if not snaps:
             return
 
         result = self.err.yes_no(_("Are you sure you want to permanently "
-                                   "delete the snapshot '%s'?") %
-                                   snap.get_name())
+                                   "delete the selected snapshots?"))
         if not result:
             return
 
-        logging.debug("Deleting snapshot '%s'", snap.get_name())
-        vmmAsyncJob.simple_async(snap.delete, [], self,
-                        _("Deleting snapshot"),
-                        _("Deleting snapshot '%s'") % snap.get_name(),
-                        _("Error deleting snapshot '%s'") % snap.get_name(),
-                        finish_cb=self._refresh_snapshots)
+        for snap in snaps:
+            logging.debug("Deleting snapshot '%s'", snap.get_name())
+            vmmAsyncJob.simple_async(snap.delete, [], self,
+                            _("Deleting snapshot"),
+                            _("Deleting snapshot '%s'") % snap.get_name(),
+                            _("Error deleting snapshot '%s'") % snap.get_name(),
+                            finish_cb=self._refresh_snapshots)
 
 
     def _snapshot_selected(self, selection):
         ignore = selection
-        snap = self._get_selected_snapshot()
+        snap = self._get_selected_snapshots()
         if not snap:
             self._set_error_page(_("No snapshot selected."))
             return
+        if len(snap) > 1:
+            self._set_error_page(_("Multiple snapshots selected."))
+            self.widget("snapshot-start").set_sensitive(False)
+            self.widget("snapshot-apply").set_sensitive(False)
+            self.widget("snapshot-delete").set_sensitive(True)
+            return
 
         try:
-            self._set_snapshot_state(snap)
+            self._set_snapshot_state(snap[0])
         except Exception, e:
             logging.exception(e)
             self._set_error_page(_("Error selecting snapshot: %s") % str(e))

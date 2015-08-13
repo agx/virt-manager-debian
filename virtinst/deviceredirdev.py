@@ -1,8 +1,7 @@
-# -*- coding: utf-8 -*-
 #
 # Copyright 2011, 2013 Red Hat, Inc.
 # Cole Robinson <crobinso@redhat.com>
-# Marc-André Lureau <marcandre.lureau@redhat.com>
+# Marc-Andre Lureau <marcandre.lureau@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
 # it under the terms of the GNU General Public License as published by
@@ -19,8 +18,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
-from virtinst import VirtualDevice
-from virtinst.xmlbuilder import XMLProperty
+from .device import VirtualDevice
+from .xmlbuilder import XMLProperty
 
 
 class VirtualRedirDevice(VirtualDevice):
@@ -31,7 +30,15 @@ class VirtualRedirDevice(VirtualDevice):
     BUSES = ["usb"]
 
     TYPE_DEFAULT = "default"
-    TYPES = ["tcp", "spicevmc", TYPE_DEFAULT]
+    TYPES = ["tcp", "spicevmc"]
+
+    @staticmethod
+    def pretty_type(typ):
+        if typ == "tcp":
+            return "TCP"
+        if typ == "spicevmc":
+            return "SpiceVMC"
+        return typ and typ.capitalize()
 
     def parse_friendly_server(self, serverstr):
         if serverstr.count(":") != 1:

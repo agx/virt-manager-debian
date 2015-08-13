@@ -18,15 +18,16 @@
 # MA 02110-1301 USA.
 #
 
-# pylint: disable=E0611
+import logging
+import time
+
 from gi.repository import GObject
-# pylint: enable=E0611
 
 from virtinst import pollhelpers
 from virtinst import StoragePool, StorageVolume
 from virtinst import util
 
-from virtManager.libvirtobject import vmmLibvirtObject
+from .libvirtobject import vmmLibvirtObject
 
 
 class vmmStorageVolume(vmmLibvirtObject):
@@ -38,10 +39,27 @@ class vmmStorageVolume(vmmLibvirtObject):
     # Required class methods #
     ##########################
 
-    def get_name(self):
-        return self.get_xmlobj().name
+    def _conn_tick_poll_param(self):
+        return None
+    def class_name(self):
+        return "volume"
+
     def _XMLDesc(self, flags):
-        return self._backend.XMLDesc(flags)
+        try:
+            return self._backend.XMLDesc(flags)
+        except Exception, e:
+            logging.debug("XMLDesc for vol=%s failed: %s",
+                self._backend.key(), e)
+            raise
+
+    def _get_backend_status(self):
+        return self._STATUS_ACTIVE
+
+    def tick(self, stats_update=True):
+        # Deliberately empty
+        ignore = stats_update
+    def _init_libvirt_state(self):
+        self.ensure_latest_xml()
 
 
     ###########
@@ -49,8 +67,10 @@ class vmmStorageVolume(vmmLibvirtObject):
     ###########
 
     def get_parent_pool(self):
-        pobj = self._backend.storagePoolLookupByVolume()
-        return self.conn.get_pool_by_name(pobj.name())
+        name = self._backend.storagePoolLookupByVolume().name()
+        for pool in self.conn.list_pools():
+            if pool.get_name() == name:
+                return pool
 
     def delete(self, force=True):
         ignore = force
@@ -97,53 +117,113 @@ class vmmStoragePool(vmmLibvirtObject):
     def __init__(self, conn, backend, key):
         vmmLibvirtObject.__init__(self, conn, backend, key, StoragePool)
 
-        self._active = True
-        self._support_isactive = None
-
-        self._volumes = {}
-
-        self.tick()
-        self.refresh()
+        self._last_refresh_time = 0
+        self._volumes = None
 
 
     ##########################
     # Required class methods #
     ##########################
 
-    def get_name(self):
-        return self.get_xmlobj().name
+    def _conn_tick_poll_param(self):
+        return "pollpool"
+    def class_name(self):
+        return "pool"
+
     def _XMLDesc(self, flags):
         return self._backend.XMLDesc(flags)
     def _define(self, xml):
         return self.conn.define_pool(xml)
+    def _check_supports_isactive(self):
+        return self.conn.check_support(
+            self.conn.SUPPORT_POOL_ISACTIVE, self._backend)
+    def _get_backend_status(self):
+        return self._backend_get_active()
+
+    def tick(self, stats_update=True):
+        ignore = stats_update
+        self._refresh_status()
+
+    def _init_libvirt_state(self):
+        self.tick()
+        self.refresh(skip_xml_refresh=True)
+        for vol in self.get_volumes():
+            vol.init_libvirt_state()
+
+    def _invalidate_xml(self):
+        vmmLibvirtObject._invalidate_xml(self)
+        self._volumes = None
 
 
     ###########
     # Actions #
     ###########
 
-    def is_active(self):
-        return self._active
-    def _backend_get_active(self):
-        if self._support_isactive is None:
-            self._support_isactive = self.conn.check_support(
-                self.conn.SUPPORT_POOL_ISACTIVE, self._backend)
+    @vmmLibvirtObject.lifecycle_action
+    def start(self):
+        self._backend.create(0)
 
-        if not self._support_isactive:
-            return True
-        return bool(self._backend.isActive())
+    @vmmLibvirtObject.lifecycle_action
+    def stop(self):
+        self._backend.destroy()
 
-    def _set_active(self, state):
-        if state == self._active:
+    @vmmLibvirtObject.lifecycle_action
+    def delete(self, force=True):
+        ignore = force
+        self._backend.undefine()
+        self._backend = None
+
+    def refresh(self, skip_xml_refresh=False):
+        """
+        :param skip_xml_refresh: Only used by init_libvirt_state to avoid
+            double XML updating
+        """
+        if not self.is_active():
             return
-        self.idle_emit(state and "started" or "stopped")
-        self._active = state
-        self.refresh_xml()
 
-    def _kick_conn(self):
-        self.conn.schedule_priority_tick(pollpool=True)
-    def tick(self):
-        self._set_active(self._backend_get_active())
+        self._backend.refresh(0)
+        if skip_xml_refresh:
+            self.ensure_latest_xml()
+        self._update_volumes(force=True)
+        self.idle_emit("refreshed")
+        self._last_refresh_time = time.time()
+
+    def secs_since_last_refresh(self):
+        return time.time() - self._last_refresh_time
+
+
+    ###################
+    # Volume handling #
+    ###################
+
+    def get_volumes(self):
+        self._update_volumes(force=False)
+        return self._volumes[:]
+
+    def get_volume(self, key):
+        for vol in self.get_volumes():
+            if vol.get_connkey() == key:
+                return vol
+        return None
+
+    def _update_volumes(self, force):
+        if not self.is_active():
+            self._volumes = []
+            return
+        if not force and self._volumes is not None:
+            return
+
+        self._volumes = []
+        keymap = dict((o.get_connkey(), o) for o in self._volumes)
+        (ignore, ignore, allvols) = pollhelpers.fetch_volumes(
+            self.conn.get_backend(), self.get_backend(), keymap,
+            lambda obj, key: vmmStorageVolume(self.conn, obj, key))
+        self._volumes = allvols
+
+
+    #########################
+    # XML/config operations #
+    #########################
 
     def set_autostart(self, value):
         self._backend.setAutostart(value)
@@ -155,70 +235,6 @@ class vmmStoragePool(vmmLibvirtObject):
         return (typ in [StoragePool.TYPE_LOGICAL])
     def supports_volume_creation(self):
         return self.get_xmlobj().supports_volume_creation()
-
-    def start(self):
-        self._backend.create(0)
-        self._kick_conn()
-        self.idle_add(self.refresh_xml)
-
-    def stop(self):
-        self._backend.destroy()
-        self._kick_conn()
-        self.idle_add(self.refresh_xml)
-
-    def delete(self, force=True):
-        ignore = force
-        self._backend.undefine()
-        self._backend = None
-        self._kick_conn()
-
-    def refresh(self):
-        if not self.is_active():
-            return
-
-        def cb():
-            self.refresh_xml()
-            self.update_volumes(refresh=True)
-            self.emit("refreshed")
-
-        self._backend.refresh(0)
-        self.idle_add(cb)
-
-    def define_name(self, newname):
-        return self._define_name_helper("storagepool",
-                                        self.conn.rename_pool,
-                                        newname)
-
-    ###################
-    # Volume handling #
-    ###################
-
-    def get_volumes(self, refresh=True):
-        if refresh:
-            self.update_volumes()
-        return self._volumes
-
-    def get_volume(self, uuid):
-        return self._volumes[uuid]
-
-    def update_volumes(self, refresh=False):
-        if not self.is_active():
-            self._volumes = {}
-            return
-
-        (ignore, new, allvols) = pollhelpers.fetch_volumes(
-            self.conn.get_backend(), self.get_backend(), self._volumes.copy(),
-            lambda obj, key: vmmStorageVolume(self.conn, obj, key))
-
-        for volname in allvols:
-            if volname not in new and refresh:
-                allvols[volname].refresh_xml()
-        self._volumes = allvols
-
-
-    #################
-    # XML accessors #
-    #################
 
     def get_type(self):
         return self.get_xmlobj().type

@@ -17,8 +17,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
-from virtinst import VirtualDevice
-from virtinst.xmlbuilder import XMLProperty
+from .device import VirtualDevice
+from .xmlbuilder import XMLProperty
 
 
 class VirtualController(VirtualDevice):
@@ -91,5 +91,14 @@ class VirtualController(VirtualDevice):
     master_startport = XMLProperty("./master/@startport", is_int=True)
 
     index = XMLProperty("./@index", is_int=True, default_cb=lambda s: 0)
+
+    def pretty_desc(self):
+        ret = self.pretty_type(self.type)
+        if self.type == "scsi":
+            if self.model == "virtio-scsi":
+                ret = "Virtio " + ret
+            elif self.address.type == "spapr-vio":
+                ret = "sPAPR " + ret
+        return ret
 
 VirtualController.register_type()

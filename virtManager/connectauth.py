@@ -18,10 +18,8 @@
 # MA 02110-1301 USA.
 #
 
-# pylint: disable=E0611
 from gi.repository import GLib
 from gi.repository import Gio
-# pylint: enable=E0611
 
 import logging
 import os
@@ -54,22 +52,22 @@ def do_we_have_session():
     return False
 
 
-def creds_dialog(creds):
+def creds_dialog(conn, creds):
     """
     Thread safe wrapper for libvirt openAuth user/pass callback
     """
 
     retipc = []
 
-    def wrapper(fn, creds):
+    def wrapper(fn, conn, creds):
         try:
-            ret = fn(creds)
+            ret = fn(conn, creds)
         except:
             logging.exception("Error from creds dialog")
             ret = -1
         retipc.append(ret)
 
-    GLib.idle_add(wrapper, creds_dialog_main, creds)
+    GLib.idle_add(wrapper, _creds_dialog_main, conn, creds)
 
     while not retipc:
         time.sleep(.1)
@@ -77,11 +75,11 @@ def creds_dialog(creds):
     return retipc[0]
 
 
-def creds_dialog_main(creds):
+def _creds_dialog_main(conn, creds):
     """
     Libvirt openAuth callback for username/password credentials
     """
-    from gi.repository import Gtk  # pylint: disable=E0611
+    from gi.repository import Gtk
 
     dialog = Gtk.Dialog("Authentication required", None, 0,
                         (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
@@ -120,11 +118,15 @@ def creds_dialog_main(creds):
         ent = Gtk.Entry()
         if cred[0] == libvirt.VIR_CRED_PASSPHRASE:
             ent.set_visibility(False)
+        elif conn.get_uri_username():
+            ent.set_text(conn.get_uri_username())
         ent.connect("activate", _on_ent_activate)
         entry.append(ent)
 
-        box.attach(label[row], 0, 1, row, row + 1, Gtk.AttachOptions.FILL, 0, 0, 0)
-        box.attach(entry[row], 1, 2, row, row + 1, Gtk.AttachOptions.FILL, 0, 0, 0)
+        box.attach(label[row], 0, 1, row, row + 1,
+            Gtk.AttachOptions.FILL, 0, 0, 0)
+        box.attach(entry[row], 1, 2, row, row + 1,
+            Gtk.AttachOptions.FILL, 0, 0, 0)
         row = row + 1
 
     vbox = dialog.get_child()

@@ -31,14 +31,23 @@
     <disk type="block" device="floppy">
       <target dev="fde" bus="fdc"/>
     </disk>
+    <disk type="block" device="lun" sgio="unfiltered">
+      <driver name="qemu" type="raw"/>
+      <source dev="/dev/sda"/>
+      <target dev="hdd" bus="scsi"/>
+      <readonly/>
+    </disk>
     <disk type="block" device="disk">
       <driver name="qemu" type="qcow2"/>
       <source dev="/dev/null"/>
       <target dev="hdd" bus="ide"/>
     </disk>
-    <disk type="block" device="cdrom">
+    <disk type="network" device="cdrom">
       <target dev="sda" bus="scsi"/>
       <readonly/>
+      <source protocol="http" name="my/file">
+        <host name="1:2:3:4:5:6:7:8" port="1122"/>
+      </source>
     </disk>
     <disk type="file" device="floppy">
       <target dev="fda" bus="fdc"/>
@@ -50,7 +59,7 @@
         <total_iops_sec>5</total_iops_sec>
         <total_bytes_sec>6</total_bytes_sec>
       </iotune>
-      <driver cache="writeback" io="native"/>
+      <driver cache="writeback" discard="unmap" io="native"/>
       <source file="/dev/default-pool/default-vol" startupPolicy="optional"/>
       <shareable/>
     </disk>
@@ -63,6 +72,28 @@
       <driver name="qemu" type="qcow2" cache="none"/>
       <source dev="/dev/null"/>
       <target dev="vda" bus="virtio"/>
+    </disk>
+    <disk type="volume" device="disk">
+      <driver name="qemu"/>
+      <source pool="anotherPool" volume="newvol"/>
+      <target dev="vdb" bus="virtio"/>
+      <readonly/>
+    </disk>
+    <disk type="network" device="disk">
+      <driver name="qemu" type="raw"/>
+      <source protocol="gluster" name="new-val/vol">
+        <host name="diff.example.org" port="1234"/>
+        <host name="mon2.example.org" port="6322"/>
+        <host name="mon3.example.org" port="6322"/>
+      </source>
+      <target dev="vdc" bus="virtio"/>
+    </disk>
+    <disk type="network" device="disk">
+      <driver name="qemu" type="raw"/>
+      <source protocol="nbd">
+        <host transport="unix" socket="/var/run/nbdsock"/>
+      </source>
+      <target dev="vdd" bus="virtio"/>
     </disk>
     <input type="mouse" bus="ps2"/>
     <graphics type="vnc" display=":3.4" xauth="/tmp/.Xauthority"/>

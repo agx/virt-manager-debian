@@ -17,8 +17,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
-from virtinst import VirtualDevice
-from virtinst.xmlbuilder import XMLProperty
+from .device import VirtualDevice
+from .xmlbuilder import XMLProperty
 
 
 class VirtualInputDevice(VirtualDevice):
@@ -26,8 +26,9 @@ class VirtualInputDevice(VirtualDevice):
 
     TYPE_MOUSE = "mouse"
     TYPE_TABLET = "tablet"
+    TYPE_KEYBOARD = "keyboard"
     TYPE_DEFAULT = "default"
-    TYPES = [TYPE_MOUSE, TYPE_TABLET, TYPE_DEFAULT]
+    TYPES = [TYPE_MOUSE, TYPE_TABLET, TYPE_KEYBOARD, TYPE_DEFAULT]
 
     BUS_PS2 = "ps2"
     BUS_USB = "usb"

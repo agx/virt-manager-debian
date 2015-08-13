@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2008, 2013 Red Hat, Inc.
+# Copyright (C) 2008, 2013, 2014 Red Hat, Inc.
 # Copyright (C) 2008 Cole Robinson <crobinso@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,16 +18,15 @@
 # MA 02110-1301 USA.
 #
 
-# pylint: disable=E0611
-from gi.repository import Gtk
 from gi.repository import Gdk
-# pylint: enable=E0611
+from gi.repository import GObject
+from gi.repository import Gtk
 
 import logging
 
-from virtManager.baseclass import vmmGObjectUI
-from virtManager.asyncjob import vmmAsyncJob
-from virtManager import uiutil
+from .baseclass import vmmGObjectUI
+from .asyncjob import vmmAsyncJob
+from . import uiutil
 
 from virtinst import StoragePool
 
@@ -36,6 +35,10 @@ PAGE_FORMAT = 1
 
 
 class vmmCreatePool(vmmGObjectUI):
+    __gsignals__ = {
+        "pool-created": (GObject.SignalFlags.RUN_FIRST, None, [str]),
+    }
+
     def __init__(self, conn):
         vmmGObjectUI.__init__(self, "createpool.ui", "vmm-create-pool")
         self.conn = conn
@@ -86,12 +89,12 @@ class vmmCreatePool(vmmGObjectUI):
         type_list = self.widget("pool-type")
         type_model = Gtk.ListStore(str, str)
         type_list.set_model(type_model)
-        uiutil.set_combo_text_column(type_list, 1)
+        uiutil.init_combo_text_column(type_list, 1)
 
         format_list = self.widget("pool-format")
         format_model = Gtk.ListStore(str, str)
         format_list.set_model(format_model)
-        uiutil.set_combo_text_column(format_list, 1)
+        uiutil.init_combo_text_column(format_list, 1)
 
         # Target path combo box entry
         target_list = self.widget("pool-target-path")
@@ -199,8 +202,8 @@ class vmmCreatePool(vmmGObjectUI):
             use_list.set_active(0)
 
     def list_scsi_adapters(self):
-        scsi_hosts = self.conn.get_nodedevs("scsi_host")
-        host_list = [dev.host for dev in scsi_hosts]
+        scsi_hosts = self.conn.filter_nodedevs("scsi_host")
+        host_list = [dev.xmlobj.host for dev in scsi_hosts]
 
         clean_list = []
         for h in host_list:
@@ -215,12 +218,12 @@ class vmmCreatePool(vmmGObjectUI):
         return clean_list
 
     def list_disk_devs(self):
-        devs = self.conn.get_nodedevs("storage")
+        devs = self.conn.filter_nodedevs("storage")
         devlist = []
         for dev in devs:
-            if dev.drive_type != "disk" or not dev.block:
+            if dev.xmlobj.drive_type != "disk" or not dev.xmlobj.block:
                 continue
-            devlist.append(dev.block)
+            devlist.append(dev.xmlobj.block)
 
         devlist.sort()
         clean_list = []
@@ -255,18 +258,23 @@ class vmmCreatePool(vmmGObjectUI):
 
         src = self._pool.supports_property("source_path")
         src_b = src and not self.conn.is_remote()
-        src_name = self._pool.type == StoragePool.TYPE_GLUSTER
         tgt = self._pool.supports_property("target_path")
         tgt_b = tgt and not self.conn.is_remote()
-        host = self._pool.supports_property("host")
+        host = self._pool.supports_property("hosts")
         fmt = self._pool.supports_property("formats")
         iqn = self._pool.supports_property("iqn")
         builddef, buildsens = self.get_build_default()
 
-        # Source path broswing is meaningless for net pools
+        # We don't show source_name for logical pools, since we use
+        # pool-sources to avoid the need for it
+        src_name = (self._pool.supports_property("source_name") and
+                    self._pool.type != self._pool.TYPE_LOGICAL)
+
+        # Source path browsing is meaningless for net pools
         if self._pool.type in [StoragePool.TYPE_NETFS,
                                StoragePool.TYPE_ISCSI,
-                               StoragePool.TYPE_SCSI]:
+                               StoragePool.TYPE_SCSI,
+                               StoragePool.TYPE_GLUSTER]:
             src_b = False
 
         show_row("pool-target", tgt)
@@ -277,6 +285,11 @@ class vmmCreatePool(vmmGObjectUI):
         show_row("pool-iqn", iqn)
         show_row("pool-source-name", src_name)
 
+        if iqn:
+            self.widget("pool-source-label").set_label(_("_Source IQN:"))
+        else:
+            self.widget("pool-source-label").set_label(_("_Source Path:"))
+
         if tgt:
             self.widget("pool-target-path").get_child().set_text(
                 self._pool.target_path)
@@ -286,8 +299,7 @@ class vmmCreatePool(vmmGObjectUI):
         self.widget("pool-build").set_active(builddef)
 
         if src_name:
-            self.widget("pool-source-name").get_child().set_text(
-                self._pool.source_name)
+            self.widget("pool-source-name").set_text(self._pool.source_name)
 
         self.widget("pool-format").set_active(-1)
         if fmt:
@@ -298,7 +310,7 @@ class vmmCreatePool(vmmGObjectUI):
 
 
     def get_config_type(self):
-        return uiutil.get_list_selection(self.widget("pool-type"), 0)
+        return uiutil.get_list_selection(self.widget("pool-type"))
 
     def get_config_name(self):
         return self.widget("pool-name").get_text()
@@ -308,7 +320,7 @@ class vmmCreatePool(vmmGObjectUI):
         if not src.get_sensitive():
             return None
 
-        ret = uiutil.get_list_selection(src, 1)
+        ret = uiutil.get_list_selection(src, column=1)
         if ret is not None:
             return ret
         return src.get_child().get_text()
@@ -318,7 +330,7 @@ class vmmCreatePool(vmmGObjectUI):
         if not src.get_sensitive():
             return None
 
-        ret = uiutil.get_list_selection(src, 1)
+        ret = uiutil.get_list_selection(src, column=1)
         if ret is not None:
             return ret
         return src.get_child().get_text().strip()
@@ -336,7 +348,7 @@ class vmmCreatePool(vmmGObjectUI):
         return None
 
     def get_config_format(self):
-        return uiutil.get_list_selection(self.widget("pool-format"), 0)
+        return uiutil.get_list_selection(self.widget("pool-format"))
 
     def get_config_iqn(self):
         iqn = self.widget("pool-iqn")
@@ -369,8 +381,9 @@ class vmmCreatePool(vmmGObjectUI):
             self.widget("pool-source-path").get_child().set_text(source)
 
     def browse_target_path(self, ignore1=None):
+        startfolder = StoragePool.get_default_dir(self.conn.get_backend())
         target = self._browse_file(_("Choose target directory"),
-                                   startfolder="/var/lib/libvirt",
+                                   startfolder=startfolder,
                                    foldermode=True)
         if target:
             self.widget("pool-target-path").get_child().set_text(target)
@@ -392,6 +405,11 @@ class vmmCreatePool(vmmGObjectUI):
     def back(self, ignore=None):
         self.widget("pool-pages").prev_page()
 
+    def _signal_pool_added(self, src, connkey, created_name):
+        ignore = src
+        if connkey == created_name:
+            self.emit("pool-created", connkey)
+
     def _finish_cb(self, error, details):
         self.topwin.set_sensitive(True)
         self.topwin.get_window().set_cursor(
@@ -402,6 +420,8 @@ class vmmCreatePool(vmmGObjectUI):
             self.err.show_err(error,
                               details=details)
         else:
+            self.conn.connect_once("pool-added", self._signal_pool_added,
+                self._pool.name)
             self.conn.schedule_priority_tick(pollpool=True)
             self.close()
 
@@ -459,9 +479,9 @@ class vmmCreatePool(vmmGObjectUI):
         source_list = self.widget("pool-source-path")
         target_list = self.widget("pool-target-path")
 
-        pool = uiutil.get_list_selection(source_list, 2)
+        pool = uiutil.get_list_selection(source_list, column=2)
         if pool is None:
-            pool = uiutil.get_list_selection(target_list, 2)
+            pool = uiutil.get_list_selection(target_list, column=2)
 
         return pool
 
@@ -496,7 +516,7 @@ class vmmCreatePool(vmmGObjectUI):
         try:
             self._pool.target_path = target
             if host:
-                self._pool.host = host
+                self._pool.add_host(host)
             if source:
                 self._pool.source_path = source
             if fmt:

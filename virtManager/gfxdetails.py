@@ -19,14 +19,12 @@
 # MA 02110-1301 USA.
 #
 
-# pylint: disable=E0611
 from gi.repository import Gtk
 from gi.repository import GObject
-# pylint: enable=E0611
 
 import virtinst
-from virtManager import uiutil
-from virtManager.baseclass import vmmGObjectUI
+from . import uiutil
+from .baseclass import vmmGObjectUI
 
 
 class vmmGraphicsDetails(vmmGObjectUI):
@@ -73,13 +71,13 @@ class vmmGraphicsDetails(vmmGObjectUI):
         graphics_list = self.widget("graphics-type")
         graphics_model = Gtk.ListStore(str, str)
         graphics_list.set_model(graphics_model)
-        uiutil.set_combo_text_column(graphics_list, 1)
+        uiutil.init_combo_text_column(graphics_list, 1)
         graphics_model.clear()
         graphics_model.append(["spice", _("Spice server")])
         graphics_model.append(["vnc", _("VNC server")])
 
         self.widget("graphics-address").set_model(Gtk.ListStore(str, str))
-        uiutil.set_combo_text_column(self.widget("graphics-address"), 1)
+        uiutil.init_combo_text_column(self.widget("graphics-address"), 1)
 
         model = self.widget("graphics-address").get_model()
         model.clear()
@@ -91,7 +89,7 @@ class vmmGraphicsDetails(vmmGObjectUI):
         combo = self.widget("graphics-keymap")
         model = Gtk.ListStore(str, str)
         combo.set_model(model)
-        uiutil.set_combo_text_column(combo, 1)
+        uiutil.init_combo_text_column(combo, 1)
 
         model.append(["auto", "Auto"])
         model.append([virtinst.VirtualGraphics.KEYMAP_LOCAL,
@@ -102,7 +100,7 @@ class vmmGraphicsDetails(vmmGObjectUI):
     def _get_config_graphics_ports(self):
         port = uiutil.spin_get_helper(self.widget("graphics-port"))
         tlsport = uiutil.spin_get_helper(self.widget("graphics-tlsport"))
-        gtype = uiutil.get_list_selection(self.widget("graphics-type"), 0)
+        gtype = uiutil.get_list_selection(self.widget("graphics-type"))
 
         if self.widget("graphics-port-auto").get_active():
             port = -1
@@ -137,7 +135,7 @@ class vmmGraphicsDetails(vmmGObjectUI):
         gtype = uiutil.get_list_selection(self.widget("graphics-type"))
         port, tlsport = self._get_config_graphics_ports()
         addr = uiutil.get_list_selection(self.widget("graphics-address"))
-        keymap = uiutil.get_combo_entry(self.widget("graphics-keymap"))
+        keymap = uiutil.get_list_selection(self.widget("graphics-keymap"))
         if keymap == "auto":
             keymap = None
 
@@ -154,14 +152,19 @@ class vmmGraphicsDetails(vmmGObjectUI):
             auto = self.widget(basename + "-auto")
             widget = self.widget(basename)
             auto.set_inconsistent(False)
+            label = auto.get_label().split(" (")[0]
 
             if val == -1 or gfx.autoport:
                 auto.set_active(True)
+                if val and val != -1:
+                    label += " (%s %s)" % (_("Port"), val)
             elif val is None:
                 auto.set_inconsistent(True)
             else:
                 auto.set_active(False)
                 widget.set_value(val)
+
+            auto.set_label(label)
 
         gtype = gfx.type
         is_vnc = (gtype == "vnc")
@@ -174,10 +177,10 @@ class vmmGraphicsDetails(vmmGObjectUI):
             use_passwd = gfx.passwd is not None
 
             set_port("graphics-port", gfx.port)
-            uiutil.set_combo_entry(
-                self.widget("graphics-address"), gfx.listen, 0)
-            uiutil.set_combo_entry(
-                self.widget("graphics-keymap"), gfx.keymap or None, 0)
+            uiutil.set_list_selection(
+                self.widget("graphics-address"), gfx.listen)
+            uiutil.set_list_selection(
+                self.widget("graphics-keymap"), gfx.keymap or None)
 
             self.widget("graphics-password").set_text(gfx.passwd or "")
             self.widget("graphics-password-chk").set_active(use_passwd)
@@ -194,7 +197,7 @@ class vmmGraphicsDetails(vmmGObjectUI):
             self.widget("graphics-xauth").set_text(
                 gfx.xauth or _("Unknown"))
 
-        uiutil.set_combo_entry(self.widget("graphics-type"), gtype, 0)
+        uiutil.set_list_selection(self.widget("graphics-type"), gtype)
         return title
 
 
@@ -207,7 +210,7 @@ class vmmGraphicsDetails(vmmGObjectUI):
             "graphics-password-box", "graphics-keymap", "graphics-port-box",
             "graphics-tlsport-box"]
 
-        gtype = uiutil.get_list_selection(self.widget("graphics-type"), 0)
+        gtype = uiutil.get_list_selection(self.widget("graphics-type"))
         sdl_rows = ["graphics-xauth", "graphics-display"]
         vnc_rows = ["graphics-password-box", "graphics-address",
             "graphics-port-box", "graphics-keymap"]

@@ -17,9 +17,9 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
-from virtinst import VirtualDevice
-from virtinst import NodeDevice
-from virtinst.xmlbuilder import XMLProperty
+from .device import VirtualDevice
+from .nodedev import NodeDevice
+from .xmlbuilder import XMLProperty
 
 
 class VirtualHostDevice(VirtualDevice):
@@ -32,10 +32,6 @@ class VirtualHostDevice(VirtualDevice):
             command line, or if virt-manager detects a dup USB device
             and we need to differentiate
         """
-        if (use_full_usb is None and
-            nodedev.addr_type == nodedev.HOSTDEV_ADDR_TYPE_USB_BUSADDR):
-            use_full_usb = True
-
         if nodedev.device_type == NodeDevice.CAPABILITY_TYPE_PCI:
             self.type = "pci"
             self.domain = nodedev.domain
@@ -53,11 +49,52 @@ class VirtualHostDevice(VirtualDevice):
                 self.device = nodedev.device
 
         elif nodedev.device_type == nodedev.CAPABILITY_TYPE_NET:
-            parentnode = nodedev.lookupNodeName(self.conn, nodedev.parent)
-            self.set_from_nodedev(parentnode, use_full_usb=use_full_usb)
+            founddev = None
+            for checkdev in self.conn.fetch_all_nodedevs():
+                if checkdev.name == nodedev.parent:
+                    founddev = checkdev
+                    break
+
+            self.set_from_nodedev(founddev, use_full_usb=use_full_usb)
+
+        elif nodedev.device_type == nodedev.CAPABILITY_TYPE_SCSIDEV:
+            self.type = "scsi"
+            self.scsi_adapter = "scsi_host%s" % nodedev.host
+            self.scsi_bus = nodedev.bus
+            self.scsi_target = nodedev.target
+            self.scsi_unit = nodedev.lun
+            self.managed = False
 
         else:
             raise ValueError("Unknown node device type %s" % nodedev)
+
+    def pretty_name(self):
+        def dehex(val):
+            if val.startswith("0x"):
+                val = val[2:]
+            return val
+
+        def safeint(val, fmt="%.3d"):
+            try:
+                int(val)
+            except:
+                return str(val)
+            return fmt % int(val)
+
+        label = self.type.upper()
+
+        if self.vendor and self.product:
+            label += " %s:%s" % (dehex(self.vendor), dehex(self.product))
+
+        elif self.bus and self.device:
+            label += " %s:%s" % (safeint(self.bus), safeint(self.device))
+
+        elif self.bus and self.slot and self.function and self.domain:
+            label += (" %s:%s:%s.%s" %
+                      (dehex(self.domain), dehex(self.bus),
+                       dehex(self.slot), dehex(self.function)))
+
+        return label
 
 
     _XML_PROP_ORDER = ["mode", "type", "managed", "vendor", "product",
@@ -88,6 +125,12 @@ class VirtualHostDevice(VirtualDevice):
 
     driver_name = XMLProperty("./driver/@name")
     rom_bar = XMLProperty("./rom/@bar", is_onoff=True)
+
+    # type=scsi handling
+    scsi_adapter = XMLProperty("./source/adapter/@name")
+    scsi_bus = XMLProperty("./source/address/@bus", is_int=True)
+    scsi_target = XMLProperty("./source/address/@target", is_int=True)
+    scsi_unit = XMLProperty("./source/address/@unit", is_int=True)
 
 
 VirtualHostDevice.register_type()

@@ -19,8 +19,8 @@
 
 import os
 
-from virtinst import VirtualDevice
-from virtinst.xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
+from .device import VirtualDevice
+from .xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
 
 
 def _get_mode_prop(channel_type):
@@ -81,7 +81,7 @@ class VirtualGraphics(VirtualDevice):
         """
         Return a list of valid keymap values.
         """
-        from virtinst import hostkeymap
+        from . import hostkeymap
 
         orig_list = hostkeymap.keytable.values()
         sort_list = []
@@ -122,7 +122,7 @@ class VirtualGraphics(VirtualDevice):
             return None
 
         if self._local_keymap == -1:
-            from virtinst import hostkeymap
+            from . import hostkeymap
             self._local_keymap = hostkeymap.default_keymap()
         return self._local_keymap
 
@@ -218,5 +218,11 @@ class VirtualGraphics(VirtualDevice):
     def remove_listen(self, obj):
         self._remove_child(obj)
 
+    # Spice bits
+    image_compression = XMLProperty("./image/@compression")
+    streaming_mode = XMLProperty("./streaming/@mode")
+    clipboard_copypaste = XMLProperty("./clipboard/@copypaste", is_yesno=True)
+    mouse_mode = XMLProperty("./mouse/@mode")
+    filetransfer_enable = XMLProperty("./filetransfer/@enable", is_yesno=True)
 
 VirtualGraphics.register_type()

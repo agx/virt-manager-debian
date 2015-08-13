@@ -23,13 +23,14 @@ import copy
 import logging
 import os
 import re
+import string  # pylint: disable=deprecated-module
 
 import libxml2
 
-from virtinst import util
+from . import util
 
 
-# pylint: disable=W0212
+# pylint: disable=protected-access
 # This whole file is calling around into non-public functions that we
 # don't want regular API users to touch
 
@@ -332,8 +333,7 @@ class XMLProperty(property):
     def __init__(self, xpath=None, name=None, doc=None,
                  set_converter=None, validate_cb=None, make_xpath_cb=None,
                  is_bool=False, is_int=False, is_yesno=False, is_onoff=False,
-                 clear_first=None, default_cb=None, default_name=None,
-                 track=True):
+                 default_cb=None, default_name=None, do_abspath=False):
         """
         Set a XMLBuilder class property that represents a value in the
         <domain> XML. For example
@@ -352,8 +352,8 @@ class XMLProperty(property):
             if xpath isn't specified.
         @param set_converter: optional function for converting the property
             value from the virtinst API to the guest XML. For example,
-            the Guest.memory API was once in MB, but the libvirt domain
-            memory API is in KB. So, if xpath is specified, on a 'get'
+            the Guest.memory API was once in MiB, but the libvirt domain
+            memory API is in KiB. So, if xpath is specified, on a 'get'
             operation we convert the XML value with int(val) / 1024.
         @param validate_cb: Called once when value is set, should
             raise a RuntimeError if the value is not proper.
@@ -364,17 +364,13 @@ class XMLProperty(property):
         @param is_int: Whether this is an integer property in the XML
         @param is_yesno: Whether this is a yes/no property in the XML
         @param is_onoff: Whether this is an on/off property in the XML
-        @param clear_first: List of xpaths to unset before any 'set' operation.
-            For those weird interdependent XML props like disk source type and
-            path attribute.
         @param default_cb: If building XML from scratch, and this property
             is never explicitly altered, this function is called for setting
             a default value in the XML, and for any 'get' call before the
             first explicit 'set'.
         @param default_name: If the user does a set and passes in this
             value, instead use the value of default_cb()
-        @param track: If False, opt out of property tracking for the
-            test suite.
+        @param do_abspath: If True, run os.path.abspath on the passed value
         """
 
         self._xpath = xpath
@@ -387,11 +383,11 @@ class XMLProperty(property):
         self._is_int = is_int
         self._is_yesno = is_yesno
         self._is_onoff = is_onoff
+        self._do_abspath = do_abspath
 
         self._make_xpath_cb = make_xpath_cb
         self._validate_cb = validate_cb
         self._convert_value_for_setter_cb = set_converter
-        self._setter_clear_these_first = clear_first or []
         self._default_cb = default_cb
         self._default_name = default_name
 
@@ -403,7 +399,8 @@ class XMLProperty(property):
         if self._default_name and not self._default_cb:
             raise RuntimeError("default_name requires default_cb.")
 
-        if _trackprops and track:
+        self._is_tracked = False
+        if _trackprops:
             _allprops.append(self)
 
         property.__init__(self, fget=self.getter, fset=self.setter)
@@ -448,25 +445,6 @@ class XMLProperty(property):
         nodes = _get_xpath_node(xmlbuilder._xmlstate.xml_ctx, xpath)
         return util.listify(nodes)
 
-    def _build_clear_list(self, xmlbuilder, setternode):
-        """
-        Build a list of nodes that we should erase first before performing
-        a set operation. But we don't want to unset a node that we are
-        just going to 'set' on top of afterwards, so skip those ones.
-        """
-        clear_nodes = []
-
-        for cpath in self._setter_clear_these_first:
-            cpath = xmlbuilder.fix_relative_xpath(cpath)
-            cnode = _get_xpath_node(xmlbuilder._xmlstate.xml_ctx, cpath)
-            if not cnode:
-                continue
-            if setternode and setternode.nodePath() == cnode.nodePath():
-                continue
-            clear_nodes.append(cnode)
-        return clear_nodes
-
-
     def _convert_get_value(self, val):
         if self._default_name and val == self._default_name:
             ret = val
@@ -488,6 +466,8 @@ class XMLProperty(property):
     def _convert_set_value(self, xmlbuilder, val):
         if self._default_name and val == self._default_name:
             val = self._default_cb(xmlbuilder)
+        elif self._do_abspath and val is not None:
+            val = os.path.abspath(val)
         elif self._is_onoff and val is not None:
             val = bool(val) and "on" or "off"
         elif self._is_yesno and val is not None:
@@ -546,8 +526,6 @@ class XMLProperty(property):
         propstore = xmlbuilder._propstore
         proporder = xmlbuilder._proporder
 
-        if _trackprops and self not in _seenprops:
-            _seenprops.append(self)
         propname = self._findpropname(xmlbuilder)
         propstore[propname] = val
 
@@ -586,6 +564,10 @@ class XMLProperty(property):
         since it's known to the empty, and we may want to return
         a 'default' value
         """
+        if _trackprops and not self._is_tracked:
+            _seenprops.append(self)
+            self._is_tracked = True
+
         if (self._prop_is_unset(xmlbuilder) and
             not xmlbuilder._xmlstate.is_build):
             val = self._get_xml(xmlbuilder)
@@ -614,6 +596,10 @@ class XMLProperty(property):
         in propstore. Setting the actual XML is only done at
         get_xml_config time.
         """
+        if _trackprops and not self._is_tracked:
+            _seenprops.append(self)
+            self._is_tracked = True
+
         if validate and self._validate_cb:
             self._validate_cb(xmlbuilder, val)
         self._nonxml_fset(xmlbuilder,
@@ -630,27 +616,20 @@ class XMLProperty(property):
             ctx = _make_xml_context(root_node)
 
         xpath = self._make_xpath(xmlbuilder)
+
+        if setval is None or setval is False:
+            _remove_xpath_node(ctx, xpath)
+            return
+
         node = _get_xpath_node(xmlbuilder._xmlstate.xml_ctx, xpath)
-        clearlist = self._build_clear_list(xmlbuilder, node)
+        if not node:
+            node = _build_xpath_node(root_node, xpath)
 
-        node_map = []
-        if clearlist:
-            node_map += _tuplify_lists(clearlist, None,
-                                       [n.nodePath() for n in clearlist])
-        node_map += [(node, setval, xpath)]
+        if setval is True:
+            # Boolean property, creating the node is enough
+            return
 
-        for node, val, use_xpath in node_map:
-            if val is None or val is False:
-                _remove_xpath_node(ctx, use_xpath)
-                continue
-
-            if not node:
-                node = _build_xpath_node(root_node, use_xpath)
-
-            if val is True:
-                # Boolean property, creating the node is enough
-                continue
-            node.setContent(util.xml_escape(str(val)))
+        node.setContent(util.xml_escape(str(setval)))
 
 
 class _XMLState(object):
@@ -756,6 +735,14 @@ class XMLBuilder(object):
     # Name of the root XML element
     _XML_ROOT_NAME = None
 
+    # In some cases, libvirt can incorrectly generate unparseable XML.
+    # These are libvirt bugs, but this allows us to work around it in
+    # for specific XML classes.
+    #
+    # Example: nodedev 'system' XML:
+    # https://bugzilla.redhat.com/show_bug.cgi?id=1184131
+    _XML_SANITIZE = False
+
     def __init__(self, conn, parsexml=None, parsexmlnode=None,
                  parent_xpath=None, relative_object_xpath=None):
         """
@@ -769,6 +756,10 @@ class XMLBuilder(object):
         The rest of the parameters are for internal use only
         """
         self.conn = conn
+
+        if self._XML_SANITIZE:
+            parsexml = parsexml.decode('ascii', 'ignore').encode('ascii')
+            parsexml = "".join([c for c in parsexml if c in string.printable])
 
         self._propstore = {}
         self._proporder = []

@@ -18,9 +18,7 @@
 # MA 02110-1301 USA.
 #
 
-# pylint: disable=E0611
 from gi.repository import Gtk
-# pylint: enable=E0611
 
 
 ####################################################################
@@ -28,9 +26,6 @@ from gi.repository import Gtk
 ####################################################################
 
 class _VMMenu(Gtk.Menu):
-    # pylint: disable=E1101
-    # pylint can't detect functions we inheirit from Gtk, ex self.add
-
     def __init__(self, src, current_vm_cb, show_open=True):
         Gtk.Menu.__init__(self)
         self._parent = src
@@ -65,7 +60,7 @@ class _VMMenu(Gtk.Menu):
         if not vm:
             return
         self._parent.emit("action-%s-domain" % src.vmm_widget_name,
-                          vm.conn.get_uri(), vm.get_uuid())
+                          vm.conn.get_uri(), vm.get_connkey())
 
     def _init_state(self):
         raise NotImplementedError()
@@ -74,9 +69,6 @@ class _VMMenu(Gtk.Menu):
 
 
 class VMShutdownMenu(_VMMenu):
-    # pylint: disable=E1101
-    # pylint can't detect functions we inheirit from Gtk, ex self.add
-
     def _init_state(self):
         self._add_action(_("_Reboot"), "reboot")
         self._add_action(_("_Shut Down"), "shutdown")
@@ -101,11 +93,16 @@ class VMShutdownMenu(_VMMenu):
             if name in statemap:
                 child.set_sensitive(statemap[name])
 
+            if name == "reset":
+                child.set_tooltip_text(None)
+                if vm and not vm.conn.check_support(
+                    vm.conn.SUPPORT_CONN_DOMAIN_RESET):
+                    child.set_tooltip_text(_("Hypervisor does not support "
+                        "domain reset."))
+                    child.set_sensitive(False)
+
 
 class VMActionMenu(_VMMenu):
-    # pylint: disable=E1101
-    # pylint can't detect functions we inheirit from Gtk, ex self.add
-
     def _init_state(self):
         self._add_action(_("_Run"), "run", Gtk.STOCK_MEDIA_PLAY)
         self._add_action(_("_Pause"), "suspend", Gtk.STOCK_MEDIA_PAUSE)
@@ -140,8 +137,8 @@ class VMActionMenu(_VMMenu):
 
         for child in self.get_children():
             name = getattr(child, "vmm_widget_name", None)
-            if hasattr(child, "update_widget_states"):
-                child.update_widget_states(vm)
+            if child.get_submenu():
+                child.get_submenu().update_widget_states(vm)
             if name in statemap:
                 child.set_sensitive(statemap[name])
             if name in vismap:

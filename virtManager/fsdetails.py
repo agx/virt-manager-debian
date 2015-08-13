@@ -19,16 +19,14 @@
 # MA 02110-1301 USA.
 #
 
-# pylint: disable=E0611
 from gi.repository import Gtk
 from gi.repository import GObject
-# pylint: enable=E0611
 
 from virtinst import VirtualFilesystem, StorageVolume
 from virtinst import util
-from virtManager import uiutil
-from virtManager.baseclass import vmmGObjectUI
-from virtManager.storagebrowse import vmmStorageBrowser
+from . import uiutil
+from .baseclass import vmmGObjectUI
+from .storagebrowse import vmmStorageBrowser
 
 
 class vmmFSDetails(vmmGObjectUI):
@@ -91,7 +89,7 @@ class vmmFSDetails(vmmGObjectUI):
             combo = self.widget(comboname)
             model = Gtk.ListStore(str, str)
             combo.set_model(model)
-            uiutil.set_combo_text_column(combo, 1)
+            uiutil.init_combo_text_column(combo, 1)
             if sort:
                 model.set_sort_column_id(0, Gtk.SortType.ASCENDING)
             if capitalize:
@@ -156,15 +154,15 @@ class vmmFSDetails(vmmGObjectUI):
 
     def get_config_fs_mode(self):
         return uiutil.get_list_selection(self.widget("fs-mode-combo"),
-                                         rowindex=0, check_visible=True)
+                                         check_visible=True)
 
     def get_config_fs_wrpolicy(self):
         return uiutil.get_list_selection(self.widget("fs-wrpolicy-combo"),
-                                         rowindex=0, check_visible=True)
+                                         check_visible=True)
 
     def get_config_fs_type(self):
         return uiutil.get_list_selection(self.widget("fs-type-combo"),
-                                         rowindex=0, check_visible=True)
+                                         check_visible=True)
 
     def get_config_fs_readonly(self):
         if not self.widget("fs-readonly").is_visible():
@@ -173,11 +171,11 @@ class vmmFSDetails(vmmGObjectUI):
 
     def get_config_fs_driver(self):
         return uiutil.get_list_selection(self.widget("fs-driver-combo"),
-                                         rowindex=0, check_visible=True)
+                                         check_visible=True)
 
     def get_config_fs_format(self):
         return uiutil.get_list_selection(self.widget("fs-format-combo"),
-                                         rowindex=0, check_visible=True)
+                                         check_visible=True)
 
     # Setters
     def set_dev(self, dev):
@@ -309,7 +307,7 @@ class vmmFSDetails(vmmGObjectUI):
             self._dev = VirtualFilesystem(conn)
             if fstype == VirtualFilesystem.TYPE_RAM:
                 self._dev.source = usage
-                self._dev.units = 'MB'
+                self._dev.units = 'MiB'
             else:
                 self._dev.source = source
             self._dev.target = target
@@ -344,16 +342,18 @@ class vmmFSDetails(vmmGObjectUI):
             if path:
                 textent.set_text(path)
 
-        conn = self.conn
         reason = (isdir and
                   self.config.CONFIG_DIR_FS or
                   self.config.CONFIG_DIR_IMAGE)
+
+        if self.storage_browser and self.storage_browser.conn != self.conn:
+            self.storage_browser.cleanup()
+            self.storage_browser = None
         if self.storage_browser is None:
-            self.storage_browser = vmmStorageBrowser(conn)
+            self.storage_browser = vmmStorageBrowser(self.conn)
 
-        self.storage_browser.stable_defaults = self.vm.stable_defaults()
-
+        self.storage_browser.set_stable_defaults(self.vm.stable_defaults())
         self.storage_browser.set_finish_cb(set_storage_cb)
         self.storage_browser.set_browse_reason(reason)
 
-        self.storage_browser.show(self.topwin.get_ancestor(Gtk.Window), conn)
+        self.storage_browser.show(self.topwin.get_ancestor(Gtk.Window))

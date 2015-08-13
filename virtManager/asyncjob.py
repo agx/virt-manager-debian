@@ -22,16 +22,14 @@ import logging
 import threading
 import traceback
 
-# pylint: disable=E0611
 from gi.repository import Gdk
 from gi.repository import GLib
 from gi.repository import Gtk
-# pylint: enable=E0611
 
 import libvirt
 import urlgrabber
 
-from virtManager.baseclass import vmmGObjectUI
+from .baseclass import vmmGObjectUI
 
 
 class vmmMeter(urlgrabber.progress.BaseMeter):
@@ -191,7 +189,6 @@ class vmmAsyncJob(vmmGObjectUI):
         self._bg_thread = threading.Thread(target=cb_wrapper,
                                            args=[callback, self] + args)
         self._bg_thread.daemon = True
-        logging.debug("Creating async job for function cb=%s", callback)
 
         self.builder.connect_signals({
             "on_async_job_delete_event" : self._on_window_delete,

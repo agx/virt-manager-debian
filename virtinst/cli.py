@@ -24,19 +24,73 @@ import logging
 import logging.handlers
 import os
 import shlex
+import subprocess
 import sys
 import traceback
 
 import libvirt
+from urlgrabber import progress
 
-from virtcli import cliconfig
+from virtcli import CLIConfig
 
-import virtinst
-from virtinst import util
+from . import util
+from .clock import Clock
+from .deviceaudio import VirtualAudio
+from .devicechar import (VirtualChannelDevice, VirtualConsoleDevice,
+                         VirtualSerialDevice, VirtualParallelDevice)
+from .devicecontroller import VirtualController
+from .devicedisk import VirtualDisk
+from .devicefilesystem import VirtualFilesystem
+from .devicegraphics import VirtualGraphics
+from .devicehostdev import VirtualHostDevice
+from .deviceinput import VirtualInputDevice
+from .deviceinterface import VirtualNetworkInterface
+from .devicememballoon import VirtualMemballoon
+from .devicepanic import VirtualPanicDevice
+from .deviceredirdev import VirtualRedirDevice
+from .devicerng import VirtualRNGDevice
+from .devicesmartcard import VirtualSmartCardDevice
+from .devicetpm import VirtualTPMDevice
+from .devicevideo import VirtualVideoDevice
+from .devicewatchdog import VirtualWatchdog
+from .domainnumatune import DomainNumatune
+from .nodedev import NodeDevice
+from .osxml import OSXML
+from .storage import StoragePool, StorageVolume
 
 
-force = False
-quiet = False
+##########################
+# Global option handling #
+##########################
+
+class _GlobalState(object):
+    def __init__(self):
+        self.quiet = False
+
+        self.all_checks = None
+        self._validation_checks = {}
+
+    def set_validation_check(self, checkname, val):
+        self._validation_checks[checkname] = val
+
+    def get_validation_check(self, checkname):
+        if self.all_checks is not None:
+            return self.all_checks
+
+        # Default to True for all checks
+        return self._validation_checks.get(checkname, True)
+
+
+_globalstate = None
+
+
+def get_global_state():
+    return _globalstate
+
+
+def _reset_global_state():
+    global _globalstate
+    _globalstate = _GlobalState()
 
 
 ####################
@@ -103,7 +157,7 @@ def setupParser(usage, description, introspection_epilog=False):
         formatter_class=VirtHelpFormatter,
         epilog=epilog)
     parser.add_argument('--version', action='version',
-                        version=cliconfig.__version__)
+                        version=CLIConfig.version)
 
     return parser
 
@@ -113,22 +167,33 @@ def earlyLogging():
 
 
 def setupLogging(appname, debug_stdout, do_quiet, cli_app=True):
-    global quiet
-    quiet = do_quiet
+    _reset_global_state()
+    get_global_state().quiet = do_quiet
 
     vi_dir = None
-    if not "VIRTINST_TEST_SUITE" in os.environ:
+    logfile = None
+    if "VIRTINST_TEST_SUITE" not in os.environ:
         vi_dir = util.get_cache_dir()
+        logfile = os.path.join(vi_dir, appname + ".log")
 
-    if vi_dir and not os.access(vi_dir, os.W_OK):
-        if os.path.exists(vi_dir):
-            raise RuntimeError("No write access to directory %s" % vi_dir)
+    try:
+        if vi_dir and not os.access(vi_dir, os.W_OK):
+            if os.path.exists(vi_dir):
+                raise RuntimeError("No write access to directory %s" % vi_dir)
 
-        try:
-            os.makedirs(vi_dir, 0751)
-        except IOError, e:
-            raise RuntimeError("Could not create directory %s: %s" %
-                               (vi_dir, e))
+            try:
+                os.makedirs(vi_dir, 0751)
+            except IOError, e:
+                raise RuntimeError("Could not create directory %s: %s" %
+                                   (vi_dir, e))
+
+        if (logfile and
+            os.path.exists(logfile) and
+            not os.access(logfile, os.W_OK)):
+            raise RuntimeError("No write access to logfile %s" % logfile)
+    except Exception, e:
+        logging.warning("Error setting up logfile: %s", e)
+        logfile = None
 
 
     dateFormat = "%a, %d %b %Y %H:%M:%S"
@@ -143,12 +208,11 @@ def setupLogging(appname, debug_stdout, do_quiet, cli_app=True):
         rootLogger.removeHandler(handler)
 
     rootLogger.setLevel(logging.DEBUG)
-    if vi_dir:
-        filename = os.path.join(vi_dir, appname + ".log")
-        fileHandler = logging.handlers.RotatingFileHandler(filename, "ae",
-                                                           1024 * 1024, 5)
-        fileHandler.setFormatter(logging.Formatter(fileFormat,
-                                                   dateFormat))
+    if logfile:
+        fileHandler = logging.handlers.RotatingFileHandler(
+            logfile, "ae", 1024 * 1024, 5)
+        fileHandler.setFormatter(
+            logging.Formatter(fileFormat, dateFormat))
         rootLogger.addHandler(fileHandler)
 
     streamHandler = VirtStreamHandler(sys.stderr)
@@ -159,7 +223,7 @@ def setupLogging(appname, debug_stdout, do_quiet, cli_app=True):
     elif not cli_app:
         streamHandler = None
     else:
-        if quiet:
+        if get_global_state().quiet:
             level = logging.ERROR
         else:
             level = logging.WARN
@@ -169,12 +233,7 @@ def setupLogging(appname, debug_stdout, do_quiet, cli_app=True):
     if streamHandler:
         rootLogger.addHandler(streamHandler)
 
-    # Register libvirt handler
-    def libvirt_callback(ignore, err):
-        if err[3] != libvirt.VIR_ERR_ERROR:
-            # Don't log libvirt errors: global error handler will do that
-            logging.warn("Non-error from libvirt: '%s'", err[2])
-    libvirt.registerErrorHandler(f=libvirt_callback, ctx=None)
+    util.register_libvirt_error_handler()
 
     # Log uncaught exceptions
     def exception_log(typ, val, tb):
@@ -192,8 +251,10 @@ def setupLogging(appname, debug_stdout, do_quiet, cli_app=True):
 ##############################
 
 def getConnection(uri):
+    from .connection import VirtualConnection
+
     logging.debug("Requesting libvirt URI %s", (uri or "default"))
-    conn = virtinst.VirtualConnection(uri)
+    conn = VirtualConnection(uri)
     conn.open(_do_creds_authname)
     conn.cache_object_fetch = True
     logging.debug("Received libvirt URI %s", conn.uri)
@@ -240,7 +301,7 @@ def fail(msg, do_exit=True):
 
 
 def print_stdout(msg, do_force=False):
-    if do_force or not quiet:
+    if do_force or not get_global_state().quiet:
         print msg
 
 
@@ -273,27 +334,22 @@ def install_fail(guest):
     sys.exit(1)
 
 
-def set_force(val=True):
-    global force
-    force = val
-
-
 def set_prompt(prompt):
     # Set whether we allow prompts, or fail if a prompt pops up
     if prompt:
         logging.warning("--prompt mode is no longer supported.")
 
 
-name_missing    = _("--name is required")
-
-
 def validate_disk(dev, warn_overwrite=False):
-    def _optional_fail(msg):
-        if force:
-            logging.debug("--force skipping error condition '%s'", msg)
-            logging.warn(msg)
-        else:
-            fail(msg + _(" (Use --force to override)"))
+    def _optional_fail(msg, checkname):
+        do_check = get_global_state().get_validation_check(checkname)
+        if do_check:
+            fail(msg + (_(" (Use --check %s=off or "
+                "--check all=off to override)") % checkname))
+
+        logging.debug("Skipping --check %s error condition '%s'",
+            checkname, msg)
+        logging.warn(msg)
 
     def check_path_exists(dev):
         """
@@ -301,10 +357,11 @@ def validate_disk(dev, warn_overwrite=False):
         """
         if not warn_overwrite:
             return
-        if virtinst.VirtualDisk.path_exists(dev.conn, dev.path):
-            _optional_fail(
-                _("This will overwrite the existing path '%s'" % dev.path))
-
+        if not VirtualDisk.path_definitely_exists(dev.conn, dev.path):
+            return
+        _optional_fail(
+            _("This will overwrite the existing path '%s'") % dev.path,
+            "path_exists")
 
     def check_inuse_conflict(dev):
         """
@@ -315,7 +372,8 @@ def validate_disk(dev, warn_overwrite=False):
             return
 
         _optional_fail(_("Disk %s is already in use by other guests %s." %
-            (dev.path, names)))
+            (dev.path, names)),
+            "path_in_use")
 
     def check_size_conflict(dev):
         """
@@ -324,7 +382,7 @@ def validate_disk(dev, warn_overwrite=False):
         isfatal, errmsg = dev.is_size_conflict()
         # The isfatal case should have already caused us to fail
         if not isfatal and errmsg:
-            _optional_fail(errmsg)
+            _optional_fail(errmsg, "disk_size")
 
     def check_path_search(dev):
         user, broken_paths = dev.check_path_search(dev.conn, dev.path)
@@ -347,28 +405,25 @@ def _run_console(args):
         return child
 
     os.execvp(args[0], args)
-    os._exit(1)  # pylint: disable=W0212
+    os._exit(1)  # pylint: disable=protected-access
 
 
 def _gfx_console(guest):
-    args = ["/usr/bin/virt-viewer",
+    args = ["virt-viewer",
             "--connect", guest.conn.uri,
             "--wait", guest.name]
 
-    if not os.path.exists(args[0]):
-        logging.warn(_("Unable to connect to graphical console: "
-                       "virt-viewer not installed. Please install "
-                       "the 'virt-viewer' package."))
-        return None
-
+    logging.debug("Launching virt-viewer for graphics type '%s'",
+        guest.get_devices("graphics")[0].type)
     return _run_console(args)
 
 
 def _txt_console(guest):
-    args = ["/usr/bin/virsh",
+    args = ["virsh",
             "--connect", guest.conn.uri,
             "console", guest.name]
 
+    logging.debug("Connecting to text console")
     return _run_console(args)
 
 
@@ -391,161 +446,38 @@ def connect_console(guest, consolecb, wait):
         logging.debug("waitpid: %s: %s", e.errno, e.message)
 
 
-def show_console_for_guest(guest):
-    gdev = guest.get_devices("graphics")
-    if not gdev:
-        logging.debug("Connecting to text console")
-        return _txt_console(guest)
+def get_console_cb(guest):
+    gdevs = guest.get_devices("graphics")
+    if not gdevs:
+        return _txt_console
 
-    gtype = gdev[0].type
-    if gtype in ["default",
-                 virtinst.VirtualGraphics.TYPE_VNC,
-                 virtinst.VirtualGraphics.TYPE_SPICE]:
-        logging.debug("Launching virt-viewer for graphics type '%s'", gtype)
-        return _gfx_console(guest)
-    else:
+    gtype = gdevs[0].type
+    if gtype not in ["default",
+        VirtualGraphics.TYPE_VNC,
+        VirtualGraphics.TYPE_SPICE]:
         logging.debug("No viewer to launch for graphics type '%s'", gtype)
+        return
+
+    try:
+        subprocess.check_output(["virt-viewer", "--version"])
+    except OSError:
+        logging.warn(_("Unable to connect to graphical console: "
+                       "virt-viewer not installed. Please install "
+                       "the 'virt-viewer' package."))
         return None
 
+    if not os.environ.get("DISPLAY", ""):
+        logging.warn(_("Graphics requested but DISPLAY is not set. "
+                       "Not running virt-viewer."))
+        return None
 
-###########################
-# CLI back compat helpers #
-###########################
-
-def convert_old_memory(options):
-    if options.memory:
-        return
-    if not options.oldmemory:
-        return
-    options.memory = str(options.oldmemory)
+    return _gfx_console
 
 
-def convert_old_cpuset(options):
-    if not options.cpuset:
-        return
-    if not options.vcpus:
-        options.vcpus = ""
-    options.vcpus += ",cpuset=%s" % options.cpuset
-    logging.debug("Generated compat cpuset: --vcpus %s", options.vcpus)
-
-
-def convert_old_networks(options, number_of_default_nics):
-    macs     = util.listify(options.mac)
-    networks = util.listify(options.network)
-    bridges  = util.listify(options.bridge)
-
-    if bridges and networks:
-        fail(_("Cannot mix both --bridge and --network arguments"))
-
-    if bridges:
-        # Convert old --bridges to --networks
-        networks = ["bridge:" + b for b in bridges]
-
-    def padlist(l, padsize):
-        l = util.listify(l)
-        l.extend((padsize - len(l)) * [None])
-        return l
-
-    # If a plain mac is specified, have it imply a default network
-    networks = padlist(networks, max(len(macs), number_of_default_nics))
-    macs = padlist(macs, len(networks))
-
-    for idx in range(len(networks)):
-        if networks[idx] is None:
-            networks[idx] = "default"
-        if macs[idx]:
-            networks[idx] += ",mac=%s" % macs[idx]
-
-        # Handle old format of bridge:foo instead of bridge=foo
-        for prefix in ["network", "bridge"]:
-            if networks[idx].startswith(prefix + ":"):
-                networks[idx] = networks[idx].replace(prefix + ":",
-                                                      prefix + "=")
-
-    options.network = networks
-
-
-def _determine_default_graphics(guest, default_override):
-    if default_override is True:
-        return
-    elif default_override is False:
-        guest.skip_default_graphics = True
-        return
-
-    if "DISPLAY" not in os.environ.keys():
-        logging.debug("DISPLAY is not set: defaulting to nographics.")
-        guest.skip_default_graphics = True
-
-
-def convert_old_graphics(guest, options, default_override=None):
-    vnc = options.vnc
-    vncport = options.vncport
-    vnclisten = options.vnclisten
-    nographics = options.nographics
-    sdl = options.sdl
-    keymap = options.keymap
-    graphics = options.graphics
-
-    if graphics and (vnc or sdl or keymap or vncport or vnclisten):
-        fail(_("Cannot mix --graphics and old style graphical options"))
-
-    optnum = sum([bool(g) for g in [vnc, nographics, sdl, graphics]])
-    if optnum > 1:
-        raise ValueError(_("Can't specify more than one of VNC, SDL, "
-                           "--graphics or --nographics"))
-
-    if options.graphics:
-        return
-
-    if optnum == 0:
-        _determine_default_graphics(guest, default_override)
-        return
-
-    # Build a --graphics command line from old style opts
-    optstr = ((vnc and "vnc") or
-              (sdl and "sdl") or
-              (nographics and ("none")))
-    if vnclisten:
-        optstr += ",listen=%s" % vnclisten
-    if vncport:
-        optstr += ",port=%s" % vncport
-    if keymap:
-        optstr += ",keymap=%s" % keymap
-
-    logging.debug("--graphics compat generated: %s", optstr)
-    options.graphics = [optstr]
-
-
-def convert_old_features(options):
-    if getattr(options, "features", None):
-        return
-
-    opts = ""
-    if options.noacpi:
-        opts += "acpi=off"
-    if options.noapic:
-        if opts:
-            opts += ","
-        opts += "apic=off"
-    options.features = opts or None
-
-
-def set_os_variant(obj, distro_type, distro_variant):
-    # This is used for both Guest and virtconv VM, so be careful
-    if (not distro_type and
-        not distro_variant and
-        hasattr(obj, "os_autodetect")):
-        # Default to distro autodetection
-        obj.os_autodetect = True
-        return
-
-    distro_variant = distro_variant and str(distro_variant).lower() or None
-    distro_type = distro_type and str(distro_type).lower() or None
-    distkey = distro_variant or distro_type
-    if not distkey or distkey == "none":
-        return
-
-    obj.os_variant = distkey
+def get_meter():
+    if get_global_state().quiet or "VIRTINST_TEST_SUITE" in os.environ:
+        return progress.BaseMeter()
+    return progress.TextMeter(fo=sys.stdout)
 
 
 ###########################
@@ -586,19 +518,36 @@ def add_misc_options(grp, prompt=False, replace=False,
                    "with the same name."))
 
     if printxml:
-        grp.add_argument("--print-xml", action="store_true", dest="xmlonly",
-            help=_("Print the generated domain XML rather than create "
-                   "the guest."))
+        print_kwargs = {
+            "dest": "xmlonly",
+            "default": False,
+            "help": _("Print the generated domain XML rather than create "
+                "the guest."),
+        }
+
         if printstep:
+            print_kwargs["nargs"] = "?"
+            print_kwargs["const"] = "all"
+        else:
+            print_kwargs["action"] = "store_true"
+
+        grp.add_argument("--print-xml", **print_kwargs)
+        if printstep:
+            # Back compat, argparse allows us to use --print-xml
+            # for everything.
             grp.add_argument("--print-step", dest="xmlstep",
-                help=_("Print XML of a specific install step "
-                       "(1, 2, 3, all) rather than define the guest."))
+                help=argparse.SUPPRESS)
 
     if dryrun:
         grp.add_argument("--dry-run", action="store_true", dest="dry",
                        help=_("Run through install process, but do not "
                               "create devices or define the guest."))
 
+    if prompt:
+        grp.add_argument("--check",
+            help=_("Enable or disable validation checks. Example:\n"
+                   "--check path_in_use=off\n"
+                   "--check all=off"))
     grp.add_argument("-q", "--quiet", action="store_true",
                    help=_("Suppress non-error output"))
     grp.add_argument("-d", "--debug", action="store_true",
@@ -615,7 +564,7 @@ def add_metadata_option(grp):
 def add_memory_option(grp, backcompat=False):
     grp.add_argument("--memory",
         help=_("Configure guest memory allocation. Ex:\n"
-               "--memory 1024 (in megabytes)\n"
+               "--memory 1024 (in MiB)\n"
                "--memory 512,maxmemory=1024"))
     if backcompat:
         grp.add_argument("-r", "--ram", type=int, dest="oldmemory",
@@ -651,51 +600,13 @@ def add_gfx_option(devg):
              "--graphics vnc,password=foobar,port=5910,keymap=ja"))
 
 
-def graphics_option_group(parser):
-    """
-    Register vnc + sdl options for virt-install and virt-image
-    """
-    vncg = parser.add_argument_group(_("Graphics Configuration"))
-    add_gfx_option(vncg)
-    vncg.add_argument("--vnc", action="store_true",
-                    help=argparse.SUPPRESS)
-    vncg.add_argument("--vncport", type=int,
-                    help=argparse.SUPPRESS)
-    vncg.add_argument("--vnclisten",
-                    help=argparse.SUPPRESS)
-    vncg.add_argument("-k", "--keymap",
-                    help=argparse.SUPPRESS)
-    vncg.add_argument("--sdl", action="store_true",
-                    help=argparse.SUPPRESS)
-    vncg.add_argument("--nographics", action="store_true",
-                    help=argparse.SUPPRESS)
-    return vncg
-
-
-def network_option_group(parser):
-    """
-    Register common network options for virt-install and virt-image
-    """
-    netg = parser.add_argument_group(_("Networking Configuration"))
-
-    add_net_option(netg)
-
-    # Deprecated net options
-    netg.add_argument("-b", "--bridge", action="append",
-                    help=argparse.SUPPRESS)
-    netg.add_argument("-m", "--mac", action="append",
-                    help=argparse.SUPPRESS)
-
-    return netg
-
-
 def add_net_option(devg):
     devg.add_argument("-w", "--network", action="append",
       help=_("Configure a guest network interface. Ex:\n"
              "--network bridge=mybr0\n"
              "--network network=my_libvirt_virtual_net\n"
              "--network network=mynet,model=virtio,mac=00:11...\n"
-             "--network network=mynet,filterref=clean-traffic\n"
+             "--network none\n"
              "--network help"))
 
 
@@ -703,6 +614,10 @@ def add_device_options(devg, sound_back_compat=False):
     devg.add_argument("--controller", action="append",
                     help=_("Configure a guest controller device. Ex:\n"
                            "--controller type=usb,model=ich9-ehci1"))
+    devg.add_argument("--input", action="append",
+        help=_("Configure a guest input device. Ex:\n"
+               "--input tablet\n"
+               "--input keyboard,bus=usb"))
     devg.add_argument("--serial", action="append",
                     help=_("Configure a guest serial device"))
     devg.add_argument("--parallel", action="append",
@@ -712,9 +627,17 @@ def add_device_options(devg, sound_back_compat=False):
     devg.add_argument("--console", action="append",
                     help=_("Configure a text console connection between "
                            "the guest and host"))
-    devg.add_argument("--host-device", action="append",
-                    help=_("Configure physical host devices attached to the "
-                           "guest"))
+    devg.add_argument("--hostdev", action="append",
+                    help=_("Configure physical USB/PCI/etc host devices "
+                           "to be shared with the guest"))
+    devg.add_argument("--filesystem", action="append",
+        help=_("Pass host directory to the guest. Ex: \n"
+               "--filesystem /my/source/dir,/dir/in/guest\n"
+               "--filesystem template_name,/,type=template"))
+
+    # Back compat name
+    devg.add_argument("--host-device", action="append", dest="hostdev",
+                    help=argparse.SUPPRESS)
 
     # --sound used to be a boolean option, hence the nargs handling
     sound_kwargs = {
@@ -752,51 +675,31 @@ def add_device_options(devg, sound_back_compat=False):
                            "--panic default"))
 
 
-def add_fs_option(devg):
-    devg.add_argument("--filesystem", action="append",
-        help=_("Pass host directory to the guest. Ex: \n"
-               "--filesystem /my/source/dir,/dir/in/guest\n"
-               "--filesystem template_name,/,type=template"))
-
-
-def add_distro_options(g):
-    # Way back when, we required specifying both --os-type and --os-variant
-    # Nowadays the distinction is pointless, so hide the less useful
-    # --os-type option.
-    g.add_argument("--os-type", dest="distro_type",
-                help=argparse.SUPPRESS)
-    g.add_argument("--os-variant", dest="distro_variant",
-                 help=_("The OS variant being installed guests, "
-                        "e.g. 'fedora18', 'rhel6', 'winxp', etc."))
-
-
-def add_old_feature_options(optg):
-    optg.add_argument("--noapic", action="store_true",
-                    default=False, help=argparse.SUPPRESS)
-    optg.add_argument("--noacpi", action="store_true",
-                    default=False, help=argparse.SUPPRESS)
-
-
 def add_guest_xml_options(geng):
     geng.add_argument("--security",
-                    help=_("Set domain security driver configuration."))
+        help=_("Set domain security driver configuration."))
     geng.add_argument("--numatune",
-                    help=_("Tune NUMA policy for the domain process."))
+        help=_("Tune NUMA policy for the domain process."))
     geng.add_argument("--memtune", action="append",
-                    help=_("Tune memory policy for the domain process."))
+        help=_("Tune memory policy for the domain process."))
     geng.add_argument("--blkiotune", action="append",
-                    help=_("Tune blkio policy for the domain process."))
+        help=_("Tune blkio policy for the domain process."))
     geng.add_argument("--memorybacking", action="append",
         help=_("Set memory backing policy for the domain process. Ex:\n"
                "--memorybacking hugepages=on"))
     geng.add_argument("--features",
-                    help=_("Set domain <features> XML. Ex:\n"
-                           "--features acpi=off\n"
-                           "--features apic=on,eoi=on"))
+        help=_("Set domain <features> XML. Ex:\n"
+               "--features acpi=off\n"
+               "--features apic=on,eoi=on"))
     geng.add_argument("--clock",
-                    help=_("Set domain <clock> XML. Ex:\n"
-                           "--clock offset=localtime,rtc_tickpolicy=catchup"))
-    geng.add_argument("--pm", help=_("Config power management features"))
+        help=_("Set domain <clock> XML. Ex:\n"
+               "--clock offset=localtime,rtc_tickpolicy=catchup"))
+    geng.add_argument("--pm",
+        help=_("Configure VM power management features"))
+    geng.add_argument("--events",
+        help=_("Configure VM lifecycle management policy"))
+    geng.add_argument("--resource", action="append",
+        help=_("Configure VM resource partitioning (cgroups)"))
 
 
 def add_boot_options(insg):
@@ -815,8 +718,8 @@ def add_disk_option(stog, editexample=False):
         editmsg += "\n--disk cache=  (unset cache)"
     stog.add_argument("--disk", action="append",
         help=_("Specify storage with various options. Ex.\n"
-               "--disk size=10 (new 10GB image in default location)\n"
-               "--disk path=/my/existing/disk,cache=none\n"
+               "--disk size=10 (new 10GiB image in default location)\n"
+               "--disk /my/existing/disk,cache=none\n"
                "--disk device=cdrom,bus=scsi\n"
                "--disk=?") + editmsg)
 
@@ -851,7 +754,8 @@ class _VirtCLIArgument(object):
     def __init__(self, attrname, cliname,
                  setter_cb=None, ignore_default=False,
                  can_comma=False, aliases=None,
-                 is_list=False, is_onoff=False):
+                 is_list=False, is_onoff=False,
+                 lookup_cb=None, is_novalue=False):
         """
         A single subargument passed to compound command lines like --disk,
         --network, etc.
@@ -875,6 +779,10 @@ class _VirtCLIArgument(object):
             are appended.
         @is_onoff: The value expected on the cli is on/off or yes/no, convert
             it to true/false.
+        @lookup_cb: If specified, use this function for performing match
+            lookups.
+        @is_novalue: If specified, the parameter is not expected in the
+            form FOO=BAR, but just FOO.
         """
         self.attrname = attrname
         self.cliname = cliname
@@ -885,6 +793,8 @@ class _VirtCLIArgument(object):
         self.aliases = util.listify(aliases)
         self.is_list = is_list
         self.is_onoff = is_onoff
+        self.lookup_cb = lookup_cb
+        self.is_novalue = is_novalue
 
 
     def parse(self, opts, inst, support_cb=None, lookup=False):
@@ -892,7 +802,7 @@ class _VirtCLIArgument(object):
         for cliname in self.aliases + [self.cliname]:
             # We iterate over all values unconditionally, so they are
             # removed from opts
-            foundval = opts.get_opt_param(cliname)
+            foundval = opts.get_opt_param(cliname, self.is_novalue)
             if foundval is not None:
                 val = foundval
         if val is None:
@@ -907,26 +817,31 @@ class _VirtCLIArgument(object):
         if val == "default" and self.ignore_default and not lookup:
             return
 
-        if lookup and not self.attrname:
+        if lookup and not self.attrname and not self.lookup_cb:
             raise RuntimeError(
-                _("Don't know how to match %(device_type)s "
-                  "property %(property_name)s") %
+                _("Don't know how to match device type '%(device_type)s' "
+                  "property '%(property_name)s'") %
                 {"device_type": getattr(inst, "virtual_device_type", ""),
                  "property_name": self.cliname})
 
         try:
             if self.attrname:
-                eval("inst." + self.attrname)
+                eval("inst." + self.attrname)  # pylint: disable=eval-used
         except AttributeError:
             raise RuntimeError("programming error: obj=%s does not have "
                                "member=%s" % (inst, self.attrname))
 
         if lookup:
-            return eval("inst." + self.attrname) == val
+            if self.lookup_cb:
+                return self.lookup_cb(opts, inst, self.cliname, val)
+            else:
+                return eval(  # pylint: disable=eval-used
+                    "inst." + self.attrname) == val
         elif self.setter_cb:
             self.setter_cb(opts, inst, self.cliname, val)
         else:
-            exec("inst." + self.attrname + " = val")  # pylint: disable=W0122
+            exec(  # pylint: disable=exec-used
+                "inst." + self.attrname + " = val")
 
 
 class VirtOptionString(object):
@@ -944,7 +859,11 @@ class VirtOptionString(object):
         """
         self.fullopts = optstr
 
-        virtargmap = dict((arg.cliname, arg) for arg in virtargs)
+        virtargmap = {}
+        for arg in virtargs:
+            virtargmap[arg.cliname] = arg
+            for alias in arg.aliases:
+                virtargmap[alias] = arg
 
         # @opts: A dictionary of the mapping {cliname: val}
         # @orderedopts: A list of tuples (cliname: val), in the order
@@ -952,12 +871,16 @@ class VirtOptionString(object):
         self.opts, self.orderedopts = self._parse_optstr(
             virtargmap, remove_first)
 
-    def get_opt_param(self, key):
+    def get_opt_param(self, key, is_novalue=False):
         if key not in self.opts:
             return None
+
         ret = self.opts.pop(key)
         if ret is None:
-            raise RuntimeError("Option '%s' had no value set." % key)
+            if not is_novalue:
+                raise RuntimeError("Option '%s' had no value set." % key)
+            ret = ""
+
         return ret
 
     def check_leftover_opts(self):
@@ -1058,8 +981,8 @@ class VirtCLIParser(object):
         These values should be set by subclasses in _init_params
 
         @cli_arg_name: The command line argument this maps to, so
-            "host-device" for --host-device
-        @guest: Will be set parse(), the toplevel virtinst.Guest object
+            "hostdev" for --hostdev
+        @guest: Will be set parse(), the toplevel Guest object
         @remove_first: Passed to VirtOptionString
         @check_none: If the parsed option string is just 'none', return None
         @support_cb: An extra support check function for further validation.
@@ -1091,16 +1014,12 @@ class VirtCLIParser(object):
     def __init_global_params(self):
         def set_clearxml_cb(opts, inst, cliname, val):
             ignore = opts = cliname
-            if not self.clear_attr and not self.devclass:
+            if not self.clear_attr:
                 raise RuntimeError("Don't know how to clearxml --%s" %
                                    self.cli_arg_name)
-
-            clearobj = inst
-            if self.clear_attr:
-                clearobj = getattr(inst, self.clear_attr)
             if val is not True:
                 return
-            clearobj.clear()
+            getattr(inst, self.clear_attr).clear()
 
         self.set_param(None, "clearxml",
                        setter_cb=set_clearxml_cb, is_onoff=True)
@@ -1128,14 +1047,14 @@ class VirtCLIParser(object):
 
         if editting and optlist:
             # If an object is passed in, we are updating it in place, and
-            # only use the last command line occurence, eg. from virt-xml
+            # only use the last command line occurrence, eg. from virt-xml
             optlist = [optlist[-1]]
 
         ret = []
         for optstr in optlist:
             optinst = inst
             if self.devclass and not inst:
-                optinst = self.devclass(guest.conn)  # pylint: disable=E1102
+                optinst = self.devclass(guest.conn)  # pylint: disable=not-callable
 
             try:
                 devs = self._parse_single_optstr(guest, optstr, optinst)
@@ -1172,15 +1091,23 @@ class VirtCLIParser(object):
         ret = []
 
         for inst in devlist:
-            opts = VirtOptionString(optstr, self._params, self.remove_first)
-            valid = True
-            for param in self._params:
-                if param.parse(opts, inst,
-                               support_cb=None, lookup=True) is False:
-                    valid = False
-                    break
-            if valid:
-                ret.append(inst)
+            try:
+                opts = VirtOptionString(optstr, self._params,
+                                        self.remove_first)
+                valid = True
+                for param in self._params:
+                    if param.parse(opts, inst,
+                                   support_cb=None, lookup=True) is False:
+                        valid = False
+                        break
+                if valid:
+                    ret.append(inst)
+            except Exception, e:
+                logging.debug("Exception parsing inst=%s optstr=%s",
+                              inst, optstr, exc_info=True)
+                fail(_("Error: --%(cli_arg_name)s %(options)s: %(err)s") %
+                        {"cli_arg_name": self.cli_arg_name,
+                         "options": optstr, "err": str(e)})
 
         return ret
 
@@ -1212,6 +1139,41 @@ class VirtCLIParser(object):
         raise NotImplementedError()
 
 
+###################
+# --check parsing #
+###################
+
+def convert_old_force(options):
+    if options.force:
+        if not options.check:
+            options.check = "all=off"
+        del(options.force)
+
+
+class ParseCLICheck(VirtCLIParser):
+    # This sets properties on the _GlobalState objects
+
+    def _init_params(self):
+        def _set_check(opts, inst, cliname, val):
+            ignore = opts
+            inst.set_validation_check(cliname, val)
+
+        self.set_param(None, "path_in_use",
+            is_onoff=True, setter_cb=_set_check)
+        self.set_param(None, "disk_size",
+            is_onoff=True, setter_cb=_set_check)
+        self.set_param(None, "path_exists",
+            is_onoff=True, setter_cb=_set_check)
+
+        self.set_param("all_checks", "all", is_onoff=True)
+
+
+def parse_check(checkstr):
+    # Overwrite this for each parse,
+    parser = ParseCLICheck("check")
+    parser.parse(None, checkstr, get_global_state())
+
+
 ######################
 # --metadata parsing #
 ######################
@@ -1222,6 +1184,29 @@ class ParserMetadata(VirtCLIParser):
         self.set_param("title", "title", can_comma=True)
         self.set_param("uuid", "uuid")
         self.set_param("description", "description", can_comma=True)
+
+
+####################
+# --events parsing #
+####################
+
+class ParserEvents(VirtCLIParser):
+    def _init_params(self):
+        self.set_param("on_poweroff", "on_poweroff")
+        self.set_param("on_reboot", "on_reboot")
+        self.set_param("on_crash", "on_crash")
+
+
+######################
+# --resource parsing #
+######################
+
+class ParserResource(VirtCLIParser):
+    def _init_params(self):
+        self.remove_first = "partition"
+        self.clear_attr = "resource"
+
+        self.set_param("resource.partition", "partition")
 
 
 ######################
@@ -1291,7 +1276,7 @@ class ParserVCPU(VirtCLIParser):
         def set_cpuset_cb(opts, inst, cliname, val):
             if val == "auto":
                 try:
-                    val = virtinst.DomainNumatune.generate_cpuset(
+                    val = DomainNumatune.generate_cpuset(
                         inst.conn, inst.memory)
                     logging.debug("Auto cpuset is: %s", val)
                 except Exception, e:
@@ -1329,7 +1314,7 @@ class ParserCPU(VirtCLIParser):
             ignore = opts
             ignore = cliname
             if val == "host":
-                val = inst.cpu.SPECIAL_MODE_HOST_COPY
+                val = inst.cpu.SPECIAL_MODE_HOST_MODEL
             if val == "none":
                 val = inst.cpu.SPECIAL_MODE_CLEAR
 
@@ -1396,31 +1381,51 @@ class ParserBoot(VirtCLIParser):
     def _init_params(self):
         self.clear_attr = "os"
 
+        # UEFI depends on these bits, so set them first
+        self.set_param("os.arch", "arch")
+        self.set_param("type", "domain_type")
+        self.set_param("os.os_type", "os_type")
+        self.set_param("emulator", "emulator")
+
+        def set_uefi(opts, inst, cliname, val):
+            ignore = opts
+            ignore = cliname
+            ignore = val
+            inst.set_uefi_default()
+        self.set_param(None, "uefi", setter_cb=set_uefi, is_novalue=True)
+
         self.set_param("os.useserial", "useserial", is_onoff=True)
         self.set_param("os.enable_bootmenu", "menu", is_onoff=True)
         self.set_param("os.kernel", "kernel")
         self.set_param("os.initrd", "initrd")
         self.set_param("os.dtb", "dtb")
         self.set_param("os.loader", "loader")
-        self.set_param("os.kernel_args", "kernel_args", aliases=["extra_args"])
+        self.set_param("os.loader_ro", "loader_ro", is_onoff=True)
+        self.set_param("os.loader_type", "loader_type")
+        self.set_param("os.nvram", "nvram")
+        self.set_param("os.nvram_template", "nvram_template")
+        self.set_param("os.kernel_args", "kernel_args",
+            aliases=["extra_args"], can_comma=True)
         self.set_param("os.init", "init")
-        self.set_param("os.arch", "arch")
-        self.set_param("type", "domain_type")
         self.set_param("os.machine", "machine")
-        self.set_param("os.os_type", "os_type")
-        self.set_param("emulator", "emulator")
+
+        def set_initargs_cb(opts, inst, cliname, val):
+            ignore = opts
+            ignore = cliname
+            inst.os.set_initargs_string(val)
+        self.set_param("os.initargs", "initargs", setter_cb=set_initargs_cb)
 
         # Order matters for boot devices, we handle it specially in parse
         def noset_cb(val):
             ignore = val
-        for b in virtinst.OSXML.BOOT_DEVICES:
+        for b in OSXML.BOOT_DEVICES:
             self.set_param(noset_cb, b)
 
     def _parse(self, opts, inst):
         # Build boot order
         boot_order = []
         for cliname, ignore in opts.orderedopts:
-            if not cliname in inst.os.BOOT_DEVICES:
+            if cliname not in inst.os.BOOT_DEVICES:
                 continue
 
             del(opts.opts[cliname])
@@ -1492,6 +1497,8 @@ class ParserFeatures(VirtCLIParser):
         self.set_param("features.hyperv_spinlocks_retries",
             "hyperv_spinlocks_retries")
 
+        self.set_param("features.vmport", "vmport", is_onoff=True)
+
 
 ###################
 # --clock parsing #
@@ -1519,7 +1526,7 @@ class ParserClock(VirtCLIParser):
 
             setattr(timerobj, attrname, val)
 
-        for tname in virtinst.Clock.TIMER_NAMES:
+        for tname in Clock.TIMER_NAMES:
             self.set_param(None, tname + "_present",
                 is_onoff=True,
                 setter_cb=set_timer)
@@ -1552,73 +1559,30 @@ def _default_image_file_format(conn):
     return "raw"
 
 
-def _parse_disk_source(guest, path, pool, vol, size, fmt, sparse):
-    abspath = None
-    volinst = None
-    volobj = None
+def _get_default_image_format(conn, poolobj):
+    tmpvol = StorageVolume(conn)
+    tmpvol.pool = poolobj
 
-    # Strip media type
-    optcount = sum([bool(p) for p in [path, pool, vol]])
-    if optcount > 1:
-        fail(_("Cannot specify more than 1 storage path"))
-    if optcount == 0 and size:
-        # Saw something like --disk size=X, have it imply pool=default
-        pool = "default"
+    if tmpvol.file_type != StorageVolume.TYPE_FILE:
+        return None
+    return _default_image_file_format(conn)
 
-    if path:
-        abspath = os.path.abspath(path)
-        if os.path.dirname(abspath) == "/var/lib/libvirt/images":
-            virtinst.StoragePool.build_default_pool(guest.conn)
 
-    elif pool:
-        if not size:
-            raise ValueError(_("Size must be specified with all 'pool='"))
-        if pool == "default":
-            virtinst.StoragePool.build_default_pool(guest.conn)
+def _generate_new_volume_name(guest, poolobj, fmt):
+    collidelist = []
+    for disk in guest.get_devices("disk"):
+        if (disk.get_vol_install() and
+            disk.get_vol_install().pool.name() == poolobj.name()):
+            collidelist.append(os.path.basename(disk.path))
 
-        poolobj = guest.conn.storagePoolLookupByName(pool)
-        collidelist = []
-        for disk in guest.get_devices("disk"):
-            if (disk.get_vol_install() and
-                disk.get_vol_install().pool.name() == poolobj.name()):
-                collidelist.append(os.path.basename(disk.path))
-
-        tmpvol = virtinst.StorageVolume(guest.conn)
-        tmpvol.pool = poolobj
-        if fmt is None and tmpvol.file_type == tmpvol.TYPE_FILE:
-            fmt = _default_image_file_format(guest.conn)
-
-        ext = virtinst.StorageVolume.get_file_extension_for_format(fmt)
-        vname = virtinst.StorageVolume.find_free_name(
-            poolobj, guest.name, suffix=ext, collidelist=collidelist)
-
-        volinst = virtinst.VirtualDisk.build_vol_install(
-                guest.conn, vname, poolobj, size, sparse)
-        if fmt:
-            if not volinst.supports_property("format"):
-                raise ValueError(_("Format attribute not supported for this "
-                                   "volume type"))
-            volinst.format = fmt
-
-    elif vol:
-        if not vol.count("/"):
-            raise ValueError(_("Storage volume must be specified as "
-                               "vol=poolname/volname"))
-        vollist = vol.split("/")
-        voltuple = (vollist[0], vollist[1])
-        logging.debug("Parsed volume: as pool='%s' vol='%s'",
-                      voltuple[0], voltuple[1])
-        if voltuple[0] == "default":
-            virtinst.StoragePool.build_default_pool(guest.conn)
-
-        volobj = virtinst.VirtualDisk.lookup_vol_object(guest.conn, voltuple)
-
-    return abspath, volinst, volobj
+    ext = StorageVolume.get_file_extension_for_format(fmt)
+    return StorageVolume.find_free_name(
+        poolobj, guest.name, suffix=ext, collidelist=collidelist)
 
 
 class ParserDisk(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualDisk
+        self.devclass = VirtualDisk
         self.remove_first = "path"
 
         def noset_cb(opts, inst, cliname, val):
@@ -1632,18 +1596,28 @@ class ParserDisk(VirtCLIParser):
         self.set_param(None, "format", setter_cb=noset_cb)
         self.set_param(None, "sparse", setter_cb=noset_cb)
 
+        self.set_param("source_pool", "source_pool")
+        self.set_param("source_volume", "source_volume")
+        self.set_param("source_name", "source_name")
+        self.set_param("source_protocol", "source_protocol")
+        self.set_param("source_host_name", "source_host_name")
+        self.set_param("source_host_port", "source_host_port")
+        self.set_param("source_host_socket", "source_host_socket")
+        self.set_param("source_host_transport", "source_host_transport")
+
         self.set_param("path", "path")
         self.set_param("device", "device")
         self.set_param("bus", "bus")
         self.set_param("removable", "removable", is_onoff=True)
         self.set_param("driver_cache", "cache")
+        self.set_param("driver_discard", "discard")
         self.set_param("driver_name", "driver_name")
         self.set_param("driver_type", "driver_type")
         self.set_param("driver_io", "io")
         self.set_param("error_policy", "error_policy")
         self.set_param("serial", "serial")
         self.set_param("target", "target")
-        self.set_param("sourceStartupPolicy", "startup_policy")
+        self.set_param("startup_policy", "startup_policy")
         self.set_param("read_only", "readonly", is_onoff=True)
         self.set_param("shareable", "shareable", is_onoff=True)
         self.set_param("boot.order", "boot_order")
@@ -1654,16 +1628,20 @@ class ParserDisk(VirtCLIParser):
         self.set_param("iotune_ris", "read_iops_sec")
         self.set_param("iotune_wis", "write_iops_sec")
         self.set_param("iotune_tis", "total_iops_sec")
+        self.set_param("sgio", "sgio")
 
 
     def _parse(self, opts, inst):
+        if opts.fullopts == "none":
+            return
+
         def parse_size(val):
             if val is None:
                 return None
             try:
                 return float(val)
             except Exception, e:
-                fail(_("Improper value for 'size': %s" % str(e)))
+                fail(_("Improper value for 'size': %s") % str(e))
 
         def convert_perms(val):
             if val is None:
@@ -1676,42 +1654,72 @@ class ParserDisk(VirtCLIParser):
                 # It's default. Nothing to do.
                 pass
             else:
-                fail(_("Unknown '%s' value '%s'" % ("perms", val)))
-        convert_perms(opts.get_opt_param("perms"))
+                fail(_("Unknown '%s' value '%s'") % ("perms", val))
 
-        path = opts.get_opt_param("path")
-        had_path = path is not None
+        has_path = "path" in opts.opts
         backing_store = opts.get_opt_param("backing_store")
-        pool = opts.get_opt_param("pool")
-        vol = opts.get_opt_param("vol")
+        poolname = opts.get_opt_param("pool")
+        volname = opts.get_opt_param("vol")
         size = parse_size(opts.get_opt_param("size"))
         fmt = opts.get_opt_param("format")
         sparse = _on_off_convert("sparse", opts.get_opt_param("sparse"))
+        convert_perms(opts.get_opt_param("perms"))
+        has_type_volume = ("source_pool" in opts.opts or
+                           "source_volume" in opts.opts)
+        has_type_network = ("source_protocol" in opts.opts)
 
-        abspath, volinst, volobj = _parse_disk_source(
-            self.guest, path, pool, vol, size, fmt, sparse)
+        optcount = sum([bool(p) for p in [has_path, poolname, volname,
+                                          has_type_volume, has_type_network]])
+        if optcount > 1:
+            fail(_("Cannot specify more than 1 storage path"))
+        if optcount == 0 and size:
+            # Saw something like --disk size=X, have it imply pool=default
+            poolname = "default"
 
-        path = volobj and volobj.path() or abspath
-        if had_path or path:
-            opts.opts["path"] = path or ""
+        if volname:
+            if volname.count("/") != 1:
+                raise ValueError(_("Storage volume must be specified as "
+                                   "vol=poolname/volname"))
+            poolname, volname = volname.split("/")
+            logging.debug("Parsed --disk volume as: pool=%s vol=%s",
+                          poolname, volname)
 
-        inst = VirtCLIParser._parse(self, opts, inst)
+        VirtCLIParser._parse(self, opts, inst)
 
-        create_kwargs = {"size": size, "fmt": fmt, "sparse": sparse,
-            "vol_install": volinst, "backing_store": backing_store}
-        if any(create_kwargs.values()):
-            inst.set_create_storage(**create_kwargs)
-        inst.cli_size = size
+        # Generate and fill in the disk source info
+        newvolname = None
+        poolobj = None
+        if poolname:
+            if poolname == "default":
+                StoragePool.build_default_pool(self.guest.conn)
+            poolobj = self.guest.conn.storagePoolLookupByName(poolname)
+
+        if volname:
+            vol_object = poolobj.storageVolLookupByName(volname)
+            inst.set_vol_object(vol_object, poolobj)
+            poolobj = None
+
+        if ((poolobj or inst.wants_storage_creation()) and
+            (fmt or size or sparse or backing_store)):
+            if not poolobj:
+                poolobj = inst.get_parent_pool()
+                newvolname = os.path.basename(inst.path)
+            if poolobj and not fmt:
+                fmt = _get_default_image_format(self.guest.conn, poolobj)
+            if newvolname is None:
+                newvolname = _generate_new_volume_name(self.guest, poolobj,
+                                                       fmt)
+            vol_install = VirtualDisk.build_vol_install(
+                    self.guest.conn, newvolname, poolobj, size, sparse,
+                    fmt=fmt, backing_store=backing_store)
+            inst.set_vol_install(vol_install)
 
         if not inst.target:
             skip_targets = [d.target for d in self.guest.get_devices("disk")]
             inst.generate_target(skip_targets)
-            inst.cli_set_target = True
+            inst.cli_generated_target = True
 
         return inst
-
-
-parse_disk = ParserDisk("disk").parse
 
 
 #####################
@@ -1720,14 +1728,14 @@ parse_disk = ParserDisk("disk").parse
 
 class ParserNetwork(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualNetworkInterface
+        self.devclass = VirtualNetworkInterface
         self.remove_first = "type"
 
         def set_mac_cb(opts, inst, cliname, val):
             ignore = opts
             ignore = cliname
             if val == "RANDOM":
-                val = None
+                return None
             inst.macaddr = val
             return val
 
@@ -1742,6 +1750,7 @@ class ParserNetwork(VirtCLIParser):
         self.set_param("type", "type", setter_cb=set_type_cb)
         self.set_param("source", "source")
         self.set_param("source_mode", "source_mode")
+        self.set_param("portgroup", "portgroup")
         self.set_param("target_dev", "target")
         self.set_param("model", "model")
         self.set_param("macaddr", "mac", setter_cb=set_mac_cb)
@@ -1759,13 +1768,16 @@ class ParserNetwork(VirtCLIParser):
         self.set_param("virtualport.instanceid", "virtualport_instanceid")
 
     def _parse(self, optsobj, inst):
+        if optsobj.fullopts == "none":
+            return
+
         opts = optsobj.opts
         if "type" not in opts:
             if "network" in opts:
-                opts["type"] = virtinst.VirtualNetworkInterface.TYPE_VIRTUAL
+                opts["type"] = VirtualNetworkInterface.TYPE_VIRTUAL
                 opts["source"] = opts.pop("network")
             elif "bridge" in opts:
-                opts["type"] = virtinst.VirtualNetworkInterface.TYPE_BRIDGE
+                opts["type"] = VirtualNetworkInterface.TYPE_BRIDGE
                 opts["source"] = opts.pop("bridge")
 
         return VirtCLIParser._parse(self, optsobj, inst)
@@ -1777,18 +1789,18 @@ class ParserNetwork(VirtCLIParser):
 
 class ParserGraphics(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualGraphics
+        self.devclass = VirtualGraphics
         self.remove_first = "type"
 
         def set_keymap_cb(opts, inst, cliname, val):
             ignore = opts
             ignore = cliname
-            from virtinst import hostkeymap
+            from . import hostkeymap
 
             if not val:
                 val = None
             elif val.lower() == "local":
-                val = virtinst.VirtualGraphics.KEYMAP_LOCAL
+                val = VirtualGraphics.KEYMAP_LOCAL
             elif val.lower() == "none":
                 val = None
             else:
@@ -1815,6 +1827,14 @@ class ParserGraphics(VirtCLIParser):
         self.set_param("connected", "connected")
         self.set_param("defaultMode", "defaultMode")
 
+        self.set_param("image_compression", "image_compression")
+        self.set_param("streaming_mode", "streaming_mode")
+        self.set_param("clipboard_copypaste", "clipboard_copypaste",
+            is_onoff=True)
+        self.set_param("mouse_mode", "mouse_mode")
+        self.set_param("filetransfer_enable", "filetransfer_enable",
+            is_onoff=True)
+
     def _parse(self, opts, inst):
         if opts.fullopts == "none":
             self.guest.skip_default_graphics = True
@@ -1828,7 +1848,7 @@ class ParserGraphics(VirtCLIParser):
 
 class ParserController(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualController
+        self.devclass = VirtualController
         self.remove_first = "type"
 
         self.set_param("type", "type")
@@ -1843,12 +1863,25 @@ class ParserController(VirtCLIParser):
 
     def _parse(self, opts, inst):
         if opts.fullopts == "usb2":
-            return virtinst.VirtualController.get_usb2_controllers(inst.conn)
+            return VirtualController.get_usb2_controllers(inst.conn)
         elif opts.fullopts == "usb3":
             inst.type = "usb"
             inst.model = "nec-xhci"
             return inst
         return VirtCLIParser._parse(self, opts, inst)
+
+
+###################
+# --input parsing #
+###################
+
+class ParserInput(VirtCLIParser):
+    def _init_params(self):
+        self.devclass = VirtualInputDevice
+        self.remove_first = "type"
+
+        self.set_param("type", "type")
+        self.set_param("bus", "bus")
 
 
 #######################
@@ -1857,7 +1890,7 @@ class ParserController(VirtCLIParser):
 
 class ParserSmartcard(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualSmartCardDevice
+        self.devclass = VirtualSmartCardDevice
         self.remove_first = "mode"
         self.check_none = True
 
@@ -1871,7 +1904,7 @@ class ParserSmartcard(VirtCLIParser):
 
 class ParserRedir(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualRedirDevice
+        self.devclass = VirtualRedirDevice
         self.remove_first = "bus"
 
         self.set_param("bus", "bus")
@@ -1897,7 +1930,7 @@ class ParserRedir(VirtCLIParser):
 
 class ParserTPM(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualTPMDevice
+        self.devclass = VirtualTPMDevice
         self.remove_first = "type"
         self.check_none = True
 
@@ -1917,7 +1950,7 @@ class ParserTPM(VirtCLIParser):
 
 class ParserRNG(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualRNGDevice
+        self.devclass = VirtualRNGDevice
         self.remove_first = "type"
         self.check_none = True
 
@@ -1943,6 +1976,7 @@ class ParserRNG(VirtCLIParser):
         def set_backend_cb(opts, inst, cliname, val):
             ignore = opts
             ignore = inst
+            # pylint: disable=attribute-defined-outside-init
             if cliname == "backend_mode":
                 self._cli_backend_mode = val
             elif cliname == "backend_type":
@@ -1966,11 +2000,11 @@ class ParserRNG(VirtCLIParser):
     def _parse(self, optsobj, inst):
         opts = optsobj.opts
 
-        # pylint: disable=W0201
+        # pylint: disable=attribute-defined-outside-init
         # Defined outside init, but its easier this way
         self._cli_backend_mode = "connect"
         self._cli_backend_type = "udp"
-        # pylint: enable=W0201
+        # pylint: enable=attribute-defined-outside-init
 
         if opts.get("type", "").startswith("/"):
             # Allow --rng /dev/random
@@ -1986,7 +2020,7 @@ class ParserRNG(VirtCLIParser):
 
 class ParserWatchdog(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualWatchdog
+        self.devclass = VirtualWatchdog
         self.remove_first = "model"
 
         self.set_param("model", "model")
@@ -1999,7 +2033,7 @@ class ParserWatchdog(VirtCLIParser):
 
 class ParserMemballoon(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualMemballoon
+        self.devclass = VirtualMemballoon
         self.remove_first = "model"
 
         self.set_param("model", "model")
@@ -2011,7 +2045,7 @@ class ParserMemballoon(VirtCLIParser):
 
 class ParserPanic(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualPanicDevice
+        self.devclass = VirtualPanicDevice
         self.remove_first = "iobase"
 
         def set_iobase_cb(opts, inst, cliname, val):
@@ -2045,8 +2079,14 @@ class ParserMemorybacking(VirtCLIParser):
     def _init_params(self):
         self.clear_attr = "memoryBacking"
 
-        self.set_param("memoryBacking.hugepages", "hugepages", is_onoff=True)
-        self.set_param("memoryBacking.nosharepages", "nosharepages", is_onoff=True)
+        self.set_param("memoryBacking.hugepages",
+                "hugepages", is_onoff=True)
+        self.set_param("memoryBacking.page_size", "size")
+        self.set_param("memoryBacking.page_unit", "unit")
+        self.set_param("memoryBacking.page_nodeset",
+                "nodeset", can_comma=True)
+        self.set_param("memoryBacking.nosharepages",
+                "nosharepages", is_onoff=True)
         self.set_param("memoryBacking.locked", "locked", is_onoff=True)
 
 
@@ -2104,19 +2144,19 @@ class _ParserChar(VirtCLIParser):
 
 
 class ParserSerial(_ParserChar):
-    devclass = virtinst.VirtualSerialDevice
+    devclass = VirtualSerialDevice
 
 
 class ParserParallel(_ParserChar):
-    devclass = virtinst.VirtualParallelDevice
+    devclass = VirtualParallelDevice
 
 
 class ParserChannel(_ParserChar):
-    devclass = virtinst.VirtualChannelDevice
+    devclass = VirtualChannelDevice
 
 
 class ParserConsole(_ParserChar):
-    devclass = virtinst.VirtualConsoleDevice
+    devclass = VirtualConsoleDevice
 
 
 ########################
@@ -2125,7 +2165,7 @@ class ParserConsole(_ParserChar):
 
 class ParserFilesystem(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualFilesystem
+        self.devclass = VirtualFilesystem
         self.remove_first = ["source", "target"]
 
         self.set_param("type", "type")
@@ -2140,7 +2180,7 @@ class ParserFilesystem(VirtCLIParser):
 
 class ParserVideo(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualVideoDevice
+        self.devclass = VirtualVideoDevice
         self.remove_first = "model"
 
         self.set_param("model", "model", ignore_default=True)
@@ -2152,7 +2192,7 @@ class ParserVideo(VirtCLIParser):
 
 class ParserSound(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualAudio
+        self.devclass = VirtualAudio
         self.remove_first = "model"
 
         self.set_param("model", "model", ignore_default=True)
@@ -2165,21 +2205,35 @@ class ParserSound(VirtCLIParser):
 
 
 #########################
-# --host-device parsing #
+# --hostdev parsing #
 #########################
 
 class ParserHostdev(VirtCLIParser):
     def _init_params(self):
-        self.devclass = virtinst.VirtualHostDevice
+        self.devclass = VirtualHostDevice
         self.remove_first = "name"
+
+        # If using the name_lookup_cb, this saves us repeatedly trying to
+        # lookup the nodedev
+        _nodedev_lookup_cache = {}
 
         def set_name_cb(opts, inst, cliname, val):
             ignore = opts
             ignore = cliname
-            val = virtinst.NodeDevice.lookupNodeName(inst.conn, val)
+            val = NodeDevice.lookupNodedevFromString(inst.conn, val)
             inst.set_from_nodedev(val)
+        def name_lookup_cb(opts, inst, cliname, val):
+            ignore = opts
+            ignore = cliname
 
-        self.set_param(None, "name", setter_cb=set_name_cb)
+            if val not in _nodedev_lookup_cache:
+                _nodedev_lookup_cache[val] = \
+                    NodeDevice.lookupNodedevFromString(inst.conn, val)
+            nodedev = _nodedev_lookup_cache[val]
+            return nodedev.compare_to_hostdev(inst)
+
+        self.set_param(None, "name",
+                       setter_cb=set_name_cb, lookup_cb=name_lookup_cb)
         self.set_param("driver_name", "driver_name")
         self.set_param("boot.order", "boot_order")
         self.set_param("rom_bar", "rom_bar", is_onoff=True)
@@ -2210,6 +2264,8 @@ def build_parser_map(options, skip=None, only=None):
         parsermap[parserobj.option_variable_name] = parserobj
 
     register_parser("metadata", ParserMetadata)
+    register_parser("events", ParserEvents)
+    register_parser("resource", ParserResource)
     register_parser("memory", ParserMemory)
     register_parser("memtune", ParserMemorytune)
     register_parser("vcpus", ParserVCPU)
@@ -2228,6 +2284,7 @@ def build_parser_map(options, skip=None, only=None):
     register_parser("network", ParserNetwork)
     register_parser("graphics", ParserGraphics)
     register_parser("controller", ParserController)
+    register_parser("input", ParserInput)
     register_parser("smartcard", ParserSmartcard)
     register_parser("redirdev", ParserRedir)
     register_parser("tpm", ParserTPM)
@@ -2241,7 +2298,7 @@ def build_parser_map(options, skip=None, only=None):
     register_parser("filesystem", ParserFilesystem)
     register_parser("video", ParserVideo)
     register_parser("sound", ParserSound)
-    register_parser("host-device", ParserHostdev)
+    register_parser("hostdev", ParserHostdev)
     register_parser("panic", ParserPanic)
 
     return parsermap

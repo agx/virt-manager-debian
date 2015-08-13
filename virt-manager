@@ -26,19 +26,23 @@ import signal
 import sys
 import traceback
 
-# pylint: disable=E0611
+import gi
 from gi.repository import GObject
 from gi.repository import LibvirtGLib
-# pylint: enable=E0611
 
 from virtinst import util as util
 from virtinst import cli as virtinstcli
-from virtcli import cliutils, cliconfig
+from virtcli import CLIConfig
 
+# This is massively heavy handed, but I can't figure out any way to shut
+# up the slew of gtk deprecation warnings that clog up our very useful
+# stdout --debug output. Of course we could drop use of deprecated APIs,
+# but it's a serious quantity of churn
+import warnings
+warnings.simplefilter("ignore")
 
 try:
     # Avoid a deprecation warning about threads_init
-    import gi
     gi.check_version("3.9.1")
 except (ValueError, AttributeError):
     GObject.threads_init()
@@ -62,7 +66,7 @@ def drop_tty():
     # tty. This prevents libvirt's SSH tunnels from prompting
     # for user input if SSH keys/agent aren't configured.
     if os.fork() != 0:
-        os._exit(0)  # pylint: disable=W0212
+        os._exit(0)  # pylint: disable=protected-access
 
     os.setsid()
 
@@ -85,7 +89,7 @@ def parse_commandline():
     parser = argparse.ArgumentParser(usage="virt-manager [options]",
                                      epilog=epilog)
     parser.add_argument('--version', action='version',
-                        version=cliconfig.__version__)
+                        version=CLIConfig.version)
     parser.set_defaults(uuid=None)
 
     # Trace every libvirt API call to debug output
@@ -123,7 +127,7 @@ def parse_commandline():
     return parser.parse_known_args()
 
 
-def launch_specific_window(engine, show, uri, uuid):
+def launch_specific_window(engine, show, uri, clistr):
     if not show:
         return
 
@@ -131,30 +135,29 @@ def launch_specific_window(engine, show, uri, uuid):
     if show == 'creator':
         engine.show_domain_creator(uri)
     elif show == 'editor':
-        engine.show_domain_editor(uri, uuid)
+        engine.show_domain_editor(uri, clistr)
     elif show == 'performance':
-        engine.show_domain_performance(uri, uuid)
+        engine.show_domain_performance(uri, clistr)
     elif show == 'console':
-        engine.show_domain_console(uri, uuid)
+        engine.show_domain_console(uri, clistr)
     elif show == 'summary':
         engine.show_host_summary(uri)
 
 
 def main():
-    cliutils.setup_i18n()
     (options, leftovers) = parse_commandline()
 
     virtinstcli.setupLogging("virt-manager", options.debug, False, False)
 
     import virtManager
-    logging.debug("virt-manager version: %s", cliconfig.__version__)
+    logging.debug("virt-manager version: %s", CLIConfig.version)
     logging.debug("virtManager import: %s", str(virtManager))
 
     if options.tracelibvirt:
         logging.debug("Libvirt tracing requested")
         import virtManager.module_trace
         import libvirt
-        virtManager.module_trace.wrap_module(libvirt)
+        virtManager.module_trace.wrap_module(libvirt, regex=None)
 
     # Now we've got basic environment up & running we can fork
     do_drop_stdio = False
@@ -165,16 +168,17 @@ def main():
         # Ignore SIGHUP, otherwise a serial console closing drops the whole app
         signal.signal(signal.SIGHUP, signal.SIG_IGN)
 
-    # The never ending fork+gconf/gsettings problems now require
-    # us to import Gtk _after_ the fork. This creates a funny race,
-    # since we need to parse the command line arguments to know if
-    # we need to fork, but need to import Gtk before cli processing
-    # so it can handle --g-fatal-args. We strip out our flags first
-    # and pass the left overs to gtk
+    # The never ending fork+gsettings problems now require us to
+    # import Gtk _after_ the fork. This creates a funny race, since we
+    # need to parse the command line arguments to know if we need to
+    # fork, but need to import Gtk before cli processing so it can
+    # handle --g-fatal-args. We strip out our flags first and pass the
+    # left overs to gtk
     origargv = sys.argv
     try:
         sys.argv = origargv[:1] + leftovers[:]
-        from gi.repository import Gtk  # pylint: disable=E0611
+        gi.require_version('Gtk', '3.0')
+        from gi.repository import Gtk
         leftovers = sys.argv[1:]
 
         # This will error if Gtk wasn't correctly initialized
@@ -209,7 +213,7 @@ def main():
                   Gtk.get_micro_version())
 
     config = virtManager.config.vmmConfig(
-        "virt-manager", cliconfig, options.testfirstrun)
+        "virt-manager", CLIConfig, options.testfirstrun)
 
     if not util.local_libvirt_version() >= 6000:
         # We need this version for threaded virConnect access
@@ -223,7 +227,7 @@ def main():
 
     # Add our icon dir to icon theme
     icon_theme = Gtk.IconTheme.get_default()
-    icon_theme.prepend_search_path(cliconfig.icon_dir)
+    icon_theme.prepend_search_path(CLIConfig.icon_dir)
 
     from virtManager.engine import vmmEngine
 
@@ -260,9 +264,15 @@ def main():
 
     if show:
         def cb(conn):
-            ignore = conn
-            launch_specific_window(engine, show, options.uri, options.uuid)
-            return True
+            if conn.is_disconnected():
+                # Connection error
+                return True
+
+            if conn.is_active():
+                launch_specific_window(engine, show, options.uri, options.uuid)
+                return True
+
+            return False
         engine.uri_cb = cb
         engine.show_manager_window = False
         engine.skip_autostart = True

@@ -6,8 +6,8 @@
   <vcpu>1</vcpu>
   <os>
     <type arch="x86_64">linux</type>
-    <kernel>./virtinst-vmlinuz.</kernel>
-    <initrd>./virtinst-initrd.img.</initrd>
+    <kernel>/tmp/virtinst-vmlinuz.</kernel>
+    <initrd>/tmp/virtinst-initrd.img.</initrd>
     <cmdline>method=tests/cli-test-xml/faketree</cmdline>
   </os>
   <on_poweroff>destroy</on_poweroff>
@@ -24,9 +24,6 @@
     </interface>
     <input type="mouse" bus="xen"/>
     <graphics type="vnc" port="-1" keymap="en-us"/>
-    <video>
-      <model type="cirrus"/>
-    </video>
   </devices>
 </domain>
 <domain type="xen">
@@ -50,8 +47,5 @@
     </interface>
     <input type="mouse" bus="xen"/>
     <graphics type="vnc" port="-1" keymap="en-us"/>
-    <video>
-      <model type="cirrus"/>
-    </video>
   </devices>
 </domain>

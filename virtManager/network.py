@@ -1,5 +1,5 @@
 #
-# Copyright (C) 2006, 2013 Red Hat, Inc.
+# Copyright (C) 2006, 2013-2014 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 #
 # This program is free software; you can redistribute it and/or modify
@@ -18,13 +18,11 @@
 # MA 02110-1301 USA.
 #
 
-import logging
-
 import ipaddr
 
 from virtinst import Network
 
-from virtManager.libvirtobject import vmmLibvirtObject
+from .libvirtobject import vmmLibvirtObject
 
 
 def _make_addr_str(addrStr, prefix, netmaskStr):
@@ -43,94 +41,73 @@ def _make_addr_str(addrStr, prefix, netmaskStr):
 class vmmNetwork(vmmLibvirtObject):
     def __init__(self, conn, backend, key):
         vmmLibvirtObject.__init__(self, conn, backend, key, Network)
-        self._active = True
-
-        self._support_isactive = None
-
-        self.force_update_status(from_event=True)
 
 
     ##########################
     # Required class methods #
     ##########################
 
-    def get_name(self):
-        return self._backend.name()
+    def _conn_tick_poll_param(self):
+        return "pollnet"
+    def class_name(self):
+        return "network"
+
     def _XMLDesc(self, flags):
         return self._backend.XMLDesc(flags)
     def _define(self, xml):
         return self.conn.define_network(xml)
     def _using_events(self):
         return self.conn.using_network_events
+    def _check_supports_isactive(self):
+        return self.conn.check_support(
+            self.conn.SUPPORT_NET_ISACTIVE, self._backend)
+    def _get_backend_status(self):
+        return self._backend_get_active()
+
+    def tick(self, stats_update=True):
+        ignore = stats_update
+        self._refresh_status()
+
+    def _init_libvirt_state(self):
+        self.tick()
 
 
     ###########
     # Actions #
     ###########
 
-    def _backend_get_active(self):
-        if self._support_isactive is None:
-            self._support_isactive = self.conn.check_support(
-                self.conn.SUPPORT_NET_ISACTIVE, self._backend)
-
-        if not self._support_isactive:
-            return True
-        return bool(self._backend.isActive())
-
-    def _set_active(self, state):
-        if state == self._active:
-            return
-        self.idle_emit(state and "started" or "stopped")
-        self._active = state
-
-    def force_update_status(self, from_event=False):
-        if self._using_events() and not from_event:
-            return
-
-        try:
-            self._set_active(self._backend_get_active())
-        except:
-            logging.debug("force_update_status: Triggering network "
-                "list refresh")
-            self.conn.schedule_priority_tick(pollnet=True, force=True)
-
-    def is_active(self):
-        return self._active
-
-    def _kick_conn(self):
-        self.conn.schedule_priority_tick(pollnet=True)
-
+    @vmmLibvirtObject.lifecycle_action
     def start(self):
         self._backend.create()
-        self._kick_conn()
 
+    @vmmLibvirtObject.lifecycle_action
     def stop(self):
         self._backend.destroy()
-        self._kick_conn()
 
+    @vmmLibvirtObject.lifecycle_action
     def delete(self, force=True):
         ignore = force
         self._backend.undefine()
         self._backend = None
-        self._kick_conn()
+
+
+    ###############################
+    # XML/config handling parsing #
+    ###############################
 
     def get_autostart(self):
         return self._backend.autostart()
     def set_autostart(self, value):
         self._backend.setAutostart(value)
 
-    def tick(self):
-        self.force_update_status()
+    def set_qos(self, **kwargs):
+        xmlobj = self._make_xmlobj_to_define()
+        q = xmlobj.bandwidth
+        for key, val in kwargs.items():
+            setattr(q, key, val)
 
-    def define_name(self, newname):
-        return self._define_name_helper("network",
-                                        self.conn.rename_network,
-                                        newname)
-
-
-    ###############
-    # XML parsing #
-    ###############
+        self._redefine_xmlobj(xmlobj)
+        return self.is_active()
 
     def get_uuid(self):
         return self.get_xmlobj().uuid
@@ -144,6 +121,8 @@ class vmmNetwork(vmmLibvirtObject):
         return self.get_xmlobj().forward.mode
     def pretty_forward_mode(self):
         return self.get_xmlobj().forward.pretty_desc()
+    def get_qos(self):
+        return self.get_xmlobj().bandwidth
 
     def can_pxe(self):
         return self.get_xmlobj().can_pxe()

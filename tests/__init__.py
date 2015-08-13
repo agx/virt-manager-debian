@@ -24,21 +24,11 @@ os.environ["VIRTINST_TEST_SUITE"] = "1"
 os.environ["VIRTINST_TEST_URL_DIR"] = os.path.abspath(
     "tests/cli-test-xml/fakefedoratree/")
 
-import virtinst
-virtinst.stable_defaults = False
-
 from virtcli import cliconfig
 # This sets all the cli bits back to their defaults
 reload(cliconfig)
 
 from tests import utils
-
-# pylint: disable=W0212
-# Access to protected member, needed to unittest stuff
-
-# Force certain helpers to return consistent values
-virtinst.util.is_blktap_capable = lambda ignore: False
-virtinst.util.default_bridge = lambda ignore1: ["bridge", "eth0"]
 
 # Setup logging
 rootLogger = logging.getLogger()
@@ -68,7 +58,6 @@ def _cleanup_imports_cb():
 
 atexit.register(_cleanup_imports_cb)
 virtinstall = _import("virtinstall", "virt-install")
-virtimage = _import("virtimage", "virt-image")
 virtclone = _import("virtclone", "virt-clone")
 virtconvert = _import("virtconvert", "virt-convert")
 virtxml = _import("virtxml", "virt-xml")

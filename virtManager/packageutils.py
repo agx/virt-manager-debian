@@ -18,9 +18,7 @@
 # MA 02110-1301 USA.
 #
 
-# pylint: disable=E0611
 from gi.repository import Gio
-# pylint: enable=E0611
 
 import logging
 import time
@@ -41,7 +39,7 @@ def check_packagekit(parent, errbox, packages):
         logging.debug("No PackageKit packages to search for.")
         return
 
-    logging.debug("Asking PackageKit what's installed locally.")
+    logging.debug("PackageKit check/install for packages=%s", packages)
     try:
         bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
         Gio.DBusProxy.new_sync(bus, 0, None,
@@ -53,7 +51,16 @@ def check_packagekit(parent, errbox, packages):
         return
 
     try:
-        packagekit_install(parent, packages)
+        for package in packages[:]:
+            if packagekit_isinstalled(package):
+                logging.debug("package=%s already installed, skipping it",
+                    package)
+                packages.remove(package)
+
+        if packages:
+            packagekit_install(parent, packages)
+        else:
+            logging.debug("Nothing to install")
     except Exception, e:
         # PackageKit frontend should report an error for us, so just log
         # the actual error
@@ -61,6 +68,16 @@ def check_packagekit(parent, errbox, packages):
         return
 
     return True
+
+
+def packagekit_isinstalled(package):
+    bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
+    pk_control = Gio.DBusProxy.new_sync(bus, 0, None,
+                            "org.freedesktop.PackageKit",
+                            "/org/freedesktop/PackageKit",
+                            "org.freedesktop.PackageKit.Query", None)
+
+    return pk_control.IsInstalled("(ss)", package, "")
 
 
 def packagekit_install(parent, package_list):
@@ -74,7 +91,7 @@ def packagekit_install(parent, package_list):
     try:
         # Need to import GdkX11 just to get access to get_xid function
         # This will likely fail on wayland in the future, so ignore errors
-        from gi.repository import GdkX11  # pylint: disable=E0611
+        from gi.repository import GdkX11  # pylint: disable=no-name-in-module
         ignore = GdkX11
 
         if parent and parent.topwin.get_window():
@@ -87,6 +104,7 @@ def packagekit_install(parent, package_list):
     logging.debug("Installing packages: %s", package_list)
     pk_control.InstallPackageNames("(uass)", xid, package_list, "",
                                    timeout=timeout)
+    logging.debug("Install completed")
 
 
 ###################

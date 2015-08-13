@@ -23,7 +23,7 @@ from virtinst import StoragePool, StorageVolume
 
 from tests import utils
 
-# pylint: disable=W0212
+# pylint: disable=protected-access
 # Access to protected member, needed to unittest stuff
 
 basepath = os.path.join(os.getcwd(), "tests", "storage-xml")
@@ -69,8 +69,8 @@ def createPool(conn, ptype, poolname=None, fmt=None, target_path=None,
     pool_inst.type = ptype
     pool_inst.uuid = uuid
 
-    if pool_inst.supports_property("host"):
-        pool_inst.host = "some.random.hostname"
+    if pool_inst.supports_property("hosts"):
+        pool_inst.add_host("some.random.hostname")
     if pool_inst.supports_property("source_path"):
         pool_inst.source_path = source_path or "/some/source/path"
     if pool_inst.supports_property("target_path"):
@@ -188,10 +188,10 @@ class TestStorage(unittest.TestCase):
 
         # Test creating with many devices
         # XXX: Need to wire this up
-        #createPool(self.conn,
-        #           StoragePool.TYPE_LOGICAL, "pool-logical-manydev",
-        #           source_path=["/tmp/path1", "/tmp/path2", "/tmp/path3"],
-        #           target_path=None)
+        # createPool(self.conn,
+        #            StoragePool.TYPE_LOGICAL, "pool-logical-manydev",
+        #            source_path=["/tmp/path1", "/tmp/path2", "/tmp/path3"],
+        #            target_path=None)
 
     def testDiskPool(self):
         poolobj = createPool(self.conn,
@@ -220,6 +220,11 @@ class TestStorage(unittest.TestCase):
                 "libvirt version.")
 
         createPool(self.conn, StoragePool.TYPE_GLUSTER, "pool-gluster")
+
+
+    ##############################
+    # Tests for pool-sources API #
+    ##############################
 
     def _enumerateCompare(self, name, pool_list):
         for pool in pool_list:

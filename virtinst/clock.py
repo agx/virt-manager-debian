@@ -17,7 +17,7 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
-from virtinst.xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
+from .xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
 
 
 class _ClockTimer(XMLBuilder):
@@ -31,7 +31,8 @@ class _ClockTimer(XMLBuilder):
 class Clock(XMLBuilder):
     _XML_ROOT_NAME = "clock"
 
-    TIMER_NAMES = ["platform", "pit", "rtc", "hpet", "tsc", "kvmclock"]
+    TIMER_NAMES = ["platform", "pit", "rtc", "hpet", "tsc", "kvmclock",
+        "hypervclock"]
 
     offset = XMLProperty("./@offset")
     timers = XMLChildProperty(_ClockTimer)

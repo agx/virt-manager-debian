@@ -20,7 +20,7 @@
 
 from virtinst import NodeDevice
 
-from virtManager.libvirtobject import vmmLibvirtObject
+from .libvirtobject import vmmLibvirtObject
 
 
 def _parse_convert(conn, parsexml=None):
@@ -30,14 +30,23 @@ def _parse_convert(conn, parsexml=None):
 class vmmNodeDevice(vmmLibvirtObject):
     def __init__(self, conn, backend, key):
         vmmLibvirtObject.__init__(self, conn, backend, key, _parse_convert)
-        self._name = key
+
+    def _conn_tick_poll_param(self):
+        return "pollnodedev"
+    def class_name(self):
+        return "nodedev"
 
     def _XMLDesc(self, flags):
         return self._backend.XMLDesc(flags)
-    def get_name(self):
-        return self._name
+    def _get_backend_status(self):
+        return self._STATUS_ACTIVE
+    def _backend_get_name(self):
+        return self.get_connkey()
     def is_active(self):
         return True
 
-    def tick(self):
-        pass
+    def tick(self, stats_update=True):
+        # Deliberately empty
+        ignore = stats_update
+    def _init_libvirt_state(self):
+        self.ensure_latest_xml()

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.16.1 -->
+<!-- Generated with glade 3.18.3 -->
 <interface>
-  <requires lib="gtk+" version="3.0"/>
+  <requires lib="gtk+" version="3.8"/>
   <object class="GtkAdjustment" id="adjustment1">
     <property name="lower">1</property>
     <property name="upper">60</property>
@@ -56,8 +56,6 @@
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">0</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                       </object>
@@ -78,7 +76,8 @@
               <object class="GtkLabel" id="label11">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">General</property>
+                <property name="label" translatable="yes">_General</property>
+                <property name="use_underline">True</property>
               </object>
               <packing>
                 <property name="tab_fill">False</property>
@@ -117,8 +116,6 @@
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">2</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -133,8 +130,6 @@
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">2</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -149,8 +144,6 @@
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">3</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -165,8 +158,6 @@
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">3</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -181,8 +172,6 @@
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">4</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -197,8 +186,6 @@
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">4</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -212,8 +199,6 @@
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">0</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -252,8 +237,6 @@
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">0</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -268,8 +251,6 @@
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">1</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -284,8 +265,6 @@
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">1</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                       </object>
@@ -309,7 +288,8 @@
               <object class="GtkLabel" id="label2">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">Polling</property>
+                <property name="label" translatable="yes">P_olling</property>
+                <property name="use_underline">True</property>
               </object>
               <packing>
                 <property name="position">1</property>
@@ -345,15 +325,13 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">_Graphics type:</property>
+                                <property name="label" translatable="yes">Gra_phics type:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">prefs-graphics-type</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">1</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -369,8 +347,6 @@
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">3</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -382,8 +358,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">1</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -396,8 +370,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">3</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -414,8 +386,6 @@
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">0</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -425,12 +395,11 @@
                                 <property name="xalign">0</property>
                                 <property name="label" translatable="yes">_Add sound device:</property>
                                 <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">prefs-new-vm-sound</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">0</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -441,15 +410,13 @@
 and migration compatibility: if using the 'copy host' option, your servers will need
 identical CPUs in order to migrate the VM.</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">_CPU default:</property>
+                                <property name="label" translatable="yes">CPU _default:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">prefs-cpu-default</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">4</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -461,8 +428,6 @@ identical CPUs in order to migrate the VM.</property>
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">4</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -470,14 +435,14 @@ identical CPUs in order to migrate the VM.</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">Add Spice USB
+                                <property name="label" translatable="yes">Add Spice _USB
 Redirection:</property>
+                                <property name="use_underline">True</property>
+                                <property name="mnemonic_widget">prefs-add-spice-usbredir</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">2</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                             <child>
@@ -490,8 +455,6 @@ Redirection:</property>
                               <packing>
                                 <property name="left_attach">1</property>
                                 <property name="top_attach">2</property>
-                                <property name="width">1</property>
-                                <property name="height">1</property>
                               </packing>
                             </child>
                           </object>
@@ -522,7 +485,8 @@ Redirection:</property>
               <object class="GtkLabel" id="label10">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">New VM</property>
+                <property name="label" translatable="yes">N_ew VM</property>
+                <property name="use_underline">True</property>
               </object>
               <packing>
                 <property name="position">2</property>
@@ -558,8 +522,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">0</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -571,7 +533,7 @@ Redirection:</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="xalign">0</property>
-                                <property name="label" translatable="yes">_Grab keys:</property>
+                                <property name="label" translatable="yes">Gr_ab keys:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">prefs-keys-grab-changebtn</property>
                               </object>
@@ -599,8 +561,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">2</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -612,8 +572,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">0</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -629,8 +587,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">3</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -646,8 +602,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">3</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -663,8 +617,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">2</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -681,8 +633,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">1</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -694,8 +644,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">1</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                       </object>
@@ -719,7 +667,8 @@ Redirection:</property>
               <object class="GtkLabel" id="label3">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">Console</property>
+                <property name="label" translatable="yes">Conso_le</property>
+                <property name="use_underline">True</property>
               </object>
               <packing>
                 <property name="position">3</property>
@@ -757,8 +706,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">0</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -773,8 +720,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">0</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -789,8 +734,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">1</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -805,8 +748,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">2</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -821,8 +762,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">1</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -837,8 +776,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">2</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -853,8 +790,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">4</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -869,8 +804,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">4</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -880,12 +813,11 @@ Redirection:</property>
                             <property name="xalign">0</property>
                             <property name="label" translatable="yes">_Interface start/stop:</property>
                             <property name="use_underline">True</property>
+                            <property name="mnemonic_widget">prefs-confirm-interface</property>
                           </object>
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">3</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -900,8 +832,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">3</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -916,8 +846,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">5</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -932,8 +860,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">5</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -948,8 +874,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">6</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                         <child>
@@ -964,8 +888,6 @@ Redirection:</property>
                           <packing>
                             <property name="left_attach">1</property>
                             <property name="top_attach">6</property>
-                            <property name="width">1</property>
-                            <property name="height">1</property>
                           </packing>
                         </child>
                       </object>
@@ -989,7 +911,8 @@ Redirection:</property>
               <object class="GtkLabel" id="label18">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">Feedback</property>
+                <property name="label" translatable="yes">Feed_back</property>
+                <property name="use_underline">True</property>
               </object>
               <packing>
                 <property name="position">4</property>

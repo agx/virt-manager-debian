@@ -1,5 +1,5 @@
 #
-# Copyright 2013 Red Hat, Inc.
+# Copyright 2013, 2015 Red Hat, Inc.
 # Copyright(c) FUJITSU Limited 2007.
 #
 # Cloning a virtual machine module.
@@ -26,11 +26,11 @@ import os
 import urlgrabber.progress as progress
 import libvirt
 
-from virtinst import Guest
-from virtinst import VirtualNetworkInterface
-from virtinst import VirtualDisk
-from virtinst import StorageVolume
-from virtinst import util
+from . import util
+from .guest import Guest
+from .deviceinterface import VirtualNetworkInterface
+from .devicedisk import VirtualDisk
+from .storage import StorageVolume
 
 
 class Cloner(object):
@@ -63,6 +63,7 @@ class Cloner(object):
         self._preserve = True
         self._clone_running = False
         self._replace = False
+        self._reflink = False
 
         # Default clone policy for back compat: don't clone readonly,
         # shareable, or empty disks
@@ -136,12 +137,12 @@ class Cloner(object):
                 disk.path = path
                 disk.device = device
 
-                if path and not self.preserve_dest_disks:
-                    # We fake storage creation params for now, but we will
-                    # update it later. Just use any clone_path to make sure
-                    # validation doesn't trip up
-                    clone_path = "/foo/bar"
-                    disk.set_create_storage(fake=True, clone_path=clone_path)
+                if (not self.preserve_dest_disks and
+                    disk.wants_storage_creation()):
+                    vol_install = VirtualDisk.build_vol_install(
+                        self.conn, os.path.basename(disk.path),
+                        disk.get_parent_pool(), .000001, False)
+                    disk.set_vol_install(vol_install)
                 disk.validate()
                 disklist.append(disk)
             except Exception, e:
@@ -205,7 +206,7 @@ class Cloner(object):
     def get_preserve_dest_disks(self):
         return not self.preserve
     preserve_dest_disks = property(get_preserve_dest_disks,
-                           doc="It true, preserve ALL disk devices for the "
+                           doc="If true, preserve ALL disk devices for the "
                                "NEW guest. This means no storage cloning. "
                                "This is a convenience access for "
                                "(not Cloner.preserve)")
@@ -259,6 +260,13 @@ class Cloner(object):
     replace = property(_get_replace, _set_replace,
                        doc="If enabled, don't check for clone name collision, "
                            "simply undefine any conflicting guest.")
+    def _get_reflink(self):
+        return self._reflink
+    def _set_reflink(self, reflink):
+        self._reflink = reflink
+    reflink = property(_get_reflink, _set_reflink,
+            doc="If true, use COW lightweight copy")
+
     # Functional methods
 
     def setup_original(self):
@@ -323,11 +331,6 @@ class Cloner(object):
                     _("Clone onto existing storage volume is not "
                       "currently supported: '%s'") % clone_disk.path)
 
-        # Sync 'size' between the two
-        size = orig_disk.get_size()
-        vol_install = None
-        clone_path = None
-
         # Setup proper cloning inputs for the new virtual disks
         if (orig_disk.get_vol_object() and
             clone_disk.get_vol_install()):
@@ -344,14 +347,17 @@ class Cloner(object):
                 vol_install.name = clone_vol_install.name
             else:
                 # Cross pool cloning
-                # Deliberately don't sync input_vol params here
+                # Sync only the format of the image.
                 clone_vol_install.input_vol = orig_disk.get_vol_object()
                 vol_install = clone_vol_install
-        else:
-            clone_path = orig_disk.path
+                vol_install.input_vol = orig_disk.get_vol_object()
+                vol_install.sync_input_vol(only_format=True)
 
-        clone_disk.set_create_storage(
-                size=size, vol_install=vol_install, clone_path=clone_path)
+            vol_install.reflink = self.reflink
+            clone_disk.set_vol_install(vol_install)
+        elif orig_disk.path:
+            clone_disk.set_local_disk_to_clone(orig_disk, self.clone_sparse)
+
         clone_disk.validate()
 
 
@@ -379,11 +385,13 @@ class Cloner(object):
                 logging.warn(_("Setting the graphics device port to autoport, "
                                "in order to avoid conflicting."))
                 dev.port = -1
+
+        clone_macs = self._clone_macs[:]
         for iface in self._guest.get_devices("interface"):
             iface.target_dev = None
 
-            if self._clone_macs:
-                mac = self._clone_macs.pop()
+            if clone_macs:
+                mac = clone_macs.pop()
             else:
                 mac = VirtualNetworkInterface.generate_mac(self.conn)
             iface.macaddr = mac
@@ -474,7 +482,7 @@ class Cloner(object):
         clonebase = os.path.join(dirname, clonebase)
         return util.generate_name(
                     clonebase,
-                    lambda p: VirtualDisk.path_exists(self.conn, p),
+                    lambda p: VirtualDisk.path_definitely_exists(self.conn, p),
                     suffix,
                     lib_collision=False)
 
@@ -531,8 +539,7 @@ class Cloner(object):
                 newd.driver_type = disk.driver_type
                 newd.target = disk.target
                 if validate:
-                    newd.set_create_storage(fake=True)
-                    if newd.creating_storage() and disk.path is not None:
+                    if newd.wants_storage_creation():
                         raise ValueError("Disk path '%s' does not exist." %
                                          newd.path)
             except Exception, e:

@@ -6,7 +6,7 @@
   <vcpu placement="static">5</vcpu>
   <os>
     <type arch="i686">hvm</type>
-    <loader>/usr/lib/xen/boot/hvmloader</loader>
+    <loader type="rom">/usr/lib/xen/boot/hvmloader</loader>
     <boot dev="hd"/>
   </os>
   <features>
@@ -22,6 +22,7 @@
     <disk type="file" device="disk">
       <driver type="qcow2"/>
       <source file="/dev/default-pool/newvm.img"/>
+      <backingStore/>
       <target dev="hda" bus="ide"/>
       <address type="drive" controller="0" bus="0" target="0" unit="0"/>
     </disk>

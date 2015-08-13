@@ -18,23 +18,23 @@
 # MA 02110-1301 USA.
 #
 
+import glob
 import os
 import logging
 import socket
 
-# pylint: disable=E0611
 from gi.repository import Gio
 from gi.repository import GObject
 from gi.repository import Gtk
-# pylint: enable=E0611
 
-from virtManager import uiutil
-from virtManager.baseclass import vmmGObjectUI
+from . import uiutil
+from .baseclass import vmmGObjectUI
 
 (HV_QEMU,
 HV_XEN,
 HV_LXC,
-HV_QEMU_SESSION) = range(4)
+HV_QEMU_SESSION,
+HV_BHYVE) = range(5)
 
 (CONN_SSH,
 CONN_TCP,
@@ -89,20 +89,24 @@ class vmmConnect(vmmGObjectUI):
 
         self.set_initial_state()
 
-        self.dbus = None
-        self.avahiserver = None
         try:
             self.dbus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
             self.avahiserver = Gio.DBusProxy.new_sync(self.dbus, 0, None,
                                     "org.freedesktop.Avahi", "/",
                                     "org.freedesktop.Avahi.Server", None)
+
+            # Call any API, so we detect if avahi is even available or not
+            self.avahiserver.GetAPIVersion()
+            logging.debug("Connected to avahi")
         except Exception, e:
+            self.dbus = None
+            self.avahiserver = None
             logging.debug("Couldn't contact avahi: %s", str(e))
 
         self.reset_state()
 
     @staticmethod
-    def default_uri(always_system=False):
+    def default_uri():
         if os.path.exists('/var/lib/xen'):
             if (os.path.exists('/dev/xen/evtchn') or
                 os.path.exists("/proc/xen")):
@@ -111,11 +115,13 @@ class vmmConnect(vmmGObjectUI):
         if (os.path.exists("/usr/bin/qemu") or
             os.path.exists("/usr/bin/qemu-kvm") or
             os.path.exists("/usr/bin/kvm") or
-            os.path.exists("/usr/libexec/qemu-kvm")):
-            if always_system or os.geteuid() == 0:
-                return "qemu:///system"
-            else:
-                return "qemu:///session"
+            os.path.exists("/usr/libexec/qemu-kvm") or
+            glob.glob("/usr/bin/qemu-system-*")):
+            return "qemu:///system"
+
+        if (os.path.exists("/usr/lib/libvirt/libvirt_lxc") or
+            os.path.exists("/usr/lib64/libvirt/libvirt_lxc")):
+            return "lxc:///"
         return None
 
     def cancel(self, ignore1=None, ignore2=None):
@@ -150,13 +156,21 @@ class vmmConnect(vmmGObjectUI):
         self.widget("connect").grab_default()
 
         combo = self.widget("hypervisor")
-        model = Gtk.ListStore(str)
-        model.append(["QEMU/KVM"])
-        model.append(["Xen"])
-        model.append(["LXC (Linux Containers)"])
-        model.append(["QEMU/KVM user session"])
+        # [connection ID, label]
+        model = Gtk.ListStore(int, str)
+
+        def _add_hv_row(rowid, config_name, label):
+            if (not self.config.default_hvs or
+                config_name in self.config.default_hvs):
+                model.append([rowid, label])
+
+        _add_hv_row(HV_QEMU, "qemu", "QEMU/KVM")
+        _add_hv_row(HV_QEMU_SESSION, "qemu", "QEMU/KVM user session")
+        _add_hv_row(HV_XEN, "xen", "Xen")
+        _add_hv_row(HV_LXC, "lxc", "LXC (Linux Containers)")
+        _add_hv_row(HV_BHYVE, "bhyve", "Bhyve")
         combo.set_model(model)
-        uiutil.set_combo_text_column(combo, 0)
+        uiutil.init_combo_text_column(combo, 1)
 
         combo = self.widget("transport")
         model = Gtk.ListStore(str)
@@ -164,7 +178,7 @@ class vmmConnect(vmmGObjectUI):
         model.append(["TCP (SASL, Kerberos)"])
         model.append(["SSL/TLS with certificates"])
         combo.set_model(model)
-        uiutil.set_combo_text_column(combo, 0)
+        uiutil.init_combo_text_column(combo, 0)
 
         # Hostname combo box entry
         hostListModel = Gtk.ListStore(str, str, str)
@@ -190,11 +204,11 @@ class vmmConnect(vmmGObjectUI):
         return self.widget("connect-remote").get_active()
 
     def set_default_hypervisor(self):
-        default = self.default_uri(always_system=True)
+        default = self.default_uri()
         if not default or default.startswith("qemu"):
-            self.widget("hypervisor").set_active(HV_QEMU)
+            uiutil.set_list_selection(self.widget("hypervisor"), HV_QEMU)
         elif default.startswith("xen"):
-            self.widget("hypervisor").set_active(HV_XEN)
+            uiutil.set_list_selection(self.widget("hypervisor"), HV_XEN)
 
     def add_service(self, interface, protocol, name, typ, domain, flags):
         ignore = flags
@@ -355,7 +369,7 @@ class vmmConnect(vmmGObjectUI):
         self.widget("username-entry").set_text(default_user)
 
     def generate_uri(self):
-        hv = self.widget("hypervisor").get_active()
+        hv = uiutil.get_list_selection(self.widget("hypervisor"))
         conn = self.widget("transport").get_active()
         host = self.widget("hostname").get_child().get_text().strip()
         user = self.widget("username-entry").get_text()
@@ -366,6 +380,8 @@ class vmmConnect(vmmGObjectUI):
             hvstr = "xen"
         elif hv == HV_QEMU or hv == HV_QEMU_SESSION:
             hvstr = "qemu"
+        elif hv == HV_BHYVE:
+            hvstr = "bhyve"
         else:
             hvstr = "lxc"
 
@@ -387,7 +403,7 @@ class vmmConnect(vmmGObjectUI):
             hoststr += addrstr + "/"
 
         uri = hvstr + hoststr
-        if hv == HV_QEMU:
+        if hv in (HV_QEMU, HV_BHYVE):
             uri += "system"
         elif hv == HV_QEMU_SESSION:
             uri += "session"
