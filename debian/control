@@ -26,6 +26,7 @@ Depends: ${misc:Depends}, ${python:Depends},
  gir1.2-gtk-vnc-2.0,
  gir1.2-gtk-3.0 (>= 3.10),
  gir1.2-vte-2.90,
+ gir1.2-libosinfo-1.0,
  virtinst (>= ${binary:Version}),
 # For gsettings-data-convert
  gconf2,
@@ -46,7 +47,8 @@ Description: desktop application for managing virtual machines
 Package: virtinst
 Architecture: all
 Depends: ${python:Depends}, ${shlibs:Depends}, ${misc:Depends}, python-libvirt (>= 0.4.6),
- python-libxml2, python-urlgrabber
+ python-libxml2, python-urlgrabber,
+ gir1.2-libosinfo-1.0,
 Recommends: virt-viewer, qemu-utils
 Description: Programs to create and clone virtual machines
  Virtinst is a set of commandline tools to create virtual machines using
