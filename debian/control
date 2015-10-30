@@ -18,7 +18,6 @@ Depends: ${misc:Depends}, ${python:Depends},
  python-gi,
  python-gi-cairo,
  python-dbus,
- python-ipaddr,
  python-urlgrabber,
  librsvg2-common,
  python-libvirt (>= 0.7.1),
@@ -47,6 +46,7 @@ Description: desktop application for managing virtual machines
 Package: virtinst
 Architecture: all
 Depends: ${python:Depends}, ${shlibs:Depends}, ${misc:Depends}, python-libvirt (>= 0.4.6),
+ python-ipaddr,
  python-libxml2, python-urlgrabber,
  gir1.2-libosinfo-1.0,
 Recommends: virt-viewer, qemu-utils
