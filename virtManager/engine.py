@@ -18,6 +18,7 @@
 # MA 02110-1301 USA.
 #
 
+from gi.repository import Gio
 from gi.repository import GLib
 from gi.repository import GObject
 from gi.repository import Gtk
@@ -45,8 +46,13 @@ from .error import vmmErrorDialog
 from .systray import vmmSystray
 from .delete import vmmDeleteDialog
 
-# Enable this to get a report of leaked objects on app shutdown
-# gtk3/pygobject has issues here as of Fedora 18
+# Enabling this will tell us, at app exit time, which vmmGObjects were not
+# garbage collected. This is caused by circular references to other objects,
+# like a signal that wasn't disconnected. It's not a big deal, but if we
+# have objects that can be created and destroyed a lot over the course of
+# the app lifecycle, every non-garbage collected class is a memory leak.
+# So it's nice to poke at this every now and then and try to track down
+# what we need to add to class _cleanup handling.
 debug_ref_leaks = False
 
 DETAILS_PERF = 1
@@ -58,6 +64,12 @@ DETAILS_CONSOLE = 3
 
 
 class vmmEngine(vmmGObject):
+    CLI_SHOW_DOMAIN_CREATOR = "creator"
+    CLI_SHOW_DOMAIN_EDITOR = "editor"
+    CLI_SHOW_DOMAIN_PERFORMANCE = "performance"
+    CLI_SHOW_DOMAIN_CONSOLE = "console"
+    CLI_SHOW_HOST_SUMMARY = "summary"
+
     __gsignals__ = {
         "conn-added": (GObject.SignalFlags.RUN_FIRST, None, [object]),
         "conn-removed": (GObject.SignalFlags.RUN_FIRST, None, [str]),
@@ -82,11 +94,9 @@ class vmmEngine(vmmGObject):
 
         self.systray = None
         self.delete_dialog = None
-        self.application = Gtk.Application(
-                                 application_id="com.redhat.virt-manager",
-                                 flags=0)
-        self.application.connect("activate", self._activate)
-        self._appwindow = Gtk.Window()
+
+        self._gtkapplication = None
+        self._init_gtk_application()
 
         self._tick_counter = 0
         self._tick_thread_slow = False
@@ -104,12 +114,6 @@ class vmmEngine(vmmGObject):
         # keep running in system tray if enabled
         self.windows = 0
 
-        # Public bits set by virt-manager cli
-        self.skip_autostart = False
-        self.uri_at_startup = None
-        self.uri_cb = None
-        self.show_manager_window = True
-
         self.init_systray()
 
         self.add_gsettings_handle(
@@ -124,30 +128,64 @@ class vmmEngine(vmmGObject):
         self.tick()
 
 
-    def _activate(self, ignore):
-        if self.show_manager_window:
-            self.show_manager()
+    ############################
+    # Gtk Application handling #
+    ############################
+
+    def _on_gtk_application_activated(self, ignore):
+        """
+        Invoked after application.run()
+        """
+        if not self._application.get_windows():
+            logging.debug("Initial gtkapplication activated")
+            self._application.add_window(Gtk.Window())
+
+    def _init_gtk_application(self):
+        self._application = Gtk.Application(
+            application_id="org.virt-manager.virt-manager", flags=0)
+        self._application.register(None)
+        self._application.connect("activate",
+            self._on_gtk_application_activated)
+
+        action = Gio.SimpleAction.new("cli_command",
+            GLib.VariantType.new("(sss)"))
+        action.connect("activate", self._handle_cli_command)
+        self._application.add_action(action)
+
+    def _default_startup(self, skip_autostart):
+        uris = self.conns.keys()
+        if not uris:
+            logging.debug("No stored URIs found.")
         else:
-            self.get_manager()
-        self.application.add_window(self._appwindow)
+            logging.debug("Loading stored URIs:\n%s",
+                "  \n".join(sorted(uris)))
 
-        if self.uri_at_startup:
-            conn = self.make_conn(self.uri_at_startup)
-            self.register_conn(conn, skip_config=True)
-            if conn and self.uri_cb:
-                conn.connect_opt_out("state-changed", self.uri_cb)
+        if not skip_autostart:
+            self.idle_add(self.autostart_conns)
 
-            self.connect_to_uri(self.uri_at_startup)
+        if not self.config.get_conn_uris():
+            # Only add default if no connections are currently known
+            self.timeout_add(1000, self._add_default_conn)
 
-        if not self.skip_autostart:
-            self.autostart_conns()
+    def start(self, uri, show_window, domain, skip_autostart):
+        # Dispatch dbus CLI command
+        data = GLib.Variant("(sss)",
+            (uri or "", show_window or "", domain or ""))
+        self._application.activate_action("cli_command", data)
+
+        if self._application.get_is_remote():
+            logging.debug("Connected to remote app instance.")
+            return
+
+        self._default_startup(skip_autostart)
+        self._application.run(None)
 
 
     def init_systray(self):
         if self.systray:
             return
 
-        self.systray = vmmSystray(self)
+        self.systray = vmmSystray()
         self.systray.connect("action-toggle-manager", self._do_toggle_manager)
         self.systray.connect("action-suspend-domain", self._do_suspend_domain)
         self.systray.connect("action-resume-domain", self._do_resume_domain)
@@ -163,20 +201,19 @@ class vmmEngine(vmmGObject):
         self.systray.connect("action-clone-domain", self._do_show_clone)
         self.systray.connect("action-exit-app", self.exit_app)
 
+        self.connect("conn-added", self.systray.conn_added)
+        self.connect("conn-removed", self.systray.conn_removed)
+
+
     def system_tray_changed(self, *ignore):
         systray_enabled = self.config.get_view_system_tray()
         if self.windows == 0 and not systray_enabled:
             # Show the manager so that the user can control the application
-            self.show_manager()
+            self._show_manager()
 
-    def add_default_conn(self, manager):
-        # Only add default if no connections are currently known
-        if self.config.get_conn_uris():
-            return
+    def _add_default_conn(self):
+        manager = self.get_manager()
 
-        self.timeout_add(1000, self._add_default_conn, manager)
-
-    def _add_default_conn(self, manager):
         # Manager fail message
         msg = _("Could not detect a default hypervisor. Make\n"
                 "sure the appropriate virtualization packages\n"
@@ -222,10 +259,7 @@ class vmmEngine(vmmGObject):
 
 
     def load_stored_uris(self):
-        uris = self.config.get_conn_uris()
-        if not uris:
-            return
-        logging.debug("About to connect to uris %s", uris)
+        uris = self.config.get_conn_uris() or []
         for uri in uris:
             conn = self.make_conn(uri)
             self.register_conn(conn, skip_config=True)
@@ -276,6 +310,14 @@ class vmmEngine(vmmGObject):
 
         self.conns[hvuri]["windowDetails"][connkey].cleanup()
         del(self.conns[hvuri]["windowDetails"][connkey])
+
+    def _do_vm_renamed(self, conn, oldconnkey, newconnkey):
+        hvuri = conn.get_uri()
+        if oldconnkey not in self.conns[hvuri]["windowDetails"]:
+            return
+
+        self.conns[hvuri]["windowDetails"][newconnkey] = (
+            self.conns[hvuri]["windowDetails"].pop(oldconnkey))
 
     def _do_conn_changed(self, conn):
         if conn.is_active() or conn.is_connecting():
@@ -347,6 +389,8 @@ class vmmEngine(vmmGObject):
                     % (conn.get_uri(), e))
                 self.idle_add(self._handle_tick_error, error_msg, tb)
 
+            # Need to clear reference to make leak check happy
+            conn = None
             self._tick_queue.task_done()
         return 1
 
@@ -360,10 +404,7 @@ class vmmEngine(vmmGObject):
         self.windows -= 1
         logging.debug("window counter decremented to %s", self.windows)
 
-        if self._can_exit():
-            # Defer this to an idle callback, since we can race with
-            # a vmmDetails window being deleted.
-            self.idle_add(self.exit_app, src)
+        self._exit_app_if_no_windows(src)
 
     def _can_exit(self):
         # Don't exit if system tray is enabled
@@ -420,6 +461,13 @@ class vmmEngine(vmmGObject):
             self.cleanup_conn(uri)
         self.conns = {}
 
+    def _exit_app_if_no_windows(self, src=None):
+        def cb():
+            if self._can_exit():
+                logging.debug("No windows found, requesting app exit")
+                self.exit_app(src or self)
+        self.idle_add(cb)
+
     def exit_app(self, src):
         if self.err is None:
             # Already in cleanup
@@ -441,15 +489,7 @@ class vmmEngine(vmmGObject):
                 logging.debug("Leaked %s", name)
 
         logging.debug("Exiting app normally.")
-
-        # We need this if there are any asyncdialog fobjs running
-        if Gtk.main_level():
-            logging.debug("%s other gtk main loops running, killing them.",
-                          Gtk.main_level())
-            for ignore in range(Gtk.main_level()):
-                Gtk.main_quit()
-
-        self.application.remove_window(self._appwindow)
+        self._application.quit()
 
     def _create_inspection_thread(self):
         logging.debug("libguestfs inspection support: %s",
@@ -503,6 +543,7 @@ class vmmEngine(vmmGObject):
         }
 
         conn.connect("vm-removed", self._do_vm_removed)
+        conn.connect("vm-renamed", self._do_vm_renamed)
         conn.connect("state-changed", self._do_conn_changed)
         conn.connect("connect-error", self._connect_error)
         conn.connect("priority-tick", self._schedule_priority_tick)
@@ -663,7 +704,7 @@ class vmmEngine(vmmGObject):
         else:
             if self._can_exit():
                 self.err.show_err(msg, details, title, modal=True)
-                self.idle_add(self.exit_app, conn)
+                self._exit_app_if_no_windows(conn)
             else:
                 self.err.show_err(msg, details, title)
 
@@ -791,9 +832,6 @@ class vmmEngine(vmmGObject):
             details.show()
         except Exception, e:
             src.err.show_err(_("Error launching details: %s") % str(e))
-        finally:
-            if self._can_exit():
-                self.idle_add(self.exit_app, src)
 
     def _do_show_vm(self, src, uri, connkey):
         conn = self._lookup_conn(uri)
@@ -826,12 +864,9 @@ class vmmEngine(vmmGObject):
         obj.connect("manager-opened", self.increment_window_counter)
         obj.connect("manager-closed", self.decrement_window_counter)
         obj.connect("remove-conn", self.remove_conn)
-        obj.connect("add-default-conn", self.add_default_conn)
 
         self.connect("conn-added", obj.add_conn)
         self.connect("conn-removed", obj.remove_conn)
-
-        obj.set_initial_selection(self.uri_at_startup)
 
         self.windowManager = obj
         return self.windowManager
@@ -899,17 +934,6 @@ class vmmEngine(vmmGObject):
     # Window launchers from virt-manager cli #
     ##########################################
 
-    def show_manager(self):
-        self._do_show_manager(None)
-
-    def show_host_summary(self, uri):
-        self._do_show_host(self.get_manager(), uri)
-
-    def show_domain_creator(self, uri):
-        self.show_manager()
-        self._do_show_create(self.get_manager(), uri)
-
-
     def _find_vm_by_cli_str(self, uri, clistr):
         """
         Lookup a VM by a string passed in on the CLI. Can be either
@@ -933,19 +957,109 @@ class vmmEngine(vmmGObject):
         if not vm:
             src.err.show_err("%s does not have VM '%s'" %
                 (uri, clistr), modal=True)
-            self.exit_app(src.err)
             return
 
         self._show_vm_helper(src, uri, vm, page, True)
 
-    def show_domain_console(self, uri, clistr):
-        self.idle_add(self._cli_show_vm_helper, uri, clistr, DETAILS_CONSOLE)
+    def _show_manager(self):
+        self._do_show_manager(None)
 
-    def show_domain_editor(self, uri, clistr):
-        self.idle_add(self._cli_show_vm_helper, uri, clistr, DETAILS_CONFIG)
+    def _show_host_summary(self, uri):
+        self._do_show_host(self.get_manager(), uri)
 
-    def show_domain_performance(self, uri, clistr):
-        self.idle_add(self._cli_show_vm_helper, uri, clistr, DETAILS_PERF)
+    def _show_domain_creator(self, uri):
+        self._show_manager()
+        self._do_show_create(self.get_manager(), uri)
+
+    def _show_domain_console(self, uri, clistr):
+        self._cli_show_vm_helper(uri, clistr, DETAILS_CONSOLE)
+
+    def _show_domain_editor(self, uri, clistr):
+        self._cli_show_vm_helper(uri, clistr, DETAILS_CONFIG)
+
+    def _show_domain_performance(self, uri, clistr):
+        self._cli_show_vm_helper(uri, clistr, DETAILS_PERF)
+
+    def _launch_cli_window(self, uri, show_window, clistr):
+        try:
+            logging.debug("Launching requested window '%s'", show_window)
+            if show_window == self.CLI_SHOW_DOMAIN_CREATOR:
+                self._show_domain_creator(uri)
+            elif show_window == self.CLI_SHOW_DOMAIN_EDITOR:
+                self._show_domain_editor(uri, clistr)
+            elif show_window == self.CLI_SHOW_DOMAIN_PERFORMANCE:
+                self._show_domain_performance(uri, clistr)
+            elif show_window == self.CLI_SHOW_DOMAIN_CONSOLE:
+                self._show_domain_console(uri, clistr)
+            elif show_window == self.CLI_SHOW_HOST_SUMMARY:
+                self._show_host_summary(uri)
+            else:
+                raise RuntimeError("Unknown cli window command '%s'" %
+                    show_window)
+        finally:
+            # In case of cli error, we may need to exit the app
+            self._exit_app_if_no_windows()
+
+    def _cli_conn_connected_cb(self, conn, uri, show_window, domain):
+        try:
+            ignore = conn
+
+            if conn.is_disconnected():
+                raise RuntimeError("failed to connect to cli uri=%s" % uri)
+
+            if conn.is_active():
+                self._launch_cli_window(uri, show_window, domain)
+                return True
+
+            return False
+        except:
+            # In case of cli error, we may need to exit the app
+            logging.debug("Error in cli connection callback", exc_info=True)
+            self._exit_app_if_no_windows()
+            return True
+
+    def _do_handle_cli_command(self, actionobj, variant):
+        ignore = actionobj
+        uri = variant[0]
+        show_window = variant[1]
+        domain = variant[2]
+
+        logging.debug("processing cli command uri=%s show_window=%s domain=%s",
+            uri, show_window, domain)
+        if not uri:
+            logging.debug("No cli action requested, launching default window")
+            self._show_manager()
+            return
+
+        conn = self.make_conn(uri)
+        self.register_conn(conn, skip_config=True)
+
+        if conn.is_disconnected():
+            # Schedule connection open
+            def connect():
+                # We need to wrap this to ignore the return value, otherwise
+                # the callback will be rescheduled
+                self.connect_to_uri(uri)
+            self.idle_add(connect)
+
+        if show_window:
+            if conn.is_active():
+                self.idle_add(self._launch_cli_window,
+                    uri, show_window, domain)
+            else:
+                conn.connect_opt_out("state-changed",
+                    self._cli_conn_connected_cb, uri, show_window, domain)
+        else:
+            self.get_manager().set_initial_selection(uri)
+            self._show_manager()
+
+    def _handle_cli_command(self, actionobj, variant):
+        try:
+            return self._do_handle_cli_command(actionobj, variant)
+        except:
+            # In case of cli error, we may need to exit the app
+            logging.debug("Error handling cli command", exc_info=True)
+            self._exit_app_if_no_windows()
 
 
     #######################################

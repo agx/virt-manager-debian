@@ -103,13 +103,13 @@ class vmmFSDetails(vmmGObjectUI):
         if self.conn.is_openvz():
             simple_store_set("fs-type-combo",
                 [VirtualFilesystem.TYPE_MOUNT,
-                 VirtualFilesystem.TYPE_TEMPLATE])
+                 VirtualFilesystem.TYPE_TEMPLATE], sort=False)
         elif self.conn.is_lxc():
             simple_store_set("fs-type-combo",
                 [VirtualFilesystem.TYPE_MOUNT,
                  VirtualFilesystem.TYPE_FILE,
                  VirtualFilesystem.TYPE_BLOCK,
-                 VirtualFilesystem.TYPE_RAM])
+                 VirtualFilesystem.TYPE_RAM], sort=False)
         else:
             simple_store_set("fs-type-combo", [VirtualFilesystem.TYPE_MOUNT])
             self.widget("fs-type-label").set_text(VirtualFilesystem.TYPE_MOUNT)
@@ -182,7 +182,7 @@ class vmmFSDetails(vmmGObjectUI):
         self._dev = dev
 
         self.set_config_value("fs-type", dev.type or "default")
-        self.set_config_value("fs-mode", dev.mode or "default")
+        self.set_config_value("fs-mode", dev.accessmode or "default")
         self.set_config_value("fs-driver", dev.driver or "default")
         self.set_config_value("fs-wrpolicy", dev.wrpolicy or "default")
         self.set_config_value("fs-format", dev.format or "default")
@@ -232,7 +232,7 @@ class vmmFSDetails(vmmGObjectUI):
         fsdriver = self.get_config_fs_driver()
         ismount = bool(
                 fstype == VirtualFilesystem.TYPE_MOUNT or
-                self.conn.is_qemu())
+                self.conn.is_qemu() or self.conn.is_test_conn())
 
         show_mode = bool(ismount and
             (fsdriver == VirtualFilesystem.DRIVER_PATH or
@@ -299,10 +299,6 @@ class vmmFSDetails(vmmGObjectUI):
         if not target:
             return self.err.val_err(_("A filesystem target must be specified"))
 
-        if self.conn.is_qemu() and self.filesystem_target_present(target):
-            return self.err.val_err(_('Invalid target path. A filesystem with'
-                                      ' that target already exists'))
-
         try:
             self._dev = VirtualFilesystem(conn)
             if fstype == VirtualFilesystem.TYPE_RAM:
@@ -312,7 +308,7 @@ class vmmFSDetails(vmmGObjectUI):
                 self._dev.source = source
             self._dev.target = target
             if mode:
-                self._dev.mode = mode
+                self._dev.accessmode = mode
             if fstype:
                 self._dev.type = fstype
             if readonly:
@@ -327,15 +323,6 @@ class vmmFSDetails(vmmGObjectUI):
                 self._dev.wrpolicy = wrpolicy
         except Exception, e:
             return self.err.val_err(_("Filesystem parameter error"), e)
-
-    def filesystem_target_present(self, target):
-        fsdevs = self.vm.get_filesystem_devices()
-
-        for fs in fsdevs:
-            if (fs.target == target):
-                return True
-
-        return False
 
     def _browse_file(self, textent, isdir=False):
         def set_storage_cb(src, path):

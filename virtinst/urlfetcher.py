@@ -24,13 +24,13 @@ import ftplib
 import logging
 import os
 import re
+import requests
 import stat
+import StringIO
 import subprocess
 import tempfile
 import urllib2
 import urlparse
-
-import urlgrabber.grabber as grabber
 
 from .osdict import OSDB
 
@@ -39,165 +39,242 @@ from .osdict import OSDB
 # Backends for the various URL types we support (http, ftp, nfs, local) #
 #########################################################################
 
-class _ImageFetcher(object):
+class _URLFetcher(object):
     """
     This is a generic base class for fetching/extracting files from
     a media source, such as CD ISO, NFS server, or HTTP/FTP server
     """
+    _block_size = 16384
+
     def __init__(self, location, scratchdir, meter):
         self.location = location
         self.scratchdir = scratchdir
         self.meter = meter
-        self.srcdir = None
+
+        self._srcdir = None
 
         logging.debug("Using scratchdir=%s", scratchdir)
 
-    def _make_path(self, filename):
-        path = self.srcdir or self.location
 
-        if filename:
-            if not path.endswith("/"):
-                path += "/"
-            path += filename
+    ####################
+    # Internal helpers #
+    ####################
 
-        return path
+    def _make_full_url(self, filename):
+        """
+        Generate a full fetchable URL from the passed filename, which
+        is relative to the self.location
+        """
+        ret = self._srcdir or self.location
+        if not filename:
+            return ret
 
-    def saveTemp(self, fileobj, prefix):
-        if not os.path.exists(self.scratchdir):
-            os.makedirs(self.scratchdir, 0750)
+        if not ret.endswith("/"):
+            ret += "/"
+        return ret + filename
 
-        prefix = "virtinst-" + prefix
-        if "VIRTINST_TEST_SUITE" in os.environ:
-            fn = os.path.join("/tmp", prefix)
-            fd = os.open(fn, os.O_RDWR | os.O_CREAT, 0640)
-        else:
-            (fd, fn) = tempfile.mkstemp(prefix=prefix,
-                                        dir=self.scratchdir)
+    def _grabURL(self, filename, fileobj):
+        """
+        Download the filename from self.location, and write contents to
+        fileobj
+        """
+        url = self._make_full_url(filename)
 
-        block_size = 16384
         try:
-            while 1:
-                buff = fileobj.read(block_size)
-                if not buff:
-                    break
-                os.write(fd, buff)
-        finally:
-            os.close(fd)
-        return fn
+            urlobj, size = self._grabber(url)
+        except Exception, e:
+            raise ValueError(_("Couldn't acquire file %s: %s") %
+                               (url, str(e)))
+
+        logging.debug("Fetching URI: %s", url)
+        self.meter.start(
+            text=_("Retrieving file %s...") % os.path.basename(filename),
+            size=size)
+
+        total = self._write(urlobj, fileobj)
+        self.meter.end(total)
+
+    def _write(self, urlobj, fileobj):
+        """
+        Write the contents of urlobj to python file like object fileobj
+        """
+        total = 0
+        while 1:
+            buff = urlobj.read(self._block_size)
+            if not buff:
+                break
+            fileobj.write(buff)
+            total += len(buff)
+            self.meter.update(total)
+        return total
+
+    def _grabber(self, url):
+        """
+        Returns the urlobj, size for the passed URL. urlobj is whatever
+        data needs to be passed to self._write
+        """
+        raise NotImplementedError("must be implemented in subclass")
+
+
+    ##############
+    # Public API #
+    ##############
 
     def prepareLocation(self):
+        """
+        Perform any necessary setup
+        """
         pass
 
     def cleanupLocation(self):
+        """
+        Perform any necessary cleanup
+        """
         pass
 
-    def acquireFile(self, filename):
-        # URLGrabber works for all network and local cases
-
-        f = None
-        try:
-            path = self._make_path(filename)
-            base = os.path.basename(filename)
-            logging.debug("Fetching URI: %s", path)
-
-            try:
-                f = grabber.urlopen(path,
-                                    progress_obj=self.meter,
-                                    text=_("Retrieving file %s...") % base)
-            except Exception, e:
-                raise ValueError(_("Couldn't acquire file %s: %s") %
-                                   (path, str(e)))
-
-            tmpname = self.saveTemp(f, prefix=base + ".")
-            logging.debug("Saved file to " + tmpname)
-            return tmpname
-        finally:
-            if f:
-                f.close()
-
-
-    def hasFile(self, src):
+    def hasFile(self, filename):
+        """
+        Return True if self.location has the passed filename
+        """
         raise NotImplementedError("Must be implemented in subclass")
 
+    def acquireFile(self, filename):
+        """
+        Grab the passed filename from self.location and save it to
+        a temporary file, returning the temp filename
+        """
+        prefix = "virtinst-" + os.path.basename(filename) + "."
 
-class _URIImageFetcher(_ImageFetcher):
-    """
-    Base class for downloading from FTP / HTTP
-    """
+        if "VIRTINST_TEST_SUITE" in os.environ:
+            fn = os.path.join("/tmp", prefix)
+            fileobj = file(fn, "w")
+        else:
+            fileobj = tempfile.NamedTemporaryFile(
+                dir=self.scratchdir, prefix=prefix, delete=False)
+            fn = fileobj.name
+
+        self._grabURL(filename, fileobj)
+        logging.debug("Saved file to " + fn)
+        return fn
+
+    def acquireFileContent(self, filename):
+        """
+        Grab the passed filename from self.location and return it as a string
+        """
+        fileobj = StringIO.StringIO()
+        self._grabURL(filename, fileobj)
+        return fileobj.getvalue()
+
+
+class _HTTPURLFetcher(_URLFetcher):
     def hasFile(self, filename):
-        raise NotImplementedError
-
-
-class _HTTPImageFetcher(_URIImageFetcher):
-    def hasFile(self, filename):
+        """
+        We just do a HEAD request to see if the file exists
+        """
+        url = self._make_full_url(filename)
         try:
-            path = self._make_path(filename)
-            request = urllib2.Request(path)
-            request.get_method = lambda: "HEAD"
-            urllib2.urlopen(request)
+            response = requests.head(url)
+            response.raise_for_status()
         except Exception, e:
-            logging.debug("HTTP hasFile: didn't find %s: %s", path, str(e))
+            logging.debug("HTTP hasFile: didn't find %s: %s", url, str(e))
             return False
         return True
 
+    def _grabber(self, url):
+        """
+        Use requests for this
+        """
+        response = requests.get(url, stream=True)
+        response.raise_for_status()
+        size = response.headers.get('content-length')
+        return response, size.isdigit() and int(size) or None
 
-class _FTPImageFetcher(_URIImageFetcher):
-    ftp = None
+    def _write(self, urlobj, fileobj):
+        """
+        The requests object doesn't have a file-like read() option, so
+        we need to implemente it ourselves
+        """
+        total = 0
+        for data in urlobj.iter_content(chunk_size=self._block_size):
+            fileobj.write(data)
+            total += len(data)
+            self.meter.update(total)
+        return total
+
+
+class _FTPURLFetcher(_URLFetcher):
+    _ftp = None
 
     def prepareLocation(self):
-        if self.ftp:
+        if self._ftp:
             return
 
         try:
-            url = urlparse.urlparse(self._make_path(""))
-            if not url[1]:
-                raise ValueError(_("Invalid install location"))
-            self.ftp = ftplib.FTP(url[1])
-            self.ftp.login()
+            server = urlparse.urlparse(self.location)[1]
+            self._ftp = ftplib.FTP(server)
+            self._ftp.login()
         except Exception, e:
             raise ValueError(_("Opening URL %s failed: %s.") %
                               (self.location, str(e)))
 
+    def _grabber(self, url):
+        """
+        Use urllib2 and ftplib to grab the file
+        """
+        request = urllib2.Request(url)
+        urlobj = urllib2.urlopen(request)
+        size = self._ftp.size(urlparse.urlparse(url)[2])
+        return urlobj, size
+
+
     def cleanupLocation(self):
-        if not self.ftp:
+        if not self._ftp:
             return
 
         try:
-            self.ftp.quit()
+            self._ftp.quit()
         except:
             logging.debug("Error quitting ftp connection", exc_info=True)
 
+        self._ftp = None
 
     def hasFile(self, filename):
-        path = self._make_path(filename)
-        url = urlparse.urlparse(path)
+        url = self._make_full_url(filename)
+        path = urlparse.urlparse(url)[2]
 
         try:
             try:
                 # If it's a file
-                self.ftp.size(url[2])
+                self._ftp.size(path)
             except ftplib.all_errors:
                 # If it's a dir
-                self.ftp.cwd(url[2])
+                self._ftp.cwd(path)
         except ftplib.all_errors, e:
             logging.debug("FTP hasFile: couldn't access %s: %s",
-                          path, str(e))
+                          url, str(e))
             return False
 
         return True
 
 
-class _LocalImageFetcher(_ImageFetcher):
+class _LocalURLFetcher(_URLFetcher):
+    """
+    For grabbing files from a local directory
+    """
     def hasFile(self, filename):
-        src = self._make_path(filename)
-        if os.path.exists(src):
-            return True
-        else:
-            logging.debug("local hasFile: Couldn't find %s", src)
-            return False
+        url = self._make_full_url(filename)
+        ret = os.path.exists(url)
+        if not ret:
+            logging.debug("local hasFile: Couldn't find %s", url)
+        return ret
+
+    def _grabber(self, url):
+        urlobj = file(url, "r")
+        size = os.path.getsize(url)
+        return urlobj, size
 
 
-class _MountedImageFetcher(_LocalImageFetcher):
+class _MountedURLFetcher(_LocalURLFetcher):
     """
     Fetcher capable of extracting files from a NFS server
     or loopback mounted file, or local CDROM device
@@ -210,21 +287,21 @@ class _MountedImageFetcher(_LocalImageFetcher):
             return
 
         if self._in_test_suite:
-            self.srcdir = os.environ["VIRTINST_TEST_URL_DIR"]
+            self._srcdir = os.environ["VIRTINST_TEST_URL_DIR"]
         else:
-            self.srcdir = tempfile.mkdtemp(prefix="virtinstmnt.",
+            self._srcdir = tempfile.mkdtemp(prefix="virtinstmnt.",
                                            dir=self.scratchdir)
         mountcmd = "/bin/mount"
 
-        logging.debug("Preparing mount at " + self.srcdir)
+        logging.debug("Preparing mount at " + self._srcdir)
         if self.location.startswith("nfs:"):
-            cmd = [mountcmd, "-o", "ro", self.location[4:], self.srcdir]
+            cmd = [mountcmd, "-o", "ro", self.location[4:], self._srcdir]
         else:
             if stat.S_ISBLK(os.stat(self.location)[stat.ST_MODE]):
                 mountopt = "ro"
             else:
                 mountopt = "ro,loop"
-            cmd = [mountcmd, "-o", mountopt, self.location, self.srcdir]
+            cmd = [mountcmd, "-o", mountopt, self.location, self._srcdir]
 
         logging.debug("mount cmd: %s", cmd)
         if not self._in_test_suite:
@@ -240,36 +317,32 @@ class _MountedImageFetcher(_LocalImageFetcher):
         if not self._mounted:
             return
 
-        logging.debug("Cleaning up mount at " + self.srcdir)
+        logging.debug("Cleaning up mount at " + self._srcdir)
         try:
             if not self._in_test_suite:
-                cmd = ["/bin/umount", self.srcdir]
+                cmd = ["/bin/umount", self._srcdir]
                 subprocess.call(cmd)
                 try:
-                    os.rmdir(self.srcdir)
+                    os.rmdir(self._srcdir)
                 except:
                     pass
         finally:
             self._mounted = False
 
 
-class _DirectImageFetcher(_LocalImageFetcher):
-    def prepareLocation(self):
-        self.srcdir = self.location
-
-
 def fetcherForURI(uri, *args, **kwargs):
     if uri.startswith("http://") or uri.startswith("https://"):
-        fclass = _HTTPImageFetcher
+        fclass = _HTTPURLFetcher
     elif uri.startswith("ftp://"):
-        fclass = _FTPImageFetcher
+        fclass = _FTPURLFetcher
     elif uri.startswith("nfs:"):
-        fclass = _MountedImageFetcher
+        fclass = _MountedURLFetcher
+    elif os.path.isdir(uri):
+        # Pointing to a local tree
+        fclass = _LocalURLFetcher
     else:
-        if os.path.isdir(uri):
-            fclass = _DirectImageFetcher
-        else:
-            fclass = _MountedImageFetcher
+        # Pointing to a path, like an .iso to mount
+        fclass = _MountedURLFetcher
     return fclass(uri, *args, **kwargs)
 
 
@@ -277,15 +350,16 @@ def fetcherForURI(uri, *args, **kwargs):
 # Helpers for detecting distro from given URL #
 ###############################################
 
-def _distroFromTreeinfo(fetcher, arch, vmtype=None):
+def _grabTreeinfo(fetcher):
     """
-    Parse treeinfo 'family' field, and return the associated Distro class
-    None if no treeinfo, GenericDistro if unknown family type.
+    See if the URL has treeinfo, and if so return it as a ConfigParser
+    object.
     """
-    if not fetcher.hasFile(".treeinfo"):
+    try:
+        tmptreeinfo = fetcher.acquireFile(".treeinfo")
+    except ValueError:
         return None
 
-    tmptreeinfo = fetcher.acquireFile(".treeinfo")
     try:
         treeinfo = ConfigParser.SafeConfigParser()
         treeinfo.read(tmptreeinfo)
@@ -293,34 +367,20 @@ def _distroFromTreeinfo(fetcher, arch, vmtype=None):
         os.unlink(tmptreeinfo)
 
     try:
-        fam = treeinfo.get("general", "family")
+        treeinfo.get("general", "family")
     except ConfigParser.NoSectionError:
+        logging.debug("Did not find 'family' section in treeinfo")
         return None
 
-    if re.match(".*Fedora.*", fam):
-        dclass = FedoraDistro
-    elif re.match(".*CentOS.*", fam):
-        dclass = CentOSDistro
-    elif re.match(".*Red Hat Enterprise Linux.*", fam):
-        dclass = RHELDistro
-    elif re.match(".*Scientific Linux.*", fam):
-        dclass = SLDistro
-    else:
-        dclass = GenericDistro
-
-    ob = dclass(fetcher, arch, vmtype)
-    ob.treeinfo = treeinfo
-
-    # Explicitly call this, so we populate variant info
-    ob.isValidStore()
-
-    return ob
+    return treeinfo
 
 
 def _distroFromSUSEContent(fetcher, arch, vmtype=None):
     # Parse content file for the 'LABEL' field containing the distribution name
     # None if no content, GenericDistro if unknown label type.
-    if not fetcher.hasFile("content"):
+    try:
+        cbuf = fetcher.acquireFileContent("content")
+    except ValueError:
         return None
 
     distribution = None
@@ -328,12 +388,6 @@ def _distroFromSUSEContent(fetcher, arch, vmtype=None):
     distro_summary = None
     distro_distro = None
     distro_arch = None
-    filename = fetcher.acquireFile("content")
-    cbuf = None
-    try:
-        cbuf = open(filename).read()
-    finally:
-        os.unlink(filename)
 
     lines = cbuf.splitlines()[1:]
     for line in lines:
@@ -369,6 +423,8 @@ def _distroFromSUSEContent(fetcher, arch, vmtype=None):
             arch = "x86_64"
         elif cbuf.find("i586") != -1:
             arch = "i586"
+        elif cbuf.find("s390x") != -1:
+            arch = "s390x"
 
     dclass = GenericDistro
     if distribution:
@@ -413,13 +469,11 @@ def getDistroStore(guest, fetcher):
     if guest.os_variant:
         urldistro = OSDB.lookup_os(guest.os_variant).urldistro
 
-    dist = _distroFromTreeinfo(fetcher, arch, _type)
-    if dist:
-        return dist
-
-    dist = _distroFromSUSEContent(fetcher, arch, _type)
-    if dist:
-        return dist
+    treeinfo = _grabTreeinfo(fetcher)
+    if not treeinfo:
+        dist = _distroFromSUSEContent(fetcher, arch, _type)
+        if dist:
+            return dist
 
     stores = _allstores[:]
 
@@ -433,14 +487,12 @@ def getDistroStore(guest, fetcher):
                 stores.insert(0, store)
                 break
 
-    # Always stick GenericDistro at the end, since it's a catchall
-    stores.remove(GenericDistro)
-    stores.append(GenericDistro)
+    if treeinfo:
+        stores.sort(key=lambda x: not x.uses_treeinfo)
 
     for sclass in stores:
         store = sclass(fetcher, arch, _type)
-        # We already tried the treeinfo short circuit, so skip it here
-        store.uses_treeinfo = False
+        store.treeinfo = treeinfo
         if store.isValidStore():
             logging.debug("Detected distro name=%s osvariant=%s",
                           store.name, store.os_variant)
@@ -473,6 +525,7 @@ class Distro(object):
     """
     name = None
     urldistro = None
+    uses_treeinfo = False
 
     # osdict variant value
     os_variant = None
@@ -480,7 +533,6 @@ class Distro(object):
     _boot_iso_paths = []
     _hvm_kernel_paths = []
     _xen_kernel_paths = []
-    uses_treeinfo = False
     version_from_content = None
 
     def __init__(self, fetcher, arch, vmtype):
@@ -489,6 +541,8 @@ class Distro(object):
         self.arch = arch
 
         self.uri = fetcher.location
+
+        # This is set externally
         self.treeinfo = None
 
     def isValidStore(self):
@@ -498,7 +552,7 @@ class Distro(object):
     def acquireKernel(self, guest):
         kernelpath = None
         initrdpath = None
-        if self._hasTreeinfo():
+        if self.treeinfo:
             try:
                 kernelpath = self._getTreeinfoMedia("kernel")
                 initrdpath = self._getTreeinfoMedia("initrd")
@@ -527,14 +581,14 @@ class Distro(object):
     def acquireBootDisk(self, guest):
         ignore = guest
 
-        if self._hasTreeinfo():
+        if self.treeinfo:
             return self.fetcher.acquireFile(self._getTreeinfoMedia("boot.iso"))
-        else:
-            for path in self._boot_iso_paths:
-                if self.fetcher.hasFile(path):
-                    return self.fetcher.acquireFile(path)
-            raise RuntimeError(_("Could not find boot.iso in %s tree." %
-                               self.name))
+
+        for path in self._boot_iso_paths:
+            if self.fetcher.hasFile(path):
+                return self.fetcher.acquireFile(path)
+        raise RuntimeError(_("Could not find boot.iso in %s tree." %
+                           self.name))
 
     def _check_osvariant_valid(self, os_variant):
         return OSDB.lookup_os(os_variant) is not None
@@ -557,25 +611,6 @@ class Distro(object):
     def _get_method_arg(self):
         return "method"
 
-    def _hasTreeinfo(self):
-        # all Red Hat based distros should have .treeinfo, perhaps others
-        # will in time
-        if not (self.treeinfo is None):
-            return True
-
-        if not self.uses_treeinfo or not self.fetcher.hasFile(".treeinfo"):
-            return False
-
-        logging.debug("Detected .treeinfo file")
-
-        tmptreeinfo = self.fetcher.acquireFile(".treeinfo")
-        try:
-            self.treeinfo = ConfigParser.SafeConfigParser()
-            self.treeinfo.read(tmptreeinfo)
-        finally:
-            os.unlink(tmptreeinfo)
-        return True
-
     def _getTreeinfoMedia(self, mediaName):
         if self.type == "xen":
             t = "xen"
@@ -586,26 +621,14 @@ class Distro(object):
 
     def _fetchAndMatchRegex(self, filename, regex):
         # Fetch 'filename' and return True/False if it matches the regex
-        local_file = None
         try:
-            try:
-                local_file = self.fetcher.acquireFile(filename)
-            except:
-                return False
+            content = self.fetcher.acquireFileContent(filename)
+        except ValueError:
+            return False
 
-            f = open(local_file, "r")
-            try:
-                while 1:
-                    buf = f.readline()
-                    if not buf:
-                        break
-                    if re.match(regex, buf):
-                        return True
-            finally:
-                f.close()
-        finally:
-            if local_file is not None:
-                os.unlink(local_file)
+        for line in content.splitlines():
+            if re.match(regex, line):
+                return True
 
         return False
 
@@ -634,7 +657,6 @@ class GenericDistro(Distro):
     Generic distro store. Check well known paths for kernel locations
     as a last resort if we can't recognize any actual distro
     """
-
     name = "Generic"
     os_variant = "linux"
     uses_treeinfo = True
@@ -656,12 +678,13 @@ class GenericDistro(Distro):
     _valid_iso_path = None
 
     def isValidStore(self):
-        if self._hasTreeinfo():
+        if self.treeinfo:
             # Use treeinfo to pull down media paths
             if self.type == "xen":
                 typ = "xen"
             else:
                 typ = self.treeinfo.get("general", "arch")
+
             kernelSection = "images-%s" % typ
             isoSection = "images-%s" % self.treeinfo.get("general", "arch")
 
@@ -726,10 +749,10 @@ class RedHatDistro(Distro):
     Base image store for any Red Hat related distros which have
     a common layout
     """
+    uses_treeinfo = True
     os_variant = "linux"
     _version_number = None
 
-    uses_treeinfo = True
     _boot_iso_paths   = ["images/boot.iso"]
     _hvm_kernel_paths = [("images/pxeboot/vmlinuz",
                            "images/pxeboot/initrd.img")]
@@ -760,7 +783,7 @@ class FedoraDistro(RedHatDistro):
         return latest, int(latest[6:])
 
     def isValidStore(self):
-        if not self._hasTreeinfo():
+        if not self.treeinfo:
             return self.fetcher.hasFile("Fedora")
 
         if not re.match(".*Fedora.*", self.treeinfo.get("general", "family")):
@@ -794,8 +817,11 @@ class RHELDistro(RedHatDistro):
     urldistro = "rhel"
 
     def isValidStore(self):
-        if self._hasTreeinfo():
-            m = re.match(".*Red Hat Enterprise Linux.*",
+        if self.treeinfo:
+            # Matches:
+            #   Red Hat Enterprise Linux
+            #   RHEL Atomic Host
+            m = re.match(".*(Red Hat Enterprise Linux|RHEL).*",
                          self.treeinfo.get("general", "family"))
             ret = (m is not None)
 
@@ -882,7 +908,7 @@ class CentOSDistro(RHELDistro):
     urldistro = "centos"
 
     def isValidStore(self):
-        if not self._hasTreeinfo():
+        if not self.treeinfo:
             return self.fetcher.hasFile("CentOS")
 
         m = re.match(".*CentOS.*", self.treeinfo.get("general", "family"))
@@ -906,7 +932,7 @@ class SLDistro(RHELDistro):
         ("images/SL/pxeboot/vmlinuz", "images/SL/pxeboot/initrd.img")]
 
     def isValidStore(self):
-        if self._hasTreeinfo():
+        if self.treeinfo:
             m = re.match(".*Scientific Linux.*",
                          self.treeinfo.get("general", "family"))
             ret = (m is not None)
@@ -934,16 +960,25 @@ class SuseDistro(Distro):
             oldkern += "64"
             oldinit += "64"
 
-        # Tested with Opensuse >= 10.2, 11, and sles 10
-        self._hvm_kernel_paths = [("boot/%s/loader/linux" % self.arch,
-                                    "boot/%s/loader/initrd" % self.arch)]
-        # Tested with Opensuse 10.0
-        self._hvm_kernel_paths.append(("boot/loader/%s" % oldkern,
-                                       "boot/loader/%s" % oldinit))
+        if self.arch == "s390x":
+            self._hvm_kernel_paths = [("boot/%s/linux" % self.arch,
+                                       "boot/%s/initrd" % self.arch)]
+            # No Xen on s390x
+            self._xen_kernel_paths = []
+        else:
+            # Tested with Opensuse >= 10.2, 11, and sles 10
+            self._hvm_kernel_paths = [("boot/%s/loader/linux" % self.arch,
+                                        "boot/%s/loader/initrd" % self.arch)]
+            # Tested with Opensuse 10.0
+            self._hvm_kernel_paths.append(("boot/loader/%s" % oldkern,
+                                           "boot/loader/%s" % oldinit))
+            # Tested with SLES 12 for ppc64le
+            self._hvm_kernel_paths.append(("boot/%s/linux" % self.arch,
+                                           "boot/%s/initrd" % self.arch))
 
-        # Matches Opensuse > 10.2 and sles 10
-        self._xen_kernel_paths = [("boot/%s/vmlinuz-xen" % self.arch,
-                                    "boot/%s/initrd-xen" % self.arch)]
+            # Matches Opensuse > 10.2 and sles 10
+            self._xen_kernel_paths = [("boot/%s/vmlinuz-xen" % self.arch,
+                                        "boot/%s/initrd-xen" % self.arch)]
 
     def _variantFromVersion(self):
         distro_version = self.version_from_content[1].strip()
@@ -971,6 +1006,13 @@ class SuseDistro(Distro):
         self._variantFromVersion()
 
         self.os_variant = self._detect_osdict_from_url()
+
+        # Reset kernel name for sle11 source on s390x
+        if self.arch == "s390x":
+            if self.os_variant == "sles11" or self.os_variant == "sled11":
+                self._hvm_kernel_paths = [("boot/%s/vmrdr.ikr" % self.arch,
+                                           "boot/%s/initrd" % self.arch)]
+
         return True
 
     def _get_method_arg(self):
@@ -1061,7 +1103,7 @@ class DebianDistro(Distro):
             logging.debug("Regex didn't match, not a %s distro", self.name)
             return False
 
-        self.os_variant = self._detect_osdict_from_url()
+        self.os_variant = self._detect_debian_osdict_from_url()
         return True
 
 
@@ -1069,21 +1111,30 @@ class DebianDistro(Distro):
     # osdict autodetection helpers #
     ################################
 
-    def _detect_osdict_from_url(self):
+    def _detect_debian_osdict_from_url(self):
         root = self.name.lower()
         oses = [n for n in OSDB.list_os() if n.name.startswith(root)]
 
         if self._url_prefix == "daily":
+            logging.debug("Appears to be debian 'daily' URL, using latest "
+                "debian OS")
             return oses[0].name
 
         for osobj in oses:
-            # name looks like 'Debian Sarge'
-            if " " not in osobj.label:
-                continue
+            if osobj.codename:
+                # Ubuntu codenames look like 'Warty Warthog'
+                codename = osobj.codename.split()[0].lower()
+            else:
+                if " " not in osobj.label:
+                    continue
+                # Debian labels look like 'Debian Sarge'
+                codename = osobj.label.split()[1].lower()
 
-            codename = osobj.label.lower().split()[1]
             if ("/%s/" % codename) in self.uri:
+                logging.debug("Found codename=%s in the URL string", codename)
                 return osobj.name
+
+        logging.debug("Didn't find any known codename in the URL string")
         return self.os_variant
 
 
@@ -1110,7 +1161,7 @@ class UbuntuDistro(DebianDistro):
             logging.debug("Regex didn't match, not a %s distro", self.name)
             return False
 
-        self.os_variant = self._detect_osdict_from_url()
+        self.os_variant = self._detect_debian_osdict_from_url()
         return True
 
 
@@ -1183,6 +1234,10 @@ def _build_distro_list():
             raise RuntimeError("programming error: duplicate urldistro=%s" %
                                obj.urldistro)
         seen_urldistro.append(obj.urldistro)
+
+    # Always stick GenericDistro at the end, since it's a catchall
+    allstores.remove(GenericDistro)
+    allstores.append(GenericDistro)
 
     return allstores
 

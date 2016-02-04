@@ -32,7 +32,7 @@ def _make_guest(installer=None, conn=None):
     if conn is None:
         conn = _default_conn
 
-    g = virtinst.Guest(conn)
+    g = conn.caps.lookup_virtinst_guest()
     g.type = "kvm"
     g.name = "TestGuest"
     g.memory = int(200 * 1024)
@@ -324,5 +324,30 @@ class TestXMLMisc(unittest.TestCase):
             CLIConfig.stable_defaults = True
             g = _make()
             self._compare(g, "install-novmvga-rhel", True)
+        finally:
+            CLIConfig.stable_defaults = False
+
+    def test_hyperv_clock(self):
+        def _make(connver):
+            conn = utils.open_kvm(libver=1002002, connver=connver)
+            g = _make_guest(conn=conn)
+            g.os_variant = "win7"
+            g.emulator = "/usr/libexec/qemu-kvm"
+            return g
+
+        try:
+            g = _make(2000000)
+            self._compare(g, "install-hyperv-clock", True)
+
+            g = _make(1009000)
+            self._compare(g, "install-hyperv-noclock", True)
+
+            CLIConfig.stable_defaults = True
+
+            g = _make(1005003)
+            self._compare(g, "install-hyperv-clock", True)
+
+            g = _make(1005002)
+            self._compare(g, "install-hyperv-noclock", True)
         finally:
             CLIConfig.stable_defaults = False

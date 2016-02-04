@@ -116,6 +116,7 @@ class XMLParseTest(unittest.TestCase):
         check("on_poweroff", "destroy", "restart")
         check("on_reboot", "restart", "destroy")
         check("on_crash", "restart", "destroy")
+        check("on_lockfailure", "poweroff", "restart")
 
         check = self._make_checker(guest.clock)
         check("offset", "utc", "localtime")
@@ -131,13 +132,6 @@ class XMLParseTest(unittest.TestCase):
         check = self._make_checker(guest.pm)
         check("suspend_to_mem", False, True)
         check("suspend_to_disk", None, False)
-
-        check = self._make_checker(guest.seclabel)
-        check("type", "static", "static")
-        check("model", "selinux", "apparmor")
-        check("label", "foolabel", "barlabel")
-        check("imagelabel", "imagelabel", "fooimage")
-        check("relabel", None, True)
 
         check = self._make_checker(guest.os)
         check("os_type", "hvm", "xen")
@@ -169,6 +163,8 @@ class XMLParseTest(unittest.TestCase):
         check("hyperv_spinlocks", True, True)
         check("hyperv_spinlocks_retries", 12287, 54321)
         check("vmport", False, True)
+        check("kvm_hidden", None, True)
+        check("pvspinlock", None, True)
 
         check = self._make_checker(guest.cpu)
         check("match", "exact", "strict")
@@ -228,6 +224,21 @@ class XMLParseTest(unittest.TestCase):
         self._alter_compare(guest.get_xml_config(), outfile,
             support_check=conn.SUPPORT_CONN_VMPORT)
 
+    def testSeclabel(self):
+        guest, outfile = self._get_test_content("change-seclabel")
+
+        check = self._make_checker(guest.seclabel[0])
+        check("type", "static", "none")
+        check("model", "selinux", "apparmor")
+        check("label", "foolabel", "barlabel")
+        check("imagelabel", "imagelabel", "fooimage")
+        check("baselabel", None, "baselabel")
+        check("relabel", None, False)
+
+        guest.remove_child(guest.seclabel[1])
+
+        self._alter_compare(guest.get_xml_config(), outfile)
+
     def testAlterMinimalGuest(self):
         guest, outfile = self._get_test_content("change-minimal-guest")
 
@@ -241,12 +252,13 @@ class XMLParseTest(unittest.TestCase):
         check("offset", None, "utc")
         self.assertTrue(guest.clock.get_xml_config().startswith("<clock"))
 
-        check = self._make_checker(guest.seclabel)
-        check("model", None, "testSecurity")
-        check("type", None, "static")
-        check("label", None, "frob")
+        seclabel = virtinst.Seclabel(guest.conn)
+        guest.add_child(seclabel)
+        seclabel.model = "testSecurity"
+        seclabel.type = "static"
+        seclabel.label = "frob"
         self.assertTrue(
-            guest.seclabel.get_xml_config().startswith("<seclabel"))
+            guest.seclabel[0].get_xml_config().startswith("<seclabel"))
 
         check = self._make_checker(guest.cpu)
         check("model", None, "foobar")
@@ -335,6 +347,11 @@ class XMLParseTest(unittest.TestCase):
         check("serial", "WD-WMAP9A966149", "frob")
         check("bus", "ide", "usb")
         check("removable", None, False, True)
+
+        disk = guest.get_devices("disk")[1]
+        check = self._make_checker(disk.seclabel[1])
+        check("model", "dac")
+        check("type", "dynamic", "none")
 
         disk = _get_disk("hdc")
         check = self._make_checker(disk)
@@ -440,7 +457,6 @@ class XMLParseTest(unittest.TestCase):
         check("type", "udp")
         check("bind_port", 1111, 1357)
         check("bind_host", "my.bind.host", "my.foo.host")
-        check("source_mode", "connect")
         check("source_port", 2222, 7777)
         check("source_host", "my.source.host", "source.foo.host")
 
@@ -729,7 +745,7 @@ class XMLParseTest(unittest.TestCase):
 
         check = self._make_checker(dev1)
         check("type", None, "mount")
-        check("mode", None, "passthrough")
+        check("accessmode", None, "passthrough")
         check("driver", "handle", None)
         check("wrpolicy", None, None)
         check("source", "/foo/bar", "/new/path")
@@ -737,20 +753,20 @@ class XMLParseTest(unittest.TestCase):
 
         check = self._make_checker(dev2)
         check("type", "template")
-        check("mode", None, "mapped")
+        check("accessmode", None, "mapped")
         check("source", "template_fedora", "template_new")
         check("target", "/bar/baz")
 
         check = self._make_checker(dev3)
         check("type", "mount", None)
-        check("mode", "squash", None)
+        check("accessmode", "squash", None)
         check("driver", "path", "handle")
         check("wrpolicy", "immediate", None)
         check("readonly", False, True)
 
         check = self._make_checker(dev4)
         check("type", "mount", None)
-        check("mode", "mapped", None)
+        check("accessmode", "mapped", None)
         check("driver", "path", "handle")
         check("wrpolicy", None, "immediate")
         check("readonly", False, True)
@@ -767,7 +783,7 @@ class XMLParseTest(unittest.TestCase):
 
         check = self._make_checker(dev7)
         check("type", "file")
-        check("mode", "passthrough", None)
+        check("accessmode", "passthrough", None)
         check("driver", "nbd", "loop")
         check("format", "qcow", "raw")
         check("source", "/foo/bar.img", "/foo/bar.raw")
@@ -1282,8 +1298,9 @@ class XMLParseTest(unittest.TestCase):
         basename = "clear-cpu-unknown-vals"
         infile = "tests/xmlparse-xml/%s-in.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        guest = virtinst.Guest(conn, parsexml=file(infile).read())
+        guest = virtinst.Guest(kvmconn, parsexml=file(infile).read())
 
+        guest.cpu.copy_host_cpu()
         guest.cpu.clear()
         utils.diff_compare(guest.get_xml_config(), outfile)
 

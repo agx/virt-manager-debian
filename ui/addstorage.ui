@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.18.3 -->
+<!-- Generated with glade 3.19.0 -->
 <interface>
   <requires lib="gtk+" version="3.8"/>
   <object class="GtkAdjustment" id="adjustment1">
@@ -7,30 +7,29 @@
     <property name="step_increment">0.10000000000000001</property>
     <property name="page_increment">10</property>
   </object>
-  <object class="GtkVBox" id="config-storage-box">
+  <object class="GtkVBox" id="storage-box">
     <property name="visible">True</property>
     <property name="can_focus">False</property>
     <property name="spacing">6</property>
     <child>
-      <object class="GtkBox" id="config-storage-create-box">
+      <object class="GtkBox" id="storage-create-box">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="orientation">vertical</property>
         <property name="spacing">3</property>
         <child>
-          <object class="GtkRadioButton" id="config-storage-create">
+          <object class="GtkRadioButton" id="storage-create">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
             <property name="xalign">0</property>
             <property name="active">True</property>
             <property name="draw_indicator">True</property>
-            <property name="group">config-storage-select</property>
             <child>
               <object class="GtkLabel" id="label123">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">C_reate a disk image on the computer's hard drive</property>
+                <property name="label" translatable="yes">C_reate a disk image for the virtual machine</property>
                 <property name="use_markup">True</property>
                 <property name="use_underline">True</property>
               </object>
@@ -58,7 +57,7 @@
                     <property name="can_focus">False</property>
                     <property name="spacing">6</property>
                     <child>
-                      <object class="GtkSpinButton" id="config-storage-size">
+                      <object class="GtkSpinButton" id="storage-size">
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="text" translatable="yes">0.0</property>
@@ -79,7 +78,7 @@
                         <property name="can_focus">False</property>
                         <property name="label" translatable="yes">_GiB</property>
                         <property name="use_underline">True</property>
-                        <property name="mnemonic_widget">config-storage-size</property>
+                        <property name="mnemonic_widget">storage-size</property>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -98,59 +97,14 @@
                   <object class="GtkLabel" id="phys-hd-label">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="xalign">0</property>
                     <property name="label">&lt;span color='#484848'&gt;Free Space&lt;/span&gt;</property>
                     <property name="use_markup">True</property>
+                    <property name="xalign">0</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
                     <property name="fill">False</property>
                     <property name="position">1</property>
-                  </packing>
-                </child>
-                <child>
-                  <object class="GtkHBox" id="hbox2">
-                    <property name="visible">True</property>
-                    <property name="can_focus">False</property>
-                    <property name="spacing">6</property>
-                    <child>
-                      <object class="GtkCheckButton" id="config-storage-nosparse">
-                        <property name="label" translatable="yes">_Allocate entire disk now</property>
-                        <property name="visible">True</property>
-                        <property name="can_focus">True</property>
-                        <property name="receives_default">False</property>
-                        <property name="use_underline">True</property>
-                        <property name="xalign">0</property>
-                        <property name="draw_indicator">True</property>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">0</property>
-                      </packing>
-                    </child>
-                    <child>
-                      <object class="GtkImage" id="config-storage-nosparse-info">
-                        <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="tooltip_text" translatable="yes">Fully allocating storage may take longer now, but the OS install phase will be quicker.
-
-Skipping allocation can also cause space issues on the host machine, if the maximum image size exceeds available storage space.
-
-Tip: Storage format qcow2 and qed do not support full allocation.</property>
-                        <property name="stock">gtk-info</property>
-                      </object>
-                      <packing>
-                        <property name="expand">False</property>
-                        <property name="fill">True</property>
-                        <property name="position">1</property>
-                      </packing>
-                    </child>
-                  </object>
-                  <packing>
-                    <property name="expand">False</property>
-                    <property name="fill">False</property>
-                    <property name="position">2</property>
                   </packing>
                 </child>
               </object>
@@ -173,22 +127,36 @@ Tip: Storage format qcow2 and qed do not support full allocation.</property>
       <object class="GtkHBox" id="hbox9">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
+      </object>
+      <packing>
+        <property name="expand">False</property>
+        <property name="fill">False</property>
+        <property name="position">2</property>
+      </packing>
+    </child>
+    <child>
+      <object class="GtkBox" id="box1">
+        <property name="visible">True</property>
+        <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
+        <property name="spacing">6</property>
         <child>
-          <object class="GtkRadioButton" id="config-storage-select">
+          <object class="GtkRadioButton" id="storage-select">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
             <property name="receives_default">False</property>
             <property name="xalign">0</property>
+            <property name="active">True</property>
             <property name="draw_indicator">True</property>
-            <signal name="toggled" handler="on_config_storage_select_toggled" swapped="no"/>
+            <property name="group">storage-create</property>
+            <signal name="toggled" handler="on_storage_select_toggled" swapped="no"/>
             <child>
               <object class="GtkLabel" id="label124">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="label" translatable="yes">Select _managed or other existing storage</property>
+                <property name="label" translatable="yes">_Select or create custom storage</property>
                 <property name="use_markup">True</property>
                 <property name="use_underline">True</property>
-                <property name="mnemonic_widget">config-storage-select</property>
               </object>
             </child>
           </object>
@@ -198,41 +166,55 @@ Tip: Storage format qcow2 and qed do not support full allocation.</property>
             <property name="position">0</property>
           </packing>
         </child>
-      </object>
-      <packing>
-        <property name="expand">False</property>
-        <property name="fill">False</property>
-        <property name="position">2</property>
-      </packing>
-    </child>
-    <child>
-      <object class="GtkHBox" id="config-storage-browse-box">
-        <property name="visible">True</property>
-        <property name="sensitive">False</property>
-        <property name="can_focus">False</property>
-        <property name="spacing">6</property>
         <child>
-          <object class="GtkButton" id="config-storage-browse">
-            <property name="label" translatable="yes">Bro_wse...</property>
+          <object class="GtkHBox" id="storage-browse-box">
             <property name="visible">True</property>
-            <property name="can_focus">True</property>
-            <property name="receives_default">True</property>
-            <property name="use_underline">True</property>
-            <signal name="clicked" handler="on_config_storage_browse_clicked" swapped="no"/>
+            <property name="sensitive">False</property>
+            <property name="can_focus">False</property>
+            <property name="spacing">6</property>
+            <child>
+              <object class="GtkButton" id="storage-browse">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="receives_default">True</property>
+                <property name="use_underline">True</property>
+                <signal name="clicked" handler="on_storage_browse_clicked" swapped="no"/>
+                <child>
+                  <object class="GtkLabel" id="label2">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">_Manage...</property>
+                    <property name="use_underline">True</property>
+                    <property name="mnemonic_widget">storage-browse</property>
+                  </object>
+                </child>
+                <child internal-child="accessible">
+                  <object class="AtkObject" id="storage-browse-atkobject">
+                    <property name="AtkObject::accessible-name">storage-browse</property>
+                  </object>
+                </child>
+              </object>
+              <packing>
+                <property name="expand">False</property>
+                <property name="fill">True</property>
+                <property name="position">0</property>
+              </packing>
+            </child>
+            <child>
+              <object class="GtkEntry" id="storage-entry">
+                <property name="visible">True</property>
+                <property name="can_focus">True</property>
+                <property name="width_chars">25</property>
+              </object>
+              <packing>
+                <property name="expand">True</property>
+                <property name="fill">True</property>
+                <property name="position">1</property>
+              </packing>
+            </child>
           </object>
           <packing>
             <property name="expand">False</property>
-            <property name="fill">True</property>
-            <property name="position">0</property>
-          </packing>
-        </child>
-        <child>
-          <object class="GtkEntry" id="config-storage-entry">
-            <property name="visible">True</property>
-            <property name="can_focus">True</property>
-          </object>
-          <packing>
-            <property name="expand">True</property>
             <property name="fill">True</property>
             <property name="position">1</property>
           </packing>

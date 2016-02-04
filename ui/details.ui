@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.18.3 -->
+<!-- Generated with glade 3.19.0 -->
 <interface>
   <requires lib="gtk+" version="3.8"/>
   <object class="GtkAccelGroup" id="accelgroup1"/>
@@ -37,13 +37,13 @@
     <property name="page_increment">25</property>
   </object>
   <object class="GtkAdjustment" id="adjustment16">
-    <property name="upper">65536</property>
+    <property name="upper">10000000</property>
     <property name="value">1000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">25</property>
   </object>
   <object class="GtkAdjustment" id="adjustment17">
-    <property name="upper">65536</property>
+    <property name="upper">10000000</property>
     <property name="value">1000</property>
     <property name="step_increment">1</property>
     <property name="page_increment">25</property>
@@ -617,6 +617,16 @@
                                 <signal name="changed" handler="on_hw_list_changed" swapped="no"/>
                               </object>
                             </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="hw-list-atkobject">
+                                <property name="AtkObject::accessible-name">hw-list</property>
+                              </object>
+                            </child>
+                          </object>
+                        </child>
+                        <child internal-child="accessible">
+                          <object class="AtkObject" id="scrolledwindow5-atkobject">
+                            <property name="AtkObject::accessible-name">hw-list-scroll</property>
                           </object>
                         </child>
                       </object>
@@ -635,6 +645,11 @@
                         <property name="image">image80</property>
                         <property name="use_underline">True</property>
                         <signal name="clicked" handler="on_add_hardware_button_clicked" swapped="no"/>
+                        <child internal-child="accessible">
+                          <object class="AtkObject" id="add-hardware-button-atkobject">
+                            <property name="AtkObject::accessible-name">add-hardware</property>
+                          </object>
+                        </child>
                       </object>
                       <packing>
                         <property name="expand">False</property>
@@ -888,7 +903,7 @@
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="label" translatable="yes">Hypervisor:</property>
-                                            <property name="xalign">1</property>
+                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -900,7 +915,7 @@
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="label" translatable="yes">Architecture:</property>
-                                            <property name="xalign">1</property>
+                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -951,7 +966,7 @@
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="label" translatable="yes">Emulator:</property>
-                                            <property name="xalign">1</property>
+                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -980,7 +995,7 @@
                                             <property name="label" translatable="yes">Chipse_t:</property>
                                             <property name="use_underline">True</property>
                                             <property name="ellipsize">middle</property>
-                                            <property name="xalign">1</property>
+                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -1083,7 +1098,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="can_focus">False</property>
                                             <property name="valign">start</property>
                                             <property name="label" translatable="yes">Firmware:</property>
-                                            <property name="xalign">1</property>
+                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -1205,7 +1220,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkExpander" id="config-idmap-expander">
+                              <object class="GtkExpander" id="idmap-expander">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <child>
@@ -1215,21 +1230,21 @@ if you know what you are doing.&lt;/small&gt;</property>
                                     <property name="top_padding">3</property>
                                     <property name="left_padding">12</property>
                                     <child>
-                                      <object class="GtkGrid" id="config-idmap-grid">
+                                      <object class="GtkGrid" id="idmap-grid">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="orientation">vertical</property>
                                         <property name="row_spacing">6</property>
                                         <property name="column_spacing">6</property>
                                         <child>
-                                          <object class="GtkCheckButton" id="config-idmap-checkbutton">
+                                          <object class="GtkCheckButton" id="idmap-checkbutton">
                                             <property name="label" translatable="yes">Enable User Namespace</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="receives_default">False</property>
                                             <property name="xalign">0</property>
                                             <property name="draw_indicator">True</property>
-                                            <signal name="toggled" handler="on_config_idmap_check_toggled" swapped="no"/>
+                                            <signal name="toggled" handler="on_idmap_check_toggled" swapped="no"/>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -1989,7 +2004,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">Logical host CPUs:</property>
-                                                <property name="xalign">1</property>
+                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="x_options">GTK_FILL</property>
@@ -2002,8 +2017,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">Ma_ximum allocation:</property>
                                                 <property name="use_underline">True</property>
-                                                <property name="mnemonic_widget">config-maxvcpus</property>
-                                                <property name="xalign">1</property>
+                                                <property name="mnemonic_widget">cpu-maxvcpus</property>
+                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="top_attach">2</property>
@@ -2018,8 +2033,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">Current a_llocation:</property>
                                                 <property name="use_underline">True</property>
-                                                <property name="mnemonic_widget">config-vcpus</property>
-                                                <property name="xalign">1</property>
+                                                <property name="mnemonic_widget">cpu-vcpus</property>
+                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="top_attach">1</property>
@@ -2029,12 +2044,12 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkSpinButton" id="config-maxvcpus">
+                                              <object class="GtkSpinButton" id="cpu-maxvcpus">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="invisible_char">●</property>
                                                 <property name="adjustment">adjustment6</property>
-                                                <signal name="changed" handler="on_config_maxvcpus_changed" swapped="no"/>
+                                                <signal name="changed" handler="on_cpu_maxvcpus_changed" swapped="no"/>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -2046,7 +2061,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkSpinButton" id="config-vcpus">
+                                              <object class="GtkSpinButton" id="cpu-vcpus">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="invisible_char">●</property>
@@ -2054,10 +2069,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="climb_rate">1</property>
                                                 <property name="numeric">True</property>
                                                 <property name="update_policy">if-valid</property>
-                                                <signal name="changed" handler="on_config_vcpus_changed" swapped="no"/>
+                                                <signal name="changed" handler="on_cpu_vcpus_changed" swapped="no"/>
                                                 <child internal-child="accessible">
-                                                  <object class="AtkObject" id="config-vcpus-atkobject">
-                                                    <property name="AtkObject::accessible-name" translatable="yes">Virtual CPU Select</property>
+                                                  <object class="AtkObject" id="cpu-vcpus-atkobject">
+                                                    <property name="AtkObject::accessible-name">Virtual CPU Select</property>
                                                   </object>
                                                 </child>
                                               </object>
@@ -2078,7 +2093,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkHBox" id="config-vcpus-warn-box">
+                                          <object class="GtkHBox" id="cpu-vcpus-warn-box">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="spacing">6</property>
@@ -2380,7 +2395,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                   </packing>
                                                 </child>
                                                 <child>
-                                                  <object class="GtkHBox" id="config-topology-warn-box">
+                                                  <object class="GtkHBox" id="cpu-topology-warn-box">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
                                                     <property name="spacing">6</property>
@@ -2449,192 +2464,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                               <packing>
                                 <property name="expand">False</property>
                                 <property name="fill">True</property>
-                                <property name="position">3</property>
-                              </packing>
-                            </child>
-                            <child>
-                              <object class="GtkExpander" id="expander3">
-                                <property name="visible">True</property>
-                                <property name="can_focus">True</property>
-                                <child>
-                                  <object class="GtkAlignment" id="alignment16">
-                                    <property name="visible">True</property>
-                                    <property name="can_focus">False</property>
-                                    <property name="bottom_padding">12</property>
-                                    <property name="left_padding">21</property>
-                                    <property name="right_padding">12</property>
-                                    <child>
-                                      <object class="GtkVBox" id="vbox10">
-                                        <property name="visible">True</property>
-                                        <property name="can_focus">False</property>
-                                        <property name="spacing">12</property>
-                                        <child>
-                                          <object class="GtkTable" id="table9">
-                                            <property name="visible">True</property>
-                                            <property name="can_focus">False</property>
-                                            <property name="n_rows">2</property>
-                                            <property name="n_columns">2</property>
-                                            <property name="column_spacing">6</property>
-                                            <property name="row_spacing">6</property>
-                                            <child>
-                                              <object class="GtkLabel" id="label336">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">Default p_inning:</property>
-                                                <property name="use_underline">True</property>
-                                                <property name="mnemonic_widget">config-vcpupin</property>
-                                                <property name="xalign">1</property>
-                                              </object>
-                                              <packing>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options">GTK_FILL</property>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkAlignment" id="alignment24">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
-                                                <property name="hexpand">False</property>
-                                                <child>
-                                                  <placeholder/>
-                                                </child>
-                                              </object>
-                                              <packing>
-                                                <property name="top_attach">1</property>
-                                                <property name="bottom_attach">2</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options">GTK_FILL</property>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkHBox" id="hbox16">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
-                                                <property name="spacing">6</property>
-                                                <child>
-                                                  <object class="GtkEntry" id="config-vcpupin">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">True</property>
-                                                    <property name="invisible_char">●</property>
-                                                    <signal name="changed" handler="on_config_vcpupin_changed" swapped="no"/>
-                                                    <child internal-child="accessible">
-                                                      <object class="AtkObject" id="config-vcpupin-atkobject">
-                                                        <property name="AtkObject::accessible-name" translatable="yes">Virtual CPU Affinity Select</property>
-                                                      </object>
-                                                    </child>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">True</property>
-                                                    <property name="position">0</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
-                                                  <object class="GtkLabel" id="label23">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="label">&lt;span size='small'&gt;(ex: 0,1,3-5,7)&lt;/span&gt;</property>
-                                                    <property name="use_markup">True</property>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">True</property>
-                                                    <property name="position">1</property>
-                                                  </packing>
-                                                </child>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">1</property>
-                                                <property name="right_attach">2</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options">GTK_FILL</property>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkHBox" id="hbox9">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
-                                                <property name="spacing">3</property>
-                                                <child>
-                                                  <object class="GtkButton" id="config-vcpupin-generate">
-                                                    <property name="label" translatable="yes">Generate from host _NUMA configuration</property>
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">True</property>
-                                                    <property name="receives_default">True</property>
-                                                    <property name="use_underline">True</property>
-                                                    <signal name="clicked" handler="on_config_vcpupin_generate_clicked" swapped="no"/>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">True</property>
-                                                    <property name="position">0</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
-                                                  <object class="GtkAlignment" id="alignment25">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <child>
-                                                      <object class="GtkImage" id="config-vcpupin-generate-err">
-                                                        <property name="can_focus">False</property>
-                                                        <property name="xalign">0</property>
-                                                        <property name="stock">gtk-dialog-warning</property>
-                                                      </object>
-                                                    </child>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">True</property>
-                                                    <property name="fill">True</property>
-                                                    <property name="position">1</property>
-                                                  </packing>
-                                                </child>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">1</property>
-                                                <property name="right_attach">2</property>
-                                                <property name="top_attach">1</property>
-                                                <property name="bottom_attach">2</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options">GTK_FILL</property>
-                                              </packing>
-                                            </child>
-                                          </object>
-                                          <packing>
-                                            <property name="expand">False</property>
-                                            <property name="fill">True</property>
-                                            <property name="position">0</property>
-                                          </packing>
-                                        </child>
-                                        <child>
-                                          <object class="GtkVBox" id="vbox11">
-                                            <property name="visible">True</property>
-                                            <property name="can_focus">False</property>
-                                            <property name="spacing">6</property>
-                                          </object>
-                                          <packing>
-                                            <property name="expand">False</property>
-                                            <property name="fill">True</property>
-                                            <property name="position">1</property>
-                                          </packing>
-                                        </child>
-                                      </object>
-                                    </child>
-                                  </object>
-                                </child>
-                                <child type="label">
-                                  <object class="GtkLabel" id="label9">
-                                    <property name="visible">True</property>
-                                    <property name="can_focus">False</property>
-                                    <property name="label" translatable="yes">&lt;b&gt;Pinnin_g&lt;/b&gt;</property>
-                                    <property name="use_markup">True</property>
-                                    <property name="use_underline">True</property>
-                                  </object>
-                                </child>
-                              </object>
-                              <packing>
-                                <property name="expand">False</property>
-                                <property name="fill">True</property>
-                                <property name="position">4</property>
+                                <property name="position">2</property>
                               </packing>
                             </child>
                           </object>
@@ -2684,7 +2514,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="can_focus">False</property>
                                             <property name="label" translatable="yes">Current a_llocation:</property>
                                             <property name="use_underline">True</property>
-                                            <property name="mnemonic_widget">config-memory</property>
+                                            <property name="mnemonic_widget">mem-memory</property>
                                             <property name="xalign">1</property>
                                           </object>
                                           <packing>
@@ -2700,7 +2530,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="can_focus">False</property>
                                             <property name="label" translatable="yes">Ma_ximum allocation:</property>
                                             <property name="use_underline">True</property>
-                                            <property name="mnemonic_widget">config-maxmem</property>
+                                            <property name="mnemonic_widget">mem-maxmem</property>
                                             <property name="xalign">1</property>
                                           </object>
                                           <packing>
@@ -2743,7 +2573,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="can_focus">False</property>
                                             <property name="spacing">3</property>
                                             <child>
-                                              <object class="GtkSpinButton" id="config-memory">
+                                              <object class="GtkSpinButton" id="mem-memory">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="invisible_char">●</property>
@@ -2751,10 +2581,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="climb_rate">2</property>
                                                 <property name="numeric">True</property>
                                                 <property name="update_policy">if-valid</property>
-                                                <signal name="changed" handler="on_config_memory_changed" swapped="no"/>
+                                                <signal name="changed" handler="on_mem_memory_changed" swapped="no"/>
                                                 <child internal-child="accessible">
-                                                  <object class="AtkObject" id="config-memory-atkobject">
-                                                    <property name="AtkObject::accessible-name" translatable="yes">Memory Select</property>
+                                                  <object class="AtkObject" id="mem-memory-atkobject">
+                                                    <property name="AtkObject::accessible-name">Memory Select</property>
                                                   </object>
                                                 </child>
                                               </object>
@@ -2792,7 +2622,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="can_focus">False</property>
                                             <property name="spacing">3</property>
                                             <child>
-                                              <object class="GtkSpinButton" id="config-maxmem">
+                                              <object class="GtkSpinButton" id="mem-maxmem">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="invisible_char">●</property>
@@ -2800,10 +2630,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="climb_rate">2</property>
                                                 <property name="numeric">True</property>
                                                 <property name="update_policy">if-valid</property>
-                                                <signal name="changed" handler="on_config_maxmem_changed" swapped="no"/>
+                                                <signal name="changed" handler="on_mem_maxmem_changed" swapped="no"/>
                                                 <child internal-child="accessible">
-                                                  <object class="AtkObject" id="config-maxmem-atkobject">
-                                                    <property name="AtkObject::accessible-name" translatable="yes">Max Memory Select</property>
+                                                  <object class="AtkObject" id="mem-maxmem-atkobject">
+                                                    <property name="AtkObject::accessible-name">Max Memory Select</property>
                                                   </object>
                                                 </child>
                                               </object>
@@ -2889,7 +2719,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                     <property name="top_padding">3</property>
                                     <property name="left_padding">12</property>
                                     <child>
-                                      <object class="GtkCheckButton" id="config-autostart">
+                                      <object class="GtkCheckButton" id="boot-autostart">
                                         <property name="label" translatable="yes">Start virt_ual machine on host boot up</property>
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
@@ -2897,7 +2727,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                         <property name="use_underline">True</property>
                                         <property name="xalign">0.5</property>
                                         <property name="draw_indicator">True</property>
-                                        <signal name="toggled" handler="on_config_autostart_changed" swapped="no"/>
+                                        <signal name="toggled" handler="on_boot_autostart_changed" swapped="no"/>
                                       </object>
                                     </child>
                                   </object>
@@ -2954,6 +2784,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="label" translatable="yes">Init _path:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">boot-init-path</property>
+                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -2967,6 +2798,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="label" translatable="yes">Init ar_gs:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">boot-init-args</property>
+                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -3351,13 +3183,13 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="hscrollbar_policy">never</property>
                                                 <property name="shadow_type">in</property>
                                                 <child>
-                                                  <object class="GtkTreeView" id="config-boot-list">
+                                                  <object class="GtkTreeView" id="boot-list">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="headers_visible">False</property>
                                                     <child internal-child="selection">
                                                       <object class="GtkTreeSelection" id="treeview-selection4">
-                                                        <signal name="changed" handler="on_config_boot_list_changed" swapped="no"/>
+                                                        <signal name="changed" handler="on_boot_list_changed" swapped="no"/>
                                                       </object>
                                                     </child>
                                                   </object>
@@ -3375,13 +3207,13 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="orientation">vertical</property>
                                                 <property name="spacing">6</property>
                                                 <child>
-                                                  <object class="GtkButton" id="config-boot-moveup">
+                                                  <object class="GtkButton" id="boot-moveup">
                                                     <property name="visible">True</property>
                                                     <property name="sensitive">False</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">True</property>
                                                     <property name="valign">start</property>
-                                                    <signal name="clicked" handler="on_config_boot_moveup_clicked" swapped="no"/>
+                                                    <signal name="clicked" handler="on_boot_moveup_clicked" swapped="no"/>
                                                     <child>
                                                       <object class="GtkImage" id="image7">
                                                         <property name="visible">True</property>
@@ -3397,14 +3229,14 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                   </packing>
                                                 </child>
                                                 <child>
-                                                  <object class="GtkButton" id="config-boot-movedown">
+                                                  <object class="GtkButton" id="boot-movedown">
                                                     <property name="visible">True</property>
                                                     <property name="sensitive">False</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">True</property>
                                                     <property name="valign">start</property>
                                                     <property name="vexpand">False</property>
-                                                    <signal name="clicked" handler="on_config_boot_movedown_clicked" swapped="no"/>
+                                                    <signal name="clicked" handler="on_boot_movedown_clicked" swapped="no"/>
                                                     <child>
                                                       <object class="GtkImage" id="image8">
                                                         <property name="visible">True</property>
@@ -3622,7 +3454,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                   </packing>
                                                 </child>
                                                 <child>
-                                                  <object class="GtkButton" id="config-cdrom-connect">
+                                                  <object class="GtkButton" id="disk-cdrom-connect">
                                                     <property name="label">gtk-connect</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
@@ -3631,7 +3463,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                     <property name="has_tooltip">True</property>
                                                     <property name="tooltip_text" translatable="yes">Connect or disconnect media</property>
                                                     <property name="use_stock">True</property>
-                                                    <signal name="clicked" handler="on_config_cdrom_connect_clicked" swapped="no"/>
+                                                    <signal name="clicked" handler="on_disk_cdrom_connect_clicked" swapped="no"/>
                                                   </object>
                                                   <packing>
                                                     <property name="expand">False</property>
@@ -3775,16 +3607,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                         <property name="orientation">vertical</property>
                                                         <property name="spacing">6</property>
                                                         <child>
-                                                          <object class="GtkComboBox" id="disk-format">
+                                                          <object class="GtkEntry" id="disk-format">
                                                             <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="has_entry">True</property>
-                                                            <signal name="changed" handler="on_disk_format_changed" swapped="no"/>
-                                                            <child internal-child="entry">
-                                                            <object class="GtkEntry" id="storage-format-combobox-entry">
                                                             <property name="can_focus">True</property>
-                                                            </object>
-                                                            </child>
+                                                            <signal name="changed" handler="on_disk_format_changed" swapped="no"/>
                                                           </object>
                                                           <packing>
                                                             <property name="expand">False</property>
@@ -3844,7 +3670,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                         <property name="ypad">4</property>
                                                         <property name="label" translatable="yes">Storage forma_t:</property>
                                                         <property name="use_underline">True</property>
-                                                        <property name="mnemonic_widget">storage-format-combobox-entry</property>
+                                                        <property name="mnemonic_widget">disk-format</property>
                                                         <property name="xalign">1</property>
                                                         <property name="yalign">0</property>
                                                       </object>
@@ -3980,222 +3806,6 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                     <property name="position">1</property>
                                                   </packing>
                                                 </child>
-                                                <child>
-                                                  <object class="GtkExpander" id="iotune-expander">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">True</property>
-                                                    <child>
-                                                      <object class="GtkGrid" id="table20">
-                                                        <property name="visible">True</property>
-                                                        <property name="can_focus">False</property>
-                                                        <property name="halign">start</property>
-                                                        <property name="row_spacing">3</property>
-                                                        <property name="column_spacing">8</property>
-                                                        <child>
-                                                          <object class="GtkLabel" id="label80">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Re_ad:</property>
-                                                            <property name="use_underline">True</property>
-                                                            <property name="mnemonic_widget">disk-iotune-rbs</property>
-                                                            <property name="xalign">1</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">0</property>
-                                                            <property name="top_attach">1</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="label84">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="xpad">2</property>
-                                                            <property name="use_underline">True</property>
-                                                            <property name="xalign">1</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="top_attach">0</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="label86">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">KiBytes/Sec</property>
-                                                            <property name="use_underline">True</property>
-                                                            <property name="max_width_chars">20</property>
-                                                            <property name="xalign">0</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="top_attach">0</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="label87">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">IOPS/Sec</property>
-                                                            <property name="use_underline">True</property>
-                                                            <property name="max_width_chars">20</property>
-                                                            <property name="xalign">0</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">2</property>
-                                                            <property name="top_attach">0</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkSpinButton" id="disk-iotune-rbs">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="invisible_char">●</property>
-                                                            <property name="width_chars">16</property>
-                                                            <property name="adjustment">adjustment8</property>
-                                                            <property name="climb_rate">1</property>
-                                                            <property name="numeric">True</property>
-                                                            <property name="update_policy">if-valid</property>
-                                                            <signal name="changed" handler="on_disk_iotune_changed" swapped="no"/>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="top_attach">1</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkSpinButton" id="disk-iotune-ris">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="invisible_char">●</property>
-                                                            <property name="width_chars">16</property>
-                                                            <property name="adjustment">adjustment9</property>
-                                                            <property name="climb_rate">1</property>
-                                                            <property name="numeric">True</property>
-                                                            <property name="update_policy">if-valid</property>
-                                                            <signal name="changed" handler="on_disk_iotune_changed" swapped="no"/>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">2</property>
-                                                            <property name="top_attach">1</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkSpinButton" id="disk-iotune-wbs">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="invisible_char">●</property>
-                                                            <property name="width_chars">16</property>
-                                                            <property name="adjustment">adjustment10</property>
-                                                            <property name="climb_rate">1</property>
-                                                            <property name="numeric">True</property>
-                                                            <property name="update_policy">if-valid</property>
-                                                            <signal name="changed" handler="on_disk_iotune_changed" swapped="no"/>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="top_attach">2</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkSpinButton" id="disk-iotune-wis">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="invisible_char">●</property>
-                                                            <property name="width_chars">16</property>
-                                                            <property name="adjustment">adjustment11</property>
-                                                            <property name="climb_rate">1</property>
-                                                            <property name="numeric">True</property>
-                                                            <property name="update_policy">if-valid</property>
-                                                            <signal name="changed" handler="on_disk_iotune_changed" swapped="no"/>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">2</property>
-                                                            <property name="top_attach">2</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkSpinButton" id="disk-iotune-tbs">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="invisible_char">●</property>
-                                                            <property name="width_chars">16</property>
-                                                            <property name="adjustment">adjustment12</property>
-                                                            <property name="climb_rate">1</property>
-                                                            <property name="numeric">True</property>
-                                                            <property name="update_policy">if-valid</property>
-                                                            <signal name="changed" handler="on_disk_iotune_changed" swapped="no"/>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="top_attach">3</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkSpinButton" id="disk-iotune-tis">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">True</property>
-                                                            <property name="invisible_char">●</property>
-                                                            <property name="width_chars">16</property>
-                                                            <property name="adjustment">adjustment13</property>
-                                                            <property name="climb_rate">1</property>
-                                                            <property name="numeric">True</property>
-                                                            <property name="update_policy">if-valid</property>
-                                                            <signal name="changed" handler="on_disk_iotune_changed" swapped="no"/>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">2</property>
-                                                            <property name="top_attach">3</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="label85">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Total_:</property>
-                                                            <property name="use_underline">True</property>
-                                                            <property name="mnemonic_widget">disk-iotune-tbs</property>
-                                                            <property name="xalign">1</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">0</property>
-                                                            <property name="top_attach">3</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkLabel" id="label82">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">_Write:</property>
-                                                            <property name="use_underline">True</property>
-                                                            <property name="mnemonic_widget">disk-iotune-wbs</property>
-                                                            <property name="xalign">1</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">0</property>
-                                                            <property name="top_attach">2</property>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <placeholder/>
-                                                        </child>
-                                                      </object>
-                                                    </child>
-                                                    <child type="label">
-                                                      <object class="GtkLabel" id="label83">
-                                                        <property name="visible">True</property>
-                                                        <property name="can_focus">False</property>
-                                                        <property name="label" translatable="yes">IO Tu_ning</property>
-                                                        <property name="use_underline">True</property>
-                                                      </object>
-                                                    </child>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">True</property>
-                                                    <property name="position">2</property>
-                                                  </packing>
-                                                </child>
                                               </object>
                                             </child>
                                             <child type="label">
@@ -4295,7 +3905,6 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">network-model-combobox</property>
                                             <property name="xalign">1</property>
-                                            <property name="yalign">0.47999998927116394</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -6138,6 +5747,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                             <property name="receives_default">False</property>
                             <property name="use_stock">True</property>
                             <signal name="clicked" handler="on_config_remove_clicked" swapped="no"/>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="config-remove-atkobject">
+                                <property name="AtkObject::accessible-name">config-remove</property>
+                              </object>
+                            </child>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -6153,6 +5767,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                             <property name="receives_default">True</property>
                             <property name="use_stock">True</property>
                             <signal name="clicked" handler="on_config_cancel_clicked" swapped="no"/>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="config-cancel-atkobject">
+                                <property name="AtkObject::accessible-name">config-cancel</property>
+                              </object>
+                            </child>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -6170,6 +5789,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                             <property name="receives_default">False</property>
                             <property name="use_stock">True</property>
                             <signal name="clicked" handler="on_config_apply_clicked" swapped="no"/>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="config-apply-atkobject">
+                                <property name="AtkObject::accessible-name">config-apply</property>
+                              </object>
+                            </child>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -6280,8 +5904,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
                         <property name="use_underline">True</property>
-                        <property name="xalign">0.5</property>
-                        <property name="yalign">0</property>
+                        <property name="xalign">0</property>
                         <property name="draw_indicator">True</property>
                       </object>
                       <packing>
@@ -6402,6 +6025,26 @@ if you know what you are doing.&lt;/small&gt;</property>
                   </packing>
                 </child>
                 <child>
+                  <object class="GtkNotebook" id="serial-pages">
+                    <property name="visible">True</property>
+                    <property name="can_focus">True</property>
+                  </object>
+                  <packing>
+                    <property name="position">2</property>
+                  </packing>
+                </child>
+                <child type="tab">
+                  <object class="GtkLabel" id="label82">
+                    <property name="visible">True</property>
+                    <property name="can_focus">False</property>
+                    <property name="label" translatable="yes">Serial</property>
+                  </object>
+                  <packing>
+                    <property name="position">2</property>
+                    <property name="tab_fill">False</property>
+                  </packing>
+                </child>
+                <child>
                   <object class="GtkScrolledWindow" id="console-gfx-scroll">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
@@ -6418,7 +6061,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                     </child>
                   </object>
                   <packing>
-                    <property name="position">2</property>
+                    <property name="position">3</property>
                   </packing>
                 </child>
                 <child type="tab">
@@ -6428,7 +6071,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                     <property name="label">Graphics</property>
                   </object>
                   <packing>
-                    <property name="position">2</property>
+                    <property name="position">3</property>
                     <property name="tab_fill">False</property>
                   </packing>
                 </child>

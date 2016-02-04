@@ -246,6 +246,14 @@ Enable APIC PV EOI
 
 Enable hypver VAPIC, but disable spinlocks
 
+=item B<--features kvm_hidden=on>
+
+Allow the KVM hypervisor signature to be hidden from the guest
+
+=item B<--features pvspinlock=on>
+
+Notify the guest that the host supports paravirtual spinlocks for example by exposing the pvticketlocks mechanism.
+
 =back
 
 Use --features=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsFeatures>
@@ -352,9 +360,13 @@ Some distro specific url samples:
 
 http://download.fedoraproject.org/pub/fedora/linux/releases/21/Server/x86_64/os
 
-=item Debian/Ubuntu
+=item Debian
 
 http://ftp.us.debian.org/debian/dists/stable/main/installer-amd64/
+
+=item Ubuntu
+
+http://us.archive.ubuntu.com/ubuntu/dists/wily/main/installer-amd64/
 
 =item Suse
 
@@ -563,6 +575,10 @@ Disk device type. Value can be 'cdrom', 'disk', 'lun' or 'floppy'. Default is
 'disk'. If a 'cdrom' is specified, and no install method is chosen, the
 cdrom is used as the install media.
 
+=item B<boot_order>
+
+Guest installation with multiple disks will need this parameter to boot correctly after being installed. A boot_order parameter will take values 1,2,3,... Devices with lower value has higher priority.
+
 =item B<bus>
 
 Disk bus type. Value can be 'ide', 'sata', 'scsi', 'usb', 'virtio' or 'xen'.
@@ -592,7 +608,7 @@ whether to skip fully allocating newly created storage. Value is 'yes' or
 'no'. Default is 'yes' (do not fully allocate) unless it isn't
 supported by the underlying storage type.
 
-The initial time taken to fully-allocate the guest virtual disk (sparse=false)
+The initial time taken to fully-allocate the guest virtual disk (sparse=no)
 will be usually balanced by faster install times inside the guest. Thus
 use of this option is recommended to ensure consistently high performance
 and to avoid I/O errors in the guest should the host filesystem fill up.
@@ -779,6 +795,91 @@ be '52:54:00'.
 Controlling firewall and network filtering in libvirt. Value can be any nwfilter
 defined by the C<virsh> 'nwfilter' subcommands. Available filters can be listed
 by running 'virsh nwfilter-list', e.g.: 'clean-traffic', 'no-mac-spoofing', ...
+
+=item B<virtualport_type>
+
+The type of virtual port profile, one the following values
+
+=over 4
+
+=item C<802.Qbg>
+
+The following additional parameters are accepted
+
+=over 4
+
+=item B<virtualport_managerid>
+
+
+The VSI Manager ID identifies the database containing the VSI type
+and instance definitions. This is an integer value and the value
+0 is reserved.
+
+=item B<virtualport_typeid>
+
+The VSI Type ID identifies a VSI type characterizing the network
+access. VSI types are typically managed by network administrator.
+This is an integer value.
+
+=item B<virtualport_typeidversion>
+
+The VSI Type Version allows multiple versions of a VSI Type. This
+is an integer value.
+
+=item B<virtualport_instanceid>
+
+The VSI Instance ID Identifier is generated when a VSI instance
+(i.e. a virtual interface of a virtual machine) is created. This
+is a globally unique identifier.
+
+=back
+
+=item C<802.Qbh>
+
+The following additional parameters are accepted
+
+=over 4
+
+=item B<virtualport_profileid>
+
+The profile ID contains the name of the port profile that is to
+be applied to this interface. This name is resolved by the port
+profile database into the network parameters from the port profile,
+and those network parameters will be applied to this interface.
+
+=back
+
+=item C<openvswitch>
+
+The following additional parameters are accepted
+
+=over 4
+
+=item B<virtualport_profileid>
+
+The OpenVSwitch port profile for the interface
+
+=item B<virtualport_interfaceid>
+
+A UUID to uniquely identify the interface. If omitted one will
+be generated automatically
+
+=back
+
+=item C<midonet>
+
+The following additional parameters are accepted
+
+=over 4
+
+=item B<virtualport_interfaceid>
+
+A UUID identifying the port in the network to which the interface
+will be bound
+
+=back
+
+=back
 
 =back
 
@@ -1532,7 +1633,7 @@ Run a Live CD image under Xen fullyvirt, in diskless environment
        --hvm \
        --name demo \
        --memory 500 \
-       --disks none \
+       --disk none \
        --livecd \
        --graphics vnc \
        --cdrom /root/fedora7live.iso

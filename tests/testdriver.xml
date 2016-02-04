@@ -200,6 +200,9 @@
       <source path='/tmp/foo.log'/>
     </parallel>
 
+    <console type='null'>
+      <target type='serial'/>
+    </console>
     <console type='pty'>
       <target type='virtio'/>
     </console>
@@ -245,6 +248,8 @@
 
     <memballoon model='virtio'/>
   </devices>
+
+  <seclabel model='selinux' type='dynamic'/>
 </domain>
 
 
@@ -329,7 +334,10 @@ Foo bar baz &amp; yeah boii &lt; &gt; yeahfoo
 
     <!-- bus fdc -->
     <disk type='block' device='floppy'>
-      <source dev='/dev/null'/>
+      <source dev='/dev/null'>
+        <seclabel model='selinux' relabel='no'/>
+        <seclabel model='dac' relabel='no'/>
+      </source>
       <target dev='fda' bus='fdc'/>
       <boot order='5'/>
     </disk>
@@ -424,8 +432,8 @@ Foo bar baz &amp; yeah boii &lt; &gt; yeahfoo
     </disk>
 
     <!-- bus usb -->
-    <disk type='block' device='disk'>
-      <source dev='/dev/default-pool/overlay.img'/>
+    <disk type='volume' device='disk'>
+      <source pool='default-pool' volume='overlay.img'/>
       <target dev='sdd' bus='usb'/>
     </disk>
 
@@ -640,22 +648,22 @@ Foo bar baz &amp; yeah boii &lt; &gt; yeahfoo
     <!-- filesystems -->
     <filesystem>
       <driver type='handle'/>
-      <source dir='/foo/bar'/>
-      <target dir='/bar/baz'/>
+      <source dir='/foo/bar1'/>
+      <target dir='/target/1'/>
     </filesystem>
     <filesystem type='template'>
       <source name='template_fedora'/>
-      <target dir='/bar/baz'/>
+      <target dir='/target/2'/>
     </filesystem>
     <filesystem type='mount' accessmode='squash'>
       <driver type='path' wrpolicy='immediate'/>
-      <source dir='/foo/bar'/>
-      <target dir='/bar/baz'/>
+      <source dir='/foo/bar3'/>
+      <target dir='target3'/>
     </filesystem>
     <filesystem type='mount' accessmode='mapped'>
       <driver type='path'/>
-      <source dir='/foo/bar'/>
-      <target dir='/bar/baz'/>
+      <source dir='/foo/bar4'/>
+      <target dir='/target4'/>
     </filesystem>
 
 
@@ -682,6 +690,11 @@ Foo bar baz &amp; yeah boii &lt; &gt; yeahfoo
     <!-- memballoon device -->
     <memballoon model='virtio'/>
   </devices>
+
+  <seclabel model='selinux' type='dynamic' relabel='yes'/>
+  <seclabel model='dac' type='static' relabel='yes'>
+    <label type='qemu'>107:107</label>
+  </seclabel>
 </domain>
 
 
@@ -807,6 +820,10 @@ test-many-devices, like an alternate RNG.
     <parallel type='file'>
       <source path='/tmp/foo.log'/>
     </parallel>
+    <channel type='unix'>
+      <source mode='bind' path='/var/lib/libvirt/qemu/channel/target/test-for-clone/org.qemu.guest_agent.0'/>
+      <target type='virtio' name='org.qemu.guest_agent.0'/>
+    </channel>
   </devices>
 </domain>
 

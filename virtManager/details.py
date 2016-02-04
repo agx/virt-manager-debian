@@ -54,7 +54,6 @@ EDIT_IDMAP,
 
 EDIT_VCPUS,
 EDIT_MAXVCPUS,
-EDIT_CPUSET,
 EDIT_CPU,
 EDIT_TOPOLOGY,
 
@@ -74,7 +73,6 @@ EDIT_DISK_IO,
 EDIT_DISK_BUS,
 EDIT_DISK_SERIAL,
 EDIT_DISK_FORMAT,
-EDIT_DISK_IOTUNE,
 EDIT_DISK_SGIO,
 
 EDIT_SOUND_MODEL,
@@ -106,7 +104,7 @@ EDIT_FS,
 
 EDIT_HOSTDEV_ROMBAR,
 
-) = range(1, 47)
+) = range(1, 45)
 
 
 # Columns in hw list model
@@ -163,34 +161,19 @@ remove_pages = [HW_LIST_TYPE_NIC, HW_LIST_TYPE_INPUT,
 _remove_tooltip = _("Remove this device from the virtual machine")
 
 
-def _label_for_device(dev, vm):
+def _label_for_device(dev):
     devtype = dev.virtual_device_type
 
     if devtype == "disk":
-        def _find_matching_disk_controller():
-            for controller in vm.get_controller_devices():
-                if (dev.address.controller is not None and
-                    controller.type == dev.bus and
-                    controller.index == dev.address.controller):
-                    return controller
-
-        bus = dev.bus
-        if dev.address.type == "spapr-vio":
-            bus = "spapr-vscsi"
-
-        busstr = virtinst.VirtualDisk.pretty_disk_bus(bus) or ""
-
-        if bus == "scsi":
-            matching_controller = _find_matching_disk_controller()
-            if (matching_controller and
-                matching_controller.model == "virtio-scsi"):
-                busstr = "Virtio SCSI"
+        busstr = virtinst.VirtualDisk.pretty_disk_bus(dev.bus) or ""
 
         if dev.device == "floppy":
-            devstr = "Floppy"
+            devstr = _("Floppy")
             busstr = ""
         elif dev.device == "cdrom":
-            devstr = "CDROM"
+            devstr = _("CDROM")
+        elif dev.device == "disk":
+            devstr = _("Disk")
         else:
             devstr = dev.device.capitalize()
 
@@ -217,14 +200,21 @@ def _label_for_device(dev, vm):
         return _("Input")
 
     if devtype in ["serial", "parallel", "console"]:
-        label = devtype.capitalize()
+        if devtype == "serial":
+            label = _("Serial")
+        elif devtype == "parallel":
+            label = _("Parallel")
+        elif devtype == "console":
+            label = _("Console")
         if dev.target_port is not None:
             label += " %s" % (int(dev.target_port) + 1)
         return label
 
     if devtype == "channel":
-        label = devtype.capitalize()
+        label = _("Channel")
         name = dev.pretty_channel_name(dev.target_name)
+        if not name:
+            name = dev.pretty_type(dev.type)
         if name:
             label += " %s" % name
         return label
@@ -367,7 +357,6 @@ class vmmDetails(vmmGObjectUI):
         self.media_choosers = {"cdrom": None, "floppy": None}
         self.storage_browser = None
 
-        self.ignorePause = False
         self.ignoreDetails = False
 
         from .console import vmmConsolePages
@@ -412,6 +401,7 @@ class vmmDetails(vmmGObjectUI):
         if h <= 0:
             h = 600
         self.topwin.set_default_size(w, h)
+        self._window_size = None
 
         self.oldhwkey = None
         self.addhwmenu = None
@@ -433,7 +423,6 @@ class vmmDetails(vmmGObjectUI):
             "on_vmm_details_configure_event": self.window_resized,
             "on_details_menu_quit_activate": self.exit_app,
             "on_hw_list_changed": self.hw_changed,
-            "on_config_boot_list_changed": self.config_bootdev_selected,
 
             "on_control_vm_details_toggled": self.details_console_changed,
             "on_control_vm_console_toggled": self.details_console_changed,
@@ -476,12 +465,10 @@ class vmmDetails(vmmGObjectUI):
             "on_idmap_uid_count_changed": lambda *x: self.enable_apply(x, EDIT_IDMAP),
             "on_idmap_gid_target_changed": lambda *x: self.enable_apply(x, EDIT_IDMAP),
             "on_idmap_gid_count_changed": lambda *x: self.enable_apply(x, EDIT_IDMAP),
-            "on_config_idmap_check_toggled": self.config_idmap_enable,
+            "on_idmap_check_toggled": self.config_idmap_enable,
 
-            "on_config_vcpus_changed": self.config_vcpus_changed,
-            "on_config_maxvcpus_changed": self.config_maxvcpus_changed,
-            "on_config_vcpupin_changed": lambda *x: self.enable_apply(x, EDIT_CPUSET),
-            "on_config_vcpupin_generate_clicked": self.config_vcpupin_generate,
+            "on_cpu_vcpus_changed": self.config_vcpus_changed,
+            "on_cpu_maxvcpus_changed": self.config_maxvcpus_changed,
             "on_cpu_model_changed": lambda *x: self.config_cpu_model_changed(x),
             "on_cpu_copy_host_clicked": self.on_cpu_copy_host_clicked,
             "on_cpu_cores_changed": self.config_cpu_topology_changed,
@@ -489,13 +476,14 @@ class vmmDetails(vmmGObjectUI):
             "on_cpu_threads_changed": self.config_cpu_topology_changed,
             "on_cpu_topology_enable_toggled": self.config_cpu_topology_enable,
 
-            "on_config_memory_changed": self.config_memory_changed,
-            "on_config_maxmem_changed": self.config_maxmem_changed,
+            "on_mem_memory_changed": self.config_memory_changed,
+            "on_mem_maxmem_changed": self.config_maxmem_changed,
 
 
-            "on_config_boot_moveup_clicked" : lambda *x: self.config_boot_move(x, True),
-            "on_config_boot_movedown_clicked" : lambda *x: self.config_boot_move(x, False),
-            "on_config_autostart_changed": lambda *x: self.enable_apply(x, x, EDIT_AUTOSTART),
+            "on_boot_list_changed": self.config_bootdev_selected,
+            "on_boot_moveup_clicked" : lambda *x: self.config_boot_move(x, True),
+            "on_boot_movedown_clicked" : lambda *x: self.config_boot_move(x, False),
+            "on_boot_autostart_changed": lambda *x: self.enable_apply(x, x, EDIT_AUTOSTART),
             "on_boot_menu_changed": lambda *x: self.enable_apply(x, EDIT_BOOTMENU),
             "on_boot_kernel_enable_toggled": self.boot_kernel_toggled,
             "on_boot_kernel_changed": lambda *x: self.enable_apply(x, EDIT_KERNEL),
@@ -508,6 +496,7 @@ class vmmDetails(vmmGObjectUI):
             "on_boot_init_path_changed": lambda *x: self.enable_apply(x, EDIT_INIT),
             "on_boot_init_args_changed": lambda *x: self.enable_apply(x, EDIT_INIT),
 
+            "on_disk_cdrom_connect_clicked": self.toggle_storage_media,
             "on_disk_readonly_changed": lambda *x: self.enable_apply(x, EDIT_DISK_RO),
             "on_disk_shareable_changed": lambda *x: self.enable_apply(x, EDIT_DISK_SHARE),
             "on_disk_removable_changed": lambda *x: self.enable_apply(x, EDIT_DISK_REMOVABLE),
@@ -516,7 +505,6 @@ class vmmDetails(vmmGObjectUI):
             "on_disk_bus_combo_changed": lambda *x: self.enable_apply(x, EDIT_DISK_BUS),
             "on_disk_format_changed": self.disk_format_changed,
             "on_disk_serial_changed": lambda *x: self.enable_apply(x, EDIT_DISK_SERIAL),
-            "on_disk_iotune_changed": self.iotune_changed,
             "on_disk_sgio_entry_changed": lambda *x: self.enable_apply(x, EDIT_DISK_SGIO),
 
             "on_network_model_combo_changed": lambda *x: self.enable_apply(x, EDIT_NET_MODEL),
@@ -545,7 +533,6 @@ class vmmDetails(vmmGObjectUI):
             "on_config_apply_clicked": self.config_apply,
             "on_config_cancel_clicked": self.config_cancel,
 
-            "on_config_cdrom_connect_clicked": self.toggle_storage_media,
             "on_config_remove_clicked": self.remove_xml_dev,
             "on_add_hardware_button_clicked": self.add_hardware,
 
@@ -603,6 +590,9 @@ class vmmDetails(vmmGObjectUI):
         self.snapshots.cleanup()
         self.snapshots = None
 
+        if self._window_size:
+            self.vm.set_details_window_size(*self._window_size)
+
         self.vm = None
         self.conn = None
         self.addhwmenu = None
@@ -629,8 +619,7 @@ class vmmDetails(vmmGObjectUI):
         ignore = src
         if self.has_unapplied_changes(self.get_hw_row()):
             return
-
-        return self._close(customize_finish=True)
+        self.emit("customize-finished")
 
     def _customize_cancel(self):
         logging.debug("Asking to cancel customization")
@@ -649,13 +638,14 @@ class vmmDetails(vmmGObjectUI):
         return self._customize_cancel()
 
     def _window_delete_event(self, ignore1=None, ignore2=None):
-        return self._close()
+        return self.close()
 
     def close(self, ignore1=None, ignore2=None):
-        logging.debug("Closing VM details: %s", self.vm)
+        if self.is_visible():
+            logging.debug("Closing VM details: %s", self.vm)
         return self._close()
 
-    def _close(self, customize_finish=False):
+    def _close(self):
         fs = self.widget("details-menu-view-fullscreen")
         if fs.get_active():
             fs.set_active(False)
@@ -670,10 +660,7 @@ class vmmDetails(vmmGObjectUI):
             except:
                 logging.error("Failure when disconnecting from desktop server")
 
-        if customize_finish:
-            self.emit("customize-finished")
-        else:
-            self.emit("details-closed")
+        self.emit("details-closed")
         return 1
 
     def is_visible(self):
@@ -723,20 +710,10 @@ class vmmDetails(vmmGObjectUI):
         for i in self._addhwmenuitems.values():
             self.addhwmenu.add(i)
 
-        # Don't allowing changing network/disks for Dom0
-        dom0 = self.vm.is_management_domain()
-        self.widget("add-hardware-button").set_sensitive(not dom0)
-
         self.widget("hw-panel").set_show_tabs(False)
         self.widget("details-pages").set_show_tabs(False)
-        self.widget("console-pages").set_show_tabs(False)
         self.widget("details-menu-view-toolbar").set_active(
                                     self.config.get_details_show_toolbar())
-
-        # Keycombo menu (ctrl+alt+del etc.)
-        self.keycombo_menu = self.console.details_build_keycombo_menu(
-            self.console.details_send_key)
-        self.widget("details-menu-send-key").set_submenu(self.keycombo_menu)
 
 
     def init_graphs(self):
@@ -814,8 +791,7 @@ class vmmDetails(vmmGObjectUI):
         except:
             logging.exception("Error determining machine list")
 
-        show_machine = (arch not in ["i686", "x86_64"] and
-                        not self.vm.is_management_domain())
+        show_machine = (arch not in ["i686", "x86_64"])
         uiutil.set_grid_row_visible(self.widget("machine-type-title"),
             show_machine)
 
@@ -868,8 +844,7 @@ class vmmDetails(vmmGObjectUI):
         self.widget("overview-firmware-label").set_visible(
             not self.is_customize_dialog)
         show_firmware = ((self.conn.is_qemu() or self.conn.is_test_conn()) and
-            domcaps.arch_can_uefi() and
-            not self.vm.is_management_domain())
+            domcaps.arch_can_uefi())
         uiutil.set_grid_row_visible(
             self.widget("overview-firmware-title"), show_firmware)
 
@@ -896,8 +871,7 @@ class vmmDetails(vmmGObjectUI):
         self.widget("overview-chipset-label").set_visible(
             not self.is_customize_dialog)
         show_chipset = ((self.conn.is_qemu() or self.conn.is_test_conn()) and
-                        arch in ["i686", "x86_64"] and
-                        not self.vm.is_management_domain())
+                        arch in ["i686", "x86_64"])
         uiutil.set_grid_row_visible(
             self.widget("overview-chipset-title"), show_chipset)
 
@@ -930,18 +904,8 @@ class vmmDetails(vmmGObjectUI):
         summary_col.set_sort_column_id(2)
 
 
-        # VCPU Pinning list
-        generate_cpuset = self.widget("config-vcpupin-generate")
-        generate_warn = self.widget("config-vcpupin-generate-err")
-        if not self.conn.caps.host.topology:
-            generate_cpuset.set_sensitive(False)
-            generate_warn.show()
-            generate_warn.set_tooltip_text(
-                _("Libvirt did not detect NUMA capabilities."))
-
-
         # Boot device list
-        boot_list = self.widget("config-boot-list")
+        boot_list = self.widget("boot-list")
         # [XML boot type, display name, icon name, enabled, can select]
         boot_list_model = Gtk.ListStore(str, str, str, bool, bool)
         boot_list.set_model(boot_list_model)
@@ -1005,17 +969,9 @@ class vmmDetails(vmmGObjectUI):
         disk_io = self.widget("disk-io")
         vmmAddHardware.build_disk_io_combo(self.vm, disk_io)
 
-        # Disk format combo
-        format_list = self.widget("disk-format")
-        vmmAddHardware.populate_disk_format_combo(self.vm, format_list, False)
-
         # Disk bus combo
         disk_bus = self.widget("disk-bus")
         vmmAddHardware.build_disk_bus_combo(self.vm, disk_bus)
-
-        # Disk iotune expander
-        if not (self.conn.is_qemu() or self.conn.is_test_conn()):
-            self.widget("iotune-expander").set_visible(False)
 
         # Network model
         net_model = self.widget("network-model")
@@ -1059,11 +1015,9 @@ class vmmDetails(vmmGObjectUI):
     ##########################
 
     def window_resized(self, ignore, event):
-        # Sometimes dimensions change when window isn't visible
         if not self.is_visible():
             return
-
-        self.vm.set_details_window_size(event.width, event.height)
+        self._window_size = (event.width, event.height)
 
     def popup_addhw_menu(self, widget, event):
         ignore = widget
@@ -1107,7 +1061,7 @@ class vmmDetails(vmmGObjectUI):
             self.widget("toolbar-box").hide()
 
     def get_boot_selection(self):
-        return uiutil.get_list_selected_row(self.widget("config-boot-list"))
+        return uiutil.get_list_selected_row(self.widget("boot-list"))
 
     def set_hw_selection(self, page, disable_apply=True):
         if disable_apply:
@@ -1324,7 +1278,6 @@ class vmmDetails(vmmGObjectUI):
         run = vm.is_runable()
         stop = vm.is_stoppable()
         paused = vm.is_paused()
-        ro = vm.is_read_only()
 
         if vm.managedsave_supported:
             self.change_run_text(vm.has_managed_save())
@@ -1334,20 +1287,16 @@ class vmmDetails(vmmGObjectUI):
         self.widget("control-shutdown").get_menu().update_widget_states(vm)
         self.widget("control-pause").set_sensitive(stop)
 
+        if paused:
+            pauseTooltip = _("Resume the virtual machine")
+        else:
+            pauseTooltip = _("Pause the virtual machine")
+        self.widget("control-pause").set_tooltip_text(pauseTooltip)
+
         self.widget("details-vm-menu").get_submenu().update_widget_states(vm)
         self.set_pause_state(paused)
 
         self.widget("overview-name").set_editable(not active)
-
-        self.widget("config-vcpus").set_sensitive(not ro)
-        self.widget("config-vcpupin").set_sensitive(not ro)
-        self.widget("config-memory").set_sensitive(not ro)
-        self.widget("config-maxmem").set_sensitive(not ro)
-
-        # Disable send key menu entries for offline VM
-        send_key = self.widget("details-menu-send-key")
-        for c in send_key.get_submenu().get_children():
-            c.set_sensitive(not (run or paused))
 
         self.console.details_update_widget_states()
         if not run:
@@ -1435,22 +1384,22 @@ class vmmDetails(vmmGObjectUI):
             return
         self.remove_device(devobj)
 
-    def set_pause_state(self, paused):
-        # Set pause widget states
+    def set_pause_state(self, state):
+        src = self.widget("control-pause")
         try:
-            self.ignorePause = True
-            self.widget("control-pause").set_property("active", paused)
+            src.handler_block_by_func(self.control_vm_pause)
+            src.set_active(state)
         finally:
-            self.ignorePause = False
+            src.handler_unblock_by_func(self.control_vm_pause)
 
     def control_vm_pause(self, src):
-        if self.ignorePause:
-            return
+        do_pause = src.get_active()
 
-        # Let state handler listener change things if nec.
-        self.set_pause_state(not src.get_active())
+        # Set button state back to original value: just let the status
+        # update function fix things for us
+        self.set_pause_state(not do_pause)
 
-        if not self.vm.is_paused():
+        if do_pause:
             self.emit("action-suspend-domain",
                       self.vm.conn.get_uri(),
                       self.vm.get_connkey())
@@ -1563,7 +1512,7 @@ class vmmDetails(vmmGObjectUI):
     ############################
 
     def get_config_boot_order(self):
-        boot_model = self.widget("config-boot-list").get_model()
+        boot_model = self.widget("boot-list").get_model()
         devs = []
 
         for row in boot_model:
@@ -1643,17 +1592,14 @@ class vmmDetails(vmmGObjectUI):
     def config_idmap_enable(self, src):
         do_enable = src.get_active()
         self.widget("idmap-spin-grid").set_sensitive(do_enable)
-        self.config_idmap_changed()
-
-    def config_idmap_changed(self, ignore=None):
         self.enable_apply(EDIT_IDMAP)
 
 
     # Memory
     def config_get_maxmem(self):
-        return uiutil.spin_get_helper(self.widget("config-maxmem"))
+        return uiutil.spin_get_helper(self.widget("mem-maxmem"))
     def config_get_memory(self):
-        return uiutil.spin_get_helper(self.widget("config-memory"))
+        return uiutil.spin_get_helper(self.widget("mem-memory"))
 
     def config_maxmem_changed(self, src_ignore):
         self.enable_apply(EDIT_MEM)
@@ -1661,7 +1607,7 @@ class vmmDetails(vmmGObjectUI):
     def config_memory_changed(self, src_ignore):
         self.enable_apply(EDIT_MEM)
 
-        maxadj = self.widget("config-maxmem")
+        maxadj = self.widget("mem-maxmem")
 
         mem = self.config_get_memory()
         if maxadj.get_value() < mem:
@@ -1670,26 +1616,12 @@ class vmmDetails(vmmGObjectUI):
         ignore, upper = maxadj.get_range()
         maxadj.set_range(mem, upper)
 
-    def generate_cpuset(self):
-        mem = int(self.vm.get_memory()) / 1024
-        return virtinst.DomainNumatune.generate_cpuset(self.conn.get_backend(),
-                                                       mem)
 
     # VCPUS
     def config_get_vcpus(self):
-        return uiutil.spin_get_helper(self.widget("config-vcpus"))
+        return uiutil.spin_get_helper(self.widget("cpu-vcpus"))
     def config_get_maxvcpus(self):
-        return uiutil.spin_get_helper(self.widget("config-maxvcpus"))
-
-    def config_vcpupin_generate(self, ignore):
-        try:
-            pinstr = self.generate_cpuset()
-        except Exception, e:
-            return self.err.val_err(
-                _("Error generating CPU configuration"), e)
-
-        self.widget("config-vcpupin").set_text("")
-        self.widget("config-vcpupin").set_text(pinstr)
+        return uiutil.spin_get_helper(self.widget("cpu-maxvcpus"))
 
     def config_vcpus_changed(self, src):
         self.enable_apply(EDIT_VCPUS)
@@ -1700,9 +1632,9 @@ class vmmDetails(vmmGObjectUI):
 
         # Warn about overcommit
         warn = bool(cur > host_active_count)
-        self.widget("config-vcpus-warn-box").set_visible(warn)
+        self.widget("cpu-vcpus-warn-box").set_visible(warn)
 
-        maxadj = self.widget("config-maxvcpus")
+        maxadj = self.widget("cpu-maxvcpus")
         maxval = self.config_get_maxvcpus()
         if maxval < cur:
             if maxadj.get_sensitive():
@@ -1714,7 +1646,7 @@ class vmmDetails(vmmGObjectUI):
         maxadj.set_range(cur, upper)
 
     def config_maxvcpus_changed(self, ignore):
-        if self.widget("config-maxvcpus").get_sensitive():
+        if self.widget("cpu-maxvcpus").get_sensitive():
             self.config_cpu_topology_changed()
 
         # As this callback can be triggered by other events, set EDIT_MAXVCPUS
@@ -1732,30 +1664,30 @@ class vmmDetails(vmmGObjectUI):
         cpu_model = self.get_config_cpu_model()
         threads = self.widget("cpu-threads").get_value()
         warn_ht = _warn_cpu_thread_topo(threads, cpu_model)
-        self.widget("config-topology-warn-box").set_visible(warn_ht)
+        self.widget("cpu-topology-warn-box").set_visible(warn_ht)
 
         self.enable_apply(EDIT_CPU)
 
     def config_cpu_topology_changed(self, ignore=None):
         manual_top = self.widget("cpu-topology-table").is_sensitive()
-        self.widget("config-maxvcpus").set_sensitive(not manual_top)
+        self.widget("cpu-maxvcpus").set_sensitive(not manual_top)
 
         if manual_top:
             cores = uiutil.spin_get_helper(self.widget("cpu-cores")) or 1
             sockets = uiutil.spin_get_helper(self.widget("cpu-sockets")) or 1
             threads = uiutil.spin_get_helper(self.widget("cpu-threads")) or 1
             total = cores * sockets * threads
-            if uiutil.spin_get_helper(self.widget("config-vcpus")) > total:
-                self.widget("config-vcpus").set_value(total)
-            self.widget("config-maxvcpus").set_value(total)
+            if uiutil.spin_get_helper(self.widget("cpu-vcpus")) > total:
+                self.widget("cpu-vcpus").set_value(total)
+            self.widget("cpu-maxvcpus").set_value(total)
 
             # Warn about hyper-threading setting
             cpu_model = self.get_config_cpu_model()
             warn_ht = _warn_cpu_thread_topo(threads, cpu_model)
-            self.widget("config-topology-warn-box").set_visible(warn_ht)
+            self.widget("cpu-topology-warn-box").set_visible(warn_ht)
 
         else:
-            maxvcpus = uiutil.spin_get_helper(self.widget("config-maxvcpus"))
+            maxvcpus = uiutil.spin_get_helper(self.widget("cpu-maxvcpus"))
             self.widget("cpu-sockets").set_value(maxvcpus or 1)
             self.widget("cpu-cores").set_value(1)
             self.widget("cpu-threads").set_value(1)
@@ -1772,8 +1704,8 @@ class vmmDetails(vmmGObjectUI):
         boot_row = self.get_boot_selection()
         boot_selection = boot_row and boot_row[BOOT_KEY]
         boot_devs = self.get_config_boot_order()
-        up_widget = self.widget("config-boot-moveup")
-        down_widget = self.widget("config-boot-movedown")
+        up_widget = self.widget("boot-moveup")
+        down_widget = self.widget("boot-movedown")
 
         down_widget.set_sensitive(bool(boot_devs and
                                        boot_selection and
@@ -1784,7 +1716,7 @@ class vmmDetails(vmmGObjectUI):
                                      boot_selection != boot_devs[0]))
 
     def config_boot_toggled(self, ignore, index):
-        model = self.widget("config-boot-list").get_model()
+        model = self.widget("boot-list").get_model()
         row = model[index]
 
         row[BOOT_ACTIVE] = not row[BOOT_ACTIVE]
@@ -1809,7 +1741,7 @@ class vmmDetails(vmmGObjectUI):
             # Somehow we went out of bounds
             return
 
-        boot_list = self.widget("config-boot-list")
+        boot_list = self.widget("boot-list")
         model = boot_list.get_model()
         prev_row = None
         for row in model:
@@ -1829,53 +1761,6 @@ class vmmDetails(vmmGObjectUI):
     def disk_format_changed(self, ignore):
         self.widget("disk-format-warn").show()
         self.enable_apply(EDIT_DISK_FORMAT)
-
-    # IO Tuning
-    def iotune_changed(self, ignore):
-        iotune_rbs = int(self.get_text("disk-iotune-rbs") or 0)
-        iotune_ris = int(self.get_text("disk-iotune-ris") or 0)
-        iotune_tbs = int(self.get_text("disk-iotune-tbs") or 0)
-        iotune_tis = int(self.get_text("disk-iotune-tis") or 0)
-        iotune_wbs = int(self.get_text("disk-iotune-wbs") or 0)
-        iotune_wis = int(self.get_text("disk-iotune-wis") or 0)
-
-        # libvirt doesn't support having read/write settings along side total
-        # settings, so disable the widgets accordingly.
-
-        have_rw_bytes = (iotune_rbs > 0 or
-                         iotune_wbs > 0)
-        have_t_bytes = (not have_rw_bytes and iotune_tbs > 0)
-
-        self.widget("disk-iotune-rbs").set_sensitive(have_rw_bytes or not
-                                                     have_t_bytes)
-        self.widget("disk-iotune-wbs").set_sensitive(have_rw_bytes or not
-                                                     have_t_bytes)
-        self.widget("disk-iotune-tbs").set_sensitive(have_t_bytes or not
-                                                     have_rw_bytes)
-
-        if have_rw_bytes:
-            self.widget("disk-iotune-tbs").set_value(0)
-        elif have_t_bytes:
-            self.widget("disk-iotune-rbs").set_value(0)
-            self.widget("disk-iotune-wbs").set_value(0)
-
-        have_rw_iops = (iotune_ris > 0 or iotune_wis > 0)
-        have_t_iops = (not have_rw_iops and iotune_tis > 0)
-
-        self.widget("disk-iotune-ris").set_sensitive(have_rw_iops or not
-                                                     have_t_iops)
-        self.widget("disk-iotune-wis").set_sensitive(have_rw_iops or not
-                                                     have_t_iops)
-        self.widget("disk-iotune-tis").set_sensitive(have_t_iops or not
-                                                     have_rw_iops)
-
-        if have_rw_iops:
-            self.widget("disk-iotune-tis").set_value(0)
-        elif have_t_iops:
-            self.widget("disk-iotune-ris").set_value(0)
-            self.widget("disk-iotune-wis").set_value(0)
-
-        self.enable_apply(EDIT_DISK_IOTUNE)
 
 
     # CDROM Eject/Connect
@@ -2022,7 +1907,7 @@ class vmmDetails(vmmGObjectUI):
             hotplug_args["description"] = kwargs["description"]
 
         if self.edited(EDIT_IDMAP):
-            enable_idmap = self.widget("config-idmap-checkbutton").get_active()
+            enable_idmap = self.widget("idmap-checkbutton").get_active()
             if enable_idmap:
                 uid_target = self.widget("uid-target").get_text().strip()
                 uid_count = self.widget("uid-count").get_text().strip()
@@ -2058,9 +1943,6 @@ class vmmDetails(vmmGObjectUI):
         if self.edited(EDIT_MAXVCPUS):
             kwargs["maxvcpus"] = self.config_get_maxvcpus()
 
-        if self.edited(EDIT_CPUSET):
-            kwargs["cpuset"] = self.get_text("config-vcpupin")
-
         if self.edited(EDIT_CPU):
             kwargs["model"] = self.get_config_cpu_model()
 
@@ -2085,7 +1967,7 @@ class vmmDetails(vmmGObjectUI):
         if self.edited(EDIT_MEM):
             curmem = None
             maxmem = self.config_get_maxmem()
-            if self.widget("config-memory").get_sensitive():
+            if self.widget("mem-memory").get_sensitive():
                 curmem = self.config_get_memory()
 
             if curmem:
@@ -2106,7 +1988,7 @@ class vmmDetails(vmmGObjectUI):
         kwargs = {}
 
         if self.edited(EDIT_AUTOSTART):
-            auto = self.widget("config-autostart")
+            auto = self.widget("boot-autostart")
             try:
                 self.vm.set_autostart(auto.get_active())
             except Exception, e:
@@ -2169,8 +2051,7 @@ class vmmDetails(vmmGObjectUI):
             kwargs["io"] = uiutil.get_list_selection(self.widget("disk-io"))
 
         if self.edited(EDIT_DISK_FORMAT):
-            kwargs["driver_type"] = uiutil.get_list_selection(
-                self.widget("disk-format"))
+            kwargs["driver_type"] = self.widget("disk-format").get_text()
 
         if self.edited(EDIT_DISK_SERIAL):
             kwargs["serial"] = self.get_text("disk-serial")
@@ -2179,26 +2060,9 @@ class vmmDetails(vmmGObjectUI):
             sgio = uiutil.get_list_selection(self.widget("disk-sgio"))
             kwargs["sgio"] = sgio
 
-        if self.edited(EDIT_DISK_IOTUNE):
-            kwargs["iotune_rbs"] = int(
-                self.widget("disk-iotune-rbs").get_value() * 1024)
-            kwargs["iotune_ris"] = int(
-                self.widget("disk-iotune-ris").get_value())
-            kwargs["iotune_tbs"] = int(
-                self.widget("disk-iotune-tbs").get_value() * 1024)
-            kwargs["iotune_tis"] = int(
-                self.widget("disk-iotune-tis").get_value())
-            kwargs["iotune_wbs"] = int(
-                self.widget("disk-iotune-wbs").get_value() * 1024)
-            kwargs["iotune_wis"] = int(
-                self.widget("disk-iotune-wis").get_value())
-
         if self.edited(EDIT_DISK_BUS):
             bus = uiutil.get_list_selection(self.widget("disk-bus"))
             addr = None
-            if bus == "spapr-vscsi":
-                bus = "scsi"
-                addr = "spapr-vio"
 
             kwargs["bus"] = bus
             kwargs["addrstr"] = addr
@@ -2457,7 +2321,7 @@ class vmmDetails(vmmGObjectUI):
             self.widget("overview-firmware-label").set_text(firmware)
 
         # Machine settings
-        machtype = self.vm.get_machtype()
+        machtype = self.vm.get_machtype() or _("Unknown")
         if self.widget("machine-type").is_visible():
             uiutil.set_list_selection(
                 self.widget("machine-type"), machtype)
@@ -2474,7 +2338,7 @@ class vmmDetails(vmmGObjectUI):
 
         # User namespace idmap setting
         is_container = self.vm.is_container()
-        self.widget("config-idmap-expander").set_visible(is_container)
+        self.widget("idmap-expander").set_visible(is_container)
 
         self.widget("uid-target").set_text('1000')
         self.widget("uid-count").set_text('10')
@@ -2484,7 +2348,7 @@ class vmmDetails(vmmGObjectUI):
         IdMap = self.vm.get_idmap()
         show_config = IdMap.uid_start is not None
 
-        self.widget("config-idmap-checkbutton").set_active(show_config)
+        self.widget("idmap-checkbutton").set_active(show_config)
         self.widget("idmap-spin-grid").set_sensitive(show_config)
         if show_config:
             Name = ["uid-target", "uid-count", "gid-target", "gid-count"]
@@ -2537,14 +2401,17 @@ class vmmDetails(vmmGObjectUI):
                 apps_model.append([name, version, summary])
 
     def refresh_stats_page(self):
+        def _multi_color(text1, text2):
+            return ('<span color="#82003B">%s</span> '
+                    '<span color="#295C45">%s</span>' % (text1, text2))
         def _dsk_rx_tx_text(rx, tx, unit):
-            return ('<span color="#82003B">%(rx)d %(unit)s read</span> '
-                    '<span color="#295C45">%(tx)d %(unit)s write</span>' %
-                    {"rx": rx, "tx": tx, "unit": unit})
+            opts = {"received": rx, "transfered": tx, "units": unit}
+            return _multi_color(_("%(received)d %(units)s read") % opts,
+                                _("%(transfered)d %(units)s write") % opts)
         def _net_rx_tx_text(rx, tx, unit):
-            return ('<span color="#82003B">%(rx)d %(unit)s in</span> '
-                    '<span color="#295C45">%(tx)d %(unit)s out</span>' %
-                    {"rx": rx, "tx": tx, "unit": unit})
+            opts = {"received": rx, "transfered": tx, "units": unit}
+            return _multi_color(_("%(received)d %(units)s in") % opts,
+                                _("%(transfered)d %(units)s out") % opts)
 
         cpu_txt = _("Disabled")
         mem_txt = _("Disabled")
@@ -2557,8 +2424,10 @@ class vmmDetails(vmmGObjectUI):
         if self.config.get_stats_enable_memory_poll():
             cur_vm_memory = self.vm.stats_memory()
             vm_memory = self.vm.maximum_memory()
-            mem_txt = "%s of %s" % (util.pretty_mem(cur_vm_memory),
-                                    util.pretty_mem(vm_memory))
+            mem_txt = _("%(current-memory)s of %(total-memory)s") % {
+                "current-memory": util.pretty_mem(cur_vm_memory),
+                "total-memory": util.pretty_mem(vm_memory)
+            }
 
         if self.config.get_stats_enable_disk_poll():
             dsk_txt = _dsk_rx_tx_text(self.vm.disk_read_rate(),
@@ -2585,29 +2454,11 @@ class vmmDetails(vmmGObjectUI):
         self.network_traffic_graph.set_property("data_array", n1 + n2)
 
     def refresh_config_cpu(self):
-        # This bit needs to come first, since CPU values can be affected
-        # by whether topology is enabled
+        # Set topology first, because it impacts maxvcpus values
         cpu = self.vm.get_cpu_config()
         show_top = bool(cpu.sockets or cpu.cores or cpu.threads)
         self.widget("cpu-topology-enable").set_active(show_top)
 
-        conn = self.vm.conn
-        host_active_count = conn.host_active_processor_count()
-        maxvcpus = self.vm.vcpu_max_count()
-        curvcpus = self.vm.vcpu_count()
-
-        curadj = self.widget("config-vcpus")
-        maxadj = self.widget("config-maxvcpus")
-        curadj.set_value(int(curvcpus))
-        maxadj.set_value(int(maxvcpus))
-
-        self.widget("state-host-cpus").set_text(str(host_active_count))
-
-        # Warn about overcommit
-        warn = bool(self.config_get_vcpus() > host_active_count)
-        self.widget("config-vcpus-warn-box").set_visible(warn)
-
-        # CPU model config
         sockets = cpu.sockets or 1
         cores = cpu.cores or 1
         threads = cpu.threads or 1
@@ -2618,6 +2469,22 @@ class vmmDetails(vmmGObjectUI):
         if show_top:
             self.widget("cpu-topology-expander").set_expanded(True)
 
+        host_active_count = self.vm.conn.host_active_processor_count()
+        maxvcpus = self.vm.vcpu_max_count()
+        curvcpus = self.vm.vcpu_count()
+
+        self.widget("cpu-vcpus").set_value(int(curvcpus))
+        self.widget("cpu-maxvcpus").set_value(int(maxvcpus))
+        self.widget("state-host-cpus").set_text(str(host_active_count))
+
+        # Trigger this again to make sure maxvcpus is correct
+        self.config_cpu_topology_changed()
+
+        # Warn about overcommit
+        warn = bool(self.config_get_vcpus() > host_active_count)
+        self.widget("cpu-vcpus-warn-box").set_visible(warn)
+
+        # CPU model config
         model = cpu.model or None
         if not model:
             if cpu.mode == "host-model" or cpu.mode == "host-passthrough":
@@ -2633,7 +2500,7 @@ class vmmDetails(vmmGObjectUI):
         # Warn about hyper-threading setting
         cpu_model = self.get_config_cpu_model()
         warn_ht = _warn_cpu_thread_topo(threads, cpu_model)
-        self.widget("config-topology-warn-box").set_visible(warn_ht)
+        self.widget("cpu-topology-warn-box").set_visible(warn_ht)
 
         is_host = (cpu.mode == "host-model")
         self.widget("cpu-copy-host").set_active(bool(is_host))
@@ -2647,12 +2514,12 @@ class vmmDetails(vmmGObjectUI):
 
         host_mem_widget.set_text("%d MiB" % (int(round(host_mem))))
 
-        curmem = self.widget("config-memory")
-        maxmem = self.widget("config-maxmem")
+        curmem = self.widget("mem-memory")
+        maxmem = self.widget("mem-maxmem")
         curmem.set_value(int(round(vm_cur_mem)))
         maxmem.set_value(int(round(vm_max_mem)))
 
-        if not self.widget("config-memory").get_sensitive():
+        if not self.widget("mem-memory").get_sensitive():
             ignore, upper = maxmem.get_range()
             maxmem.set_range(curmem.get_value(), upper)
 
@@ -2672,50 +2539,22 @@ class vmmDetails(vmmGObjectUI):
             return
 
         path = disk.path
-        source_pool = disk.source_pool
         devtype = disk.device
         ro = disk.read_only
         share = disk.shareable
         bus = disk.bus
         removable = disk.removable
-        addr = disk.address.type
         cache = disk.driver_cache
         io = disk.driver_io
         driver_type = disk.driver_type or ""
         serial = disk.serial
 
-        iotune_rbs = (disk.iotune_rbs or 0) / 1024
-        iotune_ris = (disk.iotune_ris or 0)
-        iotune_tbs = (disk.iotune_tbs or 0) / 1024
-        iotune_tis = (disk.iotune_tis or 0)
-        iotune_wbs = (disk.iotune_wbs or 0) / 1024
-        iotune_wis = (disk.iotune_wis or 0)
-
-        show_format = (not self.is_customize_dialog or
-                       virtinst.VirtualDisk.path_definitely_exists(
-                            disk.conn, disk.path))
-
-        size = _("Unknown")
-        if not path:
-            size = "-"
-        else:
-            vol = None
-            if source_pool:
-                pool = self.conn.get_pool(source_pool)
-                if pool is not None:
-                    vol = pool.get_volume(path)
-            else:
-                vol = self.conn.get_vol_by_path(path)
-
+        size = "-"
+        if path:
+            size = _("Unknown")
+            vol = self.conn.get_vol_by_path(path)
             if vol:
                 size = vol.get_pretty_capacity()
-            elif not self.conn.is_remote():
-                ignore, val = virtinst.VirtualDisk.stat_local_path(path)
-                if val != 0:
-                    if val > (1024 * 1024 * 1024):
-                        size = "%2.2f GiB" % (val / (1024.0 * 1024.0 * 1024.0))
-                    else:
-                        size = "%2.2f MiB" % (val / (1024.0 * 1024.0))
 
         is_cdrom = (devtype == virtinst.VirtualDisk.DEVICE_CDROM)
         is_floppy = (devtype == virtinst.VirtualDisk.DEVICE_FLOPPY)
@@ -2728,10 +2567,7 @@ class vmmDetails(vmmGObjectUI):
         else:
             can_set_removable = True
 
-        if addr == "spapr-vio":
-            bus = "spapr-vscsi"
-
-        pretty_name = _label_for_device(disk, self.vm)
+        pretty_name = _label_for_device(disk)
 
         self.widget("disk-source-path").set_text(path or "-")
         self.widget("disk-target-type").set_text(pretty_name)
@@ -2753,26 +2589,15 @@ class vmmDetails(vmmGObjectUI):
         uiutil.set_list_selection(self.widget("disk-cache"), cache)
         uiutil.set_list_selection(self.widget("disk-io"), io)
 
-        self.widget("disk-format").set_sensitive(show_format)
-        self.widget("disk-format").get_child().set_text(driver_type)
+        self.widget("disk-format").set_text(driver_type)
         self.widget("disk-format-warn").hide()
 
-        # skip virtio-scsi since we don't handle it correctly yet, need
-        # to duplicate the addhw logic
         vmmAddHardware.populate_disk_bus_combo(self.vm, devtype,
-            self.widget("disk-bus").get_model(),
-            do_virtio_scsi=False)
+            self.widget("disk-bus").get_model())
         uiutil.set_list_selection(self.widget("disk-bus"), bus)
         self.widget("disk-serial").set_text(serial or "")
 
-        self.widget("disk-iotune-rbs").set_value(iotune_rbs)
-        self.widget("disk-iotune-ris").set_value(iotune_ris)
-        self.widget("disk-iotune-tbs").set_value(iotune_tbs)
-        self.widget("disk-iotune-tis").set_value(iotune_tis)
-        self.widget("disk-iotune-wbs").set_value(iotune_wbs)
-        self.widget("disk-iotune-wis").set_value(iotune_wis)
-
-        button = self.widget("config-cdrom-connect")
+        button = self.widget("disk-cdrom-connect")
         if is_cdrom or is_floppy:
             if not path:
                 # source device not connected
@@ -2858,7 +2683,7 @@ class vmmDetails(vmmGObjectUI):
         if rd.type == 'tcp':
             address = _("%s:%s") % (rd.host, rd.service)
 
-        self.widget("redir-title").set_markup(_label_for_device(rd, self.vm))
+        self.widget("redir-title").set_markup(_label_for_device(rd))
         self.widget("redir-type").set_text(rd.pretty_type(rd.type))
 
         self.widget("redir-address").set_text(address or "")
@@ -3070,7 +2895,10 @@ class vmmDetails(vmmGObjectUI):
             self.widget("video-model"))
 
         model = vid.model
-        ram = vid.vram
+        if model == "qxl" and vid.vgamem:
+            ram = vid.vgamem
+        else:
+            ram = vid.vram
         heads = vid.heads
         try:
             ramlabel = ram and "%d MiB" % (int(ram) / 1024) or "-"
@@ -3128,7 +2956,7 @@ class vmmDetails(vmmGObjectUI):
             autoval = None
 
         # Autostart
-        autostart_chk = self.widget("config-autostart")
+        autostart_chk = self.widget("boot-autostart")
         enable_autostart = (autoval is not None)
         autostart_chk.set_sensitive(enable_autostart)
         autostart_chk.set_active(enable_autostart and autoval or False)
@@ -3205,11 +3033,11 @@ class vmmDetails(vmmGObjectUI):
             if self.config.support_inspection:
                 add_hw_list_option(_("OS information"),
                     HW_LIST_TYPE_INSPECTION, "computer")
-            add_hw_list_option("Performance", HW_LIST_TYPE_STATS,
+            add_hw_list_option(_("Performance"), HW_LIST_TYPE_STATS,
                                "utilities-system-monitor")
-        add_hw_list_option("Processor", HW_LIST_TYPE_CPU, "device_cpu")
-        add_hw_list_option("Memory", HW_LIST_TYPE_MEMORY, "device_mem")
-        add_hw_list_option("Boot Options", HW_LIST_TYPE_BOOT, "system-run")
+        add_hw_list_option(_("CPUs"), HW_LIST_TYPE_CPU, "device_cpu")
+        add_hw_list_option(_("Memory"), HW_LIST_TYPE_MEMORY, "device_mem")
+        add_hw_list_option(_("Boot Options"), HW_LIST_TYPE_BOOT, "system-run")
 
         self.repopulate_hw_list()
 
@@ -3241,7 +3069,7 @@ class vmmDetails(vmmGObjectUI):
             See if passed hw is already in list, and if so, update info.
             If not in list, add it!
             """
-            label = _label_for_device(dev, self.vm)
+            label = _label_for_device(dev)
             icon = _icon_for_device(dev)
 
             currentDevices.append(dev)
@@ -3326,7 +3154,7 @@ class vmmDetails(vmmGObjectUI):
         ret = []
         for dev in self.vm.get_bootable_devices():
             icon = _icon_for_device(dev)
-            label = _label_for_device(dev, self.vm)
+            label = _label_for_device(dev)
 
             ret.append([dev.vmmidstr, label, icon, False, True])
 
@@ -3335,7 +3163,7 @@ class vmmDetails(vmmGObjectUI):
         return ret
 
     def repopulate_boot_order(self):
-        boot_list = self.widget("config-boot-list")
+        boot_list = self.widget("boot-list")
         boot_model = boot_list.get_model()
         boot_model.clear()
         boot_rows = self._make_boot_rows()

@@ -23,6 +23,7 @@ import libvirt
 
 import virtinst
 import virtinst.cli
+import virtinst.uri
 
 # DON'T EDIT THIS. Use 'setup.py test --regenerate-output'
 REGENERATE_OUTPUT = False
@@ -42,10 +43,13 @@ _uri_kvm_domcaps = (_uri_qemu + _domcapsprefix + "kvm-x86_64-domcaps.xml")
 uri_kvm_nodomcaps = (_uri_qemu + _capsprefix + "kvm-x86_64.xml")
 uri_kvm_rhel = (_uri_kvm_domcaps + _capsprefix + "kvm-x86_64-rhel7.xml")
 uri_kvm = (_uri_kvm_domcaps + _capsprefix + "kvm-x86_64.xml")
+uri_kvm_session = uri_kvm + ",session"
 
 uri_kvm_armv7l = (_uri_kvm_domcaps + _capsprefix + "kvm-armv7l.xml")
 uri_kvm_aarch64 = (_uri_kvm_domcaps + _capsprefix + "kvm-aarch64.xml")
 uri_kvm_ppc64le = (_uri_kvm_domcaps + _capsprefix + "kvm-ppc64le.xml")
+uri_kvm_s390x = (_uri_kvm_domcaps + _capsprefix + "kvm-s390x.xml")
+uri_kvm_s390x_KVMIBM = (_uri_kvm_domcaps + _capsprefix + "kvm-s390x-KVMIBM.xml")
 
 uri_xen = uri_test + _capsprefix + "xen-rhel5.4.xml,xen"
 uri_lxc = uri_test + _capsprefix + "lxc.xml,lxc"
@@ -142,24 +146,8 @@ def _libvirt_callback(ignore, err):
 libvirt.registerErrorHandler(f=_libvirt_callback, ctx=None)
 
 
-def sanitize_xml_for_define(xml):
-    # Libvirt throws errors since we are defining domain
-    # type='xen', when test driver can only handle type='test'
-    # Sanitize the XML so we can define
-    if not xml:
-        return xml
-
-    xml = xml.replace(">linux<", ">xen<")
-    for t in ["xen", "qemu", "kvm"]:
-        xml = xml.replace("<domain type=\"%s\">" % t,
-                          "<domain type=\"test\">")
-        xml = xml.replace("<domain type='%s'>" % t,
-                          "<domain type='test'>")
-    return xml
-
-
 def test_create(testconn, xml, define_func="defineXML"):
-    xml = sanitize_xml_for_define(xml)
+    xml = virtinst.uri.sanitize_xml_for_test_define(xml)
 
     try:
         func = getattr(testconn, define_func)

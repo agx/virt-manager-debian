@@ -58,7 +58,7 @@ class _NetworkIP(XMLBuilder):
 
     def add_range(self):
         r = _NetworkDHCPRange(self.conn)
-        self._add_child(r)
+        self.add_child(r)
         return r
 
 
@@ -95,12 +95,12 @@ class _NetworkBandwidth(XMLBuilder):
     outbound_burst = XMLProperty("./outbound/@burst")
 
     def is_inbound(self):
-        return bool(self.inbound_average or self.inbound_peak
-                    or self.inbound_burst or self.inbound_floor)
+        return bool(self.inbound_average or self.inbound_peak or
+                    self.inbound_burst or self.inbound_floor)
 
     def is_outbound(self):
-        return bool(self.outbound_average or self.outbound_peak
-                    or self.outbound_burst)
+        return bool(self.outbound_average or self.outbound_peak or
+                    self.outbound_burst)
 
     def pretty_desc(self, inbound=True, outbound=True):
         items_in = [(self.inbound_average, _("Average"), "KiB/s"),
@@ -238,11 +238,11 @@ class Network(XMLBuilder):
 
     def add_ip(self):
         ip = _NetworkIP(self.conn)
-        self._add_child(ip)
+        self.add_child(ip)
         return ip
     def add_route(self):
         route = _NetworkRoute(self.conn)
-        self._add_child(route)
+        self.add_child(route)
         return route
 
 

@@ -23,11 +23,9 @@ import os
 import random
 import re
 import stat
+import sys
 
 import libvirt
-
-
-_host_blktap_capable = None
 
 
 def listify(l):
@@ -287,29 +285,8 @@ def default_network(conn):
     return ["network", "default"]
 
 
-def is_blktap_capable(conn):
-    # Ideally we would get this from libvirt capabilities XML
-    if conn.is_remote():
-        return False
-
-    global _host_blktap_capable
-    if _host_blktap_capable is not None:
-        return _host_blktap_capable
-
-    if "VIRTINST_TEST_SUITE" not in os.environ:
-        lines = file("/proc/modules").readlines()
-        for line in lines:
-            if line.startswith("blktap ") or line.startswith("xenblktap "):
-                _host_blktap_capable = True
-                break
-
-    if not _host_blktap_capable:
-        _host_blktap_capable = False
-    return _host_blktap_capable
-
-
 def randomUUID(conn):
-    if hasattr(conn, "_virtinst__fake_conn_predictable"):
+    if conn.fake_conn_predictable():
         # Testing hack
         return "00000000-1111-2222-3333-444444444444"
 
@@ -462,3 +439,16 @@ def register_libvirt_error_handler():
         ignore = userdata
         ignore = err
     libvirt.registerErrorHandler(f=libvirt_callback, ctx=None)
+
+
+def ensure_meter(meter):
+    if meter:
+        return meter
+    return make_meter(quiet=True)
+
+
+def make_meter(quiet):
+    from virtinst import progress
+    if quiet:
+        return progress.BaseMeter()
+    return progress.TextMeter(fo=sys.stdout)

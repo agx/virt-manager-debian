@@ -7,13 +7,16 @@ import os
 import sys
 import unittest
 
-from distutils.core import Command, setup
-from distutils.command.build import build
-from distutils.command.install import install
-from distutils.command.install_egg_info import install_egg_info
-from distutils.command.sdist import sdist
-from distutils.sysconfig import get_config_var
-sysprefix = get_config_var("prefix")
+import distutils
+import distutils.command.build
+import distutils.command.install
+import distutils.command.install_data
+import distutils.command.install_egg_info
+import distutils.command.sdist
+import distutils.dist
+import distutils.log
+import distutils.sysconfig
+sysprefix = distutils.sysconfig.get_config_var("prefix")
 
 from virtcli import CLIConfig
 
@@ -44,7 +47,7 @@ def _generate_potfiles_in():
     return potfiles
 
 
-class my_build_i18n(build):
+class my_build_i18n(distutils.command.build.build):
     """
     Add our desktop files to the list, saves us having to track setup.cfg
     """
@@ -135,7 +138,7 @@ class my_build_i18n(build):
                 self.distribution.data_files.append((target, files_merged))
 
 
-class my_build(build):
+class my_build(distutils.command.build.build):
     """
     Create simple shell wrappers for /usr/bin/ tools to point to /usr/share
     Compile .pod file
@@ -205,10 +208,10 @@ class my_build(build):
         self._build_icons()
 
         self.run_command("build_i18n")
-        build.run(self)
+        distutils.command.build.build.run(self)
 
 
-class my_egg_info(install_egg_info):
+class my_egg_info(distutils.command.install_egg_info.install_egg_info):
     """
     Disable egg_info installation, seems pointless for a non-library
     """
@@ -216,30 +219,46 @@ class my_egg_info(install_egg_info):
         pass
 
 
-class my_install(install):
+class my_install(distutils.command.install.install):
     """
     Error if we weren't 'configure'd with the correct install prefix
     """
     def finalize_options(self):
         if self.prefix is None:
             if CLIConfig.prefix != sysprefix:
-                print "Using prefix from 'configure': %s" % CLIConfig.prefix
+                print "Using configured prefix=%s instead of sysprefix=%s" % (
+                    CLIConfig.prefix, sysprefix)
                 self.prefix = CLIConfig.prefix
+            else:
+                print "Using sysprefix=%s" % sysprefix
+                self.prefix = sysprefix
+
         elif self.prefix != CLIConfig.prefix:
             print("Install prefix=%s doesn't match configure prefix=%s\n"
                   "Pass matching --prefix to 'setup.py configure'" %
                   (self.prefix, CLIConfig.prefix))
             sys.exit(1)
 
-        if self.prefix != "/usr":
-            print ("WARNING: GSettings may not find your schema if it's\n"
-                   "not in /usr/share. You may need to manually play with\n"
-                   "GSETTINGS_SCHEMA_DIR and glib-compile-schemas.")
-
-        install.finalize_options(self)
+        distutils.command.install.install.finalize_options(self)
 
 
-class my_sdist(sdist):
+class my_install_data(distutils.command.install_data.install_data):
+    def run(self):
+        distutils.command.install_data.install_data.run(self)
+
+        if not self.distribution.no_update_icon_cache:
+            distutils.log.info("running gtk-update-icon-cache")
+            icon_path = os.path.join(self.install_dir, "share/icons/hicolor")
+            self.spawn(["gtk-update-icon-cache", "-q", "-t", icon_path])
+
+        if not self.distribution.no_compile_schemas:
+            distutils.log.info("compiling gsettings schemas")
+            gschema_install = os.path.join(self.install_dir,
+                "share/glib-2.0/schemas")
+            self.spawn(["glib-compile-schemas", gschema_install])
+
+
+class my_sdist(distutils.command.sdist.sdist):
     description = "Update virt-manager.spec; build sdist-tarball."
 
     def run(self):
@@ -250,14 +269,14 @@ class my_sdist(sdist):
         f1.close()
         f2.close()
 
-        sdist.run(self)
+        distutils.command.sdist.sdist.run(self)
 
 
 ###################
 # Custom commands #
 ###################
 
-class my_rpm(Command):
+class my_rpm(distutils.core.Command):
     user_options = []
     description = "Build src and noarch rpms."
 
@@ -275,7 +294,7 @@ class my_rpm(Command):
                   CLIConfig.version)
 
 
-class configure(Command):
+class configure(distutils.core.Command):
     user_options = [
         ("prefix=", None, "installation prefix"),
         ("qemu-user=", None,
@@ -342,13 +361,15 @@ class configure(Command):
         print "Generated %s" % CLIConfig.cfgpath
 
 
-class TestBaseCommand(Command):
+class TestBaseCommand(distutils.core.Command):
     user_options = [
         ('debug', 'd', 'Show debug output'),
         ('coverage', 'c', 'Show coverage report'),
         ('regenerate-output', None, 'Regenerate test output'),
         ("only=", None,
          "Run only testcases whose name contains the passed string"),
+        ("testfile=", None, "Specific test file to run (e.g "
+                            "validation, storage, ...)"),
     ]
 
     def initialize_options(self):
@@ -358,10 +379,30 @@ class TestBaseCommand(Command):
         self.only = None
         self._testfiles = []
         self._dir = os.getcwd()
+        self.testfile = None
 
     def finalize_options(self):
         if self.debug and "DEBUG_TESTS" not in os.environ:
             os.environ["DEBUG_TESTS"] = "1"
+
+    def _find_tests_in_dir(self, dirname, excludes):
+        testfiles = []
+        for t in sorted(glob.glob(os.path.join(self._dir, dirname, '*.py'))):
+            base = os.path.basename(t)
+            if base in excludes + ["__init__.py"]:
+                continue
+
+            if self.testfile:
+                check = os.path.basename(self.testfile)
+                if base != check and base != (check + ".py"):
+                    continue
+
+            testfiles.append('.'.join(
+                dirname.split("/") + [os.path.splitext(base)[0]]))
+
+        if not testfiles:
+            raise RuntimeError("--testfile didn't catch anything")
+        return testfiles
 
     def run(self):
         try:
@@ -372,7 +413,9 @@ class TestBaseCommand(Command):
             cov = None
 
         if use_cov:
-            omit = ["/usr/*", "/*/tests/*"]
+            # The latter is required to not give errors on f23, probably
+            # a temporary bug.
+            omit = ["/usr/*", "/*/tests/*", "/builddir/*"]
             cov = coverage.coverage(omit=omit)
             cov.erase()
             cov.start()
@@ -427,14 +470,11 @@ class TestBaseCommand(Command):
 class TestCommand(TestBaseCommand):
     description = "Runs a quick unit test suite"
     user_options = TestBaseCommand.user_options + [
-        ("testfile=", None, "Specific test file to run (e.g "
-                            "validation, storage, ...)"),
         ("skipcli", None, "Skip CLI tests"),
     ]
 
     def initialize_options(self):
         TestBaseCommand.initialize_options(self)
-        self.testfile = None
         self.skipcli = None
 
     def finalize_options(self):
@@ -444,22 +484,10 @@ class TestCommand(TestBaseCommand):
         '''
         Finds all the tests modules in tests/, and runs them.
         '''
-        testfiles = []
-        for t in sorted(glob.glob(os.path.join(self._dir, 'tests', '*.py'))):
-            if (t.endswith("__init__.py") or
-                t.endswith("test_urls.py") or
-                t.endswith("test_inject.py")):
-                continue
-
-            base = os.path.basename(t)
-            if self.testfile:
-                check = os.path.basename(self.testfile)
-                if base != check and base != (check + ".py"):
-                    continue
-            if self.skipcli and base.count("clitest"):
-                continue
-
-            testfiles.append('.'.join(['tests', os.path.splitext(base)[0]]))
+        excludes = ["test_urls.py", "test_inject.py"]
+        if self.skipcli:
+            excludes += ["clitest.py"]
+        testfiles = self._find_tests_in_dir("tests", excludes)
 
         # Put clitest at the end, since it takes the longest
         for f in testfiles[:]:
@@ -474,10 +502,15 @@ class TestCommand(TestBaseCommand):
                 if not self.testfile and not self.skipcli:
                     testfiles.append(f)
 
-        if not testfiles:
-            raise RuntimeError("--testfile didn't catch anything")
-
         self._testfiles = testfiles
+        TestBaseCommand.run(self)
+
+
+class TestUI(TestBaseCommand):
+    description = "Run UI dogtails tests"
+
+    def run(self):
+        self._testfiles = self._find_tests_in_dir("tests/uitests", [])
         TestBaseCommand.run(self)
 
 
@@ -537,7 +570,7 @@ class TestInitrdInject(TestBaseCommand):
         TestBaseCommand.run(self)
 
 
-class CheckPylint(Command):
+class CheckPylint(distutils.core.Command):
     user_options = []
     description = "Check code using pylint and pep8"
 
@@ -553,19 +586,38 @@ class CheckPylint(Command):
                  "tests"]
 
         output_format = sys.stdout.isatty() and "colorized" or "text"
-
-        cmd = "pylint "
-        cmd += "--output-format=%s " % output_format
-        cmd += " ".join(files)
-        os.system(cmd + " --rcfile tests/pylint.cfg")
+        exclude = ["virtinst/progress.py"]
 
         print "running pep8"
         cmd = "pep8 "
+        cmd += "--config tests/pep8.cfg "
+        cmd += "--exclude %s " % ",".join(exclude)
         cmd += " ".join(files)
-        os.system(cmd + " --config tests/pep8.cfg")
+        os.system(cmd)
+
+        print "running pylint"
+        cmd = "pylint "
+        cmd += "--rcfile tests/pylint.cfg "
+        cmd += "--output-format=%s " % output_format
+        cmd += "--ignore %s " % ",".join(
+            [os.path.basename(p) for p in exclude])
+        cmd += " ".join(files)
+        os.system(cmd)
 
 
-setup(
+class VMMDistribution(distutils.dist.Distribution):
+    global_options = distutils.dist.Distribution.global_options + [
+        ("no-update-icon-cache", None, "Don't run gtk-update-icon-cache"),
+        ("no-compile-schemas", None, "Don't compile gsettings schemas"),
+    ]
+
+    def __init__(self, *args, **kwargs):
+        self.no_update_icon_cache = False
+        self.no_compile_schemas = False
+        distutils.dist.Distribution.__init__(self, *args, **kwargs)
+
+
+distutils.core.setup(
     name="virt-manager",
     version=CLIConfig.version,
     author="Cole Robinson",
@@ -617,6 +669,7 @@ setup(
 
         'sdist': my_sdist,
         'install': my_install,
+        'install_data': my_install_data,
         'install_egg_info': my_egg_info,
 
         'configure': configure,
@@ -624,7 +677,10 @@ setup(
         'pylint': CheckPylint,
         'rpm': my_rpm,
         'test': TestCommand,
+        'test_ui': TestUI,
         'test_urls' : TestURLFetch,
         'test_initrd_inject' : TestInitrdInject,
-    }
+    },
+
+    distclass=VMMDistribution,
 )

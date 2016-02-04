@@ -23,7 +23,6 @@ import time
 import logging
 
 import libvirt
-import urlgrabber
 
 from .xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
 from . import util
@@ -81,7 +80,7 @@ class _StorageObject(XMLBuilder):
 def _get_default_pool_path(conn):
     path = "/var/lib/libvirt/images"
     if conn.is_session_uri():
-        path = os.path.expanduser("~/.local/libvirt/images")
+        path = os.path.expanduser("~/.local/share/libvirt/images")
     return path
 
 
@@ -209,10 +208,12 @@ class StoragePool(_StorageObject):
         try:
             pool = conn.storagePoolLookupByName(name)
         except libvirt.libvirtError:
-            pass
+            # Try default pool path when "default" name fails
+            pool = StoragePool.lookup_pool_by_path(conn, path)
 
         if pool:
-            return
+            # This is a libvirt pool object so create a StoragePool from it
+            return StoragePool(conn, parsexml=pool.XMLDesc(0))
 
         try:
             logging.debug("Attempting to build default pool with target '%s'",
@@ -409,14 +410,14 @@ class StoragePool(_StorageObject):
                               default_cb=_get_default_target_path)
 
     def add_host_obj(self, obj):
-        self._add_child(obj)
+        self.add_child(obj)
     def add_host(self, name, port=None):
         obj = _Host(self.conn)
         obj.name = name
         obj.port = port
-        self._add_child(obj)
+        self.add_child(obj)
     def remove_host(self, obj):
-        self._remove_child(obj)
+        self.remove_child(obj)
     hosts = XMLChildProperty(_Host, relative_xpath="./source")
 
 
@@ -496,8 +497,7 @@ class StoragePool(_StorageObject):
         logging.debug("Creating storage pool '%s' with xml:\n%s",
                       self.name, xml)
 
-        if not meter:
-            meter = urlgrabber.progress.BaseMeter()
+        meter = util.ensure_meter(meter)
 
         try:
             pool = self.conn.storagePoolDefineXML(xml, 0)
@@ -540,7 +540,7 @@ class StorageVolume(_StorageObject):
     """
     Base class for building and installing libvirt storage volume xml
     """
-    ALL_FORMATS = ["raw", "bochs", "cloop", "cow", "dmg", "iso", "qcow",
+    ALL_FORMATS = ["raw", "bochs", "cloop", "dmg", "iso", "qcow",
                    "qcow2", "qed", "vmdk", "vpc", "fat", "vhd", "vdi"]
 
     @staticmethod
@@ -741,7 +741,7 @@ class StorageVolume(_StorageObject):
 
     def list_create_formats(self):
         if self._supports_format():
-            return ["raw", "cow", "qcow", "qcow2", "qed", "vmdk", "vpc", "vdi"]
+            return ["raw", "qcow", "qcow2", "qed", "vmdk", "vpc", "vdi"]
         return None
 
 
@@ -769,8 +769,7 @@ class StorageVolume(_StorageObject):
                              args=(meter,))
         t.setDaemon(True)
 
-        if not meter:
-            meter = urlgrabber.progress.BaseMeter()
+        meter = util.ensure_meter(meter)
 
         cloneflags = 0
         createflags = 0
@@ -810,25 +809,22 @@ class StorageVolume(_StorageObject):
                                "'%s': '%s'" % (self.name, str(e)))
 
     def _progress_thread(self, meter):
-        lookup_attempts = 10
         vol = None
         if not meter:
             return
 
-        while lookup_attempts > 0:
+        while True:
             try:
                 if not vol:
                     vol = self.pool.storageVolLookupByName(self.name)
                 vol.info()
                 break
             except:
-                lookup_attempts -= 1
-                time.sleep(.2)
+                if time:
+                    # This 'if' check saves some noise from the test suite
+                    time.sleep(.2)
                 if self._install_finished:
                     break
-                else:
-                    continue
-            break
 
         if vol is None:
             logging.debug("Couldn't lookup storage volume in prog thread.")

@@ -42,7 +42,8 @@ from .storagepool import vmmStoragePool
 
 
 # debugging helper to turn off events
-_disable_libvirt_events = False
+# Can be enabled with virt-manager --test-no-events
+FORCE_DISABLE_EVENTS = False
 
 
 class _ObjectList(vmmGObject):
@@ -53,6 +54,7 @@ class _ObjectList(vmmGObject):
         vmmGObject.__init__(self)
 
         self._objects = []
+        self._blacklist = []
         self._lock = threading.Lock()
 
     def _cleanup(self):
@@ -68,6 +70,29 @@ class _ObjectList(vmmGObject):
         finally:
             self._lock.release()
 
+    def _blacklist_key(self, obj):
+        return str(obj.__class__) + obj.get_connkey()
+
+    def add_blacklist(self, obj):
+        """
+        Add an object to the blacklist. Basically a list of objects we
+        choose not to poll, because they threw an error at init time
+
+        :param obj: vmmLibvirtObject to blacklist
+        :returns: True if object added, False if object was already in list
+        """
+        if self.in_blacklist(obj):
+            return False
+        self._blacklist.append(self._blacklist_key(obj))
+        return True
+
+    def in_blacklist(self, obj):
+        """
+        :param obj: vmmLibvirtObject to check
+        :returns: True if object is in the blacklist
+        """
+        return self._blacklist_key(obj) in self._blacklist
+
     def remove(self, obj):
         """
         Remove an object from the list.
@@ -81,6 +106,10 @@ class _ObjectList(vmmGObject):
             # Identity check is sufficient here, since we should never be
             # asked to remove an object that wasn't at one point in the list.
             if obj not in self._objects:
+                if self.in_blacklist(obj):
+                    self._blacklist.remove(self._blacklist_key(obj))
+                    return True
+
                 return False
 
             self._objects.remove(obj)
@@ -140,6 +169,7 @@ class vmmConnection(vmmGObject):
     __gsignals__ = {
         "vm-added": (GObject.SignalFlags.RUN_FIRST, None, [str]),
         "vm-removed": (GObject.SignalFlags.RUN_FIRST, None, [str]),
+        "vm-renamed": (GObject.SignalFlags.RUN_FIRST, None, [str, str]),
         "net-added": (GObject.SignalFlags.RUN_FIRST, None, [str]),
         "net-removed": (GObject.SignalFlags.RUN_FIRST, None, [str]),
         "pool-added": (GObject.SignalFlags.RUN_FIRST, None, [str]),
@@ -218,6 +248,10 @@ class vmmConnection(vmmGObject):
                 label = "test (xen)"
             elif gtype == "hvm":
                 label = "test (hvm)"
+        elif domtype == "qemu":
+            label = "QEMU TCG"
+        elif domtype == "kvm":
+            label = "KVM"
 
         return label
 
@@ -355,8 +389,6 @@ class vmmConnection(vmmGObject):
         """
         if self._get_config_pretty_name():
             return self._get_config_pretty_name()
-        if self._backend.fake_name():
-            return self._backend.fake_name()
 
         pretty_map = {
             "esx"       : "ESX",
@@ -370,7 +402,7 @@ class vmmConnection(vmmGObject):
             "uml"       : "UML",
             "vbox"      : "VBox",
             "vmware"    : "VMWare",
-            "xen"       : "xen",
+            "xen"       : "Xen",
             "xenapi"    : "XenAPI",
         }
 
@@ -383,7 +415,7 @@ class vmmConnection(vmmGObject):
 
         if is_session:
             ret += " User session"
-        elif path != "/system":
+        elif (path and path != "/system" and os.path.basename(path)):
             # Used by test URIs to report what XML file they are using
             ret += " %s" % os.path.basename(path)
 
@@ -594,9 +626,11 @@ class vmmConnection(vmmGObject):
             try:
                 xmlobj = dev.get_xmlobj()
             except libvirt.libvirtError, e:
-                if e.get_error_code() == libvirt.VIR_ERR_NO_NODE_DEVICE:
-                    continue
-                raise
+                # Libvirt nodedev XML fetching can be busted
+                # https://bugzilla.redhat.com/show_bug.cgi?id=1225771
+                if e.get_error_code() != libvirt.VIR_ERR_NO_NODE_DEVICE:
+                    logging.debug("Error fetching nodedev XML", exc_info=True)
+                continue
 
             if devtype and xmlobj.device_type != devtype:
                 continue
@@ -648,10 +682,7 @@ class vmmConnection(vmmGObject):
     def define_interface(self, xml):
         return self._backend.interfaceDefineXML(xml, 0)
 
-    def rename_object(self, obj, origxml, newxml, oldname, newname):
-        ignore = oldname
-        ignore = newname
-
+    def rename_object(self, obj, origxml, newxml, oldconnkey):
         if obj.class_name() == "domain":
             define_cb = self.define_domain
         elif obj.class_name() == "pool":
@@ -688,6 +719,9 @@ class vmmConnection(vmmGObject):
             if newobj:
                 # Reinsert handle into new obj
                 obj.change_name_backend(newobj)
+
+        if newobj and obj.class_name() == "domain":
+            self.emit("vm-renamed", oldconnkey, obj.get_connkey())
 
 
     #########################
@@ -744,8 +778,8 @@ class vmmConnection(vmmGObject):
             return
 
         try:
-            if _disable_libvirt_events:
-                raise RuntimeError("_disable_libvirt_events = True")
+            if FORCE_DISABLE_EVENTS:
+                raise RuntimeError("FORCE_DISABLE_EVENTS = True")
 
             self._domain_cb_ids.append(
                 self.get_backend().domainEventRegisterAny(
@@ -781,8 +815,8 @@ class vmmConnection(vmmGObject):
             "device added")
 
         try:
-            if _disable_libvirt_events:
-                raise RuntimeError("_disable_libvirt_events = True")
+            if FORCE_DISABLE_EVENTS:
+                raise RuntimeError("FORCE_DISABLE_EVENTS = True")
 
             eventid = getattr(libvirt, "VIR_NETWORK_EVENT_ID_LIFECYCLE", 0)
             self._network_cb_ids.append(
@@ -835,6 +869,13 @@ class vmmConnection(vmmGObject):
 
     def _cleanup(self):
         self.close()
+
+        self._objects = None
+        self._backend.cb_fetch_all_guests = None
+        self._backend.cb_fetch_all_pools = None
+        self._backend.cb_fetch_all_nodedevs = None
+        self._backend.cb_fetch_all_vols = None
+        self._backend.cb_clear_cache = None
 
     def open(self):
         if not self.is_disconnected():
@@ -985,12 +1026,18 @@ class vmmConnection(vmmGObject):
                 self.emit("nodedev-removed", obj.get_connkey())
             obj.cleanup()
 
-    def _new_object_cb(self, obj):
+    def _new_object_cb(self, obj, initialize_failed):
         if not self._backend.is_open():
             return
 
         try:
             class_name = obj.class_name()
+
+            if initialize_failed:
+                logging.debug("Blacklisting %s=%s", class_name, obj.get_name())
+                if self._objects.add_blacklist(obj) is False:
+                    logging.debug("Object already blacklisted?")
+                return
 
             if not self._objects.add(obj):
                 logging.debug("New %s=%s requested, but it's already tracked.",
@@ -1069,6 +1116,7 @@ class vmmConnection(vmmGObject):
 
             gone_objects.extend(gone)
             preexisting_objects.extend([o for o in master if o not in new])
+            new = [n for n in new if not self._objects.in_blacklist(n)]
             return new
 
         new_vms = _process_objects(self._update_vms(pollvm))
@@ -1328,8 +1376,14 @@ class vmmConnection(vmmGObject):
         self.config.set_conn_autoconnect(self.get_uri(), val)
 
     def set_config_pretty_name(self, value):
-        if value != self._get_config_pretty_name():
-            self.config.set_perconn(self.get_uri(), "/pretty-name", value)
+        cfgname = self._get_config_pretty_name()
+        if value == cfgname:
+            return
+        if not cfgname and value == self.get_pretty_desc():
+            # Don't encode the default connection value into gconf right
+            # away, require the user to edit it first
+            return
+        self.config.set_perconn(self.get_uri(), "/pretty-name", value)
     def _get_config_pretty_name(self):
         return self.config.get_perconn(self.get_uri(), "/pretty-name")
     def _on_config_pretty_name_changed(self, *args, **kwargs):

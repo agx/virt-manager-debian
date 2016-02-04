@@ -32,17 +32,17 @@ from .sshtunnels import ConnectionInfo
 from .viewers import SpiceViewer, VNCViewer
 
 
+# console-pages IDs
+(_CONSOLE_PAGE_UNAVAILABLE,
+ _CONSOLE_PAGE_AUTHENTICATE,
+ _CONSOLE_PAGE_SERIAL,
+ _CONSOLE_PAGE_VIEWER) = range(4)
+
+
 class vmmConsolePages(vmmGObjectUI):
     """
     Handles all the complex UI handling dictated by the spice/vnc widgets
     """
-    # Console pages
-    (CONSOLE_PAGE_UNAVAILABLE,
-     CONSOLE_PAGE_AUTHENTICATE,
-     CONSOLE_PAGE_VIEWER,
-     CONSOLE_PAGE_OFFSET) = range(4)
-
-
     def __init__(self, vm, builder, topwin):
         vmmGObjectUI.__init__(self, None, None, builder=builder, topwin=topwin)
 
@@ -59,13 +59,13 @@ class vmmConsolePages(vmmGObjectUI):
 
         # Initialize display widget
         self._viewer = None
-        self._viewer_is_connected = False
 
         # Fullscreen toolbar
         self._send_key_button = None
         self._fs_toolbar = None
         self._fs_drawer = None
-        self._keycombo_menu = self._build_keycombo_menu(self._do_send_key)
+        self._keycombo_toolbar = self._build_keycombo_menu()
+        self._keycombo_menu = self._build_keycombo_menu()
         self._init_fs_toolbar()
 
         # Make viewer widget background always be black
@@ -73,15 +73,21 @@ class vmmConsolePages(vmmGObjectUI):
         self.widget("console-gfx-viewport").modify_bg(Gtk.StateType.NORMAL,
                                                       black)
 
-        self._serial_tabs = []
-        self._last_gfx_page = 0
+        self.widget("console-pages").set_show_tabs(False)
+        self.widget("serial-pages").set_show_tabs(False)
+
+        self._serial_consoles = []
         self._init_menus()
 
         # Signals are added by vmmDetails. Don't use connect_signals here
         # or it changes will be overwritten
 
-        self._refresh_can_fullscreen()
+        self.widget("console-gfx-scroll").connect("size-allocate",
+            self._scroll_size_allocate)
+
+        self._refresh_widget_states()
         self._refresh_scaling_from_settings()
+
         self.add_gsettings_handle(
             self.vm.on_console_scaling_changed(
                 self._refresh_scaling_from_settings))
@@ -89,13 +95,8 @@ class vmmConsolePages(vmmGObjectUI):
         self.add_gsettings_handle(
             self.vm.on_console_resizeguest_changed(
                 self._refresh_resizeguest_from_settings))
-
-        scroll = self.widget("console-gfx-scroll")
-        scroll.connect("size-allocate", self._scroll_size_allocate)
         self.add_gsettings_handle(
             self.config.on_console_accels_changed(self._refresh_enable_accel))
-
-        self._page_changed()
 
 
     def is_visible(self):
@@ -111,29 +112,29 @@ class vmmConsolePages(vmmGObjectUI):
             self._viewer.cleanup()
         self._viewer = None
 
-        self._keycombo_menu.destroy()
-        self._keycombo_menu = None
+        self._keycombo_toolbar.destroy()
+        self._keycombo_toolbar = None
         self._fs_drawer.destroy()
         self._fs_drawer = None
         self._fs_toolbar.destroy()
         self._fs_toolbar = None
 
-        for serial in self._serial_tabs:
+        for serial in self._serial_consoles:
             serial.cleanup()
-        self._serial_tabs = []
+        self._serial_consoles = []
 
 
     ##########################
     # Initialization helpers #
     ##########################
 
-    def _build_keycombo_menu(self, cb):
+    def _build_keycombo_menu(self):
         # Shared with vmmDetails
         menu = Gtk.Menu()
 
         def make_item(name, combo):
             item = Gtk.MenuItem.new_with_mnemonic(name)
-            item.connect("activate", cb, combo)
+            item.connect("activate", self._do_send_key, combo)
 
             menu.add(item)
 
@@ -176,7 +177,7 @@ class vmmConsolePages(vmmGObjectUI):
 
                 return x, y + height, True
 
-            self._keycombo_menu.popup(None, None, menu_location,
+            self._keycombo_toolbar.popup(None, None, menu_location,
                                      self._fs_toolbar, 0,
                                      Gtk.get_current_event_time())
 
@@ -209,13 +210,19 @@ class vmmConsolePages(vmmGObjectUI):
         smenu.connect("show", self._populate_serial_menu)
         self.widget("details-menu-view-serial-list").set_submenu(smenu)
 
+        # Keycombo menu (ctrl+alt+del etc.)
+        self.widget("details-menu-send-key").set_submenu(self._keycombo_menu)
+
 
     #################
     # Internal APIs #
     #################
 
     def _change_title(self, ignore1=None):
-        title = self.vm.get_name_or_title() + " " + _("Virtual Machine")
+        title = (_("%(vm-name)s on %(connection-name)s") % {
+            "vm-name": self.vm.get_name_or_title(),
+            "connection-name": self.vm.conn.get_pretty_desc(),
+        })
 
         if self._pointer_is_grabbed and self._viewer:
             keystr = self._viewer.console_get_grab_keys()
@@ -228,10 +235,10 @@ class vmmConsolePages(vmmGObjectUI):
     def _someone_has_focus(self):
         if (self._viewer and
             self._viewer.console_has_focus() and
-            self._viewer_is_connected):
+            self._viewer.console_is_open()):
             return True
 
-        for serial in self._serial_tabs:
+        for serial in self._serial_consoles:
             if (serial.terminal and
                 serial.terminal.get_property("has-focus")):
                 return True
@@ -428,14 +435,14 @@ class vmmConsolePages(vmmGObjectUI):
         fs = self.widget("control-fullscreen").get_active()
         scale_type = self.vm.get_console_scaling()
 
-        if (scale_type == self.config.CONSOLE_SCALE_NEVER
-            and curscale is True):
+        if (scale_type == self.config.CONSOLE_SCALE_NEVER and
+            curscale is True):
             self._viewer.console_set_scaling(False)
-        elif (scale_type == self.config.CONSOLE_SCALE_ALWAYS
-              and curscale is False):
+        elif (scale_type == self.config.CONSOLE_SCALE_ALWAYS and
+              curscale is False):
             self._viewer.console_set_scaling(True)
-        elif (scale_type == self.config.CONSOLE_SCALE_FULLSCREEN
-              and curscale != fs):
+        elif (scale_type == self.config.CONSOLE_SCALE_FULLSCREEN and
+              curscale != fs):
             self._viewer.console_set_scaling(fs)
 
         # Refresh viewer size
@@ -450,9 +457,9 @@ class vmmConsolePages(vmmGObjectUI):
         cpage = self.widget("console-pages").get_current_page()
         dpage = self.widget("details-pages").get_current_page()
 
-        allow_fullscreen = (dpage == DETAILS_PAGE_CONSOLE and
-                            cpage == self.CONSOLE_PAGE_VIEWER and
-                            self._viewer_is_connected)
+        allow_fullscreen = bool(dpage == DETAILS_PAGE_CONSOLE and
+            cpage == _CONSOLE_PAGE_VIEWER and
+            self._viewer and self._viewer.console_is_open())
 
         self.widget("control-fullscreen").set_sensitive(allow_fullscreen)
         self.widget("details-menu-view-fullscreen").set_sensitive(
@@ -501,29 +508,26 @@ class vmmConsolePages(vmmGObjectUI):
         self._viewer.cleanup()
         self._viewer = None
 
-        self._viewer_is_connected = False
-        self._refresh_can_fullscreen()
         self._leave_fullscreen()
 
-        for serial in self._serial_tabs:
+        for serial in self._serial_consoles:
             serial.close()
 
     def _update_vm_widget_states(self):
-        runable = self.vm.is_runable()
-        paused = self.vm.is_paused()
-        pages = self.widget("console-pages")
-        page = pages.get_current_page()
+        page = self.widget("console-pages").get_current_page()
 
-        self._send_key_button.set_sensitive(not (runable or paused))
-
-        if runable:
+        if self.vm.is_runable():
             self._show_vm_status_unavailable()
 
-        elif page in [self.CONSOLE_PAGE_UNAVAILABLE, self.CONSOLE_PAGE_VIEWER]:
+        elif (page == _CONSOLE_PAGE_UNAVAILABLE or
+              page == _CONSOLE_PAGE_VIEWER):
             if self._viewer and self._viewer.console_is_open():
                 self._activate_viewer_page()
             else:
                 self._init_viewer()
+
+        # Update other state
+        self._refresh_widget_states()
 
 
     ###################
@@ -537,15 +541,11 @@ class vmmConsolePages(vmmGObjectUI):
         """
         self._close_viewer()
         self.widget("console-pages").set_current_page(
-            self.CONSOLE_PAGE_UNAVAILABLE)
-        self.widget("details-menu-vm-screenshot").set_sensitive(False)
-        self.widget("details-menu-usb-redirection").set_sensitive(False)
+            _CONSOLE_PAGE_UNAVAILABLE)
         self.widget("console-unavailable").set_label("<b>" + msg + "</b>")
 
     def _activate_auth_page(self, withPassword, withUsername):
         (pw, username) = self.config.get_console_password(self.vm)
-        self.widget("details-menu-vm-screenshot").set_sensitive(False)
-        self.widget("details-menu-usb-redirection").set_sensitive(False)
 
         self.widget("console-auth-password").set_visible(withPassword)
         self.widget("label-auth-password").set_visible(withPassword)
@@ -563,7 +563,7 @@ class vmmConsolePages(vmmGObjectUI):
                 bool(pw and username))
 
         self.widget("console-pages").set_current_page(
-            self.CONSOLE_PAGE_AUTHENTICATE)
+            _CONSOLE_PAGE_AUTHENTICATE)
 
         if withUsername:
             self.widget("console-auth-username").grab_focus()
@@ -571,26 +571,39 @@ class vmmConsolePages(vmmGObjectUI):
             self.widget("console-auth-password").grab_focus()
 
     def _activate_viewer_page(self):
-        self.widget("console-pages").set_current_page(self.CONSOLE_PAGE_VIEWER)
-        self.widget("details-menu-vm-screenshot").set_sensitive(True)
+        self.widget("console-pages").set_current_page(_CONSOLE_PAGE_VIEWER)
         if self._viewer:
             self._viewer.console_grab_focus()
 
-        if (self._viewer.console_has_usb_redirection() and
-            self.vm.has_spicevmc_type_redirdev()):
-            self.widget("details-menu-usb-redirection").set_sensitive(True)
-            return
+    def _page_changed(self, src, origpage, newpage):
+        ignore = src
+        ignore = origpage
 
-    def _page_changed(self, ignore1=None, ignore2=None, newpage=None):
+        # Hide the contents of all other pages, so they don't screw
+        # up window sizing
+        for i in range(self.widget("console-pages").get_n_pages()):
+            self.widget("console-pages").get_nth_page(i).set_visible(
+                i == newpage)
+
+        self.idle_add(self._refresh_widget_states)
+
+    def _refresh_widget_states(self):
         pagenum = self.widget("console-pages").get_current_page()
+        paused = self.vm.is_paused()
+        is_viewer = (pagenum == _CONSOLE_PAGE_VIEWER and
+            self._viewer and self._viewer.console_is_open())
 
-        if newpage is not None:
-            for i in range(self.widget("console-pages").get_n_pages()):
-                w = self.widget("console-pages").get_nth_page(i)
-                w.set_visible(i == newpage)
+        self.widget("details-menu-vm-screenshot").set_sensitive(is_viewer)
+        self.widget("details-menu-usb-redirection").set_sensitive(
+            bool(is_viewer and self._viewer and
+            self._viewer.console_has_usb_redirection() and
+            self.vm.has_spicevmc_type_redirdev()))
 
-        if pagenum < self.CONSOLE_PAGE_OFFSET:
-            self._last_gfx_page = pagenum
+        can_sendkey = (is_viewer and not paused)
+        self._send_key_button.set_sensitive(can_sendkey)
+        for c in self._keycombo_menu.get_children():
+            c.set_sensitive(can_sendkey)
+
         self._refresh_can_fullscreen()
 
 
@@ -744,7 +757,7 @@ class vmmConsolePages(vmmGObjectUI):
             errout = self._viewer.console_get_err_output()
 
         self.widget("console-pages").set_current_page(
-            self.CONSOLE_PAGE_UNAVAILABLE)
+            _CONSOLE_PAGE_UNAVAILABLE)
         self._close_viewer()
         logging.debug("Viewer disconnected")
 
@@ -765,9 +778,6 @@ class vmmConsolePages(vmmGObjectUI):
         self._refresh_resizeguest_from_settings()
 
     def _viewer_connected(self, ignore):
-        self._viewer_is_connected = True
-        self._refresh_can_fullscreen()
-
         logging.debug("Viewer connected")
         self._activate_viewer_page()
 
@@ -796,9 +806,15 @@ class vmmConsolePages(vmmGObjectUI):
     ###########################
 
     def _activate_default_console_page(self):
+        """
+        Find the default graphical or serial console for the VM
+        """
         if self.vm.get_graphics_devices() or not self.vm.get_serial_devs():
             return
 
+        # We iterate through the 'console' menu and activate the first
+        # valid entry... it's the easiest thing to do to hit all the right
+        # code paths.
         self._populate_serial_menu()
         menu = self.widget("details-menu-view-serial-list").get_submenu()
         for child in menu.get_children():
@@ -808,34 +824,17 @@ class vmmConsolePages(vmmGObjectUI):
                 child.toggled()
                 break
 
-    def _selected_serial_dev(self):
-        current_page = self.widget("console-pages").get_current_page()
-        if not current_page >= self.CONSOLE_PAGE_OFFSET:
-            return
-
-        serial_idx = current_page - self.CONSOLE_PAGE_OFFSET
-        if len(self._serial_tabs) < serial_idx:
-            return
-
-        return self._serial_tabs[serial_idx]
-
-    def _make_serial_menu_label(self, dev):
-        if dev.virtual_device_type == "console":
-            return "Text Console %d" % (dev.vmmindex + 1)
-        return "Serial %d" % (dev.vmmindex + 1)
-
     def _console_menu_toggled(self, src, dev):
-        ignore = src
         self.widget("details-pages").set_current_page(DETAILS_PAGE_CONSOLE)
 
         if dev.virtual_device_type == "graphics":
-            self.widget("console-pages").set_current_page(self._last_gfx_page)
+            self.widget("console-pages").set_current_page(_CONSOLE_PAGE_VIEWER)
             return
 
         target_port = dev.vmmindex
-        name = self._make_serial_menu_label(dev)
         serial = None
-        for s in self._serial_tabs:
+        name = src.get_label()
+        for s in self._serial_consoles:
             if s.name == name:
                 serial = s
                 break
@@ -848,49 +847,51 @@ class vmmConsolePages(vmmGObjectUI):
                                     self._viewer_focus_changed)
 
             title = Gtk.Label(label=name)
-            self.widget("console-pages").append_page(serial.box, title)
-            self._serial_tabs.append(serial)
+            self.widget("serial-pages").append_page(serial.box, title)
+            self._serial_consoles.append(serial)
 
         serial.open_console()
-        page_idx = self._serial_tabs.index(serial) + self.CONSOLE_PAGE_OFFSET
-        self.widget("console-pages").set_current_page(page_idx)
+        page_idx = self._serial_consoles.index(serial)
+        self.widget("console-pages").set_current_page(_CONSOLE_PAGE_SERIAL)
+        self.widget("serial-pages").set_current_page(page_idx)
 
     def _build_serial_menu_items(self, menu_item_cb):
-        showing_serial_dev = self._selected_serial_dev()
         devs = self.vm.get_serial_devs()
-
         if len(devs) == 0:
             menu_item_cb(_("No text console available"),
                          radio=False, sensitive=False)
             return
 
+        active_label = None
+        if (self.widget("console-pages").get_current_page() ==
+                _CONSOLE_PAGE_SERIAL):
+            serial_page = self.widget("serial-pages").get_current_page()
+            if len(self._serial_consoles) > serial_page:
+                active_label = self._serial_consoles[serial_page].name
+
         for dev in devs:
-            label = self._make_serial_menu_label(dev)
+            if dev.virtual_device_type == "console":
+                label = "Text Console %d" % (dev.vmmindex + 1)
+            else:
+                label = "Serial %d" % (dev.vmmindex + 1)
+
             tooltip = vmmSerialConsole.can_connect(self.vm, dev)
             sensitive = not bool(tooltip)
 
-            active = (sensitive and
-                showing_serial_dev and
-                showing_serial_dev.name == label)
-
+            active = (sensitive and label == active_label)
             menu_item_cb(label, sensitive=sensitive, active=active,
                 tooltip=tooltip, cb=self._console_menu_toggled, cbdata=dev)
 
     def _build_graphical_menu_items(self, menu_item_cb):
-        showing_graphics = (
-            self.widget("console-pages").get_current_page() ==
-            self.CONSOLE_PAGE_VIEWER)
-
-        # Populate graphical devices
         devs = self.vm.get_graphics_devices()
         if len(devs) == 0:
             menu_item_cb(_("No graphical console available"),
                          radio=False, sensitive=False)
             return
 
-        # Only one graphical device supported for now
+        active = (self.widget("console-pages").get_current_page() !=
+                _CONSOLE_PAGE_SERIAL)
         for idx, dev in enumerate(devs):
-
             label = (_("Graphical Console") + " " +
                      dev.pretty_type_simple(dev.type))
 
@@ -902,7 +903,7 @@ class vmmConsolePages(vmmGObjectUI):
                 tooltip = _("virt-manager does not support more "
                             "that one graphical console")
 
-            menu_item_cb(label, active=showing_graphics,
+            menu_item_cb(label, active=active,
                 sensitive=sensitive, tooltip=tooltip,
                 cb=self._console_menu_toggled, cbdata=dev)
 
@@ -960,15 +961,10 @@ class vmmConsolePages(vmmGObjectUI):
     def details_update_widget_states(self):
         return self._update_vm_widget_states()
 
-    def details_build_keycombo_menu(self, *args, **kwargs):
-        return self._build_keycombo_menu(*args, **kwargs)
-
     def details_refresh_can_fullscreen(self):
         return self._refresh_can_fullscreen()
     def details_resizeguest_ui_changed_cb(self, *args, **kwargs):
         return self._resizeguest_ui_changed_cb(*args, **kwargs)
-    def details_send_key(self, *args, **kwargs):
-        return self._do_send_key(*args, **kwargs)
 
     def details_page_changed(self, *args, **kwargs):
         return self._page_changed(*args, **kwargs)

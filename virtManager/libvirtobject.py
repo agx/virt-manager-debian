@@ -28,7 +28,7 @@ from .baseclass import vmmGObject
 class vmmLibvirtObject(vmmGObject):
     __gsignals__ = {
         "state-changed": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "initialized": (GObject.SignalFlags.RUN_FIRST, None, []),
+        "initialized": (GObject.SignalFlags.RUN_FIRST, None, [bool]),
     }
 
     _STATUS_ACTIVE = 1
@@ -111,6 +111,7 @@ class vmmLibvirtObject(vmmGObject):
         self._backend = newbackend
 
     def define_name(self, newname):
+        oldconnkey = self.get_connkey()
         oldname = self.get_xmlobj().name
 
         self.ensure_latest_xml()
@@ -126,7 +127,7 @@ class vmmLibvirtObject(vmmGObject):
 
         try:
             self._key = newname
-            self.conn.rename_object(self, origxml, newxml, oldname, newname)
+            self.conn.rename_object(self, origxml, newxml, oldconnkey)
         except:
             self._key = oldname
             raise
@@ -185,14 +186,16 @@ class vmmLibvirtObject(vmmGObject):
         if self.__initialized:
             return
 
+        initialize_failed = False
         try:
             self._init_libvirt_state()
         except:
             logging.debug("Error initializing libvirt state for %s", self,
                 exc_info=True)
+            initialize_failed = True
 
         self.__initialized = True
-        self.idle_emit("initialized")
+        self.idle_emit("initialized", initialize_failed)
 
 
     ###################

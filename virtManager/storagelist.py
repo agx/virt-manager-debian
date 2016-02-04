@@ -415,6 +415,9 @@ class vmmStorageList(vmmGObjectUI):
         list_widget.get_selection().unselect_all()
         model.clear()
 
+        vadj = self.widget("vol-scroll").get_vadjustment()
+        vscroll_percent = vadj.get_value() / max(vadj.get_upper(), 1)
+
         for vol in vols:
             key = vol.get_connkey()
 
@@ -454,6 +457,10 @@ class vmmStorageList(vmmGObjectUI):
             row[VOL_COLUMN_INUSEBY] = namestr
             row[VOL_COLUMN_SENSITIVE] = sensitive
             model.append(row)
+
+        def _reset_vscroll_position():
+            vadj.set_value(vadj.get_upper() * vscroll_percent)
+        self.idle_add(_reset_vscroll_position)
 
     def _confirm_changes(self):
         if not self._active_edits:
@@ -728,4 +735,4 @@ class vmmStorageList(vmmGObjectUI):
 
         logging.debug("Deleting volume '%s'", vol.get_name())
         vmmAsyncJob.simple_async_noshow(cb, [], self,
-                        _("Error refreshing volume '%s'") % vol.get_name())
+                        _("Error deleting volume '%s'") % vol.get_name())

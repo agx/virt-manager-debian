@@ -89,9 +89,8 @@ class vmmAddHardware(vmmGObjectUI):
         self.widget("network-vport-align").add(self._netlist.top_vport)
 
         self.addstorage = vmmAddStorage(self.conn, self.builder, self.topwin)
-        self.widget("config-storage-align").add(self.addstorage.top_box)
+        self.widget("storage-align").add(self.addstorage.top_box)
         self.addstorage.connect("browse-clicked", self._browse_storage_cb)
-        self.addstorage.connect("storage-toggled", self._toggle_storage_select)
 
         self.builder.connect_signals({
             "on_create_cancel_clicked" : self.close,
@@ -99,7 +98,7 @@ class vmmAddHardware(vmmGObjectUI):
             "on_create_finish_clicked" : self._finish,
             "on_hw_list_changed": self._hw_selected,
 
-            "on_config_storage_devtype_changed": self._change_storage_devtype,
+            "on_storage_devtype_changed": self._change_storage_devtype,
 
             "on_mac_address_clicked" : self._change_macaddr_use,
 
@@ -200,10 +199,10 @@ class vmmAddHardware(vmmGObjectUI):
 
         # Disk bus type
         self.build_disk_bus_combo(self.vm,
-            self.widget("config-storage-bustype"))
+            self.widget("storage-bustype"))
 
         # Disk device type
-        target_list = self.widget("config-storage-devtype")
+        target_list = self.widget("storage-devtype")
         # [device, icon, label]
         target_model = Gtk.ListStore(str, str, str)
         target_list.set_model(target_model)
@@ -227,11 +226,8 @@ class vmmAddHardware(vmmGObjectUI):
         target_list.set_active(0)
 
         # Disk cache mode
-        cache_list = self.widget("config-storage-cache")
+        cache_list = self.widget("storage-cache")
         self.build_disk_cache_combo(self.vm, cache_list)
-
-        # Disk format mode
-        self._populate_disk_format_combo_wrapper(True)
 
         # Input device type
         input_list = self.widget("input-type")
@@ -244,11 +240,10 @@ class vmmAddHardware(vmmGObjectUI):
         self.build_sound_combo(self.vm, sound_list)
 
         # Host device list
-        # model = [ Description, nodedev name ]
         host_dev = self.widget("host-device")
-        host_dev_model = Gtk.ListStore(str, str, str, object)
+        # [ prettyname, xmlobj ]
+        host_dev_model = Gtk.ListStore(str, object)
         host_dev.set_model(host_dev_model)
-
         host_col = Gtk.TreeViewColumn()
         text = Gtk.CellRendererText()
         host_col.pack_start(text, True)
@@ -381,10 +376,16 @@ class vmmAddHardware(vmmGObjectUI):
                       self.conn.is_nodedev_capable(),
                       _("Connection does not support host device enumeration"),
                       "usb")
+
+        nodedev_enabled = self.conn.is_nodedev_capable()
+        nodedev_errstr = _("Connection does not support "
+            "host device enumeration")
+        if self.vm.is_container():
+            nodedev_enabled = False
+            nodedev_errstr = _("Not supported for containers")
         add_hw_option("PCI Host Device", "system-run", PAGE_HOSTDEV,
-                      self.conn.is_nodedev_capable(),
-                      _("Connection does not support host device enumeration"),
-                      "pci")
+                      nodedev_enabled, nodedev_errstr, "pci")
+
         add_hw_option("Video", "video-display", PAGE_VIDEO, True,
                       _("Libvirt version does not support video devices."))
         add_hw_option("Watchdog", "device_pci", PAGE_WATCHDOG,
@@ -409,9 +410,8 @@ class vmmAddHardware(vmmGObjectUI):
 
     def _reset_state(self):
         # Storage init
-        self._populate_disk_format_combo_wrapper(True)
-        self.widget("config-storage-devtype").set_active(0)
-        self.widget("config-storage-devtype").emit("changed")
+        self.widget("storage-devtype").set_active(0)
+        self.widget("storage-devtype").emit("changed")
         self.addstorage.reset_state()
 
         # Network init
@@ -708,7 +708,7 @@ class vmmAddHardware(vmmGObjectUI):
         combo.set_active(-1)
 
     @staticmethod
-    def populate_disk_bus_combo(vm, devtype, model, do_virtio_scsi=True):
+    def populate_disk_bus_combo(vm, devtype, model):
         rows = []
         if vm.is_hvm():
             if not vm.get_xmlobj().os.is_q35():
@@ -723,10 +723,8 @@ class vmmAddHardware(vmmGObjectUI):
         if vm.get_hv_type() in ["qemu", "kvm", "test"]:
             rows.append(["sd", "SD"])
             rows.append(["virtio", "VirtIO"])
-            if do_virtio_scsi:
-                rows.append(["virtio-scsi", "VirtIO SCSI"])
-            if vm.xmlobj.os.is_pseries():
-                rows.append(["spapr-vscsi", "sPAPR-vSCSI"])
+            if not rows.count(["scsi", "SCSI"]):
+                rows.append(["scsi", "SCSI"])
 
         if vm.conn.is_xen() or vm.conn.is_test_conn():
             rows.append(["xen", "Xen"])
@@ -734,41 +732,14 @@ class vmmAddHardware(vmmGObjectUI):
         model.clear()
 
         bus_map = {
-            "disk": ["ide", "sata", "scsi", "sd", "spapr-vscsi",
-                     "usb", "virtio", "virtio-scsi", "xen"],
+            "disk": ["ide", "sata", "scsi", "sd", "usb", "virtio", "xen"],
             "floppy": ["fdc"],
             "cdrom": ["ide", "sata", "scsi"],
-            "lun": ["virtio-scsi"],
+            "lun": ["scsi"],
         }
         for row in rows:
             if row[0] in bus_map[devtype]:
                 model.append(row)
-
-    @staticmethod
-    def populate_disk_format_combo(vm, combo, create):
-        model = Gtk.ListStore(str)
-        combo.set_model(model)
-        uiutil.init_combo_text_column(combo, 0)
-
-        formats = ["raw", "qcow2", "qed"]
-        no_create_formats = []
-        if not vm.stable_defaults():
-            formats.append("vmdk")
-            no_create_formats.append("vdi")
-
-        for m in formats:
-            model.append([m])
-        if not create:
-            for m in no_create_formats:
-                model.append([m])
-
-        if create:
-            fmt = vm.conn.get_default_storage_format()
-            combo.set_active(0)
-            for row in model:
-                if row[0] == fmt:
-                    combo.set_active_iter(row.iter)
-                    break
 
     @staticmethod
     def populate_controller_model_combo(combo, controller_type):
@@ -867,7 +838,7 @@ class vmmAddHardware(vmmGObjectUI):
     #########################
 
     def _refresh_disk_bus(self, devtype):
-        widget = self.widget("config-storage-bustype")
+        widget = self.widget("storage-bustype")
         model = widget.get_model()
         self.populate_disk_bus_combo(self.vm, devtype, model)
 
@@ -909,17 +880,11 @@ class vmmAddHardware(vmmGObjectUI):
                 if dev.xmlobj.name == subdev.xmlobj.parent:
                     prettyname += " (%s)" % subdev.xmlobj.pretty_name()
 
-            model.append([prettyname, dev.xmlobj.name, devtype, dev.xmlobj])
+            model.append([prettyname, dev.xmlobj])
 
         if len(model) == 0:
-            model.append([_("No Devices Available"), None, None, None])
+            model.append([_("No Devices Available"), None])
         uiutil.set_list_selection_by_number(devlist, 0)
-
-    def _populate_disk_format_combo_wrapper(self, create):
-        format_list = self.widget("config-storage-format")
-        self.populate_disk_format_combo(self.vm, format_list, create)
-        if not create:
-            format_list.get_child().set_text("")
 
     def _populate_controller_type(self):
         widget = self.widget("controller-type")
@@ -1171,20 +1136,16 @@ class vmmAddHardware(vmmGObjectUI):
     # Device page listeners #
     #########################
 
-    def _toggle_storage_select(self, ignore, src):
-        act = src.get_active()
-        self._populate_disk_format_combo_wrapper(not act)
-
     def _change_storage_devtype(self, ignore):
         devtype = uiutil.get_list_selection(
-            self.widget("config-storage-devtype"))
+            self.widget("storage-devtype"))
         self._refresh_disk_bus(devtype)
 
         allow_create = devtype not in ["cdrom", "floppy"]
-        self.addstorage.widget("config-storage-create-box").set_sensitive(
+        self.addstorage.widget("storage-create-box").set_sensitive(
             allow_create)
         if not allow_create:
-            self.addstorage.widget("config-storage-select").set_active(True)
+            self.addstorage.widget("storage-select").set_active(True)
 
     def _change_macaddr_use(self, ignore=None):
         if self.widget("mac-address").get_active():
@@ -1519,23 +1480,27 @@ class vmmAddHardware(vmmGObjectUI):
 
     def _validate_page_storage(self):
         bus = uiutil.get_list_selection(
-            self.widget("config-storage-bustype"))
+            self.widget("storage-bustype"))
         device = uiutil.get_list_selection(
-            self.widget("config-storage-devtype"))
+            self.widget("storage-devtype"))
         cache = uiutil.get_list_selection(
-            self.widget("config-storage-cache"))
-        fmt = uiutil.get_list_selection(self.widget("config-storage-format"))
+            self.widget("storage-cache"))
 
         controller_model = None
-        if bus == "virtio-scsi":
-            bus = "scsi"
+        if (bus == "scsi" and
+            self.vm.get_hv_type() in ["qemu", "kvm", "test"] and
+            not self.vm.xmlobj.os.is_pseries()):
             controller_model = "virtio-scsi"
 
         collidelist = [d.path for d in self.vm.get_disk_devices()]
-        disk = self.addstorage.validate_storage(self.vm.get_name(),
-            collidelist=collidelist, device=device, fmt=fmt)
-        if disk in [True, False]:
-            return disk
+        try:
+            disk = self.addstorage.validate_storage(self.vm.get_name(),
+                collidelist=collidelist, device=device)
+        except Exception, e:
+            return self.err.val_err(_("Storage parameter error."), e)
+
+        if disk is False:
+            return False
 
         try:
             used = []
@@ -1619,25 +1584,10 @@ class vmmAddHardware(vmmGObjectUI):
             return self.err.val_err(_("Sound device parameter error"), e)
 
     def _validate_page_hostdev(self):
-        row = uiutil.get_list_selected_row(self.widget("host-device"))
-        is_dup = False
-
-        if row is None:
+        nodedev = uiutil.get_list_selection(self.widget("host-device"), 1)
+        if nodedev is None:
             return self.err.val_err(_("Physical Device Required"),
                                     _("A device must be selected."))
-
-        devtype = row[2]
-        nodedev = row[3]
-        if devtype == "usb_device":
-            vendor = nodedev.vendor_id
-            product = nodedev.product_id
-            count = self.conn.get_nodedev_count(devtype, vendor, product)
-            if not count:
-                raise RuntimeError(_("Could not find USB device "
-                                     "(vendorId: %s, productId: %s) "
-                                     % (vendor, product)))
-            if count > 1:
-                is_dup = True
 
         try:
             dev = virtinst.VirtualHostDevice(self.conn.get_backend())
@@ -1654,7 +1604,7 @@ class vmmAddHardware(vmmGObjectUI):
                         _("Do you really want to use the device?"))
                 if not res:
                     return False
-            dev.set_from_nodedev(nodedev, use_full_usb=is_dup)
+            dev.set_from_nodedev(nodedev)
             self._dev = dev
         except Exception, e:
             return self.err.val_err(_("Host device parameter error"), e)
@@ -1693,6 +1643,11 @@ class vmmAddHardware(vmmGObjectUI):
             self.widget("char-auto-socket").get_active()):
             source_path = None
             source_mode = "bind"
+
+        if (devclass.type == "tcp" and source_mode == "bind"):
+            devclass.bind_host = source_host
+            devclass.bind_port = source_port
+            source_host = source_port = source_mode = None
 
         value_mappings = {
             "source_path" : source_path,

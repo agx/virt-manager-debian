@@ -71,11 +71,14 @@ test_files = {
     'URI-TEST-DEFAULT': utils.uri_test_default,
     'URI-TEST-REMOTE': utils.uri_test_remote,
     'URI-KVM': utils.uri_kvm,
+    'URI-KVM-SESSION': utils.uri_kvm_session,
     'URI-KVM-REMOTE': utils.uri_kvm + ",remote",
     'URI-KVM-NODOMCAPS': utils.uri_kvm_nodomcaps,
     'URI-KVM-ARMV7L' : utils.uri_kvm_armv7l,
     'URI-KVM-AARCH64' : utils.uri_kvm_aarch64,
     'URI-KVM-PPC64LE' : utils.uri_kvm_ppc64le,
+    'URI-KVM-S390X' : utils.uri_kvm_s390x,
+    'URI-KVM-S390X-KVMIBM' : utils.uri_kvm_s390x_KVMIBM,
     'URI-XEN': utils.uri_xen,
     'URI-LXC': utils.uri_lxc,
 
@@ -93,6 +96,7 @@ test_files = {
     'NEWCLONEIMG2'      : new_images[1],
     'NEWCLONEIMG3'      : new_images[2],
     'AUTOMANAGEIMG'     : "/some/new/pool/dir/new",
+    'BLOCKVOL'          : '/iscsi-pool/diskvol1',
     'EXISTIMG1'         : "/dev/default-pool/testvol1.img",
     'EXISTIMG2'         : "/dev/default-pool/testvol2.img",
     'EXISTIMG3'         : exist_images[0],
@@ -378,6 +382,7 @@ c.add_compare(""" \
 --description \"foobar & baz\" \
 --boot uefi \
 --security type=dynamic \
+--security type=none,model=dac \
 --numatune 1,2,3,5-7,^6 \
 --memorybacking hugepages=on \
 --features apic=off \
@@ -415,11 +420,11 @@ c.add_compare("""--pxe \
 --memtune hard_limit=10,soft_limit=20,swap_hard_limit=30,min_guarantee=40 \
 --blkiotune weight=100,device_path=/home/test/1.img,device_weight=200 \
 --memorybacking size=1,unit='G',nodeset='1,2-5',nosharepages=yes,locked=yes \
---features acpi=off,eoi=on,privnet=on,hyperv_spinlocks=on,hyperv_spinlocks_retries=1234,vmport=off \
+--features acpi=off,eoi=on,privnet=on,hyperv_spinlocks=on,hyperv_spinlocks_retries=1234,vmport=off,pmu=off \
 --clock offset=utc,hpet_present=no,rtc_tickpolicy=merge \
 --pm suspend_to_mem=yes,suspend_to_disk=no \
 --resource partition=/virtualmachines/production \
---events on_poweroff=destroy,on_reboot=restart,on_crash=preserve \
+--events on_poweroff=destroy,on_reboot=restart,on_crash=preserve,on_lockfailure=ignore \
 \
 --controller usb3 \
 --controller virtio-scsi \
@@ -436,14 +441,14 @@ c.add_compare("""--pxe \
 # Device testing #1
 
 c.add_compare(""" \
---vcpus 4,cores=1 \
+--vcpus 4,cores=1,placement=static \
 --cpu none \
 \
 --disk %(EXISTUPPER)s,cache=writeback,io=threads,perms=sh,serial=WD-WMAP9A966149,boot_order=2 \
 --disk %(NEWIMG1)s,sparse=false,size=.001,perms=ro,error_policy=enospace,discard=unmap \
 --disk device=cdrom,bus=sata,read_bytes_sec=1,read_iops_sec=2,total_bytes_sec=10,total_iops_sec=20,write_bytes_sec=5,write_iops_sec=6 \
 --disk size=1 \
---disk /iscsi-pool/diskvol1 \
+--disk %(BLOCKVOL)s \
 --disk /dev/default-pool/iso-vol \
 --disk /dev/default-pool/iso-vol,format=qcow2 \
 --disk source_pool=rbd-ceph,source_volume=some-rbd-vol,size=.1 \
@@ -456,8 +461,9 @@ c.add_compare(""" \
 --disk vol=gluster-pool/test-gluster.raw,startup_policy=optional \
 --disk %(DIR)s,device=floppy \
 \
---network user,mac=12:34:56:78:11:22,portgroup=foo \
+--network user,mac=12:34:56:78:11:22,portgroup=foo,link_state=down \
 --network bridge=foobar,model=virtio,driver_name=qemu,driver_queues=3 \
+--network bridge=ovsbr,virtualport_type=openvswitch,virtualport_profileid=demo,virtualport_interfaceid=09b11c53-8b5c-4eeb-8f00-d84eaa0aaa3b,link_state=yes \
 --network type=direct,source=eth5,source_mode=vepa,target=mytap12,virtualport_type=802.1Qbg,virtualport_managerid=12,virtualport_typeid=1193046,virtualport_typeidversion=1,virtualport_instanceid=09b11c53-8b5c-4eeb-8f00-d84eaa0aaa3b,boot_order=1 \
 \
 --graphics sdl \
@@ -471,8 +477,8 @@ c.add_compare(""" \
 --controller usb,model=ich9-uhci2,address=0:0:4.1,index=0,master=2 \
 --controller usb,model=ich9-uhci3,address=0:0:4.2,index=0,master=4 \
 \
---input keyboard,bus=usb \
---input type=tablet \
+--input type=keyboard,bus=usb \
+--input tablet \
 \
 --serial tcp,host=:2222,mode=bind,protocol=telnet \
 --parallel udp,host=0.0.0.0:1234,bind_host=127.0.0.1:1234 \
@@ -491,10 +497,12 @@ c.add_compare(""" \
 --host-device 0x0781:0x5151,driver_name=vfio \
 --host-device 04b3:4485 \
 --host-device pci_8086_2829_scsi_host_scsi_device_lun0 \
+--hostdev usb_5_20 --hostdev usb_5_21 \
 \
 
---filesystem /source,/target,mode=squash \
---filesystem template_name,/,type=template \
+--filesystem /source,/target \
+--filesystem template_name,/,type=template,mode=passthrough \
+--filesystem type=file,source=/tmp/somefile.img,target=/mount/point,accessmode=squash \
 \
 --soundhw default \
 --sound ac97 \
@@ -522,14 +530,14 @@ c.add_compare(""" \
 
 c = vinst.add_category("cpuram", "--hvm --nographics --noautoconsole --nodisks --pxe")
 c.add_valid("--vcpus 4 --cpuset=1,3-5,")  # Cpuset with trailing comma
-c.add_valid("--vcpus 4 --cpuset=auto")  # cpuset=auto but caps doesn't support it
+c.add_valid("--connect %(URI-XEN)s --vcpus 4 --cpuset=auto")  # cpuset=auto but xen doesn't support it
 c.add_valid("--ram 4000000")  # Ram overcommit
 c.add_valid("--vcpus sockets=2,threads=2")  # Topology only
 c.add_valid("--cpu somemodel")  # Simple --cpu
 c.add_valid("--security label=foobar.label,relabel=yes")  # --security implicit static
 c.add_valid("--security label=foobar.label,a1,z2,b3,type=static,relabel=no")  # static with commas 1
 c.add_valid("--security label=foobar.label,a1,z2,b3")  # --security static with commas 2
-c.add_compare("--connect %(URI-TEST-DEFAULT)s --cpuset auto --vcpus 2", "cpuset-auto")  # --cpuset=auto actually works
+c.add_compare("--cpuset auto --vcpus 2", "cpuset-auto")  # --cpuset=auto actually works
 c.add_invalid("--vcpus 32 --cpuset=969-1000")  # Bogus cpuset
 c.add_invalid("--vcpus 32 --cpuset=autofoo")  # Bogus cpuset
 c.add_invalid("--clock foo_tickpolicy=merge")  # Unknown timer
@@ -579,6 +587,7 @@ c.add_invalid("--disk /dev/default-pool/backingl3.img")  # Colliding storage via
 c.add_invalid("--disk %(DIR)s,device=cdrom")  # Dir without floppy
 c.add_invalid("--disk %(EXISTIMG1)s,driver_name=foobar,driver_type=foobaz")  # Unknown driver name and type options (as of 1.0.0)
 c.add_invalid("--disk source_pool=rbd-ceph,source_volume=vol1")  # Collision with existing VM, via source pool/volume
+c.add_invalid("--disk size=1 --security model=foo,type=bar")  # Libvirt will error on the invalid security params, which should trigger the code path to clean up the disk images we created.
 
 
 
@@ -694,12 +703,21 @@ c.add_compare("--arch ppc64 --machine pseries --boot network --disk %(EXISTIMG1)
 c.add_compare("--arch ppc64 --boot network --disk %(EXISTIMG1)s --os-variant fedora20 --network none", "ppc64-machdefault-f20")
 c.add_compare("--connect %(URI-KVM-PPC64LE)s --import --disk %(EXISTIMG1)s --os-variant fedora20", "ppc64le-kvm-import")
 
+# s390x tests
+c.add_compare("--arch s390x --machine s390-ccw-virtio --connect %(URI-KVM-S390X)s --boot kernel=/kernel.img,initrd=/initrd.img --disk %(EXISTIMG1)s --disk %(EXISTIMG3)s,device=cdrom --os-variant fedora21", "s390x-cdrom")
+c.add_compare("--arch s390x --machine s390-ccw-virtio --connect %(URI-KVM-S390X-KVMIBM)s --boot kernel=/kernel.img,initrd=/initrd.img --disk %(EXISTIMG1)s --disk %(EXISTIMG3)s,device=cdrom --os-variant fedora21 --watchdog diag288,action=reset", "s390x-cdrom-KVMIBM")
+
+# qemu:///session tests
+c.add_compare("--connect %(URI-KVM-SESSION)s --disk size=8 --os-variant fedora21 --cdrom %(EXISTIMG1)s", "kvm-session-defaults")
+
+# misc KVM config tests
 c.add_compare("--disk none --location %(EXISTIMG3)s --nonetworks", "location-iso")  # Using --location iso mounting
 c.add_compare("--disk %(EXISTIMG1)s --pxe --os-variant rhel6.4", "kvm-rhel6")  # RHEL6 defaults
 c.add_compare("--disk %(EXISTIMG1)s --pxe --os-variant rhel7.0", "kvm-rhel7")  # RHEL7 defaults
 c.add_compare("--disk %(EXISTIMG1)s --pxe --os-variant centos7.0", "kvm-centos7")  # Centos 7 defaults
 c.add_compare("--os-variant win7 --cdrom %(EXISTIMG2)s --boot loader_type=pflash,loader=CODE.fd,nvram_template=VARS.fd --disk %(EXISTIMG1)s", "win7-uefi")  # no HYPER-V with UEFI
 c.add_compare("--machine q35 --cdrom %(EXISTIMG2)s --disk %(EXISTIMG1)s", "q35-defaults")  # proper q35 disk defaults
+c.add_compare("--disk size=20 --os-variant solaris10", "solaris10-defaults")  # test solaris OS defaults
 c.add_compare("--connect %(URI-KVM-REMOTE)s --import --disk %(EXISTIMG1)s --os-variant fedora21 --pm suspend_to_disk=yes", "f21-kvm-remote")
 
 c.add_valid("--connect %(URI-KVM-NODOMCAPS)s --arch aarch64 --nodisks --pxe")  # attempt to default to aarch64 UEFI, but it fails, but should only print warnings
@@ -724,9 +742,10 @@ c.add_compare("--init /usr/bin/httpd", "manual-init")
 ######################
 
 c = vinst.add_category("xen", "--connect %(URI-XEN)s --noautoconsole")
+c.add_valid("--disk %(EXISTIMG1)s --location %(TREEDIR)s --paravirt --graphics none")  # Xen PV install headless
 c.add_compare("--disk %(EXISTIMG1)s --import", "xen-default")  # Xen default
 c.add_compare("--disk %(EXISTIMG1)s --location %(TREEDIR)s --paravirt", "xen-pv")  # Xen PV
-c.add_compare("--disk %(EXISTIMG1)s --cdrom %(EXISTIMG1)s --livecd --hvm", "xen-hvm")  # Xen HVM
+c.add_compare("--disk %(BLOCKVOL)s --cdrom %(EXISTIMG1)s --livecd --hvm", "xen-hvm")  # Xen HVM
 
 
 
@@ -742,8 +761,8 @@ c.add_valid("--mac 22:22:33:44:55:AF")  # Just a macaddr
 c.add_valid("--bridge mybr0 --mac 22:22:33:44:55:AF")  # Old bridge w/ mac
 c.add_valid("--network bridge:mybr0,model=e1000")  # --network bridge:
 c.add_valid("--network network:default --mac RANDOM")  # VirtualNetwork with a random macaddr
-c.add_valid("--nonetworks")  # no networks
 c.add_valid("--vnc --keymap=local")  # --keymap local
+c.add_invalid("--nonetworks")  # no networks
 c.add_invalid("--graphics vnc --vnclisten 1.2.3.4")  # mixing old and new
 c.add_invalid("--network=FOO")  # Nonexistent network
 c.add_invalid("--mac 1234")  # Invalid mac
@@ -816,7 +835,7 @@ c.add_compare("--memballoon model=none", "edit-simple-memballoon")
 c.add_compare("--serial pty", "edit-simple-serial")
 c.add_compare("--parallel unix,path=/some/other/log", "edit-simple-parallel")
 c.add_compare("--channel null", "edit-simple-channel")
-c.add_compare("--console target_type=serial", "edit-simple-console")
+c.add_compare("--console name=foo.bar.baz", "edit-simple-console")
 c.add_compare("--filesystem /1/2/3,/4/5/6,mode=mapped", "edit-simple-filesystem")
 c.add_compare("--video cirrus", "edit-simple-video", compare_check=support.SUPPORT_CONN_VIDEO_NEW_RAM_OUTPUT)
 c.add_compare("--sound pcspk", "edit-simple-soundhw")
@@ -834,12 +853,13 @@ c.add_compare("--edit mac=00:11:7f:33:44:55 --network target=nic55", "edit-selec
 
 c = vixml.add_category("edit clear", "test-for-virtxml --print-diff --define", compare_check=support.SUPPORT_CONN_INPUT_KEYBOARD)
 c.add_invalid("--edit --memory 200,clearxml=yes")  # clear isn't wired up for memory
-c.add_invalid("--edit --disk /foo/bar,target=fda,bus=fdc,device=floppy,clearxml=yes")  # clearxml isn't supported for devices
+c.add_compare("--edit --disk path=/foo/bar,target=fda,bus=fdc,device=floppy,clearxml=yes", "edit-clear-disk")
 c.add_compare("--edit --cpu host-passthrough,clearxml=yes", "edit-clear-cpu")
 c.add_compare("--edit --clock offset=utc,clearxml=yes", "edit-clear-clock")
 
 c = vixml.add_category("add/rm devices", "test-for-virtxml --print-diff --define", compare_check=support.SUPPORT_CONN_INPUT_KEYBOARD)
-c.add_invalid("--add-device --security foo")  # --add-device without a device
+c.add_valid("--add-device --security model=dac")  # --add-device works for seclabel
+c.add_invalid("--add-device --pm suspend_to_disk=yes")  # --add-device without a device
 c.add_invalid("--remove-device --clock utc")  # --remove-device without a dev
 c.add_compare("--add-device --host-device net_00_1c_25_10_b1_e4", "add-host-device")
 c.add_compare("--add-device --sound pcspk", "add-sound")
