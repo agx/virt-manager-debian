@@ -44,8 +44,8 @@
   </idmap>
   <features>
     <apic eoi="on"/>
-    <pae/>
     <privnet/>
+    <pmu state="off"/>
     <hyperv>
       <spinlocks state="on" retries="1234"/>
     </hyperv>
@@ -82,7 +82,7 @@
     <emulator>/usr/bin/qemu-kvm</emulator>
     <controller type="usb" index="0" model="nec-xhci"/>
     <controller type="virtio-scsi" index="0"/>
-    <filesystem>
+    <filesystem type="mount" accessmode="mapped">
       <source dir="/foo/source"/>
       <target dir="/bar/target"/>
     </filesystem>
@@ -118,6 +118,7 @@
   <seclabel type="static" model="selinux" relabel="yes">
     <label>system_u:object_r:svirt_image_t:s0:c100,c200</label>
   </seclabel>
+  <on_lockfailure>ignore</on_lockfailure>
 </domain>
 <domain type="kvm">
   <name>foobar</name>
@@ -165,8 +166,8 @@
   </idmap>
   <features>
     <apic eoi="on"/>
-    <pae/>
     <privnet/>
+    <pmu state="off"/>
     <hyperv>
       <spinlocks state="on" retries="1234"/>
     </hyperv>
@@ -203,7 +204,7 @@
     <emulator>/usr/bin/qemu-kvm</emulator>
     <controller type="usb" index="0" model="nec-xhci"/>
     <controller type="virtio-scsi" index="0"/>
-    <filesystem>
+    <filesystem type="mount" accessmode="mapped">
       <source dir="/foo/source"/>
       <target dir="/bar/target"/>
     </filesystem>
@@ -239,4 +240,5 @@
   <seclabel type="static" model="selinux" relabel="yes">
     <label>system_u:object_r:svirt_image_t:s0:c100,c200</label>
   </seclabel>
+  <on_lockfailure>ignore</on_lockfailure>
 </domain>

@@ -69,7 +69,10 @@ class OSXML(XMLBuilder):
     def is_ppc64(self):
         return self.arch == "ppc64" or self.arch == "ppc64le"
     def is_pseries(self):
-        return self.is_ppc64() and self.machine == "pseries"
+        return self.is_ppc64() and str(self.machine).startswith("pseries")
+
+    def is_s390x(self):
+        return self.arch == "s390x"
 
     _XML_ROOT_NAME = "os"
     _XML_PROP_ORDER = ["arch", "os_type", "loader", "loader_ro", "loader_type",
@@ -80,12 +83,12 @@ class OSXML(XMLBuilder):
         return [dev.dev for dev in self._bootdevs]
     def _set_bootorder(self, newdevs):
         for dev in self._bootdevs:
-            self._remove_child(dev)
+            self.remove_child(dev)
 
         for d in newdevs:
             dev = _BootDevice(self.conn)
             dev.dev = d
-            self._add_child(dev)
+            self.add_child(dev)
     _bootdevs = XMLChildProperty(_BootDevice)
     bootorder = property(_get_bootorder, _set_bootorder)
 
@@ -93,11 +96,11 @@ class OSXML(XMLBuilder):
     def add_initarg(self, val):
         obj = _InitArg(self.conn)
         obj.val = val
-        self._add_child(obj)
+        self.add_child(obj)
     def set_initargs_string(self, argstring):
         import shlex
         for obj in self.initargs:
-            self._remove_child(obj)
+            self.remove_child(obj)
         for val in shlex.split(argstring):
             self.add_initarg(val)
 

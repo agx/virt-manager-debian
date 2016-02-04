@@ -226,6 +226,9 @@ def convert_old_networks(options):
             fail(_("Cannot use --nonetworks with --network"))
         options.network = ["none"]
 
+    if options.pxe and options.network and "none" in options.network:
+        fail(_("Can't use --pxe without any network"))
+
     macs = virtinst.util.listify(options.mac)
     networks = virtinst.util.listify(options.network)
     bridges = virtinst.util.listify(options.bridge)
@@ -485,10 +488,6 @@ def _show_nographics_warnings(options, guest):
         return
     if not options.autoconsole:
         return
-    if guest.os.is_arm_machvirt():
-        # Later arm kernels figure out console= automatically, so don't
-        # warn about it.
-        return
 
     if guest.installer.cdrom:
         logging.warn(_("CDROM media does not print to the text console "
@@ -510,35 +509,24 @@ def _show_nographics_warnings(options, guest):
 
     serial_arg = "console=ttyS0"
     serial_arm_arg = "console=ttyAMA0"
-    virtio_arg = "console=hvc0"
-    console_type = None
-    if guest.conn.is_test() or guest.conn.is_qemu():
-        console_type = serial_arg
-        if guest.os.arch.startswith("arm") or guest.os.arch == "aarch64":
-            console_type = serial_arm_arg
-        if guest.get_devices("console")[0].target_type == "virtio":
-            console_type = virtio_arg
+    hvc_arg = "console=hvc0"
 
-    if not options.extra_args or "console=" not in options.extra_args:
-        logging.warn(_("No 'console' seen in --extra-args, a '%s' kernel "
-            "argument is likely required to see text install output from "
-            "the guest."), console_type or "console=")
+    console_type = serial_arg
+    if guest.os.is_arm():
+        console_type = serial_arm_arg
+    if guest.get_devices("console")[0].target_type in ["virtio", "xen"]:
+        console_type = hvc_arg
+    if guest.os.is_ppc64() or guest.os.is_arm_machvirt():
+        # Later arm/ppc kernels figure out console= automatically, so don't
+        # warn about it.
         return
 
-    if console_type in options.extra_args:
-        return
-    if (serial_arg not in options.extra_args and
-        virtio_arg not in options.extra_args):
+    if console_type in (options.extra_args or ""):
         return
 
-    has = (serial_arg in options.extra_args) and serial_arg or virtio_arg
-    need = (serial_arg in options.extra_args) and virtio_arg or serial_arg
-    logging.warn(_("'%s' found in --extra-args, but the device attached "
-        "to the guest likely requires '%s'. You may not see text install "
-        "output from the guest."), has, need)
-    if has == serial_arg:
-        logging.warn(_("To make '--extra-args %s' work, you can force a "
-            "plain serial device with '--console pty'"), serial_arg)
+    logging.warn(_("Did not find '%(console_string)s' in --extra-args, "
+        "which is likely required to see text install output from the "
+        "guest."), {"console_string": console_type})
 
 
 def show_warnings(options, guest):
@@ -745,6 +733,7 @@ def start_install(guest, continue_inst, options):
     # we've got everything -- try to start the install
     print_stdout(_("\nStarting install..."))
 
+    dom = None
     try:
         start_time = time.time()
 
@@ -775,10 +764,10 @@ def start_install(guest, continue_inst, options):
         logging.debug("", exc_info=True)
         print_stderr(_("Domain install interrupted."))
         raise
-    except RuntimeError, e:
-        fail(e)
     except Exception, e:
         fail(e, do_exit=False)
+        if dom is None and guest.domain is None:
+            guest.cleanup_created_disks(meter)
         cli.install_fail(guest)
 
 
@@ -847,14 +836,7 @@ def check_domain(guest, dom, conscb, wait_for_install, wait_time, start_time):
     while True:
         if domain_is_shutdown(guest.domain):
             print_stdout(_("Domain has shutdown. Continuing."))
-            try:
-                # Lookup a new domain object incase current
-                # one returned bogus data (see comment in
-                # domain_is_shutdown)
-                dom = guest.conn.lookupByName(guest.name)
-            except Exception, e:
-                raise RuntimeError(_("Could not lookup domain after "
-                                     "install: %s" % str(e)))
+            dom = guest.domain
             break
 
         time_elapsed = (time.time() - start_time)

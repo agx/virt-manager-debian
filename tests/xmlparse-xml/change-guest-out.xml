@@ -21,6 +21,10 @@
     </hyperv>
     <vmport state="on"/>
     <viridian/>
+    <kvm>
+      <hidden state="on"/>
+    </kvm>
+    <pvspinlock state="on"/>
   </features>
   <numatune>
     <memory nodeset="2,4,6"/>
@@ -41,6 +45,7 @@
   <on_poweroff>restart</on_poweroff>
   <on_reboot>destroy</on_reboot>
   <on_crash>destroy</on_crash>
+  <on_lockfailure>restart</on_lockfailure>
   <pm>
     <suspend-to-mem enabled="yes"/>
     <suspend-to-disk enabled="no"/>
@@ -76,10 +81,6 @@
     <console type="pty"/>
     <memballoon model="none"/>
   </devices>
-  <seclabel type="static" model="apparmor" relabel="yes">
-    <label>barlabel</label>
-    <imagelabel>fooimage</imagelabel>
-  </seclabel>
   <title>Hey title changed!</title>
   <description>Hey desc changed&amp;</description>
   <blkiotune>

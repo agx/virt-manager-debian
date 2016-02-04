@@ -19,15 +19,13 @@ import unittest
 import time
 import logging
 import platform
-import sys
-
-import urlgrabber.progress
 
 from tests import URLTEST_LOCAL_MEDIA
 from tests import utils
 
 from virtinst import Guest
 from virtinst import urlfetcher
+from virtinst import util
 from virtinst.urlfetcher import FedoraDistro
 from virtinst.urlfetcher import SuseDistro
 from virtinst.urlfetcher import DebianDistro
@@ -59,7 +57,7 @@ UBUNTU_URL = "http://us.archive.ubuntu.com/ubuntu/dists/%s/main/installer-%s"
 
 OLD_DEBIAN_URL = "http://archive.debian.org/debian/dists/%s/main/installer-%s/"
 DAILY_DEBIAN_URL = "http://d-i.debian.org/daily-images/%s/"
-DEBIAN_URL = "http://ftp.us.debian.org/debian/dists/%s/main/installer-%s/"
+DEBIAN_URL = "ftp://ftp.us.debian.org/debian/dists/%s/main/installer-%s/"
 
 MANDRIVA_URL = "ftp://mirror.cc.columbia.edu/pub/linux/mandriva/official/%s/%s"
 
@@ -109,11 +107,10 @@ _set_distro(FedoraDistro)
 _add(ARCHIVE_FEDORA_URL % ("14", "x86_64"), "fedora14",
      i686=ARCHIVE_FEDORA_URL % ("14", "i386"))
 # 2 Latest releases
-_add(OLD_FEDORA_URL % ("20", "x86_64"), "fedora20")
 _add(FEDORA_URL % ("21", "x86_64"), "fedora21")
 _add(FEDORA_URL % ("22", "x86_64"), "fedora22")
 # Any Dev release
-# _add(DEVFEDORA_URL % ("22", "x86_64"), "fedora21", name="fedora22")
+_add(FEDORA_URL % ("23", "x86_64"), "fedora22", name="fedora23")
 
 
 _set_distro(CentOSDistro)
@@ -136,7 +133,7 @@ _set_distro(SLDistro)
 # scientific 5
 _add(OLD_SCIENTIFIC_URL % ("55", "x86_64"), "rhel5.5", name="sl-5latest")
 # Latest scientific 6
-_add(SCIENTIFIC_URL % ("6", "x86_64"), "rhel6.1", name="sl-6latest")
+_add(SCIENTIFIC_URL % ("6", "x86_64"), "rhel6.6", name="sl-6latest")
 
 
 _set_distro(SuseDistro)
@@ -189,9 +186,7 @@ hvmguest.os.os_type = "hvm"
 xenguest = Guest(testconn)
 xenguest.os.os_type = "xen"
 
-meter = urlgrabber.progress.BaseMeter()
-if utils.get_debug():
-    meter = urlgrabber.progress.TextMeter(fo=sys.stdout)
+meter = util.make_meter(quiet=not utils.get_debug())
 
 
 def _storeForDistro(fetcher, guest):
@@ -237,9 +232,10 @@ def _testURL(fetcher, distname, arch, distroobj):
         # Make sure the stores are reporting correct distro name/variant
         if (s and distroobj.detectdistro and
             distroobj.detectdistro != s.os_variant):
-            raise AssertionError("Store distro/variant did not match "
-                "expected values: store=%s, found=%s expect=%s" %
-                (s, s.os_variant, distroobj.detectdistro))
+            raise AssertionError(
+                "Store distro/variant did not match expected values:\n"
+                "url=%s\nstore=%s\nfound=%s\nexpect=%s" %
+                (fetcher.location, s, s.os_variant, distroobj.detectdistro))
 
     # Do this only after the distro detection, since we actually need
     # to fetch files for that part

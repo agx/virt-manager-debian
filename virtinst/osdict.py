@@ -23,6 +23,8 @@ import datetime
 import logging
 import re
 
+import gi
+gi.require_version('Libosinfo', '1.0')
 from gi.repository import Libosinfo as libosinfo
 
 
@@ -174,7 +176,7 @@ class _OSDB(object):
         "linux" : "generic",
         "windows" : "winxp",
         "solaris" : "solaris10",
-        "unix": "freebsd9",
+        "unix": "freebsd9.0",
         "other": "generic",
     }
 
@@ -221,10 +223,7 @@ class _OSDB(object):
 
     def lookup_os(self, key):
         key = self._aliases.get(key) or key
-        ret = self._all_variants.get(key)
-        if ret is None:
-            return None
-        return ret
+        return self._all_variants.get(key)
 
     def lookup_os_by_media(self, location):
         media = libosinfo.Media.create_from_location(location, None)
@@ -285,6 +284,7 @@ class _OsVariant(object):
 
         self.name = self._os and self._os.get_short_id() or "generic"
         self.label = self._os and self._os.get_name() or "Generic"
+        self.codename = self._os and self._os.get_codename() or ""
 
         self.sortby = self._get_sortby()
         self.urldistro = self._get_urldistro()
@@ -358,13 +358,12 @@ class _OsVariant(object):
             return True
 
         eol_date = self._os.get_eol_date_string()
-        name = self._os.get_short_id()
 
         if eol_date:
             return (datetime.datetime.strptime(eol_date, "%Y-%m-%d") >
                     datetime.datetime.now())
 
-        if name == "fedora-unknown":
+        if self.name == "fedora-unknown":
             return False
 
         # As of libosinfo 2.11, many clearly EOL distros don't have an
@@ -429,31 +428,18 @@ class _OsVariant(object):
     def need_old_xen_disable_acpi(self):
         return self._is_related_to(["winxp", "win2k"], check_upgrades=False)
 
+    def broken_x2apic(self):
+        # x2apic breaks networking in solaris10
+        # https://bugs.launchpad.net/bugs/1395217
+        return self.name == 'solaris10'
+
     def get_clock(self):
         if self.is_windows() or self._family in ['solaris']:
             return "localtime"
         return "utc"
 
-    def supports_virtioconsole(self):
-        # We used to enable this for Fedora 18+, because systemd would
-        # autostart a getty on /dev/hvc0 which made 'virsh console' work
-        # out of the box for a login prompt. However now in Fedora
-        # virtio-console is compiled as a module, and systemd doesn't
-        # detect it in time to start a getty. So the benefit of using
-        # it as the default is erased, and we reverted to this.
-        # https://bugzilla.redhat.com/show_bug.cgi?id=1039742
-        return False
-
     def supports_virtiommio(self):
         return self._is_related_to(["fedora19"])
-
-    def supports_acpi(self, default):
-        if self._family in ['msdos']:
-            return False
-        return default
-
-    def supports_apic(self, default):
-        return self.supports_acpi(default)
 
     def default_netmodel(self):
         """
@@ -525,7 +511,14 @@ class _OsVariant(object):
         # issues with ubuntu + qxl for as late as 14.04, so carry the vmvga
         # default forward until someone says otherwise. In 2014-09 I contacted
         # Marc offlist and he said this was fine for now.
-        if self._os and self._os.get_distro() == "ubuntu":
+        #
+        # But in my testing ubuntu-15.04 works _better_ with qxl (installer
+        # resolution is huge with vmvga but reasonable with qxl), and given
+        # that the qemu vmvga code is not supposed to be of high quality,
+        # let's use qxl for newer ubuntu
+        if (self._os and
+            self._os.get_distro() == "ubuntu" and
+            not self._is_related_to("ubuntu15.04")):
             return "vmvga"
 
         if guest.has_spice() and guest.os.is_x86():

@@ -29,12 +29,12 @@ import sys
 import traceback
 
 import libvirt
-from urlgrabber import progress
 
 from virtcli import CLIConfig
 
 from . import util
 from .clock import Clock
+from .cpu import CPU
 from .deviceaudio import VirtualAudio
 from .devicechar import (VirtualChannelDevice, VirtualConsoleDevice,
                          VirtualSerialDevice, VirtualParallelDevice)
@@ -53,9 +53,17 @@ from .devicesmartcard import VirtualSmartCardDevice
 from .devicetpm import VirtualTPMDevice
 from .devicevideo import VirtualVideoDevice
 from .devicewatchdog import VirtualWatchdog
+from .domainblkiotune import DomainBlkiotune
+from .domainfeatures import DomainFeatures
+from .domainmemorybacking import DomainMemorybacking
+from .domainmemorytune import DomainMemorytune
 from .domainnumatune import DomainNumatune
+from .domainresource import DomainResource
+from .idmap import IdMap
 from .nodedev import NodeDevice
 from .osxml import OSXML
+from .pm import PM
+from .seclabel import Seclabel
 from .storage import StoragePool, StorageVolume
 
 
@@ -101,7 +109,7 @@ class VirtStreamHandler(logging.StreamHandler):
     def emit(self, record):
         """
         Based on the StreamHandler code from python 2.6: ripping out all
-        the unicode handling and just uncoditionally logging seems to fix
+        the unicode handling and just unconditionally logging seems to fix
         logging backtraces with unicode locales (for me at least).
 
         No doubt this is atrocious, but it WORKSFORME!
@@ -220,15 +228,15 @@ def setupLogging(appname, debug_stdout, do_quiet, cli_app=True):
         streamHandler.setLevel(logging.DEBUG)
         streamHandler.setFormatter(logging.Formatter(fileFormat,
                                                      dateFormat))
-    elif not cli_app:
-        streamHandler = None
-    else:
+    elif cli_app or not logfile:
         if get_global_state().quiet:
             level = logging.ERROR
         else:
             level = logging.WARN
         streamHandler.setLevel(level)
         streamHandler.setFormatter(logging.Formatter(streamErrorFormat))
+    else:
+        streamHandler = None
 
     if streamHandler:
         rootLogger.addHandler(streamHandler)
@@ -241,6 +249,8 @@ def setupLogging(appname, debug_stdout, do_quiet, cli_app=True):
                       "".join(traceback.format_exception(typ, val, tb)))
         sys.__excepthook__(typ, val, tb)
     sys.excepthook = exception_log
+
+    logging.getLogger("requests").setLevel(logging.ERROR)
 
     # Log the app command string
     logging.debug("Launched with command line: %s", " ".join(sys.argv))
@@ -475,9 +485,8 @@ def get_console_cb(guest):
 
 
 def get_meter():
-    if get_global_state().quiet or "VIRTINST_TEST_SUITE" in os.environ:
-        return progress.BaseMeter()
-    return progress.TextMeter(fo=sys.stdout)
+    quiet = (get_global_state().quiet or "VIRTINST_TEST_SUITE" in os.environ)
+    return util.make_meter(quiet=quiet)
 
 
 ###########################
@@ -676,7 +685,7 @@ def add_device_options(devg, sound_back_compat=False):
 
 
 def add_guest_xml_options(geng):
-    geng.add_argument("--security",
+    geng.add_argument("--security", action="append",
         help=_("Set domain security driver configuration."))
     geng.add_argument("--numatune",
         help=_("Tune NUMA policy for the domain process."))
@@ -729,22 +738,23 @@ def add_disk_option(stog, editexample=False):
 # (for options like --disk, --network, etc. #
 #############################################
 
+def _raw_on_off_convert(s):
+    tvalues = ["y", "yes", "1", "true", "t", "on"]
+    fvalues = ["n", "no", "0", "false", "f", "off"]
+
+    s = (s or "").lower()
+    if s in tvalues:
+        return True
+    elif s in fvalues:
+        return False
+    return None
+
+
 def _on_off_convert(key, val):
     if val is None:
         return None
 
-    def _yes_no_convert(s):
-        tvalues = ["y", "yes", "1", "true", "t", "on"]
-        fvalues = ["n", "no", "0", "false", "f", "off"]
-
-        s = (s or "").lower()
-        if s in tvalues:
-            return True
-        elif s in fvalues:
-            return False
-        return None
-
-    val = _yes_no_convert(val)
+    val = _raw_on_off_convert(val)
     if val is not None:
         return val
     raise fail(_("%(key)s must be 'yes' or 'no'") % {"key": key})
@@ -974,7 +984,7 @@ class VirtCLIParser(object):
     from overriding _parse), so that we can show all options when the
     user requests command line introspection like --disk=?
     """
-    devclass = None
+    objclass = None
 
     def __init__(self, cli_arg_name):
         """
@@ -1014,12 +1024,16 @@ class VirtCLIParser(object):
     def __init_global_params(self):
         def set_clearxml_cb(opts, inst, cliname, val):
             ignore = opts = cliname
-            if not self.clear_attr:
+            if not self.objclass and not self.clear_attr:
                 raise RuntimeError("Don't know how to clearxml --%s" %
                                    self.cli_arg_name)
             if val is not True:
                 return
-            getattr(inst, self.clear_attr).clear()
+
+            if self.clear_attr:
+                getattr(inst, self.clear_attr).clear()
+            else:
+                inst.clear()
 
         self.set_param(None, "clearxml",
                        setter_cb=set_clearxml_cb, is_onoff=True)
@@ -1052,23 +1066,26 @@ class VirtCLIParser(object):
 
         ret = []
         for optstr in optlist:
+            new_object = False
             optinst = inst
-            if self.devclass and not inst:
-                optinst = self.devclass(guest.conn)  # pylint: disable=not-callable
+            if self.objclass and not inst:
+                if guest.child_class_is_singleton(self.objclass):
+                    optinst = guest.list_children_for_class(
+                        self.objclass)[0]
+                else:
+                    new_object = True
+                    optinst = self.objclass(guest.conn)  # pylint: disable=not-callable
 
             try:
-                devs = self._parse_single_optstr(guest, optstr, optinst)
-                for dev in util.listify(devs):
-                    if not hasattr(dev, "virtual_device_type"):
-                        continue
-
+                objs = self._parse_single_optstr(guest, optstr, optinst)
+                for obj in util.listify(objs):
+                    if not new_object:
+                        break
                     if validate:
-                        dev.validate()
-                    if editting:
-                        continue
-                    guest.add_device(dev)
+                        obj.validate()
+                    guest.add_child(obj)
 
-                ret += util.listify(devs)
+                ret += util.listify(objs)
             except Exception, e:
                 logging.debug("Exception parsing inst=%s optstr=%s",
                               inst, optstr, exc_info=True)
@@ -1082,15 +1099,17 @@ class VirtCLIParser(object):
             return ret[0]
         return ret
 
-    def lookup_device_from_option_string(self, guest, optstr):
+    def lookup_child_from_option_string(self, guest, optstr):
         """
-        Given a passed option string, search the guests' device list
-        for all devices which match the passed options.
-        """
-        devlist = guest.get_devices(self.devclass.virtual_device_type)[:]
-        ret = []
+        Given a passed option string, search the guests' child list
+        for all objects which match the passed options.
 
-        for inst in devlist:
+        Used only by virt-xml --edit lookups
+        """
+        ret = []
+        objlist = guest.list_children_for_class(self.objclass)
+
+        for inst in objlist:
             try:
                 opts = VirtOptionString(optstr, self._params,
                                         self.remove_first)
@@ -1195,6 +1214,7 @@ class ParserEvents(VirtCLIParser):
         self.set_param("on_poweroff", "on_poweroff")
         self.set_param("on_reboot", "on_reboot")
         self.set_param("on_crash", "on_crash")
+        self.set_param("on_lockfailure", "on_lockfailure")
 
 
 ######################
@@ -1203,10 +1223,10 @@ class ParserEvents(VirtCLIParser):
 
 class ParserResource(VirtCLIParser):
     def _init_params(self):
+        self.objclass = DomainResource
         self.remove_first = "partition"
-        self.clear_attr = "resource"
 
-        self.set_param("resource.partition", "partition")
+        self.set_param("partition", "partition")
 
 
 ######################
@@ -1215,11 +1235,11 @@ class ParserResource(VirtCLIParser):
 
 class ParserNumatune(VirtCLIParser):
     def _init_params(self):
-        self.clear_attr = "numatune"
+        self.objclass = DomainNumatune
         self.remove_first = "nodeset"
 
-        self.set_param("numatune.memory_nodeset", "nodeset", can_comma=True)
-        self.set_param("numatune.memory_mode", "mode")
+        self.set_param("memory_nodeset", "nodeset", can_comma=True)
+        self.set_param("memory_mode", "mode")
 
 
 ####################
@@ -1244,13 +1264,13 @@ class ParserMemory(VirtCLIParser):
 
 class ParserMemorytune(VirtCLIParser):
     def _init_params(self):
+        self.objclass = DomainMemorytune
         self.remove_first = "soft_limit"
-        self.clear_attr = "memtune"
 
-        self.set_param("memtune.hard_limit", "hard_limit")
-        self.set_param("memtune.soft_limit", "soft_limit")
-        self.set_param("memtune.swap_hard_limit", "swap_hard_limit")
-        self.set_param("memtune.min_guarantee", "min_guarantee")
+        self.set_param("hard_limit", "hard_limit")
+        self.set_param("soft_limit", "soft_limit")
+        self.set_param("swap_hard_limit", "swap_hard_limit")
+        self.set_param("min_guarantee", "min_guarantee")
 
 
 ###################
@@ -1261,33 +1281,40 @@ class ParserVCPU(VirtCLIParser):
     def _init_params(self):
         self.remove_first = "vcpus"
 
-        self.set_param("cpu.sockets", "sockets")
-        self.set_param("cpu.cores", "cores")
-        self.set_param("cpu.threads", "threads")
-
         def set_vcpus_cb(opts, inst, cliname, val):
             ignore = cliname
             attrname = ("maxvcpus" in opts.opts) and "curvcpus" or "vcpus"
             setattr(inst, attrname, val)
 
+        def set_cpuset_cb(opts, inst, cliname, val):
+            if not val:
+                return
+            if val != "auto":
+                inst.cpuset = val
+                return
+
+            # Previously we did our own one-time cpuset placement
+            # based on current NUMA memory availability, but that's
+            # pretty dumb unless the conditions on the host never change.
+            # So instead use newer vcpu placement=, but only if it's
+            # supported.
+            if not inst.conn.check_support(
+                    inst.conn.SUPPORT_CONN_VCPU_PLACEMENT):
+                logging.warning("vcpu placement=auto not supported, skipping.")
+                return
+
+            inst.vcpu_placement = "auto"
+
+        self.set_param("cpu.sockets", "sockets")
+        self.set_param("cpu.cores", "cores")
+        self.set_param("cpu.threads", "threads")
+
         self.set_param(None, "vcpus", setter_cb=set_vcpus_cb)
         self.set_param("vcpus", "maxvcpus")
 
-        def set_cpuset_cb(opts, inst, cliname, val):
-            if val == "auto":
-                try:
-                    val = DomainNumatune.generate_cpuset(
-                        inst.conn, inst.memory)
-                    logging.debug("Auto cpuset is: %s", val)
-                except Exception, e:
-                    logging.error("Not setting cpuset: %s", str(e))
-                    val = None
-
-            if val:
-                inst.cpuset = val
-
         self.set_param(None, "cpuset", can_comma=True,
                        setter_cb=set_cpuset_cb)
+        self.set_param("vcpu_placement", "placement")
 
 
     def _parse(self, opts, inst):
@@ -1307,21 +1334,21 @@ class ParserVCPU(VirtCLIParser):
 
 class ParserCPU(VirtCLIParser):
     def _init_params(self):
-        self.clear_attr = "cpu"
+        self.objclass = CPU
         self.remove_first = "model"
 
         def set_model_cb(opts, inst, cliname, val):
             ignore = opts
             ignore = cliname
             if val == "host":
-                val = inst.cpu.SPECIAL_MODE_HOST_MODEL
+                val = inst.SPECIAL_MODE_HOST_MODEL
             if val == "none":
-                val = inst.cpu.SPECIAL_MODE_CLEAR
+                val = inst.SPECIAL_MODE_CLEAR
 
-            if val in inst.cpu.SPECIAL_MODES:
-                inst.cpu.set_special_mode(val)
+            if val in inst.SPECIAL_MODES:
+                inst.set_special_mode(val)
             else:
-                inst.cpu.model = val
+                inst.model = val
 
         def set_feature_cb(opts, inst, cliname, val):
             ignore = opts
@@ -1329,7 +1356,7 @@ class ParserCPU(VirtCLIParser):
             for feature_name in util.listify(val):
                 featureobj = None
 
-                for f in inst.cpu.features:
+                for f in inst.features:
                     if f.name == feature_name:
                         featureobj = f
                         break
@@ -1337,12 +1364,12 @@ class ParserCPU(VirtCLIParser):
                 if featureobj:
                     featureobj.policy = policy
                 else:
-                    inst.cpu.add_feature(feature_name, policy)
+                    inst.add_feature(feature_name, policy)
 
         self.set_param(None, "model", setter_cb=set_model_cb)
-        self.set_param("cpu.mode", "mode")
-        self.set_param("cpu.match", "match")
-        self.set_param("cpu.vendor", "vendor")
+        self.set_param("mode", "mode")
+        self.set_param("match", "match")
+        self.set_param("vendor", "vendor")
 
         self.set_param(None, "force", is_list=True, setter_cb=set_feature_cb)
         self.set_param(None, "require", is_list=True, setter_cb=set_feature_cb)
@@ -1444,15 +1471,15 @@ class ParserBoot(VirtCLIParser):
 
 class ParserIdmap(VirtCLIParser):
     def _init_params(self):
-        self.clear_attr = "idmap"
+        self.objclass = IdMap
 
-        self.set_param("idmap.uid_start", "uid_start")
-        self.set_param("idmap.uid_target", "uid_target")
-        self.set_param("idmap.uid_count", "uid_count")
+        self.set_param("uid_start", "uid_start")
+        self.set_param("uid_target", "uid_target")
+        self.set_param("uid_count", "uid_count")
 
-        self.set_param("idmap.gid_start", "gid_start")
-        self.set_param("idmap.gid_target", "gid_target")
-        self.set_param("idmap.gid_count", "gid_count")
+        self.set_param("gid_start", "gid_start")
+        self.set_param("gid_target", "gid_target")
+        self.set_param("gid_count", "gid_count")
 
 
 ######################
@@ -1461,12 +1488,13 @@ class ParserIdmap(VirtCLIParser):
 
 class ParserSecurity(VirtCLIParser):
     def _init_params(self):
-        self.clear_attr = "seclabel"
+        self.objclass = Seclabel
 
-        self.set_param("seclabel.type", "type")
-        self.set_param("seclabel.label", "label", can_comma=True)
-        self.set_param("seclabel.relabel", "relabel",
-                       is_onoff=True)
+        self.set_param("type", "type")
+        self.set_param("model", "model")
+        self.set_param("relabel", "relabel", is_onoff=True)
+        self.set_param("label", "label", can_comma=True)
+        self.set_param("baselabel", "label", can_comma=True)
 
 
 ######################
@@ -1475,29 +1503,32 @@ class ParserSecurity(VirtCLIParser):
 
 class ParserFeatures(VirtCLIParser):
     def _init_params(self):
-        self.clear_attr = "features"
+        self.objclass = DomainFeatures
 
-        self.set_param("features.acpi", "acpi", is_onoff=True)
-        self.set_param("features.apic", "apic", is_onoff=True)
-        self.set_param("features.pae", "pae", is_onoff=True)
-        self.set_param("features.privnet", "privnet",
+        self.set_param("acpi", "acpi", is_onoff=True)
+        self.set_param("apic", "apic", is_onoff=True)
+        self.set_param("pae", "pae", is_onoff=True)
+        self.set_param("privnet", "privnet",
             is_onoff=True)
-        self.set_param("features.hap", "hap",
+        self.set_param("hap", "hap",
             is_onoff=True)
-        self.set_param("features.viridian", "viridian",
+        self.set_param("viridian", "viridian",
             is_onoff=True)
-        self.set_param("features.eoi", "eoi", is_onoff=True)
+        self.set_param("eoi", "eoi", is_onoff=True)
+        self.set_param("pmu", "pmu", is_onoff=True)
 
-        self.set_param("features.hyperv_vapic", "hyperv_vapic",
+        self.set_param("hyperv_vapic", "hyperv_vapic",
             is_onoff=True)
-        self.set_param("features.hyperv_relaxed", "hyperv_relaxed",
+        self.set_param("hyperv_relaxed", "hyperv_relaxed",
             is_onoff=True)
-        self.set_param("features.hyperv_spinlocks", "hyperv_spinlocks",
+        self.set_param("hyperv_spinlocks", "hyperv_spinlocks",
             is_onoff=True)
-        self.set_param("features.hyperv_spinlocks_retries",
+        self.set_param("hyperv_spinlocks_retries",
             "hyperv_spinlocks_retries")
 
-        self.set_param("features.vmport", "vmport", is_onoff=True)
+        self.set_param("vmport", "vmport", is_onoff=True)
+        self.set_param("kvm_hidden", "kvm_hidden", is_onoff=True)
+        self.set_param("pvspinlock", "pvspinlock", is_onoff=True)
 
 
 ###################
@@ -1506,22 +1537,22 @@ class ParserFeatures(VirtCLIParser):
 
 class ParserClock(VirtCLIParser):
     def _init_params(self):
-        self.clear_attr = "clock"
+        self.objclass = Clock
 
-        self.set_param("clock.offset", "offset")
+        self.set_param("offset", "offset")
 
         def set_timer(opts, inst, cliname, val):
             ignore = opts
             tname, attrname = cliname.split("_")
 
             timerobj = None
-            for t in inst.clock.timers:
+            for t in inst.timers:
                 if t.name == tname:
                     timerobj = t
                     break
 
             if not timerobj:
-                timerobj = inst.clock.add_timer()
+                timerobj = inst.add_timer()
                 timerobj.name = tname
 
             setattr(timerobj, attrname, val)
@@ -1539,10 +1570,10 @@ class ParserClock(VirtCLIParser):
 
 class ParserPM(VirtCLIParser):
     def _init_params(self):
-        self.clear_attr = "pm"
+        self.objclass = PM
 
-        self.set_param("pm.suspend_to_mem", "suspend_to_mem", is_onoff=True)
-        self.set_param("pm.suspend_to_disk", "suspend_to_disk", is_onoff=True)
+        self.set_param("suspend_to_mem", "suspend_to_mem", is_onoff=True)
+        self.set_param("suspend_to_disk", "suspend_to_disk", is_onoff=True)
 
 
 ##########################
@@ -1582,7 +1613,7 @@ def _generate_new_volume_name(guest, poolobj, fmt):
 
 class ParserDisk(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualDisk
+        self.objclass = VirtualDisk
         self.remove_first = "path"
 
         def noset_cb(opts, inst, cliname, val):
@@ -1728,7 +1759,7 @@ class ParserDisk(VirtCLIParser):
 
 class ParserNetwork(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualNetworkInterface
+        self.objclass = VirtualNetworkInterface
         self.remove_first = "type"
 
         def set_mac_cb(opts, inst, cliname, val):
@@ -1747,6 +1778,21 @@ class ParserNetwork(VirtCLIParser):
             else:
                 inst.type = val
 
+        def set_link_state(opts, inst, cliname, val):
+            ignore = opts
+            ignore = cliname
+
+            if val in ["up", "down"]:
+                inst.link_state = val
+                return
+
+            ret = _raw_on_off_convert(val)
+            if ret is True:
+                val = "up"
+            elif ret is False:
+                val = "down"
+            inst.link_state = val
+
         self.set_param("type", "type", setter_cb=set_type_cb)
         self.set_param("source", "source")
         self.set_param("source_mode", "source_mode")
@@ -1756,16 +1802,25 @@ class ParserNetwork(VirtCLIParser):
         self.set_param("macaddr", "mac", setter_cb=set_mac_cb)
         self.set_param("filterref", "filterref")
         self.set_param("boot.order", "boot_order")
+        self.set_param("link_state", "link_state", setter_cb=set_link_state)
 
         self.set_param("driver_name", "driver_name")
         self.set_param("driver_queues", "driver_queues")
 
         self.set_param("virtualport.type", "virtualport_type")
+
+        # For 802.1Qbg
         self.set_param("virtualport.managerid", "virtualport_managerid")
         self.set_param("virtualport.typeid", "virtualport_typeid")
         self.set_param("virtualport.typeidversion",
             "virtualport_typeidversion")
         self.set_param("virtualport.instanceid", "virtualport_instanceid")
+
+        # For openvswitch & 802.1Qbh
+        self.set_param("virtualport.profileid", "virtualport_profileid")
+
+        # For openvswitch & midonet
+        self.set_param("virtualport.interfaceid", "virtualport_interfaceid")
 
     def _parse(self, optsobj, inst):
         if optsobj.fullopts == "none":
@@ -1789,7 +1844,7 @@ class ParserNetwork(VirtCLIParser):
 
 class ParserGraphics(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualGraphics
+        self.objclass = VirtualGraphics
         self.remove_first = "type"
 
         def set_keymap_cb(opts, inst, cliname, val):
@@ -1848,7 +1903,7 @@ class ParserGraphics(VirtCLIParser):
 
 class ParserController(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualController
+        self.objclass = VirtualController
         self.remove_first = "type"
 
         self.set_param("type", "type")
@@ -1877,7 +1932,7 @@ class ParserController(VirtCLIParser):
 
 class ParserInput(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualInputDevice
+        self.objclass = VirtualInputDevice
         self.remove_first = "type"
 
         self.set_param("type", "type")
@@ -1890,7 +1945,7 @@ class ParserInput(VirtCLIParser):
 
 class ParserSmartcard(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualSmartCardDevice
+        self.objclass = VirtualSmartCardDevice
         self.remove_first = "mode"
         self.check_none = True
 
@@ -1904,7 +1959,7 @@ class ParserSmartcard(VirtCLIParser):
 
 class ParserRedir(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualRedirDevice
+        self.objclass = VirtualRedirDevice
         self.remove_first = "bus"
 
         self.set_param("bus", "bus")
@@ -1930,7 +1985,7 @@ class ParserRedir(VirtCLIParser):
 
 class ParserTPM(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualTPMDevice
+        self.objclass = VirtualTPMDevice
         self.remove_first = "type"
         self.check_none = True
 
@@ -1950,7 +2005,7 @@ class ParserTPM(VirtCLIParser):
 
 class ParserRNG(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualRNGDevice
+        self.objclass = VirtualRNGDevice
         self.remove_first = "type"
         self.check_none = True
 
@@ -2020,7 +2075,7 @@ class ParserRNG(VirtCLIParser):
 
 class ParserWatchdog(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualWatchdog
+        self.objclass = VirtualWatchdog
         self.remove_first = "model"
 
         self.set_param("model", "model")
@@ -2033,7 +2088,7 @@ class ParserWatchdog(VirtCLIParser):
 
 class ParserMemballoon(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualMemballoon
+        self.objclass = VirtualMemballoon
         self.remove_first = "model"
 
         self.set_param("model", "model")
@@ -2045,7 +2100,7 @@ class ParserMemballoon(VirtCLIParser):
 
 class ParserPanic(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualPanicDevice
+        self.objclass = VirtualPanicDevice
         self.remove_first = "iobase"
 
         def set_iobase_cb(opts, inst, cliname, val):
@@ -2063,12 +2118,12 @@ class ParserPanic(VirtCLIParser):
 
 class ParserBlkiotune(VirtCLIParser):
     def _init_params(self):
-        self.clear_attr = "blkiotune"
+        self.objclass = DomainBlkiotune
         self.remove_first = "weight"
 
-        self.set_param("blkiotune.weight", "weight")
-        self.set_param("blkiotune.device_path", "device_path")
-        self.set_param("blkiotune.device_weight", "device_weight")
+        self.set_param("weight", "weight")
+        self.set_param("device_path", "device_path")
+        self.set_param("device_weight", "device_weight")
 
 
 ########################
@@ -2077,17 +2132,14 @@ class ParserBlkiotune(VirtCLIParser):
 
 class ParserMemorybacking(VirtCLIParser):
     def _init_params(self):
-        self.clear_attr = "memoryBacking"
+        self.objclass = DomainMemorybacking
 
-        self.set_param("memoryBacking.hugepages",
-                "hugepages", is_onoff=True)
-        self.set_param("memoryBacking.page_size", "size")
-        self.set_param("memoryBacking.page_unit", "unit")
-        self.set_param("memoryBacking.page_nodeset",
-                "nodeset", can_comma=True)
-        self.set_param("memoryBacking.nosharepages",
-                "nosharepages", is_onoff=True)
-        self.set_param("memoryBacking.locked", "locked", is_onoff=True)
+        self.set_param("hugepages", "hugepages", is_onoff=True)
+        self.set_param("page_size", "size")
+        self.set_param("page_unit", "unit")
+        self.set_param("page_nodeset", "nodeset", can_comma=True)
+        self.set_param("nosharepages", "nosharepages", is_onoff=True)
+        self.set_param("locked", "locked", is_onoff=True)
 
 
 ######################################################
@@ -2109,17 +2161,19 @@ class _ParserChar(VirtCLIParser):
                      "optname" : cliname})
         self.support_cb = support_check
 
-
         self.set_param("type", "char_type")
         self.set_param("source_path", "path")
-        self.set_param("source_mode", "mode")
         self.set_param("protocol",   "protocol")
         self.set_param("target_type", "target_type")
         self.set_param("target_name", "name")
 
         def set_host_cb(opts, inst, cliname, val):
-            ignore = opts = cliname
-            inst.set_friendly_source(val)
+            ignore = cliname
+            if ("bind_host" not in opts.opts and
+                opts.opts.get("mode", None) == "bind"):
+                inst.set_friendly_bind(val)
+            else:
+                inst.set_friendly_source(val)
         self.set_param(None, "host", setter_cb=set_host_cb)
 
         def set_bind_cb(opts, inst, cliname, val):
@@ -2131,6 +2185,8 @@ class _ParserChar(VirtCLIParser):
             ignore = opts = cliname
             inst.set_friendly_target(val)
         self.set_param(None, "target_address", setter_cb=set_target_cb)
+
+        self.set_param("source_mode", "mode")
 
     def _parse(self, opts, inst):
         if opts.fullopts == "none" and inst.virtual_device_type == "console":
@@ -2144,19 +2200,19 @@ class _ParserChar(VirtCLIParser):
 
 
 class ParserSerial(_ParserChar):
-    devclass = VirtualSerialDevice
+    objclass = VirtualSerialDevice
 
 
 class ParserParallel(_ParserChar):
-    devclass = VirtualParallelDevice
+    objclass = VirtualParallelDevice
 
 
 class ParserChannel(_ParserChar):
-    devclass = VirtualChannelDevice
+    objclass = VirtualChannelDevice
 
 
 class ParserConsole(_ParserChar):
-    devclass = VirtualConsoleDevice
+    objclass = VirtualConsoleDevice
 
 
 ########################
@@ -2165,11 +2221,11 @@ class ParserConsole(_ParserChar):
 
 class ParserFilesystem(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualFilesystem
+        self.objclass = VirtualFilesystem
         self.remove_first = ["source", "target"]
 
         self.set_param("type", "type")
-        self.set_param("mode", "mode")
+        self.set_param("accessmode", "accessmode", aliases=["mode"])
         self.set_param("source", "source")
         self.set_param("target", "target")
 
@@ -2180,7 +2236,7 @@ class ParserFilesystem(VirtCLIParser):
 
 class ParserVideo(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualVideoDevice
+        self.objclass = VirtualVideoDevice
         self.remove_first = "model"
 
         self.set_param("model", "model", ignore_default=True)
@@ -2192,7 +2248,7 @@ class ParserVideo(VirtCLIParser):
 
 class ParserSound(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualAudio
+        self.objclass = VirtualAudio
         self.remove_first = "model"
 
         self.set_param("model", "model", ignore_default=True)
@@ -2210,7 +2266,7 @@ class ParserSound(VirtCLIParser):
 
 class ParserHostdev(VirtCLIParser):
     def _init_params(self):
-        self.devclass = VirtualHostDevice
+        self.objclass = VirtualHostDevice
         self.remove_first = "name"
 
         # If using the name_lookup_cb, this saves us repeatedly trying to

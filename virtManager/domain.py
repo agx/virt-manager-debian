@@ -257,7 +257,8 @@ class vmmDomain(vmmLibvirtObject):
 
     @staticmethod
     def pretty_status_reason(status, reason):
-        key = lambda x, y: getattr(libvirt, "VIR_DOMAIN_" + x, y)
+        def key(x, y):
+            return getattr(libvirt, "VIR_DOMAIN_" + x, y)
         reasons = {
             libvirt.VIR_DOMAIN_RUNNING : {
                 key("RUNNING_BOOTED", 1) : _("Booted"),
@@ -314,7 +315,6 @@ class vmmDomain(vmmLibvirtObject):
         }
 
         self._install_abort = False
-        self._is_management_domain = None
         self._id = None
         self._uuid = None
         self._has_managed_save = None
@@ -331,6 +331,7 @@ class vmmDomain(vmmLibvirtObject):
 
         self._enable_mem_stats = False
         self._enable_cpu_stats = False
+        self._mem_stats_period_is_set = False
 
         self._enable_net_poll = False
         self._stats_net_supported = True
@@ -391,6 +392,13 @@ class vmmDomain(vmmLibvirtObject):
         self.add_gsettings_handle(
             self.config.on_stats_enable_memory_poll_changed(
                 self._on_config_sample_mem_stats_changed))
+
+        if (self.get_name() == "Domain-0" and
+            self.get_uuid() == "00000000-0000-0000-0000-000000000000"):
+            # We don't want virt-manager to track Domain-0 since it
+            # doesn't work with our UI. Raising an error will ensures it
+            # is blacklisted.
+            raise RuntimeError("Can't track Domain-0 as a vmmDomain")
 
         self.connect("pre-startup", self._prestartup_nodedev_check)
 
@@ -458,17 +466,6 @@ class vmmDomain(vmmLibvirtObject):
 
     def stable_defaults(self):
         return self.get_xmlobj().stable_defaults()
-
-    def is_read_only(self):
-        if self.is_management_domain():
-            return True
-        return False
-
-    def is_management_domain(self):
-        if self._is_management_domain is None:
-            self._is_management_domain = (self.conn.is_xen() and
-                                          self.get_id() == 0)
-        return self._is_management_domain
 
     def has_spicevmc_type_redirdev(self):
         devs = self.get_redirdev_devices()
@@ -594,7 +591,7 @@ class vmmDomain(vmmLibvirtObject):
         self._redefine_xmlobj(xmlobj)
 
     def define_cpu(self, vcpus=_SENTINEL, maxvcpus=_SENTINEL,
-        cpuset=_SENTINEL, model=_SENTINEL, sockets=_SENTINEL,
+        model=_SENTINEL, sockets=_SENTINEL,
         cores=_SENTINEL, threads=_SENTINEL):
         guest = self._make_xmlobj_to_define()
 
@@ -602,8 +599,6 @@ class vmmDomain(vmmLibvirtObject):
             guest.curvcpus = int(vcpus)
         if maxvcpus != _SENTINEL:
             guest.vcpus = int(maxvcpus)
-        if cpuset != _SENTINEL:
-            guest.cpuset = cpuset
 
         if sockets != _SENTINEL:
             guest.cpu.sockets = sockets
@@ -725,8 +720,6 @@ class vmmDomain(vmmLibvirtObject):
         path=_SENTINEL, readonly=_SENTINEL, serial=_SENTINEL,
         shareable=_SENTINEL, removable=_SENTINEL, cache=_SENTINEL,
         io=_SENTINEL, driver_type=_SENTINEL, bus=_SENTINEL, addrstr=_SENTINEL,
-        iotune_rbs=_SENTINEL, iotune_ris=_SENTINEL, iotune_tbs=_SENTINEL,
-        iotune_tis=_SENTINEL, iotune_wbs=_SENTINEL, iotune_wis=_SENTINEL,
         sgio=_SENTINEL):
         xmlobj = self._make_xmlobj_to_define()
         editdev = self._lookup_device_to_define(xmlobj, devobj, do_hotplug)
@@ -780,18 +773,6 @@ class vmmDomain(vmmLibvirtObject):
         if serial != _SENTINEL:
             editdev.serial = serial or None
 
-        if iotune_rbs != _SENTINEL:
-            editdev.iotune_rbs = iotune_rbs
-        if iotune_ris != _SENTINEL:
-            editdev.iotune_ris = iotune_ris
-        if iotune_tbs != _SENTINEL:
-            editdev.iotune_tbs = iotune_tbs
-        if iotune_tis != _SENTINEL:
-            editdev.iotune_tis = iotune_tis
-        if iotune_wbs != _SENTINEL:
-            editdev.iotune_wbs = iotune_wbs
-        if iotune_wis != _SENTINEL:
-            editdev.iotune_wis = iotune_wis
         if sgio != _SENTINEL:
             editdev.sgio = sgio or None
 
@@ -799,10 +780,7 @@ class vmmDomain(vmmLibvirtObject):
             _change_bus()
 
         if do_hotplug:
-            hotplug_kwargs = {"device": editdev}
-            if path != _SENTINEL:
-                hotplug_kwargs["storage_path"] = True
-            self.hotplug(**hotplug_kwargs)
+            self.hotplug(device=editdev)
         else:
             self._redefine_xmlobj(xmlobj)
 
@@ -991,7 +969,7 @@ class vmmDomain(vmmLibvirtObject):
         if newdev != _SENTINEL:
             # pylint: disable=maybe-no-member
             editdev.type = newdev.type
-            editdev.mode = newdev.mode
+            editdev.accessmode = newdev.accessmode
             editdev.wrpolicy = newdev.wrpolicy
             editdev.driver = newdev.driver
             editdev.format = newdev.format
@@ -1001,9 +979,9 @@ class vmmDomain(vmmLibvirtObject):
             editdev.target = newdev.target
 
         if do_hotplug:
-            self._redefine_xmlobj(xmlobj)
-        else:
             self.hotplug(device=editdev)
+        else:
+            self._redefine_xmlobj(xmlobj)
 
 
     def define_hostdev(self, devobj, do_hotplug, rom_bar=_SENTINEL):
@@ -1056,8 +1034,7 @@ class vmmDomain(vmmLibvirtObject):
         self._backend.updateDeviceFlags(xml, flags)
 
     def hotplug(self, vcpus=_SENTINEL, memory=_SENTINEL, maxmem=_SENTINEL,
-        description=_SENTINEL, title=_SENTINEL, storage_path=_SENTINEL,
-        device=_SENTINEL):
+        description=_SENTINEL, title=_SENTINEL, device=_SENTINEL):
         if not self.is_active():
             return
 
@@ -1100,13 +1077,7 @@ class vmmDomain(vmmLibvirtObject):
         if title != _SENTINEL:
             _hotplug_metadata(title, libvirt.VIR_DOMAIN_METADATA_TITLE)
 
-        if storage_path != _SENTINEL:
-            # qemu originally only supported attach_device for updating
-            # a device's path. Stick with that. We may need to differentiate
-            # for other drivers that don't maintain back compat though
-            self.attach_device(device)
-
-        elif device != _SENTINEL:
+        if device != _SENTINEL:
             self._update_device(device)
 
 
@@ -1230,8 +1201,6 @@ class vmmDomain(vmmLibvirtObject):
     def vcpu_max_count(self):
         return int(self.get_xmlobj().vcpus)
 
-    def vcpu_pinning(self):
-        return self.get_xmlobj().cpuset or ""
     def get_cpu_config(self):
         return self.get_xmlobj().cpu
 
@@ -1844,25 +1813,49 @@ class vmmDomain(vmmLibvirtObject):
 
         return rd, wr
 
+    def _set_mem_stats_period(self):
+        # QEMU requires we explicitly enable memory stats polling per VM
+        # if we wan't fine grained memory stats
+        if not self.conn.check_support(
+                self.conn.SUPPORT_CONN_MEM_STATS_PERIOD):
+            return
+
+        # Only works for virtio balloon
+        if not any([b for b in self.get_xmlobj().get_devices("memballoon") if
+                    b.model == "virtio"]):
+            return
+
+        try:
+            secs = 5
+            self._backend.setMemoryStatsPeriod(secs,
+                libvirt.VIR_DOMAIN_AFFECT_LIVE)
+        except Exception, e:
+            logging.debug("Error setting memstats period: %s", e)
+
     def _sample_mem_stats(self):
         if (not self.mem_stats_supported or
             not self._enable_mem_stats or
             not self.is_active()):
+            self._mem_stats_period_is_set = False
             return 0, 0
+
+        if self._mem_stats_period_is_set is False:
+            self._set_mem_stats_period()
+            self._mem_stats_period_is_set = True
 
         curmem = 0
         totalmem = 1
         try:
             stats = self._backend.memoryStats()
-            # did we get both required stat items back?
-            if set(['actual', 'rss']).issubset(
-                    set(stats.keys())):
-                curmem = stats['rss']
-                totalmem = stats['actual']
+            totalmem = stats.get("actual", 1)
+            curmem = stats.get("rss", 0)
+
+            if "unused" in stats:
+                curmem = max(0, totalmem - stats.get("unused", totalmem))
         except libvirt.libvirtError, err:
             logging.error("Error reading mem stats: %s", err)
 
-        pcentCurrMem = curmem * 100.0 / totalmem
+        pcentCurrMem = (curmem / float(totalmem)) * 100
         pcentCurrMem = max(0.0, min(pcentCurrMem, 100.0))
 
         return pcentCurrMem, curmem
@@ -1895,13 +1888,6 @@ class vmmDomain(vmmLibvirtObject):
         current = len(self._stats)
         if current > expected:
             del self._stats[expected:current]
-
-        # Xen reports complete crap for Dom0 max memory
-        # (ie MAX_LONG) so lets clamp it to the actual
-        # physical RAM in machine which is the effective
-        # real world limit
-        if self.is_management_domain() and info:
-            info[1] = self.conn.host_memory_size()
 
         now = time.time()
         (cpuTime, cpuTimeAbs,

@@ -10,8 +10,6 @@
     <boot dev="hd"/>
   </os>
   <features>
-    <acpi/>
-    <apic/>
     <pae/>
     <hyperv>
       <relaxed state="on"/>
@@ -45,7 +43,7 @@
     <interface type="user">
       <mac address="00:11:22:33:44:55"/>
     </interface>
-    <input type="tablet" bus="usb"/>
+    <input type="mouse" bus="ps2"/>
     <console type="pty"/>
   </devices>
 </domain>
@@ -60,8 +58,6 @@
     <boot dev="hd"/>
   </os>
   <features>
-    <acpi/>
-    <apic/>
     <pae/>
     <hyperv>
       <relaxed state="on"/>
@@ -95,7 +91,7 @@
     <interface type="user">
       <mac address="00:11:22:33:44:55"/>
     </interface>
-    <input type="tablet" bus="usb"/>
+    <input type="mouse" bus="ps2"/>
     <console type="pty"/>
   </devices>
 </domain>
@@ -110,8 +106,6 @@
     <boot dev="hd"/>
   </os>
   <features>
-    <acpi/>
-    <apic/>
     <pae/>
     <hyperv>
       <relaxed state="on"/>
@@ -145,7 +139,7 @@
     <interface type="user">
       <mac address="00:11:22:33:44:55"/>
     </interface>
-    <input type="tablet" bus="usb"/>
+    <input type="mouse" bus="ps2"/>
     <console type="pty"/>
   </devices>
 </domain>

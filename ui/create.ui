@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.18.3 -->
+<!-- Generated with glade 3.19.0 -->
 <interface>
   <requires lib="gtk+" version="3.8"/>
   <object class="GtkAdjustment" id="adjustment2">
@@ -411,116 +411,6 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkExpander" id="arch-expander">
-                            <property name="visible">True</property>
-                            <property name="can_focus">True</property>
-                            <property name="valign">start</property>
-                            <property name="vexpand">True</property>
-                            <child>
-                              <object class="GtkAlignment" id="alignment13">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="top_padding">8</property>
-                                <property name="left_padding">15</property>
-                                <child>
-                                  <object class="GtkGrid" id="table6">
-                                    <property name="visible">True</property>
-                                    <property name="can_focus">False</property>
-                                    <property name="row_spacing">6</property>
-                                    <property name="column_spacing">6</property>
-                                    <child>
-                                      <object class="GtkComboBox" id="config-arch">
-                                        <property name="visible">True</property>
-                                        <property name="can_focus">False</property>
-                                        <signal name="changed" handler="on_config_arch_changed" swapped="no"/>
-                                      </object>
-                                      <packing>
-                                        <property name="left_attach">1</property>
-                                        <property name="top_attach">1</property>
-                                      </packing>
-                                    </child>
-                                    <child>
-                                      <object class="GtkComboBox" id="config-hv">
-                                        <property name="visible">True</property>
-                                        <property name="can_focus">False</property>
-                                        <signal name="changed" handler="on_config_hv_changed" swapped="no"/>
-                                      </object>
-                                      <packing>
-                                        <property name="left_attach">1</property>
-                                        <property name="top_attach">0</property>
-                                      </packing>
-                                    </child>
-                                    <child>
-                                      <object class="GtkLabel" id="label28">
-                                        <property name="visible">True</property>
-                                        <property name="can_focus">False</property>
-                                        <property name="label" translatable="yes">_Virt Type:</property>
-                                        <property name="use_underline">True</property>
-                                        <property name="mnemonic_widget">config-hv</property>
-                                        <property name="xalign">1</property>
-                                      </object>
-                                      <packing>
-                                        <property name="left_attach">0</property>
-                                        <property name="top_attach">0</property>
-                                      </packing>
-                                    </child>
-                                    <child>
-                                      <object class="GtkLabel" id="label30">
-                                        <property name="visible">True</property>
-                                        <property name="can_focus">False</property>
-                                        <property name="label" translatable="yes">_Architecture:</property>
-                                        <property name="use_underline">True</property>
-                                        <property name="mnemonic_widget">config-arch</property>
-                                        <property name="xalign">1</property>
-                                      </object>
-                                      <packing>
-                                        <property name="left_attach">0</property>
-                                        <property name="top_attach">1</property>
-                                      </packing>
-                                    </child>
-                                    <child>
-                                      <object class="GtkLabel" id="label10">
-                                        <property name="visible">True</property>
-                                        <property name="can_focus">False</property>
-                                        <property name="label" translatable="yes">_Machine Type:</property>
-                                        <property name="use_underline">True</property>
-                                        <property name="mnemonic_widget">config-machine</property>
-                                        <property name="xalign">1</property>
-                                      </object>
-                                      <packing>
-                                        <property name="left_attach">0</property>
-                                        <property name="top_attach">2</property>
-                                      </packing>
-                                    </child>
-                                    <child>
-                                      <object class="GtkComboBox" id="config-machine">
-                                        <property name="visible">True</property>
-                                        <property name="can_focus">False</property>
-                                        <signal name="changed" handler="on_config_machine_changed" swapped="no"/>
-                                      </object>
-                                      <packing>
-                                        <property name="left_attach">1</property>
-                                        <property name="top_attach">2</property>
-                                      </packing>
-                                    </child>
-                                  </object>
-                                </child>
-                              </object>
-                            </child>
-                            <child type="label">
-                              <object class="GtkLabel" id="arch-expander-label">
-                                <property name="visible">True</property>
-                                <property name="can_focus">False</property>
-                                <property name="label" translatable="yes">Architecture options</property>
-                              </object>
-                            </child>
-                          </object>
-                          <packing>
-                            <property name="left_attach">0</property>
-                            <property name="top_attach">3</property>
-                          </packing>
-                        </child>
-                        <child>
                           <object class="GtkBox" id="box1">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
@@ -552,7 +442,7 @@
                                     <property name="can_focus">False</property>
                                     <property name="halign">start</property>
                                     <property name="hexpand">False</property>
-                                    <property name="label" translatable="yes">Error message
+                                    <property name="label">Error message
 bar</property>
                                     <property name="wrap">True</property>
                                     <property name="max_width_chars">45</property>
@@ -575,6 +465,198 @@ bar</property>
                           <packing>
                             <property name="left_attach">0</property>
                             <property name="top_attach">1</property>
+                          </packing>
+                        </child>
+                        <child>
+                          <object class="GtkGrid" id="box4">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="orientation">vertical</property>
+                            <property name="row_spacing">6</property>
+                            <child>
+                              <object class="GtkGrid" id="arch-warning-box">
+                                <property name="visible">True</property>
+                                <property name="can_focus">False</property>
+                                <property name="halign">start</property>
+                                <property name="valign">start</property>
+                                <property name="column_spacing">6</property>
+                                <child>
+                                  <object class="GtkImage" id="image7">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="halign">start</property>
+                                    <property name="hexpand">False</property>
+                                    <property name="yalign">0</property>
+                                    <property name="stock">gtk-dialog-warning</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">0</property>
+                                    <property name="top_attach">0</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkLabel" id="arch-warning">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="halign">start</property>
+                                    <property name="hexpand">False</property>
+                                    <property name="label">Error message
+bar</property>
+                                    <property name="wrap">True</property>
+                                    <property name="max_width_chars">45</property>
+                                    <property name="xalign">0</property>
+                                    <property name="yalign">0</property>
+                                  </object>
+                                  <packing>
+                                    <property name="left_attach">1</property>
+                                    <property name="top_attach">0</property>
+                                  </packing>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">0</property>
+                              </packing>
+                            </child>
+                            <child>
+                              <object class="GtkExpander" id="arch-expander">
+                                <property name="visible">True</property>
+                                <property name="can_focus">True</property>
+                                <property name="valign">start</property>
+                                <property name="vexpand">True</property>
+                                <child>
+                                  <object class="GtkAlignment" id="alignment13">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="top_padding">8</property>
+                                    <property name="left_padding">15</property>
+                                    <child>
+                                      <object class="GtkGrid" id="table6">
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">False</property>
+                                        <property name="row_spacing">6</property>
+                                        <property name="column_spacing">6</property>
+                                        <child>
+                                          <object class="GtkComboBox" id="arch">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <signal name="changed" handler="on_arch_changed" swapped="no"/>
+                                          </object>
+                                          <packing>
+                                            <property name="left_attach">1</property>
+                                            <property name="top_attach">2</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkComboBox" id="xen-type">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <signal name="changed" handler="on_xen_type_changed" swapped="no"/>
+                                          </object>
+                                          <packing>
+                                            <property name="left_attach">1</property>
+                                            <property name="top_attach">0</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkLabel" id="label28">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="label" translatable="yes">_Xen Type:</property>
+                                            <property name="use_underline">True</property>
+                                            <property name="mnemonic_widget">xen-type</property>
+                                            <property name="xalign">1</property>
+                                          </object>
+                                          <packing>
+                                            <property name="left_attach">0</property>
+                                            <property name="top_attach">0</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkLabel" id="label30">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="label" translatable="yes">_Architecture:</property>
+                                            <property name="use_underline">True</property>
+                                            <property name="mnemonic_widget">arch</property>
+                                            <property name="xalign">1</property>
+                                          </object>
+                                          <packing>
+                                            <property name="left_attach">0</property>
+                                            <property name="top_attach">2</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkLabel" id="label10">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="label" translatable="yes">_Machine Type:</property>
+                                            <property name="use_underline">True</property>
+                                            <property name="mnemonic_widget">machine</property>
+                                            <property name="xalign">1</property>
+                                          </object>
+                                          <packing>
+                                            <property name="left_attach">0</property>
+                                            <property name="top_attach">3</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkComboBox" id="machine">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <signal name="changed" handler="on_machine_changed" swapped="no"/>
+                                          </object>
+                                          <packing>
+                                            <property name="left_attach">1</property>
+                                            <property name="top_attach">3</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkLabel" id="label31">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="label" translatable="yes">_Virt Type:</property>
+                                            <property name="use_underline">True</property>
+                                            <property name="mnemonic_widget">virt-type</property>
+                                            <property name="xalign">1</property>
+                                          </object>
+                                          <packing>
+                                            <property name="left_attach">0</property>
+                                            <property name="top_attach">1</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkComboBox" id="virt-type">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <signal name="changed" handler="on_virt_type_changed" swapped="no"/>
+                                          </object>
+                                          <packing>
+                                            <property name="left_attach">1</property>
+                                            <property name="top_attach">1</property>
+                                          </packing>
+                                        </child>
+                                      </object>
+                                    </child>
+                                  </object>
+                                </child>
+                                <child type="label">
+                                  <object class="GtkLabel" id="arch-expander-label">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="label" translatable="yes">Architecture options</property>
+                                  </object>
+                                </child>
+                              </object>
+                              <packing>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">1</property>
+                              </packing>
+                            </child>
+                          </object>
+                          <packing>
+                            <property name="left_attach">0</property>
+                            <property name="top_attach">3</property>
                           </packing>
                         </child>
                       </object>
@@ -638,7 +720,7 @@ bar</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="spacing">4</property>
                                                 <child>
-                                                  <object class="GtkRadioButton" id="install-local-cdrom">
+                                                  <object class="GtkRadioButton" id="install-cdrom-radio">
                                                     <property name="label" translatable="yes">Use CD_ROM or DVD</property>
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
@@ -647,7 +729,7 @@ bar</property>
                                                     <property name="xalign">0.5</property>
                                                     <property name="active">True</property>
                                                     <property name="draw_indicator">True</property>
-                                                    <signal name="toggled" handler="on_install_local_cdrom_toggled" swapped="no"/>
+                                                    <signal name="toggled" handler="on_install_cdrom_radio_toggled" swapped="no"/>
                                                   </object>
                                                   <packing>
                                                     <property name="expand">False</property>
@@ -656,7 +738,7 @@ bar</property>
                                                   </packing>
                                                 </child>
                                                 <child>
-                                                  <object class="GtkAlignment" id="install-local-cdrom-align">
+                                                  <object class="GtkAlignment" id="install-cdrom-align">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
                                                     <property name="left_padding">20</property>
@@ -678,7 +760,7 @@ bar</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkRadioButton" id="install-local-iso">
+                                              <object class="GtkRadioButton" id="install-iso-radio">
                                                 <property name="label" translatable="yes">Use _ISO image:</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
@@ -687,8 +769,7 @@ bar</property>
                                                 <property name="xalign">0.5</property>
                                                 <property name="active">True</property>
                                                 <property name="draw_indicator">True</property>
-                                                <property name="group">install-local-cdrom</property>
-                                                <signal name="toggled" handler="on_install_local_iso_toggled" swapped="no"/>
+                                                <property name="group">install-cdrom-radio</property>
                                               </object>
                                               <packing>
                                                 <property name="expand">False</property>
@@ -707,14 +788,15 @@ bar</property>
                                                     <property name="can_focus">False</property>
                                                     <property name="left_padding">20</property>
                                                     <child>
-                                                      <object class="GtkComboBox" id="install-local-box">
+                                                      <object class="GtkComboBox" id="install-iso-combo">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
                                                         <property name="has_entry">True</property>
-                                                        <signal name="changed" handler="on_install_local_box_changed" swapped="no"/>
                                                         <child internal-child="entry">
-                                                          <object class="GtkEntry" id="combobox-entry">
+                                                          <object class="GtkEntry" id="install-iso-entry">
                                                             <property name="can_focus">True</property>
+                                                            <signal name="activate" handler="on_install_iso_entry_activate" swapped="no"/>
+                                                            <signal name="changed" handler="on_install_iso_entry_changed" swapped="no"/>
                                                           </object>
                                                         </child>
                                                       </object>
@@ -727,14 +809,19 @@ bar</property>
                                                   </packing>
                                                 </child>
                                                 <child>
-                                                  <object class="GtkButton" id="install-local-browse">
+                                                  <object class="GtkButton" id="install-iso-browse">
                                                     <property name="label" translatable="yes">Bro_wse...</property>
                                                     <property name="visible">True</property>
                                                     <property name="sensitive">False</property>
                                                     <property name="can_focus">True</property>
                                                     <property name="receives_default">True</property>
                                                     <property name="use_underline">True</property>
-                                                    <signal name="clicked" handler="on_install_local_browse_clicked" swapped="no"/>
+                                                    <signal name="clicked" handler="on_install_iso_browse_clicked" swapped="no"/>
+                                                    <child internal-child="accessible">
+                                                      <object class="AtkObject" id="install-iso-browse-atkobject">
+                                                        <property name="AtkObject::accessible-name">install-iso-browse</property>
+                                                      </object>
+                                                    </child>
                                                   </object>
                                                   <packing>
                                                     <property name="expand">False</property>
@@ -811,7 +898,9 @@ bar</property>
                                               <object class="GtkLabel" id="label24">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="label" translatable="yes">URL:</property>
+                                                <property name="label" translatable="yes">U_RL:</property>
+                                                <property name="use_underline">True</property>
+                                                <property name="mnemonic_widget">install-url-entry</property>
                                                 <property name="xalign">1</property>
                                               </object>
                                             </child>
@@ -838,32 +927,19 @@ bar</property>
                                                       <object class="GtkTable" id="table7">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
-                                                        <property name="n_rows">2</property>
                                                         <property name="n_columns">2</property>
                                                         <property name="column_spacing">6</property>
                                                         <property name="row_spacing">4</property>
                                                         <child>
-                                                          <object class="GtkLabel" id="label25">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Kickstart URL:</property>
-                                                            <property name="xalign">0</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="x_options">GTK_FILL</property>
-                                                            <property name="y_options"/>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
                                                           <object class="GtkLabel" id="label26">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
-                                                            <property name="label" translatable="yes">Kernel options:</property>
+                                                            <property name="label" translatable="yes">Kerne_l options:</property>
+                                                            <property name="use_underline">True</property>
+                                                            <property name="mnemonic_widget">install-urlopts-entry</property>
                                                             <property name="xalign">1</property>
                                                           </object>
                                                           <packing>
-                                                            <property name="top_attach">1</property>
-                                                            <property name="bottom_attach">2</property>
                                                             <property name="x_options">GTK_FILL</property>
                                                             <property name="y_options"/>
                                                           </packing>
@@ -873,25 +949,6 @@ bar</property>
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="invisible_char">•</property>
-                                                          </object>
-                                                          <packing>
-                                                            <property name="left_attach">1</property>
-                                                            <property name="right_attach">2</property>
-                                                            <property name="top_attach">1</property>
-                                                            <property name="bottom_attach">2</property>
-                                                            <property name="y_options"/>
-                                                          </packing>
-                                                        </child>
-                                                        <child>
-                                                          <object class="GtkComboBox" id="install-ks-box">
-                                                            <property name="visible">True</property>
-                                                            <property name="can_focus">False</property>
-                                                            <property name="has_entry">True</property>
-                                                            <child internal-child="entry">
-                                                            <object class="GtkEntry" id="combobox-entry2">
-                                                            <property name="can_focus">True</property>
-                                                            </object>
-                                                            </child>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
@@ -907,7 +964,8 @@ bar</property>
                                                   <object class="GtkLabel" id="label14">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
-                                                    <property name="label" translatable="yes">URL Options</property>
+                                                    <property name="label" translatable="yes">URL _Options</property>
+                                                    <property name="use_underline">True</property>
                                                   </object>
                                                 </child>
                                               </object>
@@ -920,14 +978,15 @@ bar</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkComboBox" id="install-url-box">
+                                          <object class="GtkComboBox" id="install-url-combo">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="has_entry">True</property>
-                                            <signal name="changed" handler="on_install_url_box_changed" swapped="no"/>
                                             <child internal-child="entry">
-                                              <object class="GtkEntry" id="combobox-entry1">
+                                              <object class="GtkEntry" id="install-url-entry">
                                                 <property name="can_focus">True</property>
+                                                <signal name="activate" handler="on_install_url_entry_activate" swapped="no"/>
+                                                <signal name="changed" handler="on_install_url_entry_changed" swapped="no"/>
                                               </object>
                                             </child>
                                           </object>
@@ -1009,7 +1068,9 @@ User shouldn't see this.</property>
                                       <object class="GtkLabel" id="label41">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="label" translatable="yes">Provide the existing storage path:</property>
+                                        <property name="label" translatable="yes">Provide the existing stora_ge path:</property>
+                                        <property name="use_underline">True</property>
+                                        <property name="mnemonic_widget">install-import-entry</property>
                                         <property name="xalign">0</property>
                                       </object>
                                       <packing>
@@ -1048,6 +1109,11 @@ User shouldn't see this.</property>
                                                 <property name="receives_default">True</property>
                                                 <property name="use_underline">True</property>
                                                 <signal name="clicked" handler="on_install_import_browse_clicked" swapped="no"/>
+                                                <child internal-child="accessible">
+                                                  <object class="AtkObject" id="install-import-browse-atkobject">
+                                                    <property name="AtkObject::accessible-name">install-import-browse</property>
+                                                  </object>
+                                                </child>
                                               </object>
                                               <packing>
                                                 <property name="expand">False</property>
@@ -1072,7 +1138,7 @@ User shouldn't see this.</property>
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkBox" id="config-kernel-box">
+                                  <object class="GtkBox" id="kernel-box">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="orientation">vertical</property>
@@ -1107,7 +1173,7 @@ User shouldn't see this.</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">_Kernel path:</property>
                                                 <property name="use_underline">True</property>
-                                                <property name="mnemonic_widget">config-kernel</property>
+                                                <property name="mnemonic_widget">kernel</property>
                                                 <property name="xalign">0</property>
                                               </object>
                                               <packing>
@@ -1121,7 +1187,7 @@ User shouldn't see this.</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">_Initrd path:</property>
                                                 <property name="use_underline">True</property>
-                                                <property name="mnemonic_widget">config-initrd</property>
+                                                <property name="mnemonic_widget">initrd</property>
                                                 <property name="xalign">0</property>
                                               </object>
                                               <packing>
@@ -1135,7 +1201,7 @@ User shouldn't see this.</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">_DTB path:</property>
                                                 <property name="use_underline">True</property>
-                                                <property name="mnemonic_widget">config-dtb</property>
+                                                <property name="mnemonic_widget">dtb</property>
                                                 <property name="xalign">0</property>
                                               </object>
                                               <packing>
@@ -1144,7 +1210,7 @@ User shouldn't see this.</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkEntry" id="config-kernel">
+                                              <object class="GtkEntry" id="kernel">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="hexpand">True</property>
@@ -1155,7 +1221,7 @@ User shouldn't see this.</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkEntry" id="config-initrd">
+                                              <object class="GtkEntry" id="initrd">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="hexpand">True</property>
@@ -1166,7 +1232,7 @@ User shouldn't see this.</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkEntry" id="config-dtb">
+                                              <object class="GtkEntry" id="dtb">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="hexpand">True</property>
@@ -1177,13 +1243,18 @@ User shouldn't see this.</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkButton" id="config-kernel-browse">
+                                              <object class="GtkButton" id="kernel-browse">
                                                 <property name="label" translatable="yes">Br_owse...</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">True</property>
                                                 <property name="use_underline">True</property>
-                                                <signal name="clicked" handler="on_config_kernel_browse_clicked" swapped="no"/>
+                                                <signal name="clicked" handler="on_kernel_browse_clicked" swapped="no"/>
+                                                <child internal-child="accessible">
+                                                  <object class="AtkObject" id="kernel-browse-atkobject">
+                                                    <property name="AtkObject::accessible-name">kernel-browse</property>
+                                                  </object>
+                                                </child>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -1191,13 +1262,18 @@ User shouldn't see this.</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkButton" id="config-initrd-browse">
+                                              <object class="GtkButton" id="initrd-browse">
                                                 <property name="label" translatable="yes">Bro_wse...</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">True</property>
                                                 <property name="use_underline">True</property>
-                                                <signal name="clicked" handler="on_config_initrd_browse_clicked" swapped="no"/>
+                                                <signal name="clicked" handler="on_initrd_browse_clicked" swapped="no"/>
+                                                <child internal-child="accessible">
+                                                  <object class="AtkObject" id="initrd-browse-atkobject">
+                                                    <property name="AtkObject::accessible-name">initrd-browse</property>
+                                                  </object>
+                                                </child>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -1205,13 +1281,18 @@ User shouldn't see this.</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkButton" id="config-dtb-browse">
+                                              <object class="GtkButton" id="dtb-browse">
                                                 <property name="label" translatable="yes">Brow_se...</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">True</property>
                                                 <property name="use_underline">True</property>
-                                                <signal name="clicked" handler="on_config_dtb_browse_clicked" swapped="no"/>
+                                                <signal name="clicked" handler="on_dtb_browse_clicked" swapped="no"/>
+                                                <child internal-child="accessible">
+                                                  <object class="AtkObject" id="dtb-browse-atkobject">
+                                                    <property name="AtkObject::accessible-name">dtb-browse</property>
+                                                  </object>
+                                                </child>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">2</property>
@@ -1219,7 +1300,7 @@ User shouldn't see this.</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkBox" id="config-dtb-warn-virtio">
+                                              <object class="GtkBox" id="dtb-warn-virtio">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="spacing">6</property>
@@ -1261,7 +1342,7 @@ User shouldn't see this.</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label" translatable="yes">Kerne_l args:</property>
                                                 <property name="use_underline">True</property>
-                                                <property name="mnemonic_widget">config-kernel-args</property>
+                                                <property name="mnemonic_widget">kernel-args</property>
                                                 <property name="xalign">0</property>
                                               </object>
                                               <packing>
@@ -1270,7 +1351,7 @@ User shouldn't see this.</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkEntry" id="config-kernel-args">
+                                              <object class="GtkEntry" id="kernel-args">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                               </object>
@@ -1364,6 +1445,11 @@ User shouldn't see this.</property>
                                             <property name="receives_default">True</property>
                                             <property name="use_underline">True</property>
                                             <signal name="clicked" handler="on_install_app_browse_clicked" swapped="no"/>
+                                            <child internal-child="accessible">
+                                              <object class="AtkObject" id="install-app-browse-atkobject">
+                                                <property name="AtkObject::accessible-name">install-app-browse</property>
+                                              </object>
+                                            </child>
                                           </object>
                                           <packing>
                                             <property name="expand">False</property>
@@ -1451,6 +1537,11 @@ User shouldn't see this.</property>
                                                 <property name="receives_default">True</property>
                                                 <property name="use_underline">True</property>
                                                 <signal name="clicked" handler="on_install_oscontainer_browse_clicked" swapped="no"/>
+                                                <child internal-child="accessible">
+                                                  <object class="AtkObject" id="install-oscontainer-browse-atkobject">
+                                                    <property name="AtkObject::accessible-name">install-oscontainer-browse</property>
+                                                  </object>
+                                                </child>
                                               </object>
                                               <packing>
                                                 <property name="expand">False</property>
@@ -1603,6 +1694,11 @@ is not yet supported.&lt;/small&gt;</property>
                                         <property name="can_focus">False</property>
                                         <property name="label">-</property>
                                         <property name="xalign">0</property>
+                                        <child internal-child="accessible">
+                                          <object class="AtkObject" id="install-os-version-label-atkobject">
+                                            <property name="AtkObject::accessible-name">install-os-version-label</property>
+                                          </object>
+                                        </child>
                                       </object>
                                       <packing>
                                         <property name="left_attach">2</property>
@@ -1618,6 +1714,11 @@ is not yet supported.&lt;/small&gt;</property>
                                         <property name="can_focus">False</property>
                                         <property name="label">-</property>
                                         <property name="xalign">0</property>
+                                        <child internal-child="accessible">
+                                          <object class="AtkObject" id="install-os-type-label-atkobject">
+                                            <property name="AtkObject::accessible-name">install-os-type-label</property>
+                                          </object>
+                                        </child>
                                       </object>
                                       <packing>
                                         <property name="left_attach">2</property>
@@ -1631,6 +1732,11 @@ is not yet supported.&lt;/small&gt;</property>
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <signal name="changed" handler="on_install_os_type_changed" swapped="no"/>
+                                        <child internal-child="accessible">
+                                          <object class="AtkObject" id="install-os-type-atkobject">
+                                            <property name="AtkObject::accessible-name">install-os-type</property>
+                                          </object>
+                                        </child>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -1678,6 +1784,16 @@ is not yet supported.&lt;/small&gt;</property>
                                         <child internal-child="entry">
                                           <object class="GtkEntry" id="install-os-version-entry">
                                             <property name="can_focus">True</property>
+                                            <child internal-child="accessible">
+                                              <object class="AtkObject" id="install-os-version-entry-atkobject">
+                                                <property name="AtkObject::accessible-name">install-os-version-entry</property>
+                                              </object>
+                                            </child>
+                                          </object>
+                                        </child>
+                                        <child internal-child="accessible">
+                                          <object class="AtkObject" id="install-os-version-atkobject">
+                                            <property name="AtkObject::accessible-name">install-os-version</property>
                                           </object>
                                         </child>
                                       </object>
@@ -1769,7 +1885,7 @@ is not yet supported.&lt;/small&gt;</property>
                                             <property name="can_focus">False</property>
                                             <property name="label" translatable="yes">C_PUs:</property>
                                             <property name="use_underline">True</property>
-                                            <property name="mnemonic_widget">config-cpus</property>
+                                            <property name="mnemonic_widget">cpus</property>
                                             <property name="xalign">1</property>
                                           </object>
                                           <packing>
@@ -1785,7 +1901,7 @@ is not yet supported.&lt;/small&gt;</property>
                                             <property name="can_focus">False</property>
                                             <property name="label" translatable="yes">_Memory (RAM):</property>
                                             <property name="use_underline">True</property>
-                                            <property name="mnemonic_widget">config-mem</property>
+                                            <property name="mnemonic_widget">mem</property>
                                             <property name="xalign">1</property>
                                           </object>
                                           <packing>
@@ -1794,7 +1910,7 @@ is not yet supported.&lt;/small&gt;</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkSpinButton" id="config-mem">
+                                          <object class="GtkSpinButton" id="mem">
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="xalign">1</property>
@@ -1809,7 +1925,7 @@ is not yet supported.&lt;/small&gt;</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkSpinButton" id="config-cpus">
+                                          <object class="GtkSpinButton" id="cpus">
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="xalign">1</property>
@@ -1957,7 +2073,7 @@ is not yet supported.&lt;/small&gt;</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkVBox" id="config-storage-area">
+                      <object class="GtkVBox" id="storage-area">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="spacing">6</property>
@@ -1980,7 +2096,7 @@ is not yet supported.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkAlignment" id="config-storage-align">
+                          <object class="GtkAlignment" id="storage-align">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="left_padding">15</property>
@@ -2024,7 +2140,7 @@ is not yet supported.&lt;/small&gt;</property>
                               <object class="GtkLabel" id="summary-title">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="label">Ready to begin the installation</property>
+                                <property name="label" translatable="yes">Ready to begin the installation</property>
                                 <property name="use_markup">True</property>
                                 <property name="xalign">0</property>
                               </object>
@@ -2083,22 +2199,6 @@ is not yet supported.&lt;/small&gt;</property>
                                       </packing>
                                     </child>
                                     <child>
-                                      <object class="GtkLabel" id="summary-storage">
-                                        <property name="visible">True</property>
-                                        <property name="can_focus">False</property>
-                                        <property name="label">label</property>
-                                        <property name="wrap">True</property>
-                                        <property name="ellipsize">end</property>
-                                        <property name="width_chars">31</property>
-                                        <property name="max_width_chars">31</property>
-                                        <property name="xalign">0</property>
-                                      </object>
-                                      <packing>
-                                        <property name="left_attach">1</property>
-                                        <property name="top_attach">5</property>
-                                      </packing>
-                                    </child>
-                                    <child>
                                       <object class="GtkCheckButton" id="summary-customize">
                                         <property name="label" translatable="yes">C_ustomize configuration before install</property>
                                         <property name="visible">True</property>
@@ -2121,7 +2221,7 @@ is not yet supported.&lt;/small&gt;</property>
                                         <property name="can_focus">True</property>
                                         <property name="halign">start</property>
                                         <property name="width_chars">25</property>
-                                        <signal name="activate" handler="on_create_vm_name_activate" swapped="no"/>
+                                        <signal name="changed" handler="on_create_vm_name_changed" swapped="no"/>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -2240,6 +2340,51 @@ is not yet supported.&lt;/small&gt;</property>
                                         <property name="top_attach">6</property>
                                       </packing>
                                     </child>
+                                    <child>
+                                      <object class="GtkBox" id="box3">
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
+                                        <property name="valign">start</property>
+                                        <property name="hexpand">False</property>
+                                        <property name="vexpand">False</property>
+                                        <property name="spacing">3</property>
+                                        <child>
+                                          <object class="GtkLabel" id="summary-storage">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="label">label</property>
+                                            <property name="wrap">True</property>
+                                            <property name="xalign">0</property>
+                                          </object>
+                                          <packing>
+                                            <property name="expand">False</property>
+                                            <property name="fill">True</property>
+                                            <property name="position">0</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkLabel" id="summary-storage-path">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="label">label</property>
+                                            <property name="ellipsize">start</property>
+                                            <property name="width_chars">27</property>
+                                            <property name="max_width_chars">27</property>
+                                            <property name="xalign">0</property>
+                                          </object>
+                                          <packing>
+                                            <property name="expand">False</property>
+                                            <property name="fill">True</property>
+                                            <property name="position">1</property>
+                                          </packing>
+                                        </child>
+                                      </object>
+                                      <packing>
+                                        <property name="left_attach">1</property>
+                                        <property name="top_attach">5</property>
+                                      </packing>
+                                    </child>
                                   </object>
                                 </child>
                               </object>
@@ -2301,7 +2446,7 @@ is not yet supported.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkExpander" id="config-advanced-expander">
+                          <object class="GtkExpander" id="advanced-expander">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="spacing">6</property>
@@ -2321,7 +2466,7 @@ is not yet supported.&lt;/small&gt;</property>
                                         <property name="can_focus">False</property>
                                         <property name="row_spacing">6</property>
                                         <child>
-                                          <object class="GtkAlignment" id="config-netdev-ui-align">
+                                          <object class="GtkAlignment" id="netdev-ui-align">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <child>
@@ -2334,7 +2479,7 @@ is not yet supported.&lt;/small&gt;</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkBox" id="config-netdev-warn-box">
+                                          <object class="GtkBox" id="netdev-warn-box">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="spacing">6</property>
@@ -2351,7 +2496,7 @@ is not yet supported.&lt;/small&gt;</property>
                                               </packing>
                                             </child>
                                             <child>
-                                              <object class="GtkLabel" id="config-netdev-warn-label">
+                                              <object class="GtkLabel" id="netdev-warn-label">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="label">&lt;small&gt;pxe warning&lt;/small&gt;</property>
@@ -2386,7 +2531,7 @@ is not yet supported.&lt;/small&gt;</property>
                                 <property name="can_focus">False</property>
                                 <property name="label" translatable="yes">N_etwork selection</property>
                                 <property name="use_underline">True</property>
-                                <property name="mnemonic_widget">config-advanced-expander</property>
+                                <property name="mnemonic_widget">advanced-expander</property>
                               </object>
                             </child>
                           </object>

@@ -107,13 +107,10 @@ class vmmManager(vmmGObjectUI):
         "manager-closed": (GObject.SignalFlags.RUN_FIRST, None, []),
         "manager-opened": (GObject.SignalFlags.RUN_FIRST, None, []),
         "remove-conn": (GObject.SignalFlags.RUN_FIRST, None, [str]),
-        "add-default-conn": (GObject.SignalFlags.RUN_FIRST, None, []),
     }
 
     def __init__(self):
         vmmGObjectUI.__init__(self, "manager.ui", "vmm-manager")
-
-        self.ignore_pause = False
 
         # Mapping of rowkey -> tree model rows to
         # allow O(1) access instead of O(n)
@@ -122,6 +119,7 @@ class vmmManager(vmmGObjectUI):
         w, h = self.config.get_manager_window_size()
         self.topwin.set_default_size(w or 550, h or 550)
         self.prev_position = None
+        self._window_size = None
 
         self.vmmenu = vmmenu.VMActionMenu(self, self.current_vm)
         self.connmenu = Gtk.Menu()
@@ -191,8 +189,6 @@ class vmmManager(vmmGObjectUI):
         self.enable_polling(COL_NETWORK)
         self.enable_polling(COL_MEM)
 
-        # Queue up the default connection detector
-        self.idle_emit("add-default-conn")
 
     ##################
     # Common methods #
@@ -237,6 +233,10 @@ class vmmManager(vmmGObjectUI):
         self.connmenu.destroy()
         self.connmenu = None
         self.connmenu_items = None
+
+        if self._window_size:
+            self.config.set_manager_window_size(*self._window_size)
+
 
     def is_visible(self):
         return bool(self.topwin.get_visible())
@@ -459,11 +459,9 @@ class vmmManager(vmmGObjectUI):
     ####################
 
     def window_resized(self, ignore, event):
-        # Sometimes dimensions change when window isn't visible
         if not self.is_visible():
             return
-
-        self.config.set_manager_window_size(event.width, event.height)
+        self._window_size = (event.width, event.height)
 
     def exit_app(self, src_ignore=None, src2_ignore=None):
         self.emit("action-exit-app")
@@ -518,15 +516,12 @@ class vmmManager(vmmGObjectUI):
     def set_pause_state(self, state):
         src = self.widget("vm-pause")
         try:
-            self.ignore_pause = True
+            src.handler_block_by_func(self.pause_vm_button)
             src.set_active(state)
         finally:
-            self.ignore_pause = False
+            src.handler_unblock_by_func(self.pause_vm_button)
 
     def pause_vm_button(self, src):
-        if self.ignore_pause:
-            return
-
         do_pause = src.get_active()
 
         # Set button state back to original value: just let the status
@@ -871,6 +866,12 @@ class vmmManager(vmmGObjectUI):
 
         self.set_pause_state(is_paused)
         self.widget("vm-pause").set_sensitive(show_pause)
+
+        if is_paused:
+            pauseTooltip = _("Resume the virtual machine")
+        else:
+            pauseTooltip = _("Pause the virtual machine")
+        self.widget("vm-pause").set_tooltip_text(pauseTooltip)
 
         self.widget("menu_edit_details").set_sensitive(show_details)
         self.widget("menu_host_details").set_sensitive(host_details)

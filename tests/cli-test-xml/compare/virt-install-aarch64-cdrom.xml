@@ -11,11 +11,6 @@
     <boot dev="cdrom"/>
     <boot dev="hd"/>
   </os>
-  <features>
-    <acpi/>
-    <apic/>
-    <pae/>
-  </features>
   <clock offset="utc"/>
   <on_poweroff>restart</on_poweroff>
   <on_reboot>destroy</on_reboot>
@@ -54,11 +49,6 @@
     <nvram template="VARS.fd"/>
     <boot dev="hd"/>
   </os>
-  <features>
-    <acpi/>
-    <apic/>
-    <pae/>
-  </features>
   <clock offset="utc"/>
   <on_poweroff>restart</on_poweroff>
   <on_reboot>destroy</on_reboot>
@@ -70,7 +60,7 @@
       <source file="/dev/default-pool/testvol1.img"/>
       <target dev="sda" bus="scsi"/>
     </disk>
-    <disk type="block" device="cdrom">
+    <disk type="file" device="cdrom">
       <target dev="sdb" bus="scsi"/>
       <readonly/>
     </disk>

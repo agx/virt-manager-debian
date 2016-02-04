@@ -53,7 +53,7 @@ class vmmSystray(vmmGObject):
         "action-exit-app": (GObject.SignalFlags.RUN_FIRST, None, []),
     }
 
-    def __init__(self, engine):
+    def __init__(self):
         vmmGObject.__init__(self)
 
         self.topwin = None
@@ -66,12 +66,10 @@ class vmmSystray(vmmGObject):
         self.systray_icon = None
         self.systray_indicator = False
 
-        engine.connect("conn-added", self.conn_added)
-        engine.connect("conn-removed", self.conn_removed)
-
         # Are we using Application Indicators?
         if AppIndicator3 is not None:
             self.systray_indicator = True
+            logging.debug("Using AppIndicator3 for systray")
 
         self.init_systray_menu()
 
@@ -97,8 +95,14 @@ class vmmSystray(vmmGObject):
             self.systray_menu = None
 
         self.systray_icon = None
+        self.conn_menuitems = None
+        self.conn_vm_menuitems = None
+        self.vm_action_dict = None
 
-    # Initialization routines
+
+    ###########################
+    # Initialization routines #
+    ###########################
 
     def init_systray_menu(self):
         """
@@ -132,7 +136,7 @@ class vmmSystray(vmmGObject):
         if self.systray_indicator:
             # pylint: disable=maybe-no-member
             self.systray_icon = AppIndicator3.Indicator.new("virt-manager",
-                                "virt-manager-icon",
+                                "virt-manager",
                                 AppIndicator3.IndicatorCategory.OTHER)
             self.systray_icon.set_status(AppIndicator3.IndicatorStatus.ACTIVE)
             self.systray_icon.set_menu(self.systray_menu)

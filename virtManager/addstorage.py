@@ -41,11 +41,11 @@ class vmmAddStorage(vmmGObjectUI):
         self.conn = conn
 
         self.builder.connect_signals({
-            "on_config_storage_browse_clicked": self._browse_storage,
-            "on_config_storage_select_toggled": self._toggle_storage_select,
+            "on_storage_browse_clicked": self._browse_storage,
+            "on_storage_select_toggled": self._toggle_storage_select,
         })
 
-        self.top_box = self.widget("config-storage-box")
+        self.top_box = self.widget("storage-box")
 
     def _cleanup(self):
         self.conn = None
@@ -98,7 +98,7 @@ class vmmAddStorage(vmmGObjectUI):
         def pretty_storage(size):
             return "%.1f GiB" % float(size)
 
-        hd_label = ("%s available in the default location" %
+        hd_label = (_("%s available in the default location") %
                     pretty_storage(max_storage))
         hd_label = ("<span color='#484848'>%s</span>" % hd_label)
         widget.set_markup(hd_label)
@@ -167,7 +167,7 @@ class vmmAddStorage(vmmGObjectUI):
             if path not in broken_paths:
                 continue
             details += "%s : %s\n" % (path, error)
-        details += "\nIt is very likely the VM fill fail to start up."
+        details += "\nIt is very likely the VM will fail to start up."
 
         logging.debug("Permission errors:\n%s", details)
 
@@ -179,27 +179,17 @@ class vmmAddStorage(vmmGObjectUI):
 
     def reset_state(self):
         self._update_host_space()
-        self.widget("config-storage-create").set_active(True)
-        self.widget("config-storage-size").set_value(8)
-        self.widget("config-storage-entry").set_text("")
-        self.widget("config-storage-nosparse").set_active(True)
-        self.widget("config-storage-create-box").set_sensitive(True)
-
-        fmt = self.conn.get_default_storage_format()
-        can_alloc = fmt in ["raw"]
-        self.widget("config-storage-nosparse").set_active(can_alloc)
-        self.widget("config-storage-nosparse").set_sensitive(can_alloc)
-        self.widget("config-storage-nosparse").set_tooltip_text(
-            not can_alloc and
-            (_("Disk format '%s' does not support full allocation.") % fmt) or
-            "")
+        self.widget("storage-create").set_active(True)
+        self.widget("storage-size").set_value(20)
+        self.widget("storage-entry").set_text("")
+        self.widget("storage-create-box").set_sensitive(True)
 
         storage_tooltip = None
 
         can_storage = (not self.conn.is_remote() or
                        self.conn.is_storage_capable())
-        use_storage = self.widget("config-storage-select")
-        storage_area = self.widget("config-storage-box")
+        use_storage = self.widget("storage-select")
+        storage_area = self.widget("storage-box")
 
         storage_area.set_sensitive(can_storage)
         if not can_storage:
@@ -250,100 +240,49 @@ class vmmAddStorage(vmmGObjectUI):
         return path
 
     def is_default_storage(self):
-        return self.widget("config-storage-create").get_active()
-
-    def _check_ideal_path(self, path, vmname, collidelist):
-        # See if the ideal disk path (/default/pool/vmname.img)
-        # exists, and if unused, prompt the use for using it
-        conn = self.conn.get_backend()
-        ideal = self._get_ideal_path(vmname)
-        if ideal in collidelist:
-            return path
-
-        do_exist = False
-        ret = True
-        try:
-            do_exist = virtinst.VirtualDisk.path_definitely_exists(conn, ideal)
-            ret = virtinst.VirtualDisk.path_in_use_by(conn, ideal)
-        except:
-            logging.exception("Error checking default path usage")
-
-        if not do_exist or ret:
-            return path
-
-        do_use = self.err.yes_no(
-            _("The following storage already exists, but is not\n"
-              "in use by any virtual machine:\n\n%s\n\n"
-              "Would you like to reuse this storage?") % ideal)
-
-        if do_use:
-            return ideal
-        return path
+        return self.widget("storage-create").get_active()
 
     def validate_storage(self, vmname,
-                         path=None, size=None, sparse=None,
-                         device="disk", fmt=None, collidelist=None):
-        collidelist = collidelist or []
-        use_storage = self.widget("config-storage-box").is_sensitive()
-        is_default = self.is_default_storage()
-        conn = self.conn.get_backend()
-
-        # Validate storage
-        if not use_storage:
-            return True
-
-        # Make sure default pool is running
-        if is_default:
+            path=None, device="disk", collidelist=None):
+        if self.is_default_storage():
+            # Make sure default pool is running
             ret = self._check_default_pool_active()
             if not ret:
                 return False
 
-        readonly = False
-        if device == virtinst.VirtualDisk.DEVICE_CDROM:
-            readonly = True
+        if path is None:
+            if self.is_default_storage():
+                path = self.get_default_path(vmname, collidelist or [])
+            else:
+                path = self.widget("storage-entry").get_text().strip()
 
-        try:
-            if size is None and sparse is None:
-                size = uiutil.spin_get_helper(
-                    self.widget("config-storage-size"))
-                sparse = (
-                    not self.widget("config-storage-nosparse").get_active())
-            if path is None:
-                if is_default:
-                    path = self.get_default_path(vmname, collidelist)
-                else:
-                    path = self.widget("config-storage-entry").get_text().strip()
+        if not path and device in ["disk", "lun"]:
+            return self.err.val_err(_("A storage path must be specified."))
 
-            if is_default:
-                path = self._check_ideal_path(path, vmname, collidelist)
+        disk = virtinst.VirtualDisk(self.conn.get_backend())
+        disk.path = path or None
+        disk.device = device
 
-            if not path and device in ["disk", "lun"]:
-                return self.err.val_err(_("A storage path must be specified."))
+        if disk.wants_storage_creation():
+            pool = disk.get_parent_pool()
+            size = uiutil.spin_get_helper(self.widget("storage-size"))
+            sparse = False
 
-            disk = virtinst.VirtualDisk(conn)
-            disk.path = path or None
-            disk.read_only = readonly
-            disk.device = device
+            vol_install = virtinst.VirtualDisk.build_vol_install(
+                disk.conn, os.path.basename(disk.path), pool,
+                size, sparse)
+            disk.set_vol_install(vol_install)
 
-            if disk.wants_storage_creation():
-                pool = disk.get_parent_pool()
-                vol_install = virtinst.VirtualDisk.build_vol_install(
-                    disk.conn, os.path.basename(disk.path), pool,
-                    size, sparse, fmt=fmt or None)
-                disk.set_vol_install(vol_install)
+            fmt = self.conn.get_default_storage_format()
+            if fmt in disk.get_vol_install().list_formats():
+                logging.debug("Using default prefs format=%s for path=%s",
+                    fmt, disk.path)
+                disk.get_vol_install().format = fmt
+            else:
+                logging.debug("path=%s can not use default prefs format=%s, "
+                    "not setting it", disk.path, fmt)
 
-            if not fmt:
-                fmt = self.conn.get_default_storage_format()
-                if (self.is_default_storage() and
-                    disk.get_vol_install() and
-                    fmt in disk.get_vol_install().list_formats()):
-                    logging.debug("Setting disk format from prefs: %s", fmt)
-                    disk.get_vol_install().format = fmt
-
-            disk.validate()
-        except Exception, e:
-            return self.err.val_err(_("Storage parameter error."), e)
-
+        disk.validate()
         return disk
 
     def validate_disk_object(self, disk):
@@ -372,9 +311,9 @@ class vmmAddStorage(vmmGObjectUI):
     #############
 
     def _browse_storage(self, ignore):
-        self.emit("browse-clicked", self.widget("config-storage-entry"))
+        self.emit("browse-clicked", self.widget("storage-entry"))
 
     def _toggle_storage_select(self, src):
         act = src.get_active()
-        self.widget("config-storage-browse-box").set_sensitive(act)
+        self.widget("storage-browse-box").set_sensitive(act)
         self.emit("storage-toggled", src)

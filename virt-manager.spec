@@ -8,11 +8,10 @@
 %define libvirt_packages           "libvirt-daemon-kvm,libvirt-daemon-config-network"
 %define kvm_packages               ""
 %define preferred_distros          "fedora,rhel"
-%define default_hvs                "qemu,xen"
+%define default_hvs                "qemu,xen,lxc"
 
 %if 0%{?rhel}
 %define preferred_distros          "rhel,fedora"
-%define kvm_packages               "qemu-kvm"
 %define stable_defaults            1
 %endif
 
@@ -20,11 +19,11 @@
 # End local config
 
 Name: virt-manager
-Version: 1.2.1
+Version: 1.3.2
 Release: 1%{?dist}
 %define verrel %{version}-%{release}
 
-Summary: Virtual Machine Manager
+Summary: Desktop tool for managing virtual machines via libvirt
 Group: Applications/Emulators
 License: GPLv2+
 URL: http://virt-manager.org/
@@ -37,9 +36,14 @@ Requires: pygobject3
 Requires: gtk3
 Requires: libvirt-glib >= 0.0.9
 Requires: libxml2-python
-Requires: vte3
 Requires: dconf
 Requires: dbus-x11
+
+# The vte291 package is actually the latest vte with API version 2.91, while
+# the vte3 package is effectively a compat package with API version 2.90.
+# virt-manager works fine with either, so pull the latest bits so there's
+# no ambiguity.
+Requires: vte291
 
 # For console widget
 Requires: gtk-vnc2
@@ -71,7 +75,7 @@ Group: Applications/Emulators
 # however varying amounts of functionality will not be enabled.
 Requires: libvirt-python >= 0.7.0
 Requires: libxml2-python
-Requires: python-urlgrabber
+Requires: python-requests
 Requires: python-ipaddr
 Requires: libosinfo >= 0.2.10
 # Required for gobject-introspection infrastructure
@@ -142,7 +146,9 @@ python setup.py configure \
 
 
 %install
-python setup.py install -O1 --root=%{buildroot}
+python setup.py \
+    --no-update-icon-cache --no-compile-schemas \
+    install -O1 --root=%{buildroot}
 %find_lang %{name}
 
 # The conversion script was only added to virt-manager after several

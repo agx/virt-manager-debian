@@ -19,6 +19,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
+import logging
+import os
 import re
 
 from .cpu import CPU as DomainCPU
@@ -55,7 +57,12 @@ class _CPUMapFileValues(XMLBuilder):
     _cpu_filename = "/usr/share/libvirt/cpu_map.xml"
 
     def __init__(self, conn):
-        xml = file(self._cpu_filename).read()
+        if os.path.exists(self._cpu_filename):
+            xml = file(self._cpu_filename).read()
+        else:
+            xml = None
+            logging.debug("CPU map file not found: %s", self._cpu_filename)
+
         XMLBuilder.__init__(self, conn, parsexml=xml)
 
         self._archmap = {}
@@ -206,6 +213,8 @@ class _CapsGuestFeatures(XMLBuilder):
     _XML_ROOT_NAME = "features"
 
     pae = XMLProperty("./pae", is_bool=True)
+    acpi = XMLProperty("./acpi/@default", is_onoff=True)
+    apic = XMLProperty("./apic/@default", is_onoff=True)
 
 
 class _CapsGuest(XMLBuilder):
@@ -268,6 +277,43 @@ class _CapsGuest(XMLBuilder):
         # Fallback, just return last item in list
         return domains[-1]
 
+    def has_install_options(self):
+        """
+        Return True if there are any install options available
+        """
+        return bool(len(self.domains) > 0)
+
+    def is_kvm_available(self):
+        """
+        Return True if kvm guests can be installed
+        """
+        if self.os_type != "hvm":
+            return False
+
+        for d in self.domains:
+            if d.hypervisor_type == "kvm":
+                return True
+
+        return False
+
+    def supports_pae(self):
+        """
+        Return True if capabilities report support for PAE
+        """
+        return bool(self.features.pae)
+
+    def supports_acpi(self):
+        """
+        Return Tree if capabilities report support for ACPI
+        """
+        return bool(self.features.acpi)
+
+    def supports_apic(self):
+        """
+        Return Tree if capabilities report support for APIC
+        """
+        return bool(self.features.apic)
+
 
 ############################
 # Main capabilities object #
@@ -280,23 +326,17 @@ class _CapsInfo(object):
     """
     def __init__(self, conn, guest, domain, requested_machine):
         self.conn = conn
-        self._guest = guest
-        self._domain = domain
+        self.guest = guest
+        self.domain = domain
         self._requested_machine = requested_machine
 
-        self.hypervisor_type = self._domain.hypervisor_type
-        self.os_type = self._guest.os_type
-        self.arch = self._guest.arch
-        self.loader = self._guest.loader
+        self.hypervisor_type = self.domain.hypervisor_type
+        self.os_type = self.guest.os_type
+        self.arch = self.guest.arch
+        self.loader = self.guest.loader
 
-        self.emulator = self._domain.emulator
-        self.machines = self._domain.machines[:]
-
-    def get_caps_objects(self):
-        """
-        Return the raw backing caps objects
-        """
-        return self._guest, self._domain
+        self.emulator = self.domain.emulator
+        self.machines = self.domain.machines[:]
 
     def get_recommended_machine(self):
         """
@@ -322,6 +362,10 @@ class _CapsInfo(object):
                 return "virt"
             if "vexpress-a15" in self.machines:
                 return "vexpress-a15"
+
+        if self.arch in ["s390x"]:
+            if "s390-ccw-virtio" in self.machines:
+                return "s390-ccw-virtio"
 
         return None
 
@@ -359,39 +403,6 @@ class Capabilities(XMLBuilder):
     ##############
     # Public API #
     ##############
-
-    def has_install_options(self):
-        """
-        Return True if there are any install options available
-        """
-        for g in self.guests:
-            if len(g.domains) > 0:
-                return True
-
-        return False
-
-    def is_kvm_available(self):
-        """
-        Return True if kvm guests can be installed
-        """
-        for g in self.guests:
-            if g.os_type != "hvm":
-                continue
-
-            for d in g.domains:
-                if d.hypervisor_type == "kvm":
-                    return True
-
-        return False
-
-    def supports_pae(self):
-        """
-        Return True if capabilities report support for PAE
-        """
-        for g in self.guests:
-            if g.features.pae:
-                return True
-        return False
 
     def get_cpu_values(self, arch):
         if not arch:
@@ -457,6 +468,11 @@ class Capabilities(XMLBuilder):
 
         @returns: A _CapsInfo object containing the found guest and domain
         """
+        # F22 libxl xen still puts type=linux in the XML, so we need
+        # to handle it for caps lookup
+        if os_type == "linux":
+            os_type = "xen"
+
         guest = self._guestForOSType(os_type, arch)
         if not guest:
             archstr = _("for arch '%s'") % arch
@@ -497,6 +513,8 @@ class Capabilities(XMLBuilder):
         gobj.emulator = capsinfo.emulator
 
         gobj.os.machine = capsinfo.get_recommended_machine()
+
+        gobj.capsinfo = capsinfo
 
         return gobj
 

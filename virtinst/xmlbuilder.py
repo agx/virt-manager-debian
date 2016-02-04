@@ -201,16 +201,18 @@ def _remove_xpath_node(ctx, xpath, dofree=True):
     """
     Remove an XML node tree if it has no content
     """
-    curxpath = xpath
+    nextxpath = xpath
     root_node = ctx.contextNode()
 
-    while curxpath:
+    while nextxpath:
+        curxpath = nextxpath
         is_orig = (curxpath == xpath)
         node = _get_xpath_node(ctx, curxpath)
+
         if curxpath.count("/"):
-            curxpath, ignore = curxpath.rsplit("/", 1)
+            nextxpath, ignore = curxpath.rsplit("/", 1)
         else:
-            curxpath = None
+            nextxpath = None
 
         if not node:
             continue
@@ -292,7 +294,7 @@ class XMLChildProperty(property):
             self._get(xmlbuilder).clear()
         else:
             for obj in self._get(xmlbuilder)[:]:
-                xmlbuilder._remove_child(obj)
+                xmlbuilder.remove_child(obj)
 
     def append(self, xmlbuilder, newobj):
         # Keep the list ordered by the order of passed in child classes
@@ -330,8 +332,8 @@ class XMLChildProperty(property):
 
 
 class XMLProperty(property):
-    def __init__(self, xpath=None, name=None, doc=None,
-                 set_converter=None, validate_cb=None, make_xpath_cb=None,
+    def __init__(self, xpath, doc=None,
+                 set_converter=None, validate_cb=None,
                  is_bool=False, is_int=False, is_yesno=False, is_onoff=False,
                  default_cb=None, default_name=None, do_abspath=False):
         """
@@ -357,9 +359,6 @@ class XMLProperty(property):
             operation we convert the XML value with int(val) / 1024.
         @param validate_cb: Called once when value is set, should
             raise a RuntimeError if the value is not proper.
-        @param make_xpath_cb: Not all props map cleanly to a
-            static xpath. This allows passing functions which generate
-            an xpath.
         @param is_bool: Whether this is a boolean property in the XML
         @param is_int: Whether this is an integer property in the XML
         @param is_yesno: Whether this is a yes/no property in the XML
@@ -372,11 +371,9 @@ class XMLProperty(property):
             value, instead use the value of default_cb()
         @param do_abspath: If True, run os.path.abspath on the passed value
         """
-
         self._xpath = xpath
-        self._name = name or xpath
-        if not self._name:
-            raise RuntimeError("XMLProperty: name or xpath must be passed.")
+        if not self._xpath:
+            raise RuntimeError("XMLProperty: xpath must be passed.")
         self._propname = None
 
         self._is_bool = is_bool
@@ -385,7 +382,6 @@ class XMLProperty(property):
         self._is_onoff = is_onoff
         self._do_abspath = do_abspath
 
-        self._make_xpath_cb = make_xpath_cb
         self._validate_cb = validate_cb
         self._convert_value_for_setter_cb = set_converter
         self._default_cb = default_cb
@@ -408,7 +404,7 @@ class XMLProperty(property):
 
 
     def __repr__(self):
-        return "<XMLProperty %s %s>" % (str(self._name), id(self))
+        return "<XMLProperty %s %s>" % (str(self._xpath), id(self))
 
 
     ####################
@@ -430,12 +426,7 @@ class XMLProperty(property):
         return self._propname
 
     def _make_xpath(self, xmlbuilder):
-        ret = self._xpath
-        if self._make_xpath_cb:
-            ret = self._make_xpath_cb(xmlbuilder)
-        if ret is None:
-            raise RuntimeError("%s: didn't generate any xpath." % self)
-        return xmlbuilder.fix_relative_xpath(ret)
+        return xmlbuilder.fix_relative_xpath(self._xpath)
 
 
     def _build_node_list(self, xmlbuilder, xpath):
@@ -853,8 +844,20 @@ class XMLBuilder(object):
         for prop in props:
             prop.clear(self)
 
-        _remove_xpath_node(self._xmlstate.xml_ctx,
-                           self.get_root_xpath())
+        is_child = bool(re.match("^.*\[\d+\]$", self.get_root_xpath()))
+        if is_child:
+            # User requested to clear an object that is the child of
+            # another object (xpath ends in [1] etc). We can't fully remove
+            # the node in that case, since then the xmlbuilder object is
+            # no longer valid, and all the other child xpaths will be
+            # pointing to the wrong node. So just stub out the content
+            node = _get_xpath_node(self._xmlstate.xml_ctx,
+                                   self.get_root_xpath())
+            indent = 2 * self.get_root_xpath().count("/")
+            node.setContent("\n" + (indent * " "))
+        else:
+            _remove_xpath_node(self._xmlstate.xml_ctx,
+                               self.get_root_xpath())
 
     def validate(self):
         """
@@ -930,10 +933,10 @@ class XMLBuilder(object):
             for p in util.listify(getattr(self, propname, [])):
                 p._set_parent_xpath(self.get_root_xpath())
 
-    def _find_child_prop(self, child_class):
+    def _find_child_prop(self, child_class, return_single=False):
         xmlprops = self._all_child_props()
         for xmlprop in xmlprops.values():
-            if xmlprop.is_single:
+            if xmlprop.is_single and not return_single:
                 continue
             if child_class in xmlprop.child_classes:
                 return xmlprop
@@ -950,10 +953,11 @@ class XMLBuilder(object):
             for p in util.listify(getattr(self, propname, [])):
                 p._xmlstate._parse(None, self._xmlstate.xml_node)
 
-    def _add_child(self, obj):
+    def add_child(self, obj):
         """
         Insert the passed XMLBuilder object into our XML document. The
         object needs to have an associated mapping via XMLChildProperty
+        or an error is thrown.
         """
         xmlprop = self._find_child_prop(obj.__class__)
         xml = obj.get_xml_config()
@@ -967,10 +971,10 @@ class XMLBuilder(object):
             _build_xpath_node(self._xmlstate.xml_ctx, use_xpath, newnode)
         obj._parse_with_children(None, self._xmlstate.xml_node)
 
-    def _remove_child(self, obj):
+    def remove_child(self, obj):
         """
         Remove the passed XMLBuilder object from our XML document, but
-        ensure it's data isn't altered.
+        ensure its data isn't altered.
         """
         xmlprop = self._find_child_prop(obj.__class__)
         xmlprop.remove(self, obj)
@@ -982,6 +986,23 @@ class XMLBuilder(object):
         obj._parse_with_children(xml, None)
         _remove_xpath_node(self._xmlstate.xml_ctx, xpath, dofree=False)
         self._set_child_xpaths()
+
+    def list_children_for_class(self, klass):
+        """
+        Return a list of all XML child objects with the passed class
+        """
+        ret = []
+        for prop in self._all_child_props().values():
+            ret += [obj for obj in util.listify(prop._get(self))
+                    if obj.__class__ == klass]
+        return ret
+
+    def child_class_is_singleton(self, klass):
+        """
+        Return True if the passed class is registered as a singleton
+        child property
+        """
+        return self._find_child_prop(klass, return_single=True).is_single
 
 
     #################################

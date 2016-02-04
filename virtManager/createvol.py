@@ -64,7 +64,14 @@ class vmmCreateVolume(vmmGObjectUI):
 
 
     def show(self, parent):
-        logging.debug("Showing new volume wizard")
+        try:
+            parent_xml = self.parent_pool.xmlobj.get_xml_config()
+        except:
+            logging.debug("Error getting parent_pool xml", exc_info=True)
+            parent_xml = None
+
+        logging.debug("Showing new volume wizard for parent_pool=\n%s",
+            parent_xml)
         self.reset_state()
         self.topwin.set_transient_for(parent)
         self.topwin.present()
@@ -163,7 +170,7 @@ class vmmCreateVolume(vmmGObjectUI):
     def reset_state(self):
         self._make_stub_vol()
 
-        self.widget("vol-name").set_text("")
+        self.widget("vol-name").set_text(self.default_vol_name() or "")
         self.widget("vol-name").grab_focus()
         self.vol_name_changed(self.widget("vol-name"))
 
@@ -180,7 +187,7 @@ class vmmCreateVolume(vmmGObjectUI):
                     break
 
         default_alloc = 0
-        default_cap = 8
+        default_cap = 20
 
         self.widget("backing-store").set_text("")
         alloc = default_alloc

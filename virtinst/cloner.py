@@ -23,7 +23,6 @@ import logging
 import re
 import os
 
-import urlgrabber.progress as progress
 import libvirt
 
 from . import util
@@ -31,6 +30,7 @@ from .guest import Guest
 from .deviceinterface import VirtualNetworkInterface
 from .devicedisk import VirtualDisk
 from .storage import StorageVolume
+from .devicechar import VirtualChannelDevice
 
 
 class Cloner(object):
@@ -414,6 +414,12 @@ class Cloner(object):
             xmldisk.driver_type = orig_disk.driver_type
             xmldisk.path = clone_disk.path
 
+        # For guest agent channel, remove a path to generate a new one with
+        # new guest name
+        for channel in self._guest.get_devices("channel"):
+            if channel.type == VirtualChannelDevice.TYPE_UNIX:
+                channel.source_path = None
+
         # Save altered clone xml
         self._clone_xml = self._guest.get_xml_config()
         logging.debug("Clone guest xml is\n%s", self._clone_xml)
@@ -432,9 +438,7 @@ class Cloner(object):
         the new clone xml.
         """
         logging.debug("Starting duplicate.")
-
-        if not meter:
-            meter = progress.BaseMeter()
+        meter = util.ensure_meter(meter)
 
         dom = None
         try:

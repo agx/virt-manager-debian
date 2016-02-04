@@ -18,7 +18,6 @@
   </os>
   <features>
     <acpi/>
-    <pae/>
     <vmport state="off"/>
   </features>
   <cpu mode="host-model"/>
@@ -71,4 +70,5 @@
     </panic>
   </devices>
   <seclabel type="dynamic" model="selinux"/>
+  <seclabel type="none" model="dac"/>
 </domain>

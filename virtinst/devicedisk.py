@@ -26,13 +26,11 @@ import subprocess
 import logging
 import re
 
-import urlgrabber.progress as progress
-
 from . import diskbackend
 from . import util
 from .device import VirtualDevice
-from .uri import URISplit
-from .xmlbuilder import XMLProperty
+from .seclabel import Seclabel
+from .xmlbuilder import XMLChildProperty, XMLProperty
 
 
 def _qemu_sanitize_drvtype(phystype, fmt, manual_format=False):
@@ -43,28 +41,23 @@ def _qemu_sanitize_drvtype(phystype, fmt, manual_format=False):
 
     if phystype == VirtualDisk.TYPE_BLOCK:
         if not fmt:
-            return VirtualDisk.DRIVER_QEMU_RAW
+            return VirtualDisk.DRIVER_TYPE_RAW
         if fmt and not manual_format:
-            return VirtualDisk.DRIVER_QEMU_RAW
+            return VirtualDisk.DRIVER_TYPE_RAW
 
     if fmt in raw_list:
-        return VirtualDisk.DRIVER_QEMU_RAW
+        return VirtualDisk.DRIVER_TYPE_RAW
 
     return fmt
-
-
-def _name_uid(user):
-    """
-    Return UID for string username
-    """
-    pwdinfo = pwd.getpwnam(user)
-    return pwdinfo[2]
 
 
 def _is_dir_searchable(uid, username, path):
     """
     Check if passed directory is searchable by uid
     """
+    if "VIRTINST_TEST_SUITE" in os.environ:
+        return True
+
     try:
         statinfo = os.stat(path)
     except OSError:
@@ -101,22 +94,9 @@ def _is_dir_searchable(uid, username, path):
 class VirtualDisk(VirtualDevice):
     virtual_device_type = VirtualDevice.VIRTUAL_DEV_DISK
 
-    DRIVER_FILE = "file"
-    DRIVER_PHY = "phy"
-    DRIVER_TAP = "tap"
-    DRIVER_QEMU = "qemu"
-    driver_names = [DRIVER_FILE, DRIVER_PHY, DRIVER_TAP, DRIVER_QEMU]
-
-    DRIVER_QEMU_RAW = "raw"
-    # No list here, since there are many other valid values
-
-    DRIVER_TAP_RAW = "aio"
-    DRIVER_TAP_QCOW = "qcow"
-    DRIVER_TAP_VMDK = "vmdk"
-    DRIVER_TAP_VDISK = "vdisk"
-    DRIVER_TAP_QED = "qed"
-    driver_types = [DRIVER_TAP_RAW, DRIVER_TAP_QCOW,
-        DRIVER_TAP_VMDK, DRIVER_TAP_VDISK, DRIVER_TAP_QED]
+    DRIVER_NAME_PHY = "phy"
+    DRIVER_NAME_QEMU = "qemu"
+    DRIVER_TYPE_RAW = "raw"
 
     CACHE_MODE_NONE = "none"
     CACHE_MODE_WRITETHROUGH = "writethrough"
@@ -169,8 +149,6 @@ class VirtualDisk(VirtualDevice):
             return bus.capitalize()
         if bus == "virtio":
             return "VirtIO"
-        if bus == "spapr-vscsi":
-            return "vSCSI"
         return bus
 
     @staticmethod
@@ -222,7 +200,8 @@ class VirtualDisk(VirtualDevice):
             return []
 
         try:
-            uid = _name_uid(username)
+            # Get UID for string name
+            uid = pwd.getpwnam(username)[2]
         except Exception, e:
             logging.debug("Error looking up username: %s", str(e))
             return []
@@ -387,21 +366,6 @@ class VirtualDisk(VirtualDevice):
         return ret
 
     @staticmethod
-    def stat_local_path(path):
-        """
-        Return tuple (storage type, storage size) for the passed path on
-        the local machine. This is a best effort attempt.
-
-        @return: tuple of
-                 (True if regular file, False otherwise, default is True,
-                 max size of storage, default is 0)
-        """
-        try:
-            return util.stat_disk(path)
-        except:
-            return (True, 0)
-
-    @staticmethod
     def build_vol_install(conn, volname, poolobj, size, sparse,
                           fmt=None, backing_store=None):
         """
@@ -507,6 +471,7 @@ class VirtualDisk(VirtualDevice):
         VirtualDevice.__init__(self, *args, **kwargs)
 
         self._storage_backend = None
+        self.storage_was_created = False
 
 
     #############################
@@ -570,8 +535,15 @@ class VirtualDisk(VirtualDevice):
     def _get_default_driver_name(self):
         if not self.path:
             return None
-        if self.conn.is_qemu():
-            return self.DRIVER_QEMU
+
+        # Recommended xen defaults from here:
+        # https://bugzilla.redhat.com/show_bug.cgi?id=1171550#c9
+        # If type block, use name=phy. Otherwise do the same as qemu
+        if self.conn.is_xen() and self.type == self.TYPE_BLOCK:
+            return self.DRIVER_NAME_PHY
+        if self.conn.check_support(
+                self.conn.SUPPORT_CONN_DISK_DRIVER_NAME_QEMU):
+            return self.DRIVER_NAME_QEMU
         return None
 
     def _get_default_driver_type(self):
@@ -584,7 +556,7 @@ class VirtualDisk(VirtualDevice):
 
         http://lists.gnu.org/archive/html/qemu-devel/2008-04/msg00675.html
         """
-        if self.driver_name != self.DRIVER_QEMU:
+        if self.driver_name != self.DRIVER_NAME_QEMU:
             return None
 
         drvtype = self._storage_backend.get_driver_type()
@@ -611,20 +583,22 @@ class VirtualDisk(VirtualDevice):
     source_host_socket = XMLProperty("./source/host/@socket")
 
     def _set_source_network_from_url(self, uri):
-        uriinfo = URISplit(uri)
-        if uriinfo.scheme:
-            self.source_protocol = uriinfo.scheme
-        if uriinfo.transport:
-            self.source_host_transport = uriinfo.transport
-        if uriinfo.hostname:
-            self.source_host_name = uriinfo.hostname
-        if uriinfo.port:
-            self.source_host_port = uriinfo.port
-        if uriinfo.path:
+        from .uri import URI
+        uriobj = URI(uri)
+
+        if uriobj.scheme:
+            self.source_protocol = uriobj.scheme
+        if uriobj.transport:
+            self.source_host_transport = uriobj.transport
+        if uriobj.hostname:
+            self.source_host_name = uriobj.hostname
+        if uriobj.port:
+            self.source_host_port = uriobj.port
+        if uriobj.path:
             if self.source_host_transport:
-                self.source_host_socket = uriinfo.path
+                self.source_host_socket = uriobj.path
             else:
-                self.source_name = uriinfo.path
+                self.source_name = uriobj.path
                 if self.source_name.startswith("/"):
                     self.source_name = self.source_name[1:]
 
@@ -768,6 +742,8 @@ class VirtualDisk(VirtualDevice):
     iotune_wbs = XMLProperty("./iotune/write_bytes_sec", is_int=True)
     iotune_wis = XMLProperty("./iotune/write_iops_sec", is_int=True)
 
+    seclabel = XMLChildProperty(Seclabel, relative_xpath="./source")
+
 
     #################################
     # Validation assistance methods #
@@ -877,16 +853,13 @@ class VirtualDisk(VirtualDevice):
 
         If storage doesn't exist (a non-existent file 'path', or 'vol_install'
         was specified), we create it.
-
-        @param meter: Progress meter to report file creation on
-        @type meter: instanceof urlgrabber.BaseMeter
         """
-        if not meter:
-            meter = progress.BaseMeter()
         if not self._storage_backend.will_create_storage():
             return
 
+        meter = util.ensure_meter(meter)
         vol_object = self._storage_backend.create(meter)
+        self.storage_was_created = True
         if not vol_object:
             return
 
@@ -897,11 +870,8 @@ class VirtualDisk(VirtualDevice):
         if self.is_cdrom():
             self.read_only = True
 
-        if (guest.os.is_xenpv() and
-            self.type == VirtualDisk.TYPE_FILE and
-            self.driver_name is None and
-            util.is_blktap_capable(self.conn)):
-            self.driver_name = VirtualDisk.DRIVER_TAP
+        if self.is_cdrom() and guest.os.is_s390x():
+            self.bus = "scsi"
 
         if not self.conn.is_qemu():
             return

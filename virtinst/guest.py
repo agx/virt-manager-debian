@@ -20,8 +20,8 @@
 # MA 02110-1301 USA.
 
 import logging
+import os
 
-import urlgrabber.progress as progress
 import libvirt
 
 from virtcli import CLIConfig
@@ -103,7 +103,8 @@ class Guest(XMLBuilder):
     _XML_ROOT_NAME = "domain"
     _XML_PROP_ORDER = ["type", "name", "uuid", "title", "description",
         "maxmemory", "memory", "blkiotune", "memtune", "memoryBacking",
-        "vcpus", "curvcpus", "numatune", "bootloader", "os", "idmap",
+        "vcpus", "curvcpus", "vcpu_placement", "cpuset",
+        "numatune", "bootloader", "os", "idmap",
         "features", "cpu", "clock", "on_poweroff", "on_reboot", "on_crash",
         "resource", "pm", "emulator", "_devices", "seclabel"]
 
@@ -130,6 +131,9 @@ class Guest(XMLBuilder):
 
         # The libvirt virDomain object we 'Create'
         self.domain = None
+
+        # This is set via Capabilities.build_virtinst_guest
+        self.capsinfo = None
 
         self.installer = DistroInstaller(self.conn)
 
@@ -168,6 +172,7 @@ class Guest(XMLBuilder):
                         set_converter=_set_vcpus,
                         default_cb=lambda s: 1)
     curvcpus = XMLProperty("./vcpu/@current", is_int=True)
+    vcpu_placement = XMLProperty("./vcpu/@placement")
 
     def _validate_cpuset(self, val):
         DomainNumatune.validate_cpuset(self.conn, val)
@@ -193,11 +198,12 @@ class Guest(XMLBuilder):
                               default_cb=lambda s: "destroy")
     on_reboot = XMLProperty("./on_reboot", default_cb=lambda s: "restart")
     on_crash = XMLProperty("./on_crash", default_cb=lambda s: "restart")
+    on_lockfailure = XMLProperty("./on_lockfailure")
 
+    seclabel = XMLChildProperty(Seclabel)
     os = XMLChildProperty(OSXML, is_single=True)
     features = XMLChildProperty(DomainFeatures, is_single=True)
     clock = XMLChildProperty(Clock, is_single=True)
-    seclabel = XMLChildProperty(Seclabel, is_single=True)
     cpu = XMLChildProperty(CPU, is_single=True)
     numatune = XMLChildProperty(DomainNumatune, is_single=True)
     pm = XMLChildProperty(PM, is_single=True)
@@ -247,7 +253,7 @@ class Guest(XMLBuilder):
 
         @param dev: VirtualDevice instance to attach to guest
         """
-        self._add_child(dev)
+        self.add_child(dev)
 
     def remove_device(self, dev):
         """
@@ -255,7 +261,7 @@ class Guest(XMLBuilder):
 
         @param dev: VirtualDevice instance
         """
-        self._remove_child(dev)
+        self.remove_child(dev)
 
     def get_devices(self, devtype):
         """
@@ -270,6 +276,7 @@ class Guest(XMLBuilder):
             if devtype == "all" or i.virtual_device_type == devtype:
                 newlist.append(i)
         return newlist
+
     _devices = XMLChildProperty(
         [VirtualDevice.virtual_device_classes[_n]
          for _n in VirtualDevice.virtual_device_types],
@@ -364,6 +371,86 @@ class Guest(XMLBuilder):
         return self.get_xml_config()
 
 
+    ###########################
+    # Private install helpers #
+    ###########################
+
+    def _build_meter(self, meter, is_initial):
+        if is_initial:
+            meter_label = _("Creating domain...")
+        else:
+            meter_label = _("Starting domain...")
+
+        meter = util.ensure_meter(meter)
+        meter.start(size=None, text=meter_label)
+
+        return meter
+
+    def _build_xml(self, is_initial):
+        log_label = is_initial and "install" or "continue"
+        disk_boot = not is_initial
+
+        start_xml = self._get_install_xml(install=True, disk_boot=disk_boot)
+        final_xml = self._get_install_xml(install=False)
+
+        logging.debug("Generated %s XML: %s",
+                      log_label,
+                      (start_xml and ("\n" + start_xml) or "None required"))
+        logging.debug("Generated boot XML: \n%s", final_xml)
+
+        return start_xml, final_xml
+
+    def _create_guest(self, meter,
+                      start_xml, final_xml, is_initial, noboot):
+        """
+        Actually do the XML logging, guest defining/creating
+
+        @param is_initial: If running initial guest creation, else we
+                           are continuing the install
+        @param noboot: Don't boot guest if no install phase
+        """
+        meter = self._build_meter(meter, is_initial)
+        doboot = not noboot or self.installer.has_install_phase()
+
+        if is_initial and doboot:
+            dom = self.conn.createLinux(start_xml or final_xml, 0)
+        else:
+            dom = self.conn.defineXML(start_xml or final_xml)
+            if doboot:
+                dom.create()
+
+        self.domain = dom
+        meter.end(0)
+
+        self.domain = self.conn.defineXML(final_xml)
+        if is_initial:
+            try:
+                logging.debug("XML fetched from libvirt object:\n%s",
+                              dom.XMLDesc(0))
+            except Exception, e:
+                logging.debug("Error fetching XML from libvirt object: %s", e)
+
+        return self.domain
+
+
+    def _flag_autostart(self):
+        """
+        Set the autostart flag for self.domain if the user requested it
+        """
+        if not self.autostart:
+            return
+
+        try:
+            self.domain.setAutostart(True)
+        except libvirt.libvirtError, e:
+            if util.is_error_nosupport(e):
+                logging.warn("Could not set autostart flag: libvirt "
+                             "connection does not support autostart.")
+            else:
+                raise e
+
+
+
     ##############
     # Public API #
     ##############
@@ -436,80 +523,36 @@ class Guest(XMLBuilder):
         return self._create_guest(meter,
                                   start_xml, final_xml, is_initial, False)
 
-    def _build_meter(self, meter, is_initial):
-        if is_initial:
-            meter_label = _("Creating domain...")
-        else:
-            meter_label = _("Starting domain...")
+    def get_created_disks(self):
+        return [d for d in self.get_devices("disk") if d.storage_was_created]
 
-        if meter is None:
-            meter = progress.BaseMeter()
-        meter.start(size=None, text=meter_label)
-
-        return meter
-
-    def _build_xml(self, is_initial):
-        log_label = is_initial and "install" or "continue"
-        disk_boot = not is_initial
-
-        start_xml = self._get_install_xml(install=True, disk_boot=disk_boot)
-        final_xml = self._get_install_xml(install=False)
-
-        logging.debug("Generated %s XML: %s",
-                      log_label,
-                      (start_xml and ("\n" + start_xml) or "None required"))
-        logging.debug("Generated boot XML: \n%s", final_xml)
-
-        return start_xml, final_xml
-
-    def _create_guest(self, meter,
-                      start_xml, final_xml, is_initial, noboot):
+    def cleanup_created_disks(self, meter):
         """
-        Actually do the XML logging, guest defining/creating
-
-        @param is_initial: If running initial guest creation, else we
-                           are continuing the install
-        @param noboot: Don't boot guest if no install phase
+        Remove any disks we created as part of the install. Only ever
+        called by clients.
         """
-        meter = self._build_meter(meter, is_initial)
-        doboot = not noboot or self.installer.has_install_phase()
-
-        if is_initial and doboot:
-            dom = self.conn.createLinux(start_xml or final_xml, 0)
-        else:
-            dom = self.conn.defineXML(start_xml or final_xml)
-            if doboot:
-                dom.create()
-
-        self.domain = dom
-        meter.end(0)
-
-        self.domain = self.conn.defineXML(final_xml)
-        if is_initial:
-            try:
-                logging.debug("XML fetched from libvirt object:\n%s",
-                              dom.XMLDesc(0))
-            except Exception, e:
-                logging.debug("Error fetching XML from libvirt object: %s", e)
-
-        return self.domain
-
-
-    def _flag_autostart(self):
-        """
-        Set the autostart flag for self.domain if the user requested it
-        """
-        if not self.autostart:
+        clean_disks = self.get_created_disks()
+        if not clean_disks:
             return
 
-        try:
-            self.domain.setAutostart(True)
-        except libvirt.libvirtError, e:
-            if util.is_error_nosupport(e):
-                logging.warn("Could not set autostart flag: libvirt "
-                             "connection does not support autostart.")
-            else:
-                raise e
+        for disk in clean_disks:
+            logging.debug("Removing created disk path=%s vol_object=%s",
+                disk.path, disk.get_vol_object())
+            name = os.path.basename(disk.path)
+
+            try:
+                meter.start(size=None, text=_("Removing disk '%s'") % name)
+
+                if disk.get_vol_object():
+                    disk.get_vol_object().delete()
+                else:
+                    os.unlink(disk.path)
+
+                meter.end(0)
+            except Exception, e:
+                logging.debug("Failed to remove disk '%s'",
+                    name, exc_info=True)
+                logging.error("Failed to remove disk '%s': %s", name, e)
 
 
     ###########################
@@ -582,20 +625,13 @@ class Guest(XMLBuilder):
     def add_default_console_device(self):
         if self.skip_default_console:
             return
-        if self.os.is_xenpv():
-            return
         if self.get_devices("console") or self.get_devices("serial"):
             return
 
         dev = VirtualConsoleDevice(self.conn)
         dev.type = dev.TYPE_PTY
-
-        if (self.os.is_x86() and
-            self._os_object.supports_virtioconsole() and
-            self.conn.check_support(
-            self.conn.SUPPORT_CONN_VIRTIO_CONSOLE)):
-            dev.target_type = "virtio"
-
+        if self.os.is_s390x():
+            dev.target_type = "sclp"
         self.add_device(dev)
 
     def add_default_video_device(self):
@@ -625,10 +661,11 @@ class Guest(XMLBuilder):
             return
         if self.get_devices("channel"):
             return
+        if self.os.is_s390x():
+            # Not wanted for s390 apparently
+            return
 
-        # Skip qemu-ga on ARM where virtio slots are currently limited
         if (self.conn.is_qemu() and
-            not self.os.is_arm() and
             self._os_object.supports_qemu_ga() and
             self.conn.check_support(self.conn.SUPPORT_CONN_AUTOSOCKET)):
             dev = VirtualChannelDevice(self.conn)
@@ -761,9 +798,11 @@ class Guest(XMLBuilder):
         hpet.name = "hpet"
         hpet.present = False
 
-        if (self._os_object.is_windows() and
-            self.conn.check_support(self.conn.SUPPORT_CONN_HYPERV_CLOCK) and
-            self._hv_supported()):
+        hv_clock = self.conn.check_support(self.conn.SUPPORT_CONN_HYPERV_CLOCK)
+        hv_clock_rhel = self.conn.check_support(self.conn.SUPPORT_CONN_HYPERV_CLOCK_RHEL)
+
+        if (self._os_object.is_windows() and self._hv_supported() and
+            (hv_clock or (self.stable_defaults() and hv_clock_rhel))):
             hyperv = self.clock.add_timer()
             hyperv.name = "hypervclock"
             hyperv.present = True
@@ -802,7 +841,11 @@ class Guest(XMLBuilder):
         elif self.os.is_x86() and self.type == "kvm":
             if self.os.arch != self.conn.caps.host.cpu.arch:
                 return
+
             self.cpu.set_special_mode(self.x86_cpu_default)
+            if self._os_object.broken_x2apic():
+                self.cpu.add_feature("x2apic", policy="disable")
+
 
     def _hv_supported(self):
         if (self.os.loader_type == "pflash" and
@@ -810,9 +853,11 @@ class Guest(XMLBuilder):
             return False
         return True
 
-    def check_defaults(self):
+    def update_defaults(self):
         # This is used only by virt-manager to reset any defaults that may have
         # changed through manual intervention via the customize wizard.
+
+        # UEFI doesn't work with hyperv bits
         if not self._hv_supported():
             self.features.hyperv_relaxed = None
             self.features.hyperv_vapic = None
@@ -840,13 +885,22 @@ class Guest(XMLBuilder):
             default = False
 
         if self.features.acpi == "default":
-            self.features.acpi = self._os_object.supports_acpi(default)
+            if default:
+                self.features.acpi = self.capsinfo.guest.supports_acpi()
+            else:
+                self.features.acpi = False
         if self.features.apic == "default":
-            self.features.apic = self._os_object.supports_apic(default)
+            self.features.apic = self.capsinfo.guest.supports_apic()
         if self.features.pae == "default":
-            self.features.pae = self.conn.caps.supports_pae()
+            if (self.os.is_hvm() and
+                self.type == "xen" and
+                self.os.arch == "x86_64"):
+                self.features.pae = True
+            else:
+                self.features.pae = self.capsinfo.guest.supports_pae()
 
         if (self.features.vmport == "default" and
+            self.os.is_x86() and
             self.has_spice() and
             self.conn.check_support(self.conn.SUPPORT_CONN_VMPORT)):
             self.features.vmport = False
@@ -987,6 +1041,8 @@ class Guest(XMLBuilder):
                 d.bus = "sd"
             elif self.os.is_q35():
                 d.bus = "sata"
+            elif self.os.is_s390x():
+                d.bus = "virtio"
             else:
                 d.bus = "ide"
 
@@ -1021,11 +1077,22 @@ class Guest(XMLBuilder):
                     net.model = net_model
 
     def _set_input_defaults(self):
+        def _usb_disabled():
+            controllers = [c for c in self.get_devices("controller") if
+                c.type == "usb"]
+            if not controllers:
+                return False
+            return all([c.model == "none" for c in controllers])
+
         input_type = self._os_object.default_inputtype()
         input_bus = self._os_object.default_inputbus()
         if self.os.is_xenpv():
             input_type = VirtualInputDevice.TYPE_MOUSE
             input_bus = VirtualInputDevice.BUS_XEN
+        elif _usb_disabled() and input_bus == "usb":
+            input_bus = "ps2"
+            if input_type == "tablet":
+                input_type = "mouse"
 
         for inp in self.get_devices("input"):
             if (inp.type == inp.TYPE_DEFAULT and
@@ -1052,8 +1119,9 @@ class Guest(XMLBuilder):
             gtype = self.default_graphics_type
             logging.debug("Using default_graphics=%s", gtype)
             if (gtype == "spice" and not
-                self.conn.check_support(
-                    self.conn.SUPPORT_CONN_GRAPHICS_SPICE)):
+                (self.conn.caps.host.cpu.arch in ["i686", "x86_64"] and
+                 self.conn.check_support(
+                     self.conn.SUPPORT_CONN_GRAPHICS_SPICE))):
                 logging.debug("spice requested but HV doesn't support it. "
                               "Using vnc.")
                 gtype = "vnc"

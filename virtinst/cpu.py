@@ -83,9 +83,9 @@ class CPU(XMLBuilder):
         feature.name = name
         feature.policy = policy
 
-        self._add_child(feature)
+        self.add_child(feature)
     def remove_feature(self, feature):
-        self._remove_child(feature)
+        self.remove_child(feature)
     features = XMLChildProperty(CPUFeature)
 
     def copy_host_cpu(self):
@@ -104,8 +104,8 @@ class CPU(XMLBuilder):
 
         for feature in self.features:
             self.remove_feature(feature)
-        for name in cpu.features.names():
-            self.add_feature(name)
+        for feature in cpu.features:
+            self.add_feature(feature.name)
 
     def vcpus_from_topology(self):
         """
