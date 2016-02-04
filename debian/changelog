@@ -1,3 +1,19 @@
+virt-manager (1:1.3.2-1) experimental; urgency=medium
+
+  * [74c0cce] Move python-ipaddr dependency from virt-manager to virtinst
+    (Closes: #803469)
+  * [b6de3ae] New upstream version 1.3.2
+  * [1935c7d] Use README.source template from gbp
+  * [203bfe9] Rediff patches
+  * [1b96d13] gbp.conf: Use upstream/latest as upstream branch as recommended
+    by DEP-14
+  * [6a2a8a1] Use secure and canical VCS URLs
+  * [b54e442] Pass --no-update-icon-cache --no-compile-schemas since these are
+    run via dpkg triggers on installation. Invoke setup.py directly due to
+    #813686.
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 04 Feb 2016 12:11:04 +0100
+
 virt-manager (1:1.2.1-4) unstable; urgency=medium
 
   [ Andreas Henriksson ]
