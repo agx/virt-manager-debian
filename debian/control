@@ -4,8 +4,8 @@ Priority: optional
 Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
 Uploaders: Guido Günther <agx@sigxcpu.org>, Laurent Léonard <laurent@open-minds.org>
 Standards-Version: 3.9.6
-Vcs-Git: git://git.debian.org/git/pkg-libvirt/virt-manager.git
-Vcs-Browser: http://git.debian.org/?p=pkg-libvirt/virt-manager.git
+Vcs-Git: https://anonscm.debian.org/git/git/pkg-libvirt/virt-manager.git
+Vcs-Browser: https://anonscm.debian.org/cgit/pkg-libvirt/virt-manager.git
 Homepage: http://virt-manager.et.redhat.com/
 X-Python-Version: 2.7
 Build-Depends: debhelper (>= 9), python-all,
