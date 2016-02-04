@@ -9,7 +9,7 @@ Not all architectures have it
  2 files changed, 14 insertions(+), 5 deletions(-)
 
 diff --git a/virtManager/console.py b/virtManager/console.py
-index ab13d7b..689773e 100644
+index 217df3d..7cbb385 100644
 --- a/virtManager/console.py
 +++ b/virtManager/console.py
 @@ -29,7 +29,7 @@ from .baseclass import vmmGObjectUI
@@ -20,8 +20,8 @@ index ab13d7b..689773e 100644
 +from .viewers import SpiceViewer, VNCViewer, have_spice_gtk
  
  
- class vmmConsolePages(vmmGObjectUI):
-@@ -652,7 +652,12 @@ class vmmConsolePages(vmmGObjectUI):
+ # console-pages IDs
+@@ -665,7 +665,12 @@ class vmmConsolePages(vmmGObjectUI):
              if ginfo.gtype == "vnc":
                  viewer_class = VNCViewer
              elif ginfo.gtype == "spice":
@@ -36,7 +36,7 @@ index ab13d7b..689773e 100644
              self._viewer = viewer_class(ginfo)
              self._connect_viewer_signals()
 diff --git a/virtManager/viewers.py b/virtManager/viewers.py
-index f2b6d69..3000378 100644
+index b424e90..b9c7512 100644
 --- a/virtManager/viewers.py
 +++ b/virtManager/viewers.py
 @@ -25,9 +25,13 @@ from gi.repository import Gdk
