@@ -18,7 +18,7 @@ Depends: ${misc:Depends}, ${python:Depends},
  python-gi,
  python-gi-cairo,
  python-dbus,
- python-urlgrabber,
+ python-requests,
  librsvg2-common,
  python-libvirt (>= 0.7.1),
  gir1.2-libvirt-glib-1.0,
@@ -47,7 +47,7 @@ Package: virtinst
 Architecture: all
 Depends: ${python:Depends}, ${shlibs:Depends}, ${misc:Depends}, python-libvirt (>= 0.4.6),
  python-ipaddr,
- python-libxml2, python-urlgrabber,
+ python-libxml2, python-requests,
  gir1.2-libosinfo-1.0,
 Recommends: virt-viewer, qemu-utils
 Description: Programs to create and clone virtual machines
