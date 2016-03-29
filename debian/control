@@ -46,6 +46,7 @@ Description: desktop application for managing virtual machines
 Package: virtinst
 Architecture: all
 Depends: ${python:Depends}, ${shlibs:Depends}, ${misc:Depends}, python-libvirt (>= 0.4.6),
+ python-gi,
  python-ipaddr,
  python-libxml2, python-requests,
  gir1.2-libosinfo-1.0,
