@@ -1,3 +1,15 @@
+virt-manager (1:1.3.2-2) unstable; urgency=medium
+
+  * Upload to unstable
+  * [8a27ee8] Fix spice availability detection
+    gi.require_version('SpiceClientGtk', '3.0') raises ValueError if
+    SpiceClientGtk is not installed so we never see ImportError. Check for
+    both in case the module is there but the symbol went missing.
+    Thanks: Adel Belhouane for the patch
+    (Closes: #799771)
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 29 Mar 2016 08:18:25 +0200
+
 virt-manager (1:1.3.2-1) experimental; urgency=medium
 
   * [74c0cce] Move python-ipaddr dependency from virt-manager to virtinst
