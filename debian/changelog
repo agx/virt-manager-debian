@@ -1,3 +1,12 @@
+virt-manager (1:1.3.2-3) unstable; urgency=medium
+
+  * [2ebfe49] Switch from urlgrabber to requests.
+    Thanks to Adel Belhouane (Closes: #819494)
+  * [b1ee5b4] Invoke virt-* on autopkg test to check for missing imports
+  * [777d781] Add missing dependency on python-gi catched by the autopkg test
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 29 Mar 2016 19:45:15 +0200
+
 virt-manager (1:1.3.2-2) unstable; urgency=medium
 
   * Upload to unstable
