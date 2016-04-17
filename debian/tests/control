@@ -1,2 +1,7 @@
 Tests: help.sh
-Depends: virtinst
+Depends: virtinst,
+
+Tests: virt-manager.sh
+Depends: virt-manager,
+ xvfb,
+ xauth,
