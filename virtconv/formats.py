@@ -118,6 +118,8 @@ def _find_input(input_file, parser, print_cb):
     try:
         ext = os.path.splitext(input_file)[1]
         tempdir = None
+        binname = None
+        pkg = None
         if ext and ext[1:] in ["zip", "gz", "ova",
                 "tar", "bz2", "bzip2", "7z", "xz"]:
             basedir = "/var/tmp"
@@ -129,19 +131,40 @@ def _find_input(input_file, parser, print_cb):
 
             base = os.path.basename(input_file)
 
-            # check if 'unar' command existed.
-            if not find_executable("unar"):
+            if (ext[1:] == "zip"):
+                binname = "unzip"
+                pkg = "unzip"
+                cmd = ["unzip", "-o", "-d", tempdir, input_file]
+            elif (ext[1:] == "7z"):
+                binname = "7z"
+                pkg = "p7zip"
+                cmd = ["7z", "-o" + tempdir, "e", input_file]
+            elif (ext[1:] == "ova" or ext[1:] == "tar"):
+                binname = "tar"
+                pkg = "tar"
+                cmd = ["tar", "xf", input_file, "-C", tempdir]
+            elif (ext[1:] == "gz"):
+                binname = "gzip"
+                pkg = "gzip"
+                cmd = ["tar", "zxf", input_file, "-C", tempdir]
+            elif (ext[1:] == "bz2" or ext[1:] == "bzip2"):
+                binname = "bzip2"
+                pkg = "bzip2"
+                cmd = ["tar", "jxf", input_file, "-C", tempdir]
+            elif (ext[1:] == "xz"):
+                binname = "xz"
+                pkg = "xz"
+                cmd = ["tar", "Jxf", input_file, "-C", tempdir]
+            if not find_executable(binname):
                 raise RuntimeError(_("%s appears to be an archive, "
-                    "but 'unar' is not installed. "
-                    "Please either install 'unar', or extract the archive "
+                    "but '%s' is not installed. "
+                    "Please either install '%s', or extract the archive "
                     "yourself and point virt-convert at "
-                    "the extracted directory.") % base)
+                    "the extracted directory.") % (base, pkg, pkg))
 
-            cmd = ["unar", "-o", tempdir, base]
             print_cb(_("%s appears to be an archive, running: %s") %
                 (base, " ".join(cmd)))
 
-            cmd[-1] = input_file
             _run_cmd(cmd)
             force_clean.append(tempdir)
             input_file = tempdir
@@ -175,6 +198,7 @@ class VirtConverter(object):
         self._err_clean = []
         self._force_clean = []
 
+        # pylint: disable=redefined-variable-type
         if print_cb == -1 or print_cb is None:
             def cb(msg):
                 if print_cb == -1:
@@ -240,6 +264,8 @@ class VirtConverter(object):
         """
         binnames = ["qemu-img", "kvm-img"]
 
+        decompress_cmd = None
+
         if _is_test():
             executable = "/usr/bin/qemu-img"
         else:
@@ -252,12 +278,23 @@ class VirtConverter(object):
             raise RuntimeError(_("None of %s tools found.") % binnames)
 
         base = os.path.basename(absin)
+        ext = os.path.splitext(base)[1]
+        if (ext and ext[1:] == "gz"):
+            if not find_executable("gzip"):
+                raise RuntimeError("'gzip' is needed to decompress the file, "
+                    "but not found.")
+            decompress_cmd = ["gzip", "-d", absin]
+            base = os.path.splitext(base)[0]
+            absin = absin[0:-3]
+            self.print_cb("Running %s" % " ".join(decompress_cmd))
         cmd = [executable, "convert", "-O", disk_format, base, absout]
         self.print_cb("Running %s" % " ".join(cmd))
         if dry:
             return
 
         cmd[4] = absin
+        if decompress_cmd is not None:
+            _run_cmd(decompress_cmd)
         _run_cmd(cmd)
 
     def convert_disks(self, disk_format, destdir=None, dry=False):
@@ -286,7 +323,7 @@ class VirtConverter(object):
             if disk_format:
                 newpath += ("." + disk_format)
             newpath = os.path.join(destdir, newpath)
-            if os.path.exists(newpath):
+            if os.path.exists(newpath) and not _is_test():
                 raise RuntimeError(_("New path name '%s' already exists") %
                     newpath)
 

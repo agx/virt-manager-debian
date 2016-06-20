@@ -20,7 +20,7 @@
 import logging
 import re
 
-from .cli import VirtOptionString
+from .cli import parse_optstr_tuples
 
 
 def sanitize_xml_for_test_define(xml):
@@ -141,7 +141,7 @@ class MagicURI(object):
         uri = uri.replace(self.VIRTINST_URI_MAGIC_PREFIX, "")
         ret = uri.split(",", 1)
         self.open_uri = ret[0]
-        opts = VirtOptionString(len(ret) > 1 and ret[1] or "", [], None).opts
+        opts = dict(parse_optstr_tuples(len(ret) > 1 and ret[1] or ""))
 
         def pop_bool(field):
             ret = field in opts
@@ -218,7 +218,7 @@ class MagicURI(object):
             conn.getDomainCapabilities = fake_domcaps
 
         if self.hv:
-            origcreate = conn.createLinux
+            origcreate = conn.createXML
             origdefine = conn.defineXML
             def newcreate(xml, flags):
                 xml = sanitize_xml_for_test_define(xml)
@@ -226,5 +226,5 @@ class MagicURI(object):
             def newdefine(xml):
                 xml = sanitize_xml_for_test_define(xml)
                 return origdefine(xml)
-            conn.createLinux = newcreate
+            conn.createXML = newcreate
             conn.defineXML = newdefine

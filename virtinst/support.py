@@ -289,8 +289,6 @@ SUPPORT_CONN_USBREDIR = _make(
     version="0.9.5", hv_version={"qemu": "1.3.0", "test": 0})
 SUPPORT_CONN_DEVICE_BOOTORDER = _make(
     version="0.8.8", hv_version={"qemu": 0, "test": 0})
-SUPPORT_CONN_INPUT_KEYBOARD = _make(
-    version="1.2.2", hv_version={"qemu": 0, "test": 0})
 SUPPORT_CONN_POOL_GLUSTERFS = _make(version="1.2.0")
 SUPPORT_CONN_CPU_MODEL_NAMES = _make(function="virConnect.getCPUModelNames",
                                      run_args=("x86_64", 0))
@@ -304,7 +302,6 @@ SUPPORT_CONN_LOADER_ROM = _make(version="1.2.9")
 SUPPORT_CONN_DOMAIN_CAPABILITIES = _make(
     function="virConnect.getDomainCapabilities",
     run_args=(None, None, None, None))
-SUPPORT_CONN_VIDEO_NEW_RAM_OUTPUT = _make(version="1.2.11")
 SUPPORT_CONN_DOMAIN_RESET = _make(version="0.9.7", hv_version={"qemu": 0})
 SUPPORT_CONN_SPICE_COMPRESSION = _make(version="0.9.1")
 SUPPORT_CONN_VMPORT = _make(
@@ -314,6 +311,12 @@ SUPPORT_CONN_VCPU_PLACEMENT = _make(
 SUPPORT_CONN_MEM_STATS_PERIOD = _make(
     function="virDomain.setMemoryStatsPeriod",
     version="1.1.1", hv_version={"qemu": 0})
+SUPPORT_CONN_SPICE_GL = _make(version="1.3.3",
+    hv_version={"qemu": "2.7.92", "test": 0})
+SUPPORT_CONN_VIDEO_VIRTIO_ACCEL3D = _make(version="1.3.0",
+    hv_version={"qemu": "2.7.0", "test": 0})
+SUPPORT_CONN_GRAPHICS_LISTEN_NONE = _make(version="2.0.0")
+
 
 # This is for disk <driver name=qemu>. xen supports this, but it's
 # limited to arbitrary new enough xen, since I know libxl can handle it
@@ -351,6 +354,8 @@ SUPPORT_DOMAIN_GET_METADATA = _make(function="virDomain.metadata",
 SUPPORT_DOMAIN_MEMORY_STATS = _make(
     function="virDomain.memoryStats", run_args=())
 SUPPORT_DOMAIN_STATE = _make(function="virDomain.state", run_args=())
+SUPPORT_DOMAIN_OPEN_GRAPHICS = _make(function="virDomain.openGraphicsFD",
+    version="1.2.8", hv_version={"qemu": 0})
 
 
 ###############
@@ -402,7 +407,7 @@ def check_support(virtconn, feature, data=None):
     Attempt to determine if a specific libvirt feature is support given
     the passed connection.
 
-    @param conn: Libvirt connection to check feature on
+    @param virtconn: Libvirt connection to check feature on
     @param feature: Feature type to check support for
     @type  feature: One of the SUPPORT_* flags
     @param data: Option libvirt object to use in feature checking
@@ -416,3 +421,12 @@ def check_support(virtconn, feature, data=None):
 
     sobj = _support_objs[feature - 1]
     return sobj.check_support(virtconn, data)
+
+
+def _check_version(virtconn, version):
+    """
+    Check libvirt version. Useful for the test suite so we don't need
+    to keep adding new support checks.
+    """
+    sobj = _SupportCheck(version=version)
+    return sobj.check_support(virtconn, None)

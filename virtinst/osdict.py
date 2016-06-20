@@ -431,7 +431,7 @@ class _OsVariant(object):
     def broken_x2apic(self):
         # x2apic breaks networking in solaris10
         # https://bugs.launchpad.net/bugs/1395217
-        return self.name == 'solaris10'
+        return self.name in ('solaris10', 'solaris11')
 
     def get_clock(self):
         if self.is_windows() or self._family in ['solaris']:
@@ -522,7 +522,10 @@ class _OsVariant(object):
             return "vmvga"
 
         if guest.has_spice() and guest.os.is_x86():
-            return "qxl"
+            if guest.has_gl():
+                return "virtio"
+            else:
+                return "qxl"
 
         if self.is_windows():
             return "vga"

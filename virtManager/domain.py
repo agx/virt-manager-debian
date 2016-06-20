@@ -18,14 +18,14 @@
 # MA 02110-1301 USA.
 #
 
-from gi.repository import GObject
-
 import logging
 import os
 import time
 import threading
 
 import libvirt
+
+from gi.repository import GObject
 
 from virtinst import DomainCapabilities
 from virtinst import DomainSnapshot
@@ -100,8 +100,7 @@ def compare_device(origdev, newdev, idx):
 
 def _find_device(guest, origdev):
     devlist = guest.get_devices(origdev.virtual_device_type)
-    for idx in range(len(devlist)):
-        dev = devlist[idx]
+    for idx, dev in enumerate(devlist):
         if compare_device(origdev, dev, idx):
             return dev
 
@@ -1116,6 +1115,9 @@ class vmmDomain(vmmLibvirtObject):
     def open_console(self, devname, stream, flags=0):
         return self._backend.openConsole(devname, stream, flags)
 
+    def open_graphics_fd(self):
+        return self._backend.openGraphicsFD(0)
+
     def refresh_snapshots(self):
         self._snapshot_list = None
 
@@ -1268,9 +1270,9 @@ class vmmDomain(vmmLibvirtObject):
                                 inactive=inactive)
         devs = guest.get_devices(device_type)
 
-        for idx in range(len(devs)):
-            devs[idx].vmmindex = idx
-            devs[idx].vmmidstr = devs[idx].virtual_device_type + ("%.3d" % idx)
+        for idx, dev in enumerate(devs):
+            dev.vmmindex = idx
+            dev.vmmidstr = dev.virtual_device_type + ("%.3d" % idx)
 
         return devs
 
@@ -1704,6 +1706,10 @@ class vmmDomain(vmmLibvirtObject):
     def set_console_password(self, username, keyid):
         return self.config.set_pervm(self.get_uuid(), "/console-password",
                                      (username, keyid))
+    def del_console_password(self):
+        return self.config.set_pervm(self.get_uuid(), "/console-password",
+                                     ("", -1))
+
 
     def _on_config_sample_network_traffic_changed(self, ignore=None):
         self._enable_net_poll = self.config.get_stats_enable_net_poll()

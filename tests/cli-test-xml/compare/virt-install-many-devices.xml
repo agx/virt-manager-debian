@@ -67,7 +67,12 @@
     </disk>
     <disk type="file" device="disk">
       <driver name="qemu" type="raw"/>
-      <source file="/dev/default-pool/iso-vol"/>
+      <source file="/dev/default-pool/iso-vol">
+        <seclabel model="dac">
+          <label>foo,bar,baz</label>
+        </seclabel>
+        <seclabel model="selinux" relabel="no"/>
+      </source>
       <target dev="vde" bus="virtio"/>
     </disk>
     <disk type="file" device="disk">
@@ -76,12 +81,12 @@
       <target dev="vdf" bus="virtio"/>
     </disk>
     <disk type="volume" device="disk">
-      <driver name="qemu"/>
+      <driver name="qemu" type="raw"/>
       <source volume="some-rbd-vol" pool="rbd-ceph"/>
       <target dev="vdg" bus="virtio"/>
     </disk>
     <disk type="network" device="disk">
-      <driver name="qemu"/>
+      <driver name="qemu" type="raw"/>
       <source protocol="rbd" name="rbd/foobar">
         <host name="ceph-mon-1.example.com" port="6789"/>
       </source>
@@ -133,6 +138,17 @@
       <driver name="qemu"/>
       <source dir="/var"/>
       <target dev="fda" bus="fdc"/>
+      <address type="ccw" cssid="0xfe" ssid="0" devno="01"/>
+    </disk>
+    <disk type="file" device="disk">
+      <driver name="qemu" type="qcow2"/>
+      <source file="/dev/default-pool/new2.img"/>
+      <target dev="vdm" bus="virtio"/>
+    </disk>
+    <disk type="file" device="disk">
+      <driver name="qemu" type="qcow2"/>
+      <source file="/tmp/brand-new.img"/>
+      <target dev="vdn" bus="virtio"/>
     </disk>
     <controller type="usb" index="0" model="ich9-ehci1">
       <address type="pci" domain="0" bus="0" slot="4" function="7"/>
@@ -165,6 +181,7 @@
       <source portgroup="foo"/>
       <mac address="12:34:56:78:11:22"/>
       <model type="virtio"/>
+      <rom bar="on" file="/tmp/foo"/>
       <link state="down"/>
     </interface>
     <interface type="bridge">
@@ -192,6 +209,11 @@
       </virtualport>
       <boot order="1"/>
     </interface>
+    <interface type="user">
+      <mac address="00:11:22:33:44:55"/>
+      <model type="virtio"/>
+      <address type="spapr-vio" reg="0x500"/>
+    </interface>
     <input type="keyboard" bus="usb"/>
     <input type="tablet" bus="usb"/>
     <graphics type="sdl" display=":3.4" xauth="/tmp/.Xauthority"/>
@@ -208,6 +230,16 @@
       <clipboard copypaste="yes"/>
       <mouse mode="client"/>
       <filetransfer enable="yes"/>
+    </graphics>
+    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
+      <gl enable="yes"/>
+      <image compression="off"/>
+      <listen type="socket"/>
+    </graphics>
+    <graphics type="spice" autoport="no">
+      <gl enable="yes"/>
+      <image compression="off"/>
+      <listen type="none"/>
     </graphics>
     <serial type="tcp">
       <source mode="bind" host="127.0.0.1" service="2222"/>
@@ -238,7 +270,9 @@
       <model type="cirrus"/>
     </video>
     <video>
-      <model type="qxl"/>
+      <model type="qxl" vram="3" heads="4" vgamem="1" ram="2">
+        <acceleration accel3d="yes"/>
+      </model>
     </video>
     <hostdev mode="subsystem" type="pci" managed="yes">
       <source>
@@ -273,6 +307,7 @@
       <source>
         <address domain="0" bus="21" slot="0" function="3"/>
       </source>
+      <address type="isa" iobase="0x500" irq="5"/>
     </hostdev>
     <hostdev mode="subsystem" type="usb" managed="yes">
       <source>

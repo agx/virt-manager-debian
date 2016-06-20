@@ -19,18 +19,22 @@
 # MA 02110-1301 USA.
 #
 
+import logging
+import socket
+
 from gi.repository import GObject
 from gi.repository import Gdk
 
 import gi
 gi.require_version('GtkVnc', '2.0')
 from gi.repository import GtkVnc
-gi.require_version('SpiceClientGtk', '3.0')
-from gi.repository import SpiceClientGtk
-from gi.repository import SpiceClientGLib
-
-import logging
-import socket
+try:
+    gi.require_version('SpiceClientGtk', '3.0')
+    from gi.repository import SpiceClientGtk
+    from gi.repository import SpiceClientGLib
+    have_spice_gtk = True
+except (ValueError, ImportError):
+    have_spice_gtk = False
 
 from .baseclass import vmmGObject
 from .sshtunnels import SSHTunnels
@@ -52,7 +56,7 @@ class Viewer(vmmGObject):
         "pointer-grab": (GObject.SignalFlags.RUN_FIRST, None, []),
         "pointer-ungrab": (GObject.SignalFlags.RUN_FIRST, None, []),
         "connected": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "disconnected": (GObject.SignalFlags.RUN_FIRST, None, []),
+        "disconnected": (GObject.SignalFlags.RUN_FIRST, None, [str, str]),
         "auth-error": (GObject.SignalFlags.RUN_FIRST, None, [str, bool]),
         "auth-rejected": (GObject.SignalFlags.RUN_FIRST, None, [str]),
         "need-auth": (GObject.SignalFlags.RUN_FIRST, None, [bool, bool]),
@@ -60,9 +64,10 @@ class Viewer(vmmGObject):
         "usb-redirect-error": (GObject.SignalFlags.RUN_FIRST, None, [str]),
     }
 
-    def __init__(self, ginfo):
+    def __init__(self, vm, ginfo):
         vmmGObject.__init__(self)
         self._display = None
+        self._vm = vm
         self._ginfo = ginfo
         self._tunnels = SSHTunnels(self._ginfo)
 
@@ -80,6 +85,7 @@ class Viewer(vmmGObject):
         if self._display:
             self._display.destroy()
         self._display = None
+        self._vm = None
 
         self._tunnels.close_all()
 
@@ -130,15 +136,41 @@ class Viewer(vmmGObject):
     def _get_pixbuf(self):
         return self._display.get_pixbuf()
 
-    def _open(self):
+    def _get_fd_for_open(self):
         if self._ginfo.need_tunnel():
-            self._open_fd(self._tunnels.open_new())
+            return self._tunnels.open_new()
+
+        if self._vm.conn.is_remote():
+            # OpenGraphics only works for local libvirtd connections
+            return None
+
+        if self._ginfo.gtlsport and not self._ginfo.gport:
+            # This makes spice loop requesting an fd. Disable until spice is
+            # fixed: https://bugzilla.redhat.com/show_bug.cgi?id=1334071
+            return None
+
+        if not self._vm.conn.check_support(
+                self._vm.conn.SUPPORT_DOMAIN_OPEN_GRAPHICS):
+            return None
+
+        return self._vm.open_graphics_fd()
+
+    def _open(self):
+        if self._ginfo.bad_config():
+            raise RuntimeError(self._ginfo.bad_config())
+
+        fd = self._get_fd_for_open()
+        if fd is not None:
+            self._open_fd(fd)
         else:
             self._open_host()
 
     def _get_grab_keys(self):
         return self._display.get_grab_keys().as_string()
 
+    def _emit_disconnected(self, errdetails=None):
+        ssherr = self._tunnels.get_err_output()
+        self.emit("disconnected", errdetails, ssherr)
 
 
     #######################################################
@@ -222,14 +254,18 @@ class Viewer(vmmGObject):
     def console_send_keys(self, keys):
         return self._send_keys(keys)
 
-    def console_get_err_output(self):
-        return self._tunnels.get_err_output()
-
     def console_get_grab_keys(self):
         return self._get_grab_keys()
 
     def console_get_desktop_resolution(self):
-        return self._get_desktop_resolution()
+        ret = self._get_desktop_resolution()
+        if not ret:
+            return ret
+
+        # Don't pass on bogus resolutions
+        if (ret[0] == 0) or (ret[1] == 0):
+            return None
+        return ret
 
     def console_get_scaling(self):
         return self._get_scaling()
@@ -300,7 +336,7 @@ class VNCViewer(Viewer):
 
     def _disconnected_cb(self, ignore):
         self._tunnels.unlock()
-        self.emit("disconnected")
+        self._emit_disconnected()
 
     def _desktop_resize(self, src_ignore, w, h):
         self._desktop_resolution = (w, h)
@@ -324,9 +360,8 @@ class VNCViewer(Viewer):
 
             errmsg = (_("Unable to provide requested credentials to the VNC "
                 "server.\n The credential type %s is not supported") %
-                str(cred))
+                str(cred.value_name))
 
-            # XXX test this
             self.emit("auth-rejected", errmsg)
             return
 
@@ -429,7 +464,7 @@ class VNCViewer(Viewer):
         host, port, ignore = self._ginfo.get_conn_host()
 
         if not self._ginfo.gsocket:
-            logging.debug("VNC connection to %s:%s", host, port)
+            logging.debug("VNC connecting to host=%s port=%s", host, port)
             self._display.open_host(host, port)
             return
 
@@ -521,7 +556,7 @@ class SpiceViewer(Viewer):
 
     def _main_channel_event_cb(self, channel, event):
         if event == SpiceClientGLib.ChannelEvent.CLOSED:
-            self.emit("disconnected")
+            self._emit_disconnected()
         elif event == SpiceClientGLib.ChannelEvent.ERROR_AUTH:
             if not self._spice_session.get_property("password"):
                 logging.debug("Spice channel received ERROR_AUTH, but no "
@@ -531,12 +566,21 @@ class SpiceViewer(Viewer):
                 logging.debug("Spice channel received ERROR_AUTH, but a "
                     "password is already set. Assuming authentication failed.")
                 self.emit("auth-error", channel.get_error().message, False)
-        elif event in [SpiceClientGLib.ChannelEvent.ERROR_CONNECT,
-                       SpiceClientGLib.ChannelEvent.ERROR_IO,
-                       SpiceClientGLib.ChannelEvent.ERROR_LINK,
-                       SpiceClientGLib.ChannelEvent.ERROR_TLS]:
-            logging.debug("Spice channel event error: %s", event)
-            self.emit("disconnected")
+        elif "ERROR" in str(event):
+            # SpiceClientGLib.ChannelEvent.ERROR_CONNECT
+            # SpiceClientGLib.ChannelEvent.ERROR_IO
+            # SpiceClientGLib.ChannelEvent.ERROR_LINK
+            # SpiceClientGLib.ChannelEvent.ERROR_TLS
+            error = None
+            if channel.get_error():
+                error = channel.get_error().message
+            logging.debug("Spice channel event=%s message=%s", event, error)
+
+            msg = _("Encountered SPICE %(error-name)s") % {
+                "error-name": event.value_nick}
+            if error:
+                msg += ": %s" % error
+            self._emit_disconnected(msg)
 
     def _fd_channel_event_cb(self, channel, event):
         # When we see any event from the channel, release the
@@ -551,10 +595,10 @@ class SpiceViewer(Viewer):
             # are still rolling in
             return
 
-        logging.debug("Requesting tunnel for channel: %s", channel)
+        logging.debug("Requesting fd for channel: %s", channel)
         channel.connect_after("channel-event", self._fd_channel_event_cb)
 
-        fd = self._tunnels.open_new()
+        fd = self._get_fd_for_open()
         channel.open_fd(fd)
 
     def _channel_new_cb(self, session, channel):
@@ -661,6 +705,8 @@ class SpiceViewer(Viewer):
         host, port, tlsport = self._ginfo.get_conn_host()
         self._create_spice_session()
 
+        logging.debug("Spice connecting to host=%s port=%s tlsport=%s",
+            host, port, tlsport)
         self._spice_session.set_property("host", str(host))
         if port:
             self._spice_session.set_property("port", str(port))
@@ -677,8 +723,9 @@ class SpiceViewer(Viewer):
         ignore = val
     def _set_password(self, cred):
         self._spice_session.set_property("password", cred)
-        if self._ginfo.need_tunnel():
-            self._spice_session.open_fd(self._tunnels.open_new())
+        fd = self._get_fd_for_open()
+        if fd is not None:
+            self._spice_session.open_fd(fd)
         else:
             self._spice_session.connect()
 

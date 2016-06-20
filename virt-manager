@@ -1,4 +1,4 @@
-#!/usr/bin/python2 -tt
+#!/usr/bin/env python2
 #
 # Copyright (C) 2006, 2014 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
@@ -27,7 +27,6 @@ import sys
 import traceback
 
 import gi
-from gi.repository import GObject
 gi.require_version('LibvirtGLib', '1.0')
 from gi.repository import LibvirtGLib
 
@@ -39,14 +38,14 @@ from virtcli import CLIConfig
 # up the slew of gtk deprecation warnings that clog up our very useful
 # stdout --debug output. Of course we could drop use of deprecated APIs,
 # but it's a serious quantity of churn
-import warnings
+import warnings  # pylint: disable=wrong-import-order
 warnings.simplefilter("ignore")
 
 try:
-    # Avoid a deprecation warning about threads_init
-    gi.check_version("3.9.1")
+    gi.check_version("3.14.0")
 except (ValueError, AttributeError):
-    GObject.threads_init()
+    print "pygobject3 3.14.0 or later is required."
+    sys.exit(1)
 
 
 def _show_startup_error(msg, details):
@@ -60,6 +59,46 @@ def _show_startup_error(msg, details):
                  title=title,
                  modal=True,
                  debug=False)
+
+
+def _import_gtk(leftovers):
+    # The never ending fork+gsettings problems now require us to
+    # import Gtk _after_ the fork. This creates a funny race, since we
+    # need to parse the command line arguments to know if we need to
+    # fork, but need to import Gtk before cli processing so it can
+    # handle --g-fatal-args. We strip out our flags first and pass the
+    # left overs to gtk
+    origargv = sys.argv
+    try:
+        sys.argv = origargv[:1] + leftovers[:]
+        gi.require_version('Gtk', '3.0')
+        from gi.repository import Gtk
+        leftovers = sys.argv[1:]
+
+        if Gtk.check_version(3, 14, 0):
+            print "gtk3 3.14.0 or later is required."
+            sys.exit(1)
+
+        # This will error if Gtk wasn't correctly initialized
+        Gtk.init()
+
+        globals()["Gtk"] = Gtk
+        import virtManager.config
+    except Exception, e:
+        # Don't just let the exception raise here. abrt reports bugs
+        # when users mess up su/sudo and DISPLAY isn't set. Printing
+        # it avoids the issue
+        display = os.environ.get("DISPLAY", "")
+        msg = str(e)
+        if display:
+            msg += ": Could not open display: %s" % display
+        logging.debug("".join(traceback.format_exc()))
+        print msg
+        sys.exit(1)
+    finally:
+        sys.argv = origargv
+
+    return leftovers
 
 
 def drop_tty():
@@ -158,37 +197,8 @@ def main():
         # Ignore SIGHUP, otherwise a serial console closing drops the whole app
         signal.signal(signal.SIGHUP, signal.SIG_IGN)
 
-    # The never ending fork+gsettings problems now require us to
-    # import Gtk _after_ the fork. This creates a funny race, since we
-    # need to parse the command line arguments to know if we need to
-    # fork, but need to import Gtk before cli processing so it can
-    # handle --g-fatal-args. We strip out our flags first and pass the
-    # left overs to gtk
-    origargv = sys.argv
-    try:
-        sys.argv = origargv[:1] + leftovers[:]
-        gi.require_version('Gtk', '3.0')
-        from gi.repository import Gtk
-        leftovers = sys.argv[1:]
-
-        # This will error if Gtk wasn't correctly initialized
-        Gtk.Window()
-
-        globals()["Gtk"] = Gtk
-        import virtManager.config
-    except Exception, e:
-        # Don't just let the exception raise here. abrt reports bugs
-        # when users mess up su/sudo and DISPLAY isn't set. Printing
-        # it avoids the issue
-        display = os.environ.get("DISPLAY", "")
-        msg = str(e)
-        if display:
-            msg += ": Could not open display: %s" % display
-        logging.debug("".join(traceback.format_exc()))
-        print msg
-        return 1
-    finally:
-        sys.argv = origargv
+    leftovers = _import_gtk(leftovers)
+    Gtk = globals()["Gtk"]
 
     # Do this after the Gtk import so the user has a chance of seeing any error
     if do_drop_stdio:
@@ -197,6 +207,10 @@ def main():
     if leftovers:
         raise RuntimeError("Unhandled command line options '%s'" % leftovers)
 
+    logging.debug("PyGObject version: %d.%d.%d",
+                  gi.version_info[0],
+                  gi.version_info[1],
+                  gi.version_info[2])
     logging.debug("GTK version: %d.%d.%d",
                   Gtk.get_major_version(),
                   Gtk.get_minor_version(),

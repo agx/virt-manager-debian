@@ -18,13 +18,11 @@
 # MA 02110-1301 USA.
 #
 
-import logging
 import threading
 import traceback
 
 from gi.repository import Gdk
 from gi.repository import GLib
-from gi.repository import Gtk
 
 import libvirt
 
@@ -229,21 +227,7 @@ class vmmAsyncJob(vmmGObjectUI):
     ################
 
     def _on_window_delete(self, ignore1=None, ignore2=None):
-        if not self.cancel_cb or not self._bg_thread.is_alive():
-            logging.debug("User closed progress window, but thread "
-                          "still running and process isn't cancellable, "
-                          "ignoring.")
-            return 1
-
-        res = self.err.warn_chkbox(
-                text1=_("Cancel the job?"),
-                buttons=Gtk.ButtonsType.YES_NO)
-        if not res:
-            logging.debug("User closed progress window, but chose not "
-                          "cancel operation, ignoring.")
-            return 1
-
-        self._on_cancel()
+        return 1
 
     def _on_cancel(self, ignore1=None, ignore2=None):
         if not self.cancel_cb or not self._bg_thread.is_alive():

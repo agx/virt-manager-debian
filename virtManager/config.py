@@ -179,7 +179,7 @@ class vmmConfig(object):
         self.cli_usbredir = None
 
         self.default_storage_format_from_config = "qcow2"
-        self.cpu_default_from_config = "host-cpu-model"
+        self.cpu_default_from_config = CPU.SPECIAL_MODE_HOST_MODEL_ONLY
         self.default_console_resizeguest = 0
         self.default_add_spice_usbredir = "yes"
 
@@ -494,7 +494,7 @@ class vmmConfig(object):
         ret = self.conf.get("/new-vm/add-spice-usbredir")
         if ret not in ["system", "yes", "no"]:
             ret = "system"
-        if not raw and not self.get_graphics_type() == "spice":
+        if not raw and self.get_graphics_type() != "spice":
             return "no"
         if ret == "system" and not raw:
             return self.default_add_spice_usbredir
@@ -708,3 +708,16 @@ class vmmConfig(object):
             return
 
         vm.set_console_password(username, keyid)
+
+    def del_console_password(self, vm):
+        if not self.has_keyring():
+            return
+
+        ignore, keyid = vm.get_console_password()
+
+        if keyid == -1:
+            return
+
+        self.keyring.del_secret(keyid)
+
+        vm.del_console_password()

@@ -154,7 +154,7 @@ class vmmHost(vmmGObjectUI):
         sel = self.widget("net-list").get_selection()
         sel.set_select_function((lambda *x: self.confirm_changes()), None)
 
-        netCol = Gtk.TreeViewColumn("Networks")
+        netCol = Gtk.TreeViewColumn(_("Networks"))
         netCol.set_spacing(6)
         net_txt = Gtk.CellRendererText()
         net_img = Gtk.CellRendererPixbuf()
@@ -182,7 +182,7 @@ class vmmHost(vmmGObjectUI):
         sel = self.widget("interface-list").get_selection()
         sel.set_select_function((lambda *x: self.confirm_changes()), None)
 
-        interfaceCol = Gtk.TreeViewColumn("Interfaces")
+        interfaceCol = Gtk.TreeViewColumn(_("Interfaces"))
         interfaceCol.set_spacing(6)
         interface_txt = Gtk.CellRendererText()
         interface_img = Gtk.CellRendererPixbuf()
@@ -204,14 +204,14 @@ class vmmHost(vmmGObjectUI):
         childList = self.widget("interface-child-list")
         childList.set_model(childListModel)
 
-        childNameCol = Gtk.TreeViewColumn("Name")
+        childNameCol = Gtk.TreeViewColumn(_("Name"))
         child_txt1 = Gtk.CellRendererText()
         childNameCol.pack_start(child_txt1, True)
         childNameCol.add_attribute(child_txt1, 'text', 0)
         childNameCol.set_sort_column_id(0)
         childList.append_column(childNameCol)
 
-        childTypeCol = Gtk.TreeViewColumn("Interface Type")
+        childTypeCol = Gtk.TreeViewColumn(_("Interface Type"))
         child_txt2 = Gtk.CellRendererText()
         childTypeCol.pack_start(child_txt2, True)
         childTypeCol.add_attribute(child_txt2, 'text', 1)
@@ -327,7 +327,6 @@ class vmmHost(vmmGObjectUI):
         if not self.widget("overview-name").has_focus():
             self.widget("overview-name").set_text(self.conn.get_pretty_desc())
 
-        self.widget("menu_file_restore_saved").set_sensitive(conn_active)
         self.widget("net-add").set_sensitive(conn_active and
             self.conn.is_network_capable())
         self.widget("interface-add").set_sensitive(conn_active and
@@ -874,7 +873,7 @@ class vmmHost(vmmGObjectUI):
         self.widget("interface-ipv6-expander").set_visible(bool(ipv6))
 
         if ipv4:
-            mode = ipv4[0] and "DHCP" or "Static"
+            mode = ipv4[0] and "DHCP" or _("Static")
             addr = ipv4[1] or "-"
             self.widget("interface-ipv4-mode").set_text(mode)
             self.widget("interface-ipv4-address").set_text(addr)
@@ -882,12 +881,12 @@ class vmmHost(vmmGObjectUI):
         if ipv6:
             mode = ""
             if ipv6[1]:
-                mode = "Autoconf "
+                mode = _("Autoconf") + " "
 
             if ipv6[0]:
                 mode += "DHCP"
             else:
-                mode = "Static"
+                mode = _("Static")
 
             addrstr = "-"
             if ipv6[2]:

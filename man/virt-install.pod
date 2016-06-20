@@ -254,6 +254,11 @@ Allow the KVM hypervisor signature to be hidden from the guest
 
 Notify the guest that the host supports paravirtual spinlocks for example by exposing the pvticketlocks mechanism.
 
+=item B<--features gic_version=2>
+
+This is relevant only for ARM architectures. Possible values are "host" or
+version number.
+
 =back
 
 Use --features=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsFeatures>
@@ -419,7 +424,7 @@ file:
 =item B<--os-variant> OS_VARIANT
 
 Optimize the guest configuration for a specific operating system (ex.
-'fedora18', 'rhel7', 'winxp'). While not requires, specifying this
+'fedora18', 'rhel7', 'winxp'). While not required, specifying this
 options is HIGHLY RECOMMENDED, as it can greatly increase performance
 by specifying virtio among other guest tweaks.
 
@@ -616,6 +621,10 @@ and to avoid I/O errors in the guest should the host filesystem fill up.
 =item B<backing_store>
 
 Path to a disk to use as the backing store for the newly created image.
+
+=item B<backing_format>
+
+Disk image format of B<backing_store>
 
 =item B<cache>
 
@@ -964,8 +973,16 @@ Specify the spice tlsport.
 Address to listen on for VNC/Spice connections. Default is typically 127.0.0.1
 (localhost only), but some hypervisors allow changing this globally (for
 example, the qemu driver default can be changed in /etc/libvirt/qemu.conf).
-Use 0.0.0.0 to allow access from other machines. This is use by 'vnc' and
-'spice'
+Use 0.0.0.0 to allow access from other machines.
+
+Use 'none' to specify that the display server should not listen on any
+port. The display server can be accessed only locally through
+libvirt unix socket (virt-viewer with --attach for instance).
+
+Use 'socket' to have the VM listen on a libvirt generated unix socket
+path on the host filesystem.
+
+This is used by 'vnc' and 'spice'
 
 =item B<keymap>
 
@@ -981,6 +998,11 @@ by 'vnc'
 Request a VNC password, required at connection time. Beware, this info may
 end up in virt-install log files, so don't use an important password. This
 is used by 'vnc' and 'spice'
+
+=item B<gl>
+
+Whether to use OpenGl accelerated rendering. Value is 'yes' or 'no'. This is
+used by 'spice'.
 
 =back
 
@@ -1045,6 +1067,10 @@ This deprecates the --accelerate option, which is now the default behavior. To i
 
 =head1 DEVICE OPTIONS
 
+All devices have a set of B<address.*> options for configuring the
+particulars of the device's address on its parent controller or bus.
+See C<http://libvirt.org/formatdomain.html#elementsAddress> for details.
+
 =over 4
 
 =item B<--controller> OPTIONS
@@ -1068,7 +1094,8 @@ see C<http://libvirt.org/formatdomain.html#elementsControllers>.
 
 =item B<address>
 
-Controller address, current PCI of form 'bus:domain:slot.function'.
+Shorthand for setting a manual PCI address from an lscpi style string.
+The preferred method for setting this is using the address.* parameters.
 
 =item B<index>
 
@@ -1334,7 +1361,7 @@ Use --console=? to see a list of all available sub options. Complete details at 
 
 Specify what video device model will be attached to the guest. Valid values
 for VIDEO are hypervisor specific, but some options for recent kvm are
-cirrus, vga, qxl, or vmvga (vmware).
+cirrus, vga, qxl, virtio, or vmvga (vmware).
 
 Use --video=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsVideo>
 
@@ -1548,6 +1575,15 @@ Show program's version number and exit
 
 Set the autostart flag for a domain. This causes the domain to be started
 on host boot up.
+
+=item B<--transient>
+
+Use --import or --boot and --transient if you want a transient libvirt
+VM.  These VMs exist only until the domain is shut down or the host
+server is restarted.  Libvirt forgets the XML configuration of the VM
+after either of these events.  Note that the VM's disks will not be
+deleted.  See:
+L<http://wiki.libvirt.org/page/VM_lifecycle#Transient_guest_domains_vs_Persistent_guest_domains>
 
 =item B<--print-xml> [STEP]
 

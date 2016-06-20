@@ -18,8 +18,6 @@
 # MA 02110-1301 USA.
 #
 
-from gi.repository import GObject
-
 import logging
 import os
 import threading
@@ -27,6 +25,9 @@ import time
 import traceback
 
 import libvirt
+
+from gi.repository import GObject
+
 import virtinst
 from virtinst import pollhelpers
 from virtinst import support
@@ -414,7 +415,7 @@ class vmmConnection(vmmGObject):
         ret = hv
 
         if is_session:
-            ret += " User session"
+            ret += " " + _("User session")
         elif (path and path != "/system" and os.path.basename(path)):
             # Used by test URIs to report what XML file they are using
             ret += " %s" % os.path.basename(path)
@@ -904,7 +905,8 @@ class vmmConnection(vmmGObject):
             return True, None
         except Exception, exc:
             tb = "".join(traceback.format_exc())
-            if type(exc) is libvirt.libvirtError:
+            if isinstance(exc, libvirt.libvirtError):
+                # pylint: disable=no-member
                 libvirt_error_code = exc.get_error_code()
                 libvirt_error_message = exc.get_error_message()
 
@@ -1298,10 +1300,12 @@ class vmmConnection(vmmGObject):
         from_remote = getattr(libvirt, "VIR_FROM_REMOTE", None)
         from_rpc = getattr(libvirt, "VIR_FROM_RPC", None)
         sys_error = getattr(libvirt, "VIR_ERR_SYSTEM_ERROR", None)
+        internal_error = getattr(libvirt, "VIR_ERR_INTERNAL_ERROR", None)
 
         dom = -1
         code = -1
         if isinstance(e, libvirt.libvirtError):
+            # pylint: disable=no-member
             dom = e.get_error_domain()
             code = e.get_error_code()
 
@@ -1309,7 +1313,7 @@ class vmmConnection(vmmGObject):
             self.get_uri(), exc_info=True)
 
         if (dom in [from_remote, from_rpc] and
-            code in [sys_error]):
+            code in [sys_error, internal_error]):
             e = None
             logging.debug("Not showing user error since libvirtd "
                 "appears to have stopped.")

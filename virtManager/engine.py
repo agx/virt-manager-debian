@@ -18,16 +18,16 @@
 # MA 02110-1301 USA.
 #
 
-from gi.repository import Gio
-from gi.repository import GLib
-from gi.repository import GObject
-from gi.repository import Gtk
-
 import logging
 import re
 import Queue
 import threading
 import traceback
+
+from gi.repository import Gio
+from gi.repository import GLib
+from gi.repository import GObject
+from gi.repository import Gtk
 
 from . import packageutils
 from .about import vmmAbout
@@ -335,8 +335,8 @@ class vmmEngine(vmmGObject):
             self.windowCreate.close()
 
     def reschedule_timer(self, *args, **kwargs):
-        ignore = args
-        ignore = kwargs
+        ignore1 = args
+        ignore2 = kwargs
         self.schedule_timer()
 
     def schedule_timer(self):
@@ -893,6 +893,8 @@ class vmmEngine(vmmGObject):
 
         obj = vmmCreate(self)
         obj.connect("action-show-domain", self._do_show_vm)
+        obj.connect("create-opened", self.increment_window_counter)
+        obj.connect("create-closed", self.decrement_window_counter)
         self.windowCreate = obj
         return self.windowCreate
 
@@ -968,7 +970,6 @@ class vmmEngine(vmmGObject):
         self._do_show_host(self.get_manager(), uri)
 
     def _show_domain_creator(self, uri):
-        self._show_manager()
         self._do_show_create(self.get_manager(), uri)
 
     def _show_domain_console(self, uri, clistr):

@@ -16,12 +16,21 @@ import distutils.command.sdist
 import distutils.dist
 import distutils.log
 import distutils.sysconfig
-sysprefix = distutils.sysconfig.get_config_var("prefix")
 
 from virtcli import CLIConfig
 
+sysprefix = distutils.sysconfig.get_config_var("prefix")
+
 
 # pylint: disable=attribute-defined-outside-init
+
+_desktop_files = [
+    ("share/applications", ["data/virt-manager.desktop.in"]),
+]
+_appdata_files = [
+    ("share/appdata", ["data/virt-manager.appdata.xml.in"]),
+]
+
 
 def _generate_potfiles_in():
     def find(dirname, ext):
@@ -41,8 +50,12 @@ def _generate_potfiles_in():
     potfiles += "\n".join(find("virtconv", "*.py")) + "\n\n"
     potfiles += "\n".join(find("virtinst", "*.py")) + "\n\n"
 
+    for ignore, filelist in _desktop_files + _appdata_files:
+        potfiles += "\n".join(filelist) + "\n"
+    potfiles += "\n"
+
     potfiles += "\n".join(["[type: gettext/glade]" + f for
-                          f in find("ui", "*.ui")])
+                          f in find("ui", "*.ui")]) + "\n\n"
 
     return potfiles
 
@@ -74,12 +87,7 @@ class my_build_i18n(distutils.command.build.build):
 
     def _run(self):
         # Borrowed from python-distutils-extra
-        desktop_files = [
-            ("share/applications", ["data/virt-manager.desktop.in"]),
-            ("share/appdata", ["data/virt-manager.appdata.xml"]),
-        ]
         po_dir = "po"
-
 
         # Update po(t) files and print a report
         # We have to change the working dir to the po dir for intltool
@@ -111,7 +119,8 @@ class my_build_i18n(distutils.command.build.build):
             self.distribution.data_files.append((targetpath, (mo_file,)))
 
         # merge .in with translation
-        for (file_set, switch) in [(desktop_files, "-d")]:
+        for (file_set, switch) in [(_desktop_files, "-d"),
+                                   (_appdata_files, "-x")]:
             for (target, files) in file_set:
                 build_target = os.path.join("build", target)
                 if not os.path.exists(build_target):
@@ -384,6 +393,11 @@ class TestBaseCommand(distutils.core.Command):
     def finalize_options(self):
         if self.debug and "DEBUG_TESTS" not in os.environ:
             os.environ["DEBUG_TESTS"] = "1"
+        if self.only:
+            # Can do --only many-devices to match on the cli testcase
+            # for "virt-install-many-devices", despite the actual test
+            # function name not containing any '-'
+            self.only = self.only.replace("-", "_")
 
     def _find_tests_in_dir(self, dirname, excludes):
         testfiles = []
@@ -545,28 +559,8 @@ class TestURLFetch(TestBaseCommand):
 class TestInitrdInject(TestBaseCommand):
     description = "Test initrd inject with real kernels, fetched from URLs"
 
-    user_options = TestBaseCommand.user_options + [
-        ("distro=", None, "Comma separated list of distros to test, from "
-                          "the tests internal URL dictionary.")
-    ]
-
-    def initialize_options(self):
-        TestBaseCommand.initialize_options(self)
-        self.distro = ""
-
-    def finalize_options(self):
-        TestBaseCommand.finalize_options(self)
-        orig = str(self.distro)
-        if not orig:
-            self.distro = []
-        else:
-            self.distro = orig.split(",")
-
     def run(self):
         self._testfiles = ["tests.test_inject"]
-        if self.distro:
-            import tests
-            tests.INITRD_TEST_DISTROS += self.distro
         TestBaseCommand.run(self)
 
 

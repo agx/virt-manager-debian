@@ -21,13 +21,6 @@
 from gi.repository import GObject
 from gi.repository import Gtk
 
-try:
-    import gi
-    gi.check_version("3.7.4")
-    can_set_row_none = True
-except (ValueError, AttributeError):
-    can_set_row_none = False
-
 
 #####################
 # UI getter helpers #
@@ -162,7 +155,7 @@ def set_grid_row_visible(child, visible):
     based on UI interraction
     """
     parent = child.get_parent()
-    if not type(parent) is Gtk.Grid:
+    if type(parent) is not Gtk.Grid:
         raise RuntimeError("Programming error, parent must be grid, "
                            "not %s" % type(parent))
 
