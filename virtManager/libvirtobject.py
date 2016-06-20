@@ -18,9 +18,9 @@
 # MA 02110-1301 USA.
 #
 
-from gi.repository import GObject
-
 import logging
+
+from gi.repository import GObject
 
 from .baseclass import vmmGObject
 
@@ -211,8 +211,8 @@ class vmmLibvirtObject(vmmGObject):
 
     def run_status(self):
         if self.is_active():
-            return "Active"
-        return "Inactive"
+            return _("Active")
+        return _("Inactive")
 
     def _refresh_status(self, newstatus=None, cansignal=True):
         """

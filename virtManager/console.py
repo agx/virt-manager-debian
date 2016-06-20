@@ -19,17 +19,16 @@
 # MA 02110-1301 USA.
 #
 
+import logging
+
 from gi.repository import Gtk
 from gi.repository import Gdk
 
-import logging
-
-from .autodrawer import AutoDrawer
-from .baseclass import vmmGObjectUI
+from .baseclass import vmmGObject, vmmGObjectUI
 from .details import DETAILS_PAGE_CONSOLE
 from .serialcon import vmmSerialConsole
 from .sshtunnels import ConnectionInfo
-from .viewers import SpiceViewer, VNCViewer
+from .viewers import SpiceViewer, VNCViewer, have_spice_gtk
 
 
 # console-pages IDs
@@ -37,6 +36,84 @@ from .viewers import SpiceViewer, VNCViewer
  _CONSOLE_PAGE_AUTHENTICATE,
  _CONSOLE_PAGE_SERIAL,
  _CONSOLE_PAGE_VIEWER) = range(4)
+
+
+class _TimedRevealer(vmmGObject):
+    """
+    Revealer for the fullscreen toolbar, with a bit of extra logic to
+    hide/show based on mouse over
+    """
+    def __init__(self, toolbar):
+        vmmGObject.__init__(self)
+
+        self._in_fullscreen = False
+        self._timeout_id = None
+
+        self._revealer = Gtk.Revealer()
+        self._revealer.add(toolbar)
+
+        # Adding the revealer to the eventbox seems to ensure the
+        # eventbox always has 1 invisible pixel showing at the top of the
+        # screen, which we can use to grab the pointer event to show
+        # the hidden toolbar.
+
+        self._ebox = Gtk.EventBox()
+        self._ebox.add(self._revealer)
+        self._ebox.set_halign(Gtk.Align.CENTER)
+        self._ebox.set_valign(Gtk.Align.START)
+        self._ebox.show_all()
+
+        self._ebox.connect("enter-notify-event", self._enter_notify)
+        self._ebox.connect("leave-notify-event", self._enter_notify)
+
+    def _cleanup(self):
+        self._ebox.destroy()
+        self._ebox = None
+        self._revealer.destroy()
+        self._revealer = None
+        self._timeout_id = None
+
+    def _enter_notify(self, ignore1, ignore2):
+        x, y = self._ebox.get_pointer()
+        alloc = self._ebox.get_allocation()
+        entered = bool(x >= 0 and y >= 0 and
+                       x < alloc.width and y < alloc.height)
+
+        if not self._in_fullscreen:
+            return
+
+        # Pointer exited the toolbar, and toolbar is revealed. Schedule
+        # a timeout to close it, if one isn't already scheduled
+        if not entered and self._revealer.get_reveal_child():
+            self._schedule_unreveal_timeout(1000)
+            return
+
+        self._unregister_timeout()
+        if entered and not self._revealer.get_reveal_child():
+            self._revealer.set_reveal_child(True)
+
+    def _schedule_unreveal_timeout(self, timeout):
+        if self._timeout_id:
+            return
+
+        def cb():
+            self._revealer.set_reveal_child(False)
+            self._timeout_id = None
+        self._timeout_id = self.timeout_add(timeout, cb)
+
+    def _unregister_timeout(self):
+        if self._timeout_id:
+            self.remove_gobject_timeout(self._timeout_id)
+            self._timeout_id = None
+
+    def force_reveal(self, val):
+        self._unregister_timeout()
+        self._in_fullscreen = val
+        self._revealer.set_reveal_child(val)
+        self._schedule_unreveal_timeout(2000)
+
+    def get_overlay_widget(self):
+        return self._ebox
 
 
 class vmmConsolePages(vmmGObjectUI):
@@ -50,7 +127,6 @@ class vmmConsolePages(vmmGObjectUI):
         self._pointer_is_grabbed = False
         self._change_title()
         self.vm.connect("state-changed", self._change_title)
-        self._force_resize = False
 
         # State for disabling modifiers when keyboard is grabbed
         self._accel_groups = Gtk.accel_groups_from_object(self.topwin)
@@ -62,11 +138,11 @@ class vmmConsolePages(vmmGObjectUI):
 
         # Fullscreen toolbar
         self._send_key_button = None
-        self._fs_toolbar = None
-        self._fs_drawer = None
+        self._overlay_toolbar = None
+        self._timed_revealer = None
         self._keycombo_toolbar = self._build_keycombo_menu()
         self._keycombo_menu = self._build_keycombo_menu()
-        self._init_fs_toolbar()
+        self._init_overlay_toolbar()
 
         # Make viewer widget background always be black
         black = Gdk.Color(0, 0, 0)
@@ -114,10 +190,11 @@ class vmmConsolePages(vmmGObjectUI):
 
         self._keycombo_toolbar.destroy()
         self._keycombo_toolbar = None
-        self._fs_drawer.destroy()
-        self._fs_drawer = None
-        self._fs_toolbar.destroy()
-        self._fs_toolbar = None
+        self._overlay_toolbar.destroy()
+        self._overlay_toolbar = None
+
+        self._timed_revealer.cleanup()
+        self._timed_revealer = None
 
         for serial in self._serial_consoles:
             serial.cleanup()
@@ -151,34 +228,35 @@ class vmmConsolePages(vmmGObjectUI):
         menu.show_all()
         return menu
 
-    def _init_fs_toolbar(self):
-        scroll = self.widget("console-gfx-scroll")
-        pages = self.widget("console-pages")
-        pages.remove(scroll)
-
-        self._fs_toolbar = Gtk.Toolbar()
-        self._fs_toolbar.set_show_arrow(False)
-        self._fs_toolbar.set_no_show_all(True)
-        self._fs_toolbar.set_style(Gtk.ToolbarStyle.BOTH_HORIZ)
+    def _init_overlay_toolbar(self):
+        self._overlay_toolbar = Gtk.Toolbar()
+        self._overlay_toolbar.set_show_arrow(False)
+        self._overlay_toolbar.set_style(Gtk.ToolbarStyle.BOTH_HORIZ)
 
         # Exit fullscreen button
         button = Gtk.ToolButton.new_from_stock(Gtk.STOCK_LEAVE_FULLSCREEN)
         button.set_tooltip_text(_("Leave fullscreen"))
         button.show()
-        self._fs_toolbar.add(button)
+        self._overlay_toolbar.add(button)
         button.connect("clicked", self._leave_fullscreen)
 
         def keycombo_menu_clicked(src):
             ignore = src
-            def menu_location(menu, toolbar):
-                ignore = menu
+            def menu_location(*args):
+                # Signature changed at some point.
+                #  f23+    : args = menu, x, y, toolbar
+                #  rhel7.3 : args = menu, toolbar
+                if len(args) == 4:
+                    toolbar = args[3]
+                else:
+                    toolbar = args[1]
+
                 ignore, x, y = toolbar.get_window().get_origin()
                 height = toolbar.get_window().get_height()
-
                 return x, y + height, True
 
             self._keycombo_toolbar.popup(None, None, menu_location,
-                                     self._fs_toolbar, 0,
+                                     self._overlay_toolbar, 0,
                                      Gtk.get_current_event_time())
 
         self._send_key_button = Gtk.ToolButton()
@@ -187,22 +265,11 @@ class vmmConsolePages(vmmGObjectUI):
         self._send_key_button.set_tooltip_text(_("Send key combination"))
         self._send_key_button.show_all()
         self._send_key_button.connect("clicked", keycombo_menu_clicked)
-        self._fs_toolbar.add(self._send_key_button)
+        self._overlay_toolbar.add(self._send_key_button)
 
-        self._fs_drawer = AutoDrawer()
-        self._fs_drawer.set_active(False)
-        self._fs_drawer.set_over(self._fs_toolbar)
-        self._fs_drawer.set_under(scroll)
-        self._fs_drawer.set_offset(-1)
-        self._fs_drawer.set_fill(False)
-        self._fs_drawer.set_overlap_pixels(1)
-        self._fs_drawer.set_nooverlap_pixels(0)
-        self._fs_drawer.period = 20
-        self._fs_drawer.step = .1
-
-        self._fs_drawer.show_all()
-
-        pages.add(self._fs_drawer)
+        self._timed_revealer = _TimedRevealer(self._overlay_toolbar)
+        self.widget("console-overlay").add_overlay(
+                self._timed_revealer.get_overlay_widget())
 
     def _init_menus(self):
         # Serial list menu
@@ -289,8 +356,9 @@ class vmmConsolePages(vmmGObjectUI):
     ###########################
 
     def _scroll_size_allocate(self, src_ignore, req):
-        if (not self._viewer or
-            not self._viewer.console_get_desktop_resolution()):
+        if not self._viewer:
+            return
+        if not self._viewer.console_get_desktop_resolution():
             return
 
         scroll = self.widget("console-gfx-scroll")
@@ -303,27 +371,24 @@ class vmmConsolePages(vmmGObjectUI):
 
         # pylint: disable=unpacking-non-sequence
         desktop_w, desktop_h = self._viewer.console_get_desktop_resolution()
-        if desktop_h == 0:
-            return
         desktop_ratio = float(desktop_w) / float(desktop_h)
 
-        if is_scale or self._force_resize:
+        if is_scale:
             # Make sure we never show scrollbars when scaling
             scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.NEVER)
         else:
             scroll.set_policy(Gtk.PolicyType.AUTOMATIC,
                               Gtk.PolicyType.AUTOMATIC)
 
-        if not self._force_resize and is_resizeguest:
+        if is_resizeguest:
             # With resize guest, we don't want to maintain aspect ratio,
             # since the guest can resize to arbitrary resolutions.
             self._viewer.console_set_size_request(req.width, req.height)
             return
 
-        if not is_scale or self._force_resize:
+        if not is_scale:
             # Scaling disabled is easy, just force the VNC widget size. Since
             # we are inside a scrollwindow, it shouldn't cause issues.
-            self._force_resize = False
             self._viewer.console_set_size_request(desktop_w, desktop_h)
             return
 
@@ -390,10 +455,14 @@ class vmmConsolePages(vmmGObjectUI):
         if not self._viewer.console_get_desktop_resolution():
             return
 
+        topwin_alloc = self.topwin.get_allocation()
+        viewer_alloc = self.widget("console-gfx-scroll").get_allocation()
+        desktop_w, desktop_h = self._viewer.console_get_desktop_resolution()
+
         self.topwin.unmaximize()
-        self.topwin.resize(1, 1)
-        self._force_resize = True
-        self.widget("console-gfx-scroll").queue_resize()
+        self.topwin.resize(
+            desktop_w + (topwin_alloc.width - viewer_alloc.width),
+            desktop_h + (topwin_alloc.height - viewer_alloc.height))
 
 
     ################
@@ -473,13 +542,11 @@ class vmmConsolePages(vmmGObjectUI):
 
         if do_fullscreen:
             self.topwin.fullscreen()
-            self._fs_toolbar.show()
-            self._fs_drawer.set_active(True)
+            self._timed_revealer.force_reveal(True)
             self.widget("toolbar-box").hide()
             self.widget("details-menubar").hide()
         else:
-            self._fs_toolbar.hide()
-            self._fs_drawer.set_active(False)
+            self._timed_revealer.force_reveal(False)
             self.topwin.unfullscreen()
 
             if self.widget("details-menu-view-toolbar").get_active():
@@ -495,9 +562,9 @@ class vmmConsolePages(vmmGObjectUI):
 
     def _show_vm_status_unavailable(self):
         if self.vm.is_crashed():
-            self._activate_unavailable_page(_("Guest has crashed"))
+            self._activate_unavailable_page(_("Guest has crashed."))
         else:
-            self._activate_unavailable_page(_("Guest not running"))
+            self._activate_unavailable_page(_("Guest is not running."))
 
     def _close_viewer(self):
         if self._viewer is None:
@@ -560,7 +627,7 @@ class vmmConsolePages(vmmGObjectUI):
                 bool(self.config.has_keyring()))
         if self.config.has_keyring():
             self.widget("console-auth-remember").set_active(
-                bool(pw and username))
+                    bool(withPassword and pw) or (withUsername and username))
 
         self.widget("console-pages").set_current_page(
             _CONSOLE_PAGE_AUTHENTICATE)
@@ -644,19 +711,6 @@ class vmmConsolePages(vmmGObjectUI):
             self._activate_unavailable_page(msg)
             return
 
-        if ginfo.is_bad_localhost():
-            self._activate_unavailable_page(
-                _("Guest is on a remote host with transport '%s'\n"
-                  "but is only configured to listen locally.\n"
-                  "Connect using 'ssh' transport or change the\n"
-                  "guest's listen address." % ginfo.transport))
-            return
-
-        if not ginfo.console_active():
-            self._activate_unavailable_page(
-                _("Graphical console is not yet active for guest"))
-            return
-
         self._activate_unavailable_page(
             _("Connecting to graphical console for guest"))
 
@@ -665,9 +719,14 @@ class vmmConsolePages(vmmGObjectUI):
             if ginfo.gtype == "vnc":
                 viewer_class = VNCViewer
             elif ginfo.gtype == "spice":
-                viewer_class = SpiceViewer
+                if have_spice_gtk:
+                    viewer_class = SpiceViewer
+                else:
+                    raise RuntimeError("Error opening Spice console, "
+                                       "SpiceClientGtk missing")
 
-            self._viewer = viewer_class(ginfo)
+
+            self._viewer = viewer_class(self.vm, ginfo)
             self._connect_viewer_signals()
 
             self._refresh_enable_accel()
@@ -690,6 +749,8 @@ class vmmConsolePages(vmmGObjectUI):
         if self.widget("console-auth-remember").get_active():
             self.config.set_console_password(self.vm, passwd.get_text(),
                                              username.get_text())
+        else:
+            self.config.del_console_password(self.vm)
 
 
     ##########################
@@ -751,11 +812,23 @@ class vmmConsolePages(vmmGObjectUI):
         self.err.show_err(_("USB redirection error"),
             text2=str(errstr), modal=True)
 
-    def _viewer_disconnected(self, ignore):
-        errout = ""
-        if self._viewer:
-            errout = self._viewer.console_get_err_output()
+    def _viewer_disconnected_set_page(self, errdetails, ssherr):
+        if self.vm.is_runable():
+            # Exit was probably for legitimate reasons
+            self._show_vm_status_unavailable()
+            return
 
+        msg = _("Viewer was disconnected.")
+        if errdetails:
+            msg += "\n" + errdetails
+        if ssherr:
+            logging.debug("SSH tunnel error output: %s", ssherr)
+            msg += "\n\n"
+            msg += _("SSH tunnel error output: %s") % ssherr
+
+        self._activate_unavailable_page(msg)
+
+    def _viewer_disconnected(self, ignore, errdetails, ssherr):
         self.widget("console-pages").set_current_page(
             _CONSOLE_PAGE_UNAVAILABLE)
         self._close_viewer()
@@ -764,17 +837,7 @@ class vmmConsolePages(vmmGObjectUI):
         # Make sure modifiers are set correctly
         self._viewer_focus_changed()
 
-        if self.vm.is_runable():
-            # Exit was probably for legitimate reasons
-            self._show_vm_status_unavailable()
-        else:
-            error = _("Error: viewer connection to hypervisor host got "
-                "refused or disconnected!")
-            if errout:
-                logging.debug("Error output from closed console: %s", errout)
-                error += "\n\nError: %s" % errout
-            self._activate_unavailable_page(error)
-
+        self._viewer_disconnected_set_page(errdetails, ssherr)
         self._refresh_resizeguest_from_settings()
 
     def _viewer_connected(self, ignore):
@@ -871,9 +934,9 @@ class vmmConsolePages(vmmGObjectUI):
 
         for dev in devs:
             if dev.virtual_device_type == "console":
-                label = "Text Console %d" % (dev.vmmindex + 1)
+                label = _("Text Console %d") % (dev.vmmindex + 1)
             else:
-                label = "Serial %d" % (dev.vmmindex + 1)
+                label = _("Serial %d") % (dev.vmmindex + 1)
 
             tooltip = vmmSerialConsole.can_connect(self.vm, dev)
             sensitive = not bool(tooltip)

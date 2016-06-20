@@ -24,13 +24,14 @@ import ftplib
 import logging
 import os
 import re
-import requests
 import stat
 import StringIO
 import subprocess
 import tempfile
 import urllib2
 import urlparse
+
+import requests
 
 from .osdict import OSDB
 
@@ -132,11 +133,17 @@ class _URLFetcher(object):
         """
         pass
 
+    def _hasFile(self, url):
+        raise NotImplementedError("Must be implemented in subclass")
+
     def hasFile(self, filename):
         """
         Return True if self.location has the passed filename
         """
-        raise NotImplementedError("Must be implemented in subclass")
+        url = self._make_full_url(filename)
+        ret = self._hasFile(url)
+        logging.debug("hasFile(%s) returning %s", url, ret)
+        return ret
 
     def acquireFile(self, filename):
         """
@@ -145,6 +152,7 @@ class _URLFetcher(object):
         """
         prefix = "virtinst-" + os.path.basename(filename) + "."
 
+        # pylint: disable=redefined-variable-type
         if "VIRTINST_TEST_SUITE" in os.environ:
             fn = os.path.join("/tmp", prefix)
             fileobj = file(fn, "w")
@@ -167,16 +175,15 @@ class _URLFetcher(object):
 
 
 class _HTTPURLFetcher(_URLFetcher):
-    def hasFile(self, filename):
+    def _hasFile(self, url):
         """
         We just do a HEAD request to see if the file exists
         """
-        url = self._make_full_url(filename)
         try:
-            response = requests.head(url)
+            response = requests.head(url, allow_redirects=True)
             response.raise_for_status()
         except Exception, e:
-            logging.debug("HTTP hasFile: didn't find %s: %s", url, str(e))
+            logging.debug("HTTP hasFile request failed: %s", str(e))
             return False
         return True
 
@@ -186,8 +193,11 @@ class _HTTPURLFetcher(_URLFetcher):
         """
         response = requests.get(url, stream=True)
         response.raise_for_status()
-        size = response.headers.get('content-length')
-        return response, size.isdigit() and int(size) or None
+        try:
+            size = int(response.headers.get('content-length'))
+        except:
+            size = None
+        return response, size
 
     def _write(self, urlobj, fileobj):
         """
@@ -210,8 +220,9 @@ class _FTPURLFetcher(_URLFetcher):
             return
 
         try:
-            server = urlparse.urlparse(self.location)[1]
-            self._ftp = ftplib.FTP(server)
+            parsed = urlparse.urlparse(self.location)
+            self._ftp = ftplib.FTP()
+            self._ftp.connect(parsed.hostname, parsed.port)
             self._ftp.login()
         except Exception, e:
             raise ValueError(_("Opening URL %s failed: %s.") %
@@ -238,8 +249,7 @@ class _FTPURLFetcher(_URLFetcher):
 
         self._ftp = None
 
-    def hasFile(self, filename):
-        url = self._make_full_url(filename)
+    def _hasFile(self, url):
         path = urlparse.urlparse(url)[2]
 
         try:
@@ -261,12 +271,8 @@ class _LocalURLFetcher(_URLFetcher):
     """
     For grabbing files from a local directory
     """
-    def hasFile(self, filename):
-        url = self._make_full_url(filename)
-        ret = os.path.exists(url)
-        if not ret:
-            logging.debug("local hasFile: Couldn't find %s", url)
-        return ret
+    def _hasFile(self, url):
+        return os.path.exists(url)
 
     def _grabber(self, url):
         urlobj = file(url, "r")
@@ -372,6 +378,7 @@ def _grabTreeinfo(fetcher):
         logging.debug("Did not find 'family' section in treeinfo")
         return None
 
+    logging.debug("treeinfo family=%s", treeinfo.get("general", "family"))
     return treeinfo
 
 
@@ -397,6 +404,10 @@ def _distroFromSUSEContent(fetcher, arch, vmtype=None):
             distro_distro = line.rsplit(',', 1)
         elif line.startswith("VERSION "):
             distro_version = line.split(' ', 1)
+            if len(distro_version) > 1:
+                d_version = distro_version[1].split('-', 1)
+                if len(d_version) > 1:
+                    distro_version[1] = d_version[0]
         elif line.startswith("SUMMARY "):
             distro_summary = line.split(' ', 1)
         elif line.startswith("BASEARCHS "):
@@ -426,24 +437,27 @@ def _distroFromSUSEContent(fetcher, arch, vmtype=None):
         elif cbuf.find("s390x") != -1:
             arch = "s390x"
 
+    def _parse_sle_distribution(d):
+        sle_version = d[1].strip().rsplit(' ')[4]
+        if len(d[1].strip().rsplit(' ')) > 5:
+            sle_version = sle_version + '.' + d[1].strip().rsplit(' ')[5][2]
+        return ['VERSION', sle_version]
+
     dclass = GenericDistro
     if distribution:
         if re.match(".*SUSE Linux Enterprise Server*", distribution[1]) or \
             re.match(".*SUSE SLES*", distribution[1]):
             dclass = SLESDistro
             if distro_version is None:
-                distro_version = ['VERSION', distribution[1].strip().rsplit(' ')[4]]
+                distro_version = _parse_sle_distribution(distribution)
         elif re.match(".*SUSE Linux Enterprise Desktop*", distribution[1]):
             dclass = SLEDDistro
             if distro_version is None:
-                distro_version = ['VERSION', distribution[1].strip().rsplit(' ')[4]]
+                distro_version = _parse_sle_distribution(distribution)
         elif re.match(".*openSUSE.*", distribution[1]):
             dclass = OpensuseDistro
             if distro_version is None:
                 distro_version = ['VERSION', distribution[0].strip().rsplit(':')[4]]
-                # For tumbleweed we only have an 8 character date string so default to 13.2
-                if distro_version[1] and len(distro_version[1]) == 8:
-                    distro_version = ['VERSION', '13.2']
 
     if distro_version is None:
         return None
@@ -533,7 +547,7 @@ class Distro(object):
     _boot_iso_paths = []
     _hvm_kernel_paths = []
     _xen_kernel_paths = []
-    version_from_content = None
+    version_from_content = []
 
     def __init__(self, fetcher, arch, vmtype):
         self.fetcher = fetcher
@@ -635,14 +649,12 @@ class Distro(object):
     def _kernelFetchHelper(self, guest, kernelpath, initrdpath):
         # Simple helper for fetching kernel + initrd and performing
         # cleanup if necessary
+        ignore = guest
         kernel = self.fetcher.acquireFile(kernelpath)
         args = ''
 
         if not self.fetcher.location.startswith("/"):
             args += "%s=%s" % (self._get_method_arg(), self.fetcher.location)
-
-        if guest.installer.extraargs:
-            args += " " + guest.installer.extraargs
 
         try:
             initrd = self.fetcher.acquireFile(initrdpath)
@@ -658,7 +670,6 @@ class GenericDistro(Distro):
     as a last resort if we can't recognize any actual distro
     """
     name = "Generic"
-    os_variant = "linux"
     uses_treeinfo = True
 
     _xen_paths = [("images/xen/vmlinuz",
@@ -750,7 +761,6 @@ class RedHatDistro(Distro):
     a common layout
     """
     uses_treeinfo = True
-    os_variant = "linux"
     _version_number = None
 
     _boot_iso_paths   = ["images/boot.iso"]
@@ -775,13 +785,6 @@ class FedoraDistro(RedHatDistro):
     name = "Fedora"
     urldistro = "fedora"
 
-    def _latestFedoraVariant(self):
-        """
-        Search osdict list, find newest fedora version listed
-        """
-        latest = OSDB.latest_fedora_version()
-        return latest, int(latest[6:])
-
     def isValidStore(self):
         if not self.treeinfo:
             return self.fetcher.hasFile("Fedora")
@@ -789,21 +792,41 @@ class FedoraDistro(RedHatDistro):
         if not re.match(".*Fedora.*", self.treeinfo.get("general", "family")):
             return False
 
-        lateststr, latestnum = self._latestFedoraVariant()
         ver = self.treeinfo.get("general", "version")
         if not ver:
+            logging.debug("No version found in .treeinfo")
             return False
+        logging.debug("Found treeinfo version=%s", ver)
 
-        if ver == "development" or ver == "rawhide":
-            self._version_number = latestnum
-            self.os_variant = lateststr
-            return
+        latest_variant = OSDB.latest_fedora_version()
+        if re.match("fedora[0-9]+", latest_variant):
+            latest_vernum = int(latest_variant[6:])
+        else:
+            logging.debug("Failed to parse version number from latest "
+                "fedora variant=%s. Using safe default 22", latest_variant)
+            latest_vernum = 22
 
+        # rawhide trees changed to use version=Rawhide in Apr 2016
+        if ver in ["development", "rawhide", "Rawhide"]:
+            self._version_number = latest_vernum
+            self.os_variant = latest_variant
+            return True
+
+        # Dev versions can be like '23_Alpha'
         if "_" in ver:
             ver = ver.split("_")[0]
-        vernum = int(str(ver).split("-")[0])
-        if vernum > latestnum:
-            self.os_variant = lateststr
+
+        # Typical versions are like 'fedora-23'
+        vernum = str(ver).split("-")[0]
+        if vernum.isdigit():
+            vernum = int(vernum)
+        else:
+            logging.debug("Failed to parse version number from treeinfo "
+                "version=%s, using vernum=latest=%s", ver, latest_vernum)
+            vernum = latest_vernum
+
+        if vernum > latest_vernum:
+            self.os_variant = latest_variant
         else:
             self.os_variant = "fedora" + str(vernum)
 
@@ -933,7 +956,7 @@ class SLDistro(RHELDistro):
 
     def isValidStore(self):
         if self.treeinfo:
-            m = re.match(".*Scientific Linux.*",
+            m = re.match(".*Scientific.*",
                          self.treeinfo.get("general", "family"))
             ret = (m is not None)
 
@@ -993,14 +1016,18 @@ class SuseDistro(Distro):
                 if sp_version:
                     self.os_variant += sp_version
             else:
-                self.os_variant += distro_version
+                # Tumbleweed 8 digit date
+                if len(version) == 8:
+                    self.os_variant += "tumbleweed"
+                else:
+                    self.os_variant += distro_version
         else:
             self.os_variant += "9"
 
     def isValidStore(self):
         # self.version_from_content is the VERSION line from the contents file
-        if self.version_from_content is None or \
-            self.version_from_content[1] is None:
+        if (not self.version_from_content or
+            self.version_from_content[1] is None):
             return False
 
         self._variantFromVersion()
@@ -1052,7 +1079,6 @@ class DebianDistro(Distro):
     # daily builds: http://d-i.debian.org/daily-images/amd64/
     name = "Debian"
     urldistro = "debian"
-    os_variant = "linux"
 
     def __init__(self, *args, **kwargs):
         Distro.__init__(self, *args, **kwargs)
@@ -1154,6 +1180,11 @@ class UbuntuDistro(DebianDistro):
             self._set_media_paths()
             filename = "%s/netboot/version.info" % self._url_prefix
             regex = "%s*" % self.name
+        elif self.fetcher.hasFile(".disk/info") and self.arch == "s390x":
+            self._hvm_kernel_paths += [("boot/kernel.ubuntu", "boot/initrd.ubuntu")]
+            self._xen_kernel_paths += [("boot/kernel.ubuntu", "boot/initrd.ubuntu")]
+            filename = ".disk/info"
+            regex = "%s*" % self.name
         else:
             return False
 
@@ -1169,12 +1200,23 @@ class MandrivaDistro(Distro):
     # ftp://ftp.uwsg.indiana.edu/linux/mandrake/official/2007.1/x86_64/
     name = "Mandriva/Mageia"
     urldistro = "mandriva"
-    os_variant = "linux"
 
     _boot_iso_paths = ["install/images/boot.iso"]
-    # Kernels for HVM: valid for releases 2007.1, 2008.*, 2009.0
-    _hvm_kernel_paths = [("isolinux/alt0/vmlinuz", "isolinux/alt0/all.rdz")]
     _xen_kernel_paths = []
+
+    def __init__(self, *args, **kwargs):
+        Distro.__init__(self, *args, **kwargs)
+        self._hvm_kernel_paths = []
+
+        # At least Mageia 5 uses arch in the names
+        self._hvm_kernel_paths += [
+            ("isolinux/%s/vmlinuz" % self.arch,
+             "isolinux/%s/all.rdz" % self.arch)]
+
+        # Kernels for HVM: valid for releases 2007.1, 2008.*, 2009.0
+        self._hvm_kernel_paths += [
+            ("isolinux/alt0/vmlinuz", "isolinux/alt0/all.rdz")]
+
 
     def isValidStore(self):
         # Don't support any paravirt installs
@@ -1200,7 +1242,6 @@ class ALTLinuxDistro(Distro):
     # mounted ISO
     name = "ALT Linux"
     urldistro = "altlinux"
-    os_variant = "linux"
 
     _boot_iso_paths = [("altinst", "live")]
     _hvm_kernel_paths = [("syslinux/alt0/vmlinuz", "syslinux/alt0/full.cz")]

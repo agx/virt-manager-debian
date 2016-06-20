@@ -38,6 +38,10 @@ _trackprops = bool("VIRTINST_TEST_SUITE" in os.environ)
 _allprops = []
 _seenprops = []
 
+# Convenience global to prevent _remove_xpath_node from unlinking the
+# top relavtive node in certain cases
+_top_node = None
+
 
 class _DocCleanupWrapper(object):
     def __init__(self, doc):
@@ -159,8 +163,7 @@ def _build_xpath_node(ctx, xpath, addnode=None):
         return newnode
 
     nodelist = xpath.split("/")
-    for idx in range(len(nodelist)):
-        nodename = nodelist[idx]
+    for nodename in nodelist:
         if not nodename:
             continue
 
@@ -225,16 +228,16 @@ def _remove_xpath_node(ctx, xpath, dofree=True):
             if not is_orig:
                 continue
 
+        if node == root_node or node == _top_node:
+            # Don't unlink the root node, since it's spread out to all
+            # child objects and it ends up wreaking havoc.
+            break
+
         # Look for preceding whitespace and remove it
         white = node.get_prev()
         if white and white.type == "text" and not white.content.count("<"):
             white.unlinkNode()
             white.freeNode()
-
-        if node == root_node:
-            # Don't unlink the root node, since it's spread out to all
-            # child objects and it ends up wreaking havoc.
-            break
 
         node.unlinkNode()
         if dofree:
@@ -304,7 +307,7 @@ class XMLChildProperty(property):
             return
 
         idx = 0
-        for idx in range(len(objlist)):
+        for idx, obj in enumerate(objlist):
             obj = objlist[idx]
             if (obj.__class__ not in self.child_classes or
                 (self.child_classes.index(newobj.__class__) <
@@ -437,6 +440,7 @@ class XMLProperty(property):
         return util.listify(nodes)
 
     def _convert_get_value(self, val):
+        # pylint: disable=redefined-variable-type
         if self._default_name and val == self._default_name:
             ret = val
         elif self._is_bool:
@@ -559,6 +563,7 @@ class XMLProperty(property):
             _seenprops.append(self)
             self._is_tracked = True
 
+        # pylint: disable=redefined-variable-type
         if (self._prop_is_unset(xmlbuilder) and
             not xmlbuilder._xmlstate.is_build):
             val = self._get_xml(xmlbuilder)
@@ -612,9 +617,9 @@ class XMLProperty(property):
             _remove_xpath_node(ctx, xpath)
             return
 
-        node = _get_xpath_node(xmlbuilder._xmlstate.xml_ctx, xpath)
+        node = _get_xpath_node(ctx, xpath)
         if not node:
-            node = _build_xpath_node(root_node, xpath)
+            node = _build_xpath_node(ctx, xpath)
 
         if setval is True:
             # Boolean property, creating the node is enough
@@ -835,17 +840,28 @@ class XMLBuilder(object):
         finally:
             self._finish_get_xml(data)
 
-    def clear(self):
+    def clear(self, leave_stub=False):
         """
         Wipe out all properties of the object
+
+        :param leave_stub: if True, don't unlink the top stub node,
+            see virtinst/cli usage for an explanation
         """
-        props = self._all_xml_props().values()
-        props += self._all_child_props().values()
-        for prop in props:
-            prop.clear(self)
+        global _top_node
+        old_top_node = _top_node
+        try:
+            if leave_stub:
+                _top_node = _get_xpath_node(self._xmlstate.xml_ctx,
+                                            self.get_root_xpath())
+            props = self._all_xml_props().values()
+            props += self._all_child_props().values()
+            for prop in props:
+                prop.clear(self)
+        finally:
+            _top_node = old_top_node
 
         is_child = bool(re.match("^.*\[\d+\]$", self.get_root_xpath()))
-        if is_child:
+        if is_child or leave_stub:
             # User requested to clear an object that is the child of
             # another object (xpath ends in [1] etc). We can't fully remove
             # the node in that case, since then the xmlbuilder object is
@@ -854,7 +870,8 @@ class XMLBuilder(object):
             node = _get_xpath_node(self._xmlstate.xml_ctx,
                                    self.get_root_xpath())
             indent = 2 * self.get_root_xpath().count("/")
-            node.setContent("\n" + (indent * " "))
+            if node:
+                node.setContent("\n" + (indent * " "))
         else:
             _remove_xpath_node(self._xmlstate.xml_ctx,
                                self.get_root_xpath())

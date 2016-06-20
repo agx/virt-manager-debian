@@ -33,11 +33,11 @@ class ConnectionInfo(object):
     Holds all the bits needed to make a connection to a graphical console
     """
     def __init__(self, conn, gdev):
-        self.gtype      = gdev.type
-        self.gport      = gdev.port and str(gdev.port) or None
-        self.gsocket    = gdev.socket
-        self.gaddr      = gdev.listen or "127.0.0.1"
-        self.gtlsport   = gdev.tlsPort or None
+        self.gtype = gdev.type
+        self.gport = gdev.port and str(gdev.port) or None
+        self.gsocket = gdev.socket
+        self.gaddr = gdev.listen or "127.0.0.1"
+        self.gtlsport = gdev.tlsPort or None
 
         self.transport = conn.get_uri_transport()
         self.connuser = conn.get_uri_username()
@@ -59,33 +59,48 @@ class ConnectionInfo(object):
         except:
             return False
 
+    def _is_listen_none(self):
+        return not (self.gsocket or self.gport or self.gtlsport)
+
     def need_tunnel(self):
         if not self._is_listen_localhost():
             return False
-        return self.transport in ["ssh", "ext"]
+        return self.transport == "ssh"
 
-    def is_bad_localhost(self):
-        """
-        Return True if the guest is listening on localhost, but the libvirt
-        URI doesn't give us any way to tunnel the connection
-        """
-        host = self.get_conn_host()[0]
-        if self.need_tunnel():
-            return False
-        return self.transport and self._is_listen_localhost(host)
+    def bad_config(self):
+        if self.transport and self._is_listen_none():
+            return _("Guest is on a remote host, but is only configured "
+                "to allow local file descriptor connections.")
+
+        if self.need_tunnel() and (self.gtlsport and not self.gport):
+            return _("Guest is configured for TLS only which does not "
+                "work over SSH.")
+
+        if (not self.need_tunnel() and
+            self.transport and
+            self._is_listen_localhost(self.get_conn_host()[0])):
+            return _("Guest is on a remote host with transport '%s' "
+                "but is only configured to listen locally. "
+                "To connect remotely you will need to change the guest's "
+                "listen address." % self.transport)
 
     def get_conn_host(self):
-        host = self._connhost
-        port = self._connport
-        tlsport = None
-
-        if not self.need_tunnel():
-            port = self.gport
-            tlsport = self.gtlsport
-            if not self._is_listen_any():
-                host = self.gaddr
+        """
+        Return host/port/tlsport needed for direct spice/vnc connection
+        """
+        host = self.gaddr
+        port = self.gport
+        tlsport = self.gtlsport
+        if self._is_listen_any():
+            host = self._connhost
 
         return host, port, tlsport
+
+    def get_tunnel_host(self):
+        """
+        Physical host name/port needed for ssh tunnel connection
+        """
+        return self._connhost, self._connport
 
     def logstring(self):
         return ("proto=%s trans=%s connhost=%s connuser=%s "
@@ -93,12 +108,6 @@ class ConnectionInfo(object):
                 (self.gtype, self.transport, self._connhost, self.connuser,
                  self._connport, self.gaddr, self.gport, self.gtlsport,
                  self.gsocket))
-    def console_active(self):
-        if self.gsocket:
-            return True
-        if (self.gport in [None, -1] and self.gtlsport in [None, -1]):
-            return False
-        return True
 
 
 class _TunnelScheduler(object):
@@ -208,7 +217,7 @@ def _make_ssh_command(ginfo):
     if not ginfo.need_tunnel():
         return None
 
-    host, port, ignore = ginfo.get_conn_host()
+    host, port = ginfo.get_tunnel_host()
 
     # Build SSH cmd
     argv = ["ssh", "ssh"]
@@ -284,10 +293,12 @@ class SSHTunnels(object):
         self.unlock()
 
     def get_err_output(self):
-        errout = ""
+        errstrings = []
         for l in self._tunnels:
-            errout += l.get_err_output()
-        return errout
+            e = l.get_err_output().strip()
+            if e and e not in errstrings:
+                errstrings.append(e)
+        return "\n".join(errstrings)
 
     def _lock(self):
         _tunnel_scheduler.lock()

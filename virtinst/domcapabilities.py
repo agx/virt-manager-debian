@@ -71,6 +71,11 @@ class _Devices(_CapsBlock):
     disk = XMLChildProperty(_make_capsblock("disk"), is_single=True)
 
 
+class _Features(_CapsBlock):
+    _XML_ROOT_NAME = "features"
+    gic = XMLChildProperty(_make_capsblock("gic"), is_single=True)
+
+
 class DomainCapabilities(XMLBuilder):
     @staticmethod
     def build_from_params(conn, emulator, arch, machine, hvtype):
@@ -101,10 +106,13 @@ class DomainCapabilities(XMLBuilder):
         "x86_64": [
             ".*OVMF_CODE\.fd",  # RHEL
             ".*ovmf-x64/OVMF.*\.fd",  # gerd's firmware repo
+            ".*ovmf-x86_64-.*",  # SUSE
+            ".*ovmf.*", ".*OVMF.*",  # generic attempt at a catchall
         ],
         "aarch64": [
             ".*AAVMF_CODE\.fd",  # RHEL
             ".*aarch64/QEMU_EFI.*",  # gerd's firmware repo
+            ".*aarch64.*",  # generic attempt at a catchall
         ],
     }
 
@@ -158,3 +166,4 @@ class DomainCapabilities(XMLBuilder):
     devices = XMLChildProperty(_Devices, is_single=True)
 
     arch = XMLProperty("./arch")
+    features = XMLChildProperty(_Features, is_single=True)

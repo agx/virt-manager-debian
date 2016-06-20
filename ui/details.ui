@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.19.0 -->
+<!-- Generated with glade 3.20.0 -->
 <interface>
-  <requires lib="gtk+" version="3.8"/>
+  <requires lib="gtk+" version="3.14"/>
   <object class="GtkAccelGroup" id="accelgroup1"/>
   <object class="GtkAdjustment" id="adjustment1">
     <property name="lower">1</property>
@@ -5837,11 +5837,15 @@ if you know what you are doing.&lt;/small&gt;</property>
                   <object class="GtkLabel" id="console-unavailable">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="halign">center</property>
+                    <property name="valign">center</property>
                     <property name="label" translatable="yes">&lt;b&gt;The console is currently unavailable&lt;/b&gt;</property>
                     <property name="use_markup">True</property>
                     <property name="justify">center</property>
                     <property name="wrap">True</property>
-                    <property name="width_chars">40</property>
+                    <property name="selectable">True</property>
+                    <property name="width_chars">60</property>
+                    <property name="max_width_chars">60</property>
                   </object>
                   <packing>
                     <property name="tab_expand">True</property>
@@ -5902,6 +5906,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                         <property name="label" translatable="yes">_Save this password in your keyring</property>
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
+                        <property name="tooltip_text" translatable="yes">Check to save password, uncheck to forget password.</property>
                         <property name="receives_default">False</property>
                         <property name="use_underline">True</property>
                         <property name="xalign">0</property>
@@ -6045,19 +6050,28 @@ if you know what you are doing.&lt;/small&gt;</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkScrolledWindow" id="console-gfx-scroll">
+                  <object class="GtkOverlay" id="console-overlay">
                     <property name="visible">True</property>
-                    <property name="can_focus">True</property>
+                    <property name="can_focus">False</property>
                     <child>
-                      <object class="GtkViewport" id="console-gfx-viewport">
+                      <object class="GtkScrolledWindow" id="console-gfx-scroll">
                         <property name="visible">True</property>
-                        <property name="can_focus">False</property>
-                        <property name="resize_mode">queue</property>
-                        <property name="shadow_type">none</property>
+                        <property name="can_focus">True</property>
                         <child>
-                          <placeholder/>
+                          <object class="GtkViewport" id="console-gfx-viewport">
+                            <property name="visible">True</property>
+                            <property name="can_focus">False</property>
+                            <property name="resize_mode">queue</property>
+                            <property name="shadow_type">none</property>
+                            <child>
+                              <placeholder/>
+                            </child>
+                          </object>
                         </child>
                       </object>
+                      <packing>
+                        <property name="index">-1</property>
+                      </packing>
                     </child>
                   </object>
                   <packing>

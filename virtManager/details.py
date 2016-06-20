@@ -751,7 +751,7 @@ class vmmDetails(vmmGObjectUI):
         hw_list_model = Gtk.ListStore(str, str, int, int, object)
         self.widget("hw-list").set_model(hw_list_model)
 
-        hwCol = Gtk.TreeViewColumn("Hardware")
+        hwCol = Gtk.TreeViewColumn(_("Hardware"))
         hwCol.set_spacing(6)
         hwCol.set_min_width(165)
         hw_txt = Gtk.CellRendererText()
@@ -843,8 +843,10 @@ class vmmDetails(vmmGObjectUI):
         self.widget("overview-firmware").set_visible(self.is_customize_dialog)
         self.widget("overview-firmware-label").set_visible(
             not self.is_customize_dialog)
-        show_firmware = ((self.conn.is_qemu() or self.conn.is_test_conn()) and
-            domcaps.arch_can_uefi())
+        show_firmware = ((self.conn.is_qemu() or
+                          self.conn.is_test_conn() or
+                          self.conn.is_xen()) and
+                         domcaps.arch_can_uefi())
         uiutil.set_grid_row_visible(
             self.widget("overview-firmware-title"), show_firmware)
 
@@ -1122,8 +1124,8 @@ class vmmDetails(vmmGObjectUI):
         if self.has_unapplied_changes(oldhwrow):
             # Unapplied changes, and syncing them failed
             pageidx = 0
-            for idx in range(len(model)):
-                if model[idx][HW_LIST_COL_DEVICE] == self.oldhwkey:
+            for idx, row in enumerate(model):
+                if row[HW_LIST_COL_DEVICE] == self.oldhwkey:
                     pageidx = idx
                     break
             self.set_hw_selection(pageidx, disable_apply=False)
@@ -1359,9 +1361,9 @@ class vmmDetails(vmmGObjectUI):
         self.widget("details-pages").set_current_page(DETAILS_PAGE_DETAILS)
         index = 0
         model = self.widget("hw-list").get_model()
-        for i in range(len(model)):
-            if model[i][HW_LIST_COL_TYPE] == HW_LIST_TYPE_STATS:
-                index = i
+        for idx, row in enumerate(model):
+            if row[HW_LIST_COL_TYPE] == HW_LIST_TYPE_STATS:
+                index = idx
                 break
         self.set_hw_selection(index)
 
@@ -1414,6 +1416,8 @@ class vmmDetails(vmmGObjectUI):
         self.widget("details-menu-usb-redirection").set_sensitive(can_usb)
 
     def control_vm_run(self, src_ignore):
+        if self.has_unapplied_changes(self.get_hw_row()):
+            return
         self.emit("action-run-domain",
                   self.vm.conn.get_uri(), self.vm.get_connkey())
 
@@ -1486,6 +1490,9 @@ class vmmDetails(vmmGObjectUI):
         # and future proof it a bit
         if type(ret) is tuple and len(ret) >= 2:
             ret = ret[1]
+        # F24 rawhide, ret[1] is a named tuple with a 'buffer' element...
+        if hasattr(ret, "buffer"):
+            ret = ret.buffer
 
         import datetime
         now = str(datetime.datetime.now()).split(".")[0].replace(" ", "_")
@@ -1493,7 +1500,7 @@ class vmmDetails(vmmGObjectUI):
 
         path = self.err.browse_local(
             self.vm.conn, _("Save Virtual Machine Screenshot"),
-            _type=("png", "PNG files"),
+            _type=("png", _("PNG files")),
             dialog_type=Gtk.FileChooserAction.SAVE,
             browse_reason=self.config.CONFIG_DIR_SCREENSHOT,
             default_name=default)
@@ -1745,6 +1752,7 @@ class vmmDetails(vmmGObjectUI):
         model = boot_list.get_model()
         prev_row = None
         for row in model:
+            # pylint: disable=unsubscriptable-object
             if prev_row and prev_row[BOOT_KEY] == row_key:
                 model.swap(prev_row.iter, row.iter)
                 break
@@ -2224,7 +2232,7 @@ class vmmDetails(vmmGObjectUI):
             return
 
         # Try to hot remove
-        detach_err = False
+        detach_err = ()
         try:
             if self.vm.is_active():
                 self.vm.detach_device(devobj)
@@ -2881,7 +2889,7 @@ class vmmDetails(vmmGObjectUI):
         uiutil.set_grid_row_visible(
             self.widget("hostdev-rombar"), hostdev.type == "pci")
 
-        devlabel = "<b>Physical %s Device</b>" % hostdev.type.upper()
+        devlabel = "<b>" + _("Physical %s Device") % hostdev.type.upper() + "</b>"
         self.widget("hostdev-title").set_markup(devlabel)
         self.widget("hostdev-source").set_text(pretty_name)
         self.widget("hostdev-rombar").set_active(rom_bar)
@@ -2890,9 +2898,6 @@ class vmmDetails(vmmGObjectUI):
         vid = self.get_hw_selection(HW_LIST_COL_DEVICE)
         if not vid:
             return
-
-        vmmAddHardware.populate_video_combo(self.vm,
-            self.widget("video-model"))
 
         model = vid.model
         if model == "qxl" and vid.vgamem:
@@ -3145,10 +3150,10 @@ class vmmDetails(vmmGObjectUI):
     def _make_boot_rows(self):
         if not self.vm.can_use_device_boot_order():
             return [
-                ["hd", "Hard Disk", "drive-harddisk", False, True],
-                ["cdrom", "CDROM", "media-optical", False, True],
-                ["network", "Network (PXE)", "network-idle", False, True],
-                ["fd", "Floppy", "media-floppy", False, True],
+                ["hd", _("Hard Disk"), "drive-harddisk", False, True],
+                ["cdrom", _("CDROM"), "media-optical", False, True],
+                ["network", _("Network (PXE)"), "network-idle", False, True],
+                ["fd", _("Floppy"), "media-floppy", False, True],
             ]
 
         ret = []

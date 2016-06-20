@@ -110,6 +110,8 @@ def _remove_vmm_device(guest, devkey):
 class vmmCreate(vmmGObjectUI):
     __gsignals__ = {
         "action-show-domain": (GObject.SignalFlags.RUN_FIRST, None, [str, str]),
+        "create-opened": (GObject.SignalFlags.RUN_FIRST, None, []),
+        "create-closed": (GObject.SignalFlags.RUN_FIRST, None, []),
     }
 
     def __init__(self, engine):
@@ -197,12 +199,15 @@ class vmmCreate(vmmGObjectUI):
         if not self.is_visible():
             self._reset_state(uri)
             self.topwin.set_transient_for(parent)
+            self.emit("create-opened")
 
         self.topwin.present()
 
     def _close(self, ignore1=None, ignore2=None):
         if self.is_visible():
             logging.debug("Closing new vm wizard")
+            self.emit("create-closed")
+
         self.topwin.hide()
 
         self._cleanup_customize_window()
@@ -979,8 +984,7 @@ class vmmCreate(vmmGObjectUI):
         """
         model = os_widget.get_model()
         def find_row():
-            for idx in range(len(model)):
-                row = model[idx]
+            for idx, row in enumerate(model):
                 if os_id and row[OS_COL_ID] == os_id:
                     os_widget.set_active(idx)
                     return row[OS_COL_LABEL]
@@ -1363,8 +1367,8 @@ class vmmCreate(vmmGObjectUI):
         # Reselect previous type row
         os_type_list = self.widget("install-os-type")
         os_type_model = os_type_list.get_model()
-        for idx in range(len(os_type_model)):
-            if os_type_model[idx][OS_COL_ID] == old_type:
+        for idx, row in enumerate(os_type_model):
+            if row[OS_COL_ID] == old_type:
                 os_type_list.set_active(idx)
                 break
 
@@ -1636,7 +1640,11 @@ class vmmCreate(vmmGObjectUI):
 
     def _build_guest(self, variant):
         guest = self.conn.caps.build_virtinst_guest(self._capsinfo)
-        guest.os.machine = self._get_config_machine()
+
+        # If no machine was selected don't clear recommended machine
+        machine = self._get_config_machine()
+        if machine:
+            guest.os.machine = machine
 
         # Generate UUID (makes customize dialog happy)
         try:
@@ -1774,6 +1782,12 @@ class vmmCreate(vmmGObjectUI):
                 return self.err.val_err(
                                 _("A storage path to import is required."))
 
+            if not virtinst.VirtualDisk.path_definitely_exists(
+                                                self.conn.get_backend(),
+                                                import_path):
+                return self.err.val_err(_("The import path must point to "
+                                          "an existing storage."))
+
         elif instmethod == INSTALL_PAGE_CONTAINER_APP:
             instclass = virtinst.ContainerInstaller
 
@@ -1807,12 +1821,8 @@ class vmmCreate(vmmGObjectUI):
             if cdrom:
                 self._guest.installer.cdrom = True
 
-            extraargs = ""
             if extra:
-                extraargs += extra
-
-            if extraargs:
-                self._guest.installer.extraargs = extraargs
+                self._guest.installer.extraargs = [extra]
 
             if init:
                 self._guest.os.init = init
@@ -2208,6 +2218,7 @@ class vmmCreate(vmmGObjectUI):
             if not self.is_visible():
                 return
             logging.debug("User finished customize dialog, starting install")
+            self._failed_guest = None
             guest.update_defaults()
             self._start_install(guest)
 
@@ -2305,7 +2316,7 @@ class vmmCreate(vmmGObjectUI):
             # guest after the install has finished
             def cb():
                 vm.connect_opt_out("state-changed",
-                                   self._check_install_status, guest)
+                                   self._check_install_status)
                 return False
             self.idle_add(cb)
 
@@ -2319,7 +2330,7 @@ class vmmCreate(vmmGObjectUI):
                     "VM creation.", poolname, exc_info=True)
 
 
-    def _check_install_status(self, vm, virtinst_guest):
+    def _check_install_status(self, vm):
         """
         Watch the domain that we are installing, waiting for the state
         to change, so we can restart it as needed
@@ -2331,26 +2342,12 @@ class vmmCreate(vmmGObjectUI):
         if not vm.is_shutoff():
             return
 
+        if vm.get_install_abort():
+            logging.debug("User manually shutdown VM, not restarting "
+                          "guest after install.")
+            return True
+
         try:
-            if virtinst_guest:
-                continue_inst = virtinst_guest.get_continue_inst()
-
-                if continue_inst:
-                    logging.debug("VM needs a 2 stage install, continuing.")
-                    # Continue the install, then reconnect this opt
-                    # out handler, removing the virtinst_guest which
-                    # will force one final restart.
-                    virtinst_guest.continue_install()
-
-                    vm.connect_opt_out("state-changed",
-                                       self._check_install_status, None)
-                    return True
-
-            if vm.get_install_abort():
-                logging.debug("User manually shutdown VM, not restarting "
-                              "guest after install.")
-                return True
-
             logging.debug("Install should be completed, starting VM.")
             vm.startup()
         except Exception, e:

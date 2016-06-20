@@ -17,10 +17,10 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
-from gi.repository import Gtk
-
 import logging
 import traceback
+
+from gi.repository import Gtk
 
 from .baseclass import vmmGObject
 
@@ -134,7 +134,7 @@ class vmmErrorDialog(vmmGObject):
                               modal=modal)
 
     def val_err(self, text1, text2=None, title=_("Input Error"), modal=True):
-        logtext = "Validation Error: %s" % text1
+        logtext = _("Validation Error: %s") % text1
         if text2:
             logtext += " %s" % text2
 

@@ -195,14 +195,23 @@ class Command(object):
         except Exception, e:
             return (-1, "".join(traceback.format_exc()) + str(e))
 
-    def _skip_msg(self, conn):
-        if self.skip_check is None:
+    def _check_support(self, tests, conn, check, skipmsg):
+        if check is None:
             return
         if conn is None:
-            raise RuntimeError("skip_check is not None, but conn is None")
-        if conn.check_support(self.skip_check):
-            return
-        return "skipped"
+            raise RuntimeError("skip check is not None, but conn is None")
+
+        if type(check) is str:
+            # pylint: disable=protected-access
+            if support._check_version(conn, check):
+                return
+            # pylint: enable=protected-access
+        else:
+            if conn.check_support(check):
+                return
+
+        tests.skipTest(skipmsg)
+        return True
 
     def run(self, tests):
         err = None
@@ -218,9 +227,7 @@ class Command(object):
                 raise RuntimeError("couldn't parse URI from command %s" %
                                    self.argv)
 
-            skipmsg = self._skip_msg(conn)
-            if skipmsg is not None:
-                tests.skipTest(skipmsg)
+            if self._check_support(tests, conn, self.skip_check, "skipped"):
                 return
 
             code, output = self._get_output(conn)
@@ -234,10 +241,8 @@ class Command(object):
                      ("Output was:\n%s" % output))
 
             if self.compare_file:
-                if (self.compare_check and not
-                    conn.check_support(self.compare_check)):
-                    tests.skipTest(
-                        "Skipping compare check due to lack of support")
+                if self._check_support(tests, conn, self.compare_check,
+                        "Skipping compare check due to lack of support"):
                     return
 
                 # Generate test files that don't exist yet
@@ -411,7 +416,7 @@ c.add_compare(""" \
 c.add_compare("""--pxe \
 --memory 512,maxmemory=1024 \
 --vcpus 4,cores=2,threads=2,sockets=2 \
---cpu foobar,+x2apic,+x2apicagain,-distest,forbid=foo,forbid=bar,disable=distest2,optional=opttest,require=reqtest,match=strict,vendor=meee \
+--cpu foobar,+x2apic,+x2apicagain,-distest,forbid=foo,forbid=bar,disable=distest2,optional=opttest,require=reqtest,match=strict,vendor=meee,cell.id=0,cell.cpus=1,2,3,cell.memory=1024,cell1.id=1,cell1.memory=256,cell1.cpus=5-8 \
 --metadata title=my-title,description=my-description,uuid=00000000-1111-2222-3333-444444444444 \
 --boot cdrom,fd,hd,network,menu=off,loader=/foo/bar \
 --idmap uid_start=0,uid_target=1000,uid_count=10,gid_start=0,gid_target=1000,gid_count=10 \
@@ -449,7 +454,7 @@ c.add_compare(""" \
 --disk device=cdrom,bus=sata,read_bytes_sec=1,read_iops_sec=2,total_bytes_sec=10,total_iops_sec=20,write_bytes_sec=5,write_iops_sec=6 \
 --disk size=1 \
 --disk %(BLOCKVOL)s \
---disk /dev/default-pool/iso-vol \
+--disk /dev/default-pool/iso-vol,seclabel.model=dac,seclabel1.model=selinux,seclabel1.relabel=no,seclabel0.label=foo,bar,baz \
 --disk /dev/default-pool/iso-vol,format=qcow2 \
 --disk source_pool=rbd-ceph,source_volume=some-rbd-vol,size=.1 \
 --disk pool=rbd-ceph,size=.1 \
@@ -459,18 +464,23 @@ c.add_compare(""" \
 --disk qemu+nbd:///var/foo/bar/socket,bus=usb,removable=on \
 --disk path=http://[1:2:3:4:1:2:3:4]:5522/my/path?query=foo \
 --disk vol=gluster-pool/test-gluster.raw,startup_policy=optional \
---disk %(DIR)s,device=floppy \
+--disk %(DIR)s,device=floppy,address.type=ccw,address.cssid=0xfe,address.ssid=0,address.devno=01 \
+--disk %(NEWIMG2)s,size=1,backing_store=/tmp/foo.img,backing_format=vmdk \
+--disk /tmp/brand-new.img,size=1,backing_store=/dev/default-pool/iso-vol \
 \
---network user,mac=12:34:56:78:11:22,portgroup=foo,link_state=down \
+--network user,mac=12:34:56:78:11:22,portgroup=foo,link_state=down,rom_bar=on,rom_file=/tmp/foo \
 --network bridge=foobar,model=virtio,driver_name=qemu,driver_queues=3 \
 --network bridge=ovsbr,virtualport_type=openvswitch,virtualport_profileid=demo,virtualport_interfaceid=09b11c53-8b5c-4eeb-8f00-d84eaa0aaa3b,link_state=yes \
 --network type=direct,source=eth5,source_mode=vepa,target=mytap12,virtualport_type=802.1Qbg,virtualport_managerid=12,virtualport_typeid=1193046,virtualport_typeidversion=1,virtualport_instanceid=09b11c53-8b5c-4eeb-8f00-d84eaa0aaa3b,boot_order=1 \
+--network user,model=virtio,address.type=spapr-vio,address.reg=0x500 \
 \
 --graphics sdl \
 --graphics spice,keymap=none \
 --graphics vnc,port=5950,listen=1.2.3.4,keymap=ja,password=foo \
 --graphics spice,port=5950,tlsport=5950,listen=1.2.3.4,keymap=ja \
 --graphics spice,image_compression=foo,streaming_mode=bar,clipboard_copypaste=yes,mouse_mode=client,filetransfer_enable=on \
+--graphics spice,gl=yes,listen=socket \
+--graphics spice,gl=yes,listen=none \
 \
 --controller usb,model=ich9-ehci1,address=0:0:4.7,index=0 \
 --controller usb,model=ich9-uhci1,address=0:0:4.0,index=0,master=0 \
@@ -493,7 +503,7 @@ c.add_compare(""" \
 --host-device 001.003 \
 --hostdev 15:0.1 \
 --host-device 2:15:0.2 \
---hostdev 0:15:0.3 \
+--hostdev 0:15:0.3,address.type=isa,address.iobase=0x500,address.irq=5 \
 --host-device 0x0781:0x5151,driver_name=vfio \
 --host-device 04b3:4485 \
 --host-device pci_8086_2829_scsi_host_scsi_device_lun0 \
@@ -508,7 +518,7 @@ c.add_compare(""" \
 --sound ac97 \
 \
 --video cirrus \
---video model=qxl \
+--video model=qxl,vgamem=1,ram=2,vram=3,heads=4,accel3d=yes \
 \
 --smartcard passthrough,type=spicevmc \
 --smartcard type=host \
@@ -520,7 +530,14 @@ c.add_compare(""" \
 --rng egd,backend_host=127.0.0.1,backend_service=8000,backend_type=tcp \
 \
 --panic iobase=507 \
-""", "many-devices", compare_check=support.SUPPORT_CONN_VMPORT)
+""", "many-devices", compare_check="2.0.0")  # compare_check=graphics listen=socket support
+
+# Test the implied defaults for gl=yes setting virgl=on
+c.add_compare(""" \
+--memory 1024 \
+--disk none \
+--graphics spice,gl=yes \
+""", "spice-gl", compare_check=support.SUPPORT_CONN_VMPORT)
 
 
 
@@ -629,7 +646,7 @@ c.add_valid("--paravirt --location %(TREEDIR)s")  # Paravirt location
 c.add_valid("--paravirt --location %(TREEDIR)s --os-variant none")  # Paravirt location with --os-variant none
 c.add_valid("--location %(TREEDIR)s --os-variant fedora12")  # URL install with manual os-variant
 c.add_valid("--cdrom %(EXISTIMG2)s --os-variant win2k3 --wait 0")  # HVM windows install with disk
-c.add_valid("--cdrom %(EXISTIMG2)s --os-variant win2k3 --wait 0 --print-step 3")  # HVM windows install, print 3rd stage XML
+c.add_valid("--cdrom %(EXISTIMG2)s --os-variant win2k3 --wait 0 --print-step 2")  # HVM windows install, print 3rd stage XML
 c.add_valid("--pxe --autostart")  # --autostart flag
 c.add_compare("--pxe --print-step all", "simple-pxe")  # Diskless PXE install
 c.add_invalid("--pxe --virt-type bogus")  # Bogus virt-type
@@ -687,19 +704,20 @@ c.add_compare("--os-variant fedora20 --nodisks --boot network --nographics --arc
 
 # armv7l tests
 c.add_compare("--arch armv7l --machine vexpress-a9 --boot kernel=/f19-arm.kernel,initrd=/f19-arm.initrd,dtb=/f19-arm.dtb,extra_args=\"console=ttyAMA0 rw root=/dev/mmcblk0p3\" --disk %(EXISTIMG1)s --nographics", "arm-vexpress-plain")
-c.add_compare("--arch armv7l --machine vexpress-a15 --boot kernel=/f19-arm.kernel,initrd=/f19-arm.initrd,dtb=/f19-arm.dtb,kernel_args=\"console=ttyAMA0,1234 rw root=/dev/vda3\",extra_args=foo --disk %(EXISTIMG1)s --nographics --os-variant fedora19", "arm-vexpress-f19")
-c.add_compare("--arch armv7l --machine virt --boot kernel=/f19-arm.kernel,initrd=/f19-arm.initrd,kernel_args=\"console=ttyAMA0,1234 rw root=/dev/vda3\",extra_args=foo --disk %(EXISTIMG1)s --nographics --os-variant fedora20", "arm-virt-f20")
+c.add_compare("--arch armv7l --machine vexpress-a15 --boot kernel=/f19-arm.kernel,initrd=/f19-arm.initrd,dtb=/f19-arm.dtb,kernel_args=\"console=ttyAMA0,1234 rw root=/dev/vda3\" --disk %(EXISTIMG1)s --nographics --os-variant fedora19", "arm-vexpress-f19")
+c.add_compare("--arch armv7l --machine virt --boot kernel=/f19-arm.kernel,initrd=/f19-arm.initrd,kernel_args=\"console=ttyAMA0,1234 rw root=/dev/vda3\" --disk %(EXISTIMG1)s --nographics --os-variant fedora20", "arm-virt-f20")
 c.add_compare("--arch armv7l --boot kernel=/f19-arm.kernel,initrd=/f19-arm.initrd,kernel_args=\"console=ttyAMA0,1234 rw root=/dev/vda3\",extra_args=foo --disk %(EXISTIMG1)s --os-variant fedora20", "arm-defaultmach-f20")
 c.add_compare("--connect %(URI-KVM-ARMV7L)s --disk %(EXISTIMG1)s --import --os-variant fedora20", "arm-kvm-import")
 
 # aarch64 tests
-c.add_compare("--arch aarch64 --machine virt --boot kernel=/f19-arm.kernel,initrd=/f19-arm.initrd,kernel_args=\"console=ttyAMA0,1234 rw root=/dev/vda3\",extra_args=foo --disk %(EXISTIMG1)s", "aarch64-machvirt")
-c.add_compare("--arch aarch64 --boot kernel=/f19-arm.kernel,initrd=/f19-arm.initrd,kernel_args=\"console=ttyAMA0,1234 rw root=/dev/vda3\",extra_args=foo --disk %(EXISTIMG1)s", "aarch64-machdefault")
+c.add_compare("--arch aarch64 --machine virt --boot kernel=/f19-arm.kernel,initrd=/f19-arm.initrd,kernel_args=\"console=ttyAMA0,1234 rw root=/dev/vda3\" --disk %(EXISTIMG1)s", "aarch64-machvirt")
+c.add_compare("--arch aarch64 --boot kernel=/f19-arm.kernel,initrd=/f19-arm.initrd,kernel_args=\"console=ttyAMA0,1234 rw root=/dev/vda3\" --disk %(EXISTIMG1)s", "aarch64-machdefault")
 c.add_compare("--arch aarch64 --cdrom %(EXISTIMG2)s --boot loader=CODE.fd,nvram_template=VARS.fd --disk %(EXISTIMG1)s --cpu none --events on_crash=preserve,on_reboot=destroy,on_poweroff=restart", "aarch64-cdrom")
 c.add_compare("--connect %(URI-KVM-AARCH64)s --disk %(EXISTIMG1)s --import --os-variant fedora21", "aarch64-kvm-import")
+c.add_compare("--connect %(URI-KVM-AARCH64)s --disk size=1 --os-variant fedora22 --features gic_version=host --network network=default,address.type=pci --controller type=scsi,model=virtio-scsi,address.type=pci", "aarch64-kvm-gic")
 
 # ppc64 tests
-c.add_compare("--arch ppc64 --machine pseries --boot network --disk %(EXISTIMG1)s --os-variant fedora20 --network none", "ppc64-pseries-f20")
+c.add_compare("--arch ppc64 --machine pseries --boot network --disk %(EXISTIMG1)s --disk device=cdrom --os-variant fedora20 --network none", "ppc64-pseries-f20")
 c.add_compare("--arch ppc64 --boot network --disk %(EXISTIMG1)s --os-variant fedora20 --network none", "ppc64-machdefault-f20")
 c.add_compare("--connect %(URI-KVM-PPC64LE)s --import --disk %(EXISTIMG1)s --os-variant fedora20", "ppc64le-kvm-import")
 
@@ -775,6 +793,11 @@ c.add_valid("--file %(EXISTIMG1)s")  # Existing file, no opts
 c.add_valid("--file %(EXISTIMG1)s --file %(EXISTIMG1)s")  # Multiple existing files
 c.add_valid("--file %(NEWIMG1)s --file-size .00001 --nonsparse")  # Nonexistent file
 
+c = vinst.add_category("console-tests", "--pxe --nodisks")
+c.add_valid("--nographics")  # mock virsh console waiting
+c.add_valid("--graphics vnc --noreboot")  # mock virt-viewer waiting, with noreboot magic
+c.add_invalid("--noautoconsole --wait 1")  # --wait 1 is converted to 1 second if we are in the test suite, so this should actually touch the wait machinery. however in this case it exits with failure
+c.add_valid("--nographics --transient")  # --transient handling
 
 
 
@@ -805,7 +828,7 @@ c.add_compare("test --edit --boot network,cdrom", "edit-bootorder")
 c.add_compare("--confirm test --edit --cpu host-passthrough", "prompt-response")
 
 
-c = vixml.add_category("simple edit diff", "test-for-virtxml --edit --print-diff --define", compare_check=support.SUPPORT_CONN_INPUT_KEYBOARD)
+c = vixml.add_category("simple edit diff", "test-for-virtxml --edit --print-diff --define", compare_check="1.2.2")  # compare_check=input type=keyboard output
 c.add_compare("""--metadata name=foo-my-new-name,uuid=12345678-12F4-1234-1234-123456789AFA,description="hey this is my
 new
 very,very=new desc\\\'",title="This is my,funky=new title" """, "edit-simple-metadata")
@@ -824,11 +847,13 @@ c.add_compare("--pm suspend_to_mem=yes,suspend_to_disk=no", "edit-simple-pm")
 c.add_compare("--disk /dev/zero,perms=ro,startup_policy=optional", "edit-simple-disk")
 c.add_compare("--disk path=", "edit-simple-disk-remove-path")
 c.add_compare("--network source=br0,type=bridge,model=virtio,mac=", "edit-simple-network")
-c.add_compare("--graphics tlsport=5902,keymap=ja", "edit-simple-graphics")
+c.add_compare("--graphics tlsport=5902,keymap=ja", "edit-simple-graphics", compare_check="1.3.5")  # compare_check=new graphics listen output
+c.add_compare("--graphics listen=none", "edit-graphics-listen-none", compare_check="2.0.0")  # compare_check=graphics listen=none support
+c.add_compare("--controller index=15,model=lsilogic", "edit-simple-controller")
 c.add_compare("--controller index=15,model=lsilogic", "edit-simple-controller")
 c.add_compare("--smartcard type=spicevmc", "edit-simple-smartcard")
 c.add_compare("--redirdev type=spicevmc,server=example.com:12345", "edit-simple-redirdev")
-c.add_compare("--tpm path=/dev/tpm", "edit-simple-tpm")
+c.add_compare("--tpm path=/dev/tpm", "edit-simple-tpm", compare_check="1.3.5")  # compare_check=new graphics listen output
 c.add_compare("--rng rate_bytes=3333,rate_period=4444", "edit-simple-rng")
 c.add_compare("--watchdog action=reset", "edit-simple-watchdog")
 c.add_compare("--memballoon model=none", "edit-simple-memballoon")
@@ -837,27 +862,31 @@ c.add_compare("--parallel unix,path=/some/other/log", "edit-simple-parallel")
 c.add_compare("--channel null", "edit-simple-channel")
 c.add_compare("--console name=foo.bar.baz", "edit-simple-console")
 c.add_compare("--filesystem /1/2/3,/4/5/6,mode=mapped", "edit-simple-filesystem")
-c.add_compare("--video cirrus", "edit-simple-video", compare_check=support.SUPPORT_CONN_VIDEO_NEW_RAM_OUTPUT)
-c.add_compare("--sound pcspk", "edit-simple-soundhw")
+c.add_compare("--video cirrus", "edit-simple-video", compare_check="1.3.3")  # compare_check=video primary= attribute
+c.add_compare("--sound pcspk", "edit-simple-soundhw", compare_check="1.3.5")  # compare_check=new graphics listen output
 c.add_compare("--host-device 0x0781:0x5151,driver_name=vfio", "edit-simple-host-device")
 
-c = vixml.add_category("edit selection", "test-for-virtxml --print-diff --define", compare_check=support.SUPPORT_CONN_INPUT_KEYBOARD)
+c = vixml.add_category("edit selection", "test-for-virtxml --print-diff --define", compare_check="1.2.2")  # compare_check=input type=keyboard output
 c.add_invalid("--edit target=vvv --disk /dev/null")  # no match found
-c.add_compare("--edit 3 --sound pcspk", "edit-pos-num", compare_check=support.SUPPORT_CONN_VIDEO_NEW_RAM_OUTPUT)
-c.add_compare("--edit -1 --video qxl", "edit-neg-num", compare_check=support.SUPPORT_CONN_VIDEO_NEW_RAM_OUTPUT)
+c.add_invalid("--edit seclabel2.model=dac --disk /dev/null")  # no match found
+c.add_valid("--edit seclabel.model=dac --disk /dev/null")  # match found
+c.add_compare("--edit 3 --sound pcspk", "edit-pos-num", compare_check="1.3.5")  # compare_check=new graphics listen output
+c.add_compare("--edit -1 --video qxl", "edit-neg-num", compare_check="1.2.11")  # compare_check=video ram output change
 c.add_compare("--edit all --host-device driver_name=vfio", "edit-all")
-c.add_compare("--edit ich6 --sound pcspk", "edit-select-sound-model", compare_check=support.SUPPORT_CONN_VIDEO_NEW_RAM_OUTPUT)
+c.add_compare("--edit ich6 --sound pcspk", "edit-select-sound-model", compare_check="1.3.5")  # compare_check=new graphics listen output
 c.add_compare("--edit target=hda --disk /dev/null", "edit-select-disk-target")
 c.add_compare("--edit /tmp/foobar2 --disk shareable=off,readonly=on", "edit-select-disk-path")
 c.add_compare("--edit mac=00:11:7f:33:44:55 --network target=nic55", "edit-select-network-mac")
 
-c = vixml.add_category("edit clear", "test-for-virtxml --print-diff --define", compare_check=support.SUPPORT_CONN_INPUT_KEYBOARD)
+c = vixml.add_category("edit clear", "test-for-virtxml --print-diff --define", compare_check="1.2.2")  # compare_check=input type=keyboard output
 c.add_invalid("--edit --memory 200,clearxml=yes")  # clear isn't wired up for memory
 c.add_compare("--edit --disk path=/foo/bar,target=fda,bus=fdc,device=floppy,clearxml=yes", "edit-clear-disk")
 c.add_compare("--edit --cpu host-passthrough,clearxml=yes", "edit-clear-cpu")
 c.add_compare("--edit --clock offset=utc,clearxml=yes", "edit-clear-clock")
+c.add_compare("--edit --video clearxml=yes,model=virtio,accel3d=yes", "edit-video-virtio")
+c.add_compare("--edit --graphics clearxml=yes,type=spice,gl=on,listen=none", "edit-graphics-spice-gl", compare_check="2.0.0")  # compare_check=graphics listen=none support
 
-c = vixml.add_category("add/rm devices", "test-for-virtxml --print-diff --define", compare_check=support.SUPPORT_CONN_INPUT_KEYBOARD)
+c = vixml.add_category("add/rm devices", "test-for-virtxml --print-diff --define", compare_check="1.2.2")  # compare_check=input type=keyboard output
 c.add_valid("--add-device --security model=dac")  # --add-device works for seclabel
 c.add_invalid("--add-device --pm suspend_to_disk=yes")  # --add-device without a device
 c.add_invalid("--remove-device --clock utc")  # --remove-device without a dev
@@ -866,11 +895,11 @@ c.add_compare("--add-device --sound pcspk", "add-sound")
 c.add_compare("--add-device --disk %(EXISTIMG1)s,bus=virtio,target=vdf", "add-disk-basic")
 c.add_compare("--add-device --disk %(EXISTIMG1)s", "add-disk-notarget")  # filling in acceptable target
 c.add_compare("--add-device --disk %(NEWIMG1)s,size=.01", "add-disk-create-storage")
-c.add_compare("--remove-device --sound ich6", "remove-sound-model", compare_check=support.SUPPORT_CONN_VIDEO_NEW_RAM_OUTPUT)
+c.add_compare("--remove-device --sound ich6", "remove-sound-model", compare_check="1.3.5")  # compare_check=new graphics listen output
 c.add_compare("--remove-device --disk 3", "remove-disk-index")
 c.add_compare("--remove-device --disk /dev/null", "remove-disk-path")
-c.add_compare("--remove-device --video all", "remove-video-all", compare_check=support.SUPPORT_CONN_VIDEO_NEW_RAM_OUTPUT)
-c.add_compare("--remove-device --host-device 0x04b3:0x4485", "remove-hostdev-name", compare_check=support.SUPPORT_CONN_VIDEO_NEW_RAM_OUTPUT)
+c.add_compare("--remove-device --video all", "remove-video-all", compare_check="1.3.3")  # compare_check=video primary= attribute
+c.add_compare("--remove-device --host-device 0x04b3:0x4485", "remove-hostdev-name", compare_check="1.2.11")  # compare_check=video ram output change
 
 
 
@@ -887,8 +916,8 @@ c.add_invalid("--original-xml %(CLONE_DISK_XML)s --auto-clone")  # Auto flag w/ 
 
 
 c = vclon.add_category("misc", "")
-c.add_compare("--connect %(URI-KVM)s -o test-for-clone --auto-clone --clone-running", "clone-auto1", compare_check=support.SUPPORT_CONN_LOADER_ROM)
-c.add_compare("-o test-clone-simple --name newvm --auto-clone --clone-running", "clone-auto2", compare_check=support.SUPPORT_CONN_LOADER_ROM)
+c.add_compare("--connect %(URI-KVM)s -o test-for-clone --auto-clone --clone-running", "clone-auto1", compare_check="1.2.15")
+c.add_compare("-o test-clone-simple --name newvm --auto-clone --clone-running", "clone-auto2", compare_check="1.2.15")
 c.add_valid("-o test --auto-clone")  # Auto flag, no storage
 c.add_valid("--original-xml %(CLONE_STORAGE_XML)s --auto-clone")  # Auto flag w/ managed storage
 c.add_valid("--original-xml %(CLONE_DISK_XML)s --auto-clone")  # Auto flag w/ local storage
@@ -989,10 +1018,15 @@ _cmdlist += vclon.cmds
 _cmdlist += vconv.cmds
 _cmdlist += vixml.cmds
 
+# Generate numbered names like testCLI%d
 for _cmd in _cmdlist:
     newidx += 1
-    _name = "testCLI"
-    _name += "%s%.4d" % (os.path.basename(_cmd.app.replace("-", "")), newidx)
+    _name = "testCLI%.4d" % newidx
+    if _cmd.compare_file:
+        _base = os.path.splitext(os.path.basename(_cmd.compare_file))[0]
+        _name += _base.replace("-", "_")
+    else:
+        _name += _cmd.app.replace("-", "_")
     setattr(CLITests, _name, maketest(_cmd))
 
 atexit.register(cleanup)

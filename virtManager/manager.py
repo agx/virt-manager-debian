@@ -25,14 +25,14 @@ from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
 
+import libvirt
+
 from virtinst import util
 
 from . import vmmenu
 from . import uiutil
 from .baseclass import vmmGObjectUI
 from .graphwidgets import CellRendererSparkline
-
-import libvirt
 
 # Number of data points for performance graphs
 GRAPH_LEN = 40
@@ -579,17 +579,26 @@ class vmmManager(vmmGObjectUI):
 
     def vm_added(self, conn, connkey):
         vm = conn.get_vm(connkey)
-        if not vm or self.vm_row_key(vm) in self.rows:
+        if not vm:
             return
+
+        row_key = self.vm_row_key(vm)
+        if row_key in self.rows:
+            return
+
+        row = self._build_row(None, vm)
+        parent = self.rows[conn.get_uri()].iter
+        model = self.widget("vm-list").get_model()
+        _iter = model.append(parent, row)
+        path = model.get_path(_iter)
+        self.rows[row_key] = model[path]
 
         vm.connect("state-changed", self.vm_changed)
         vm.connect("resources-sampled", self.vm_row_updated)
         vm.connect("inspection-changed", self.vm_inspection_changed)
 
-        vmlist = self.widget("vm-list")
-        model = vmlist.get_model()
-
-        self._append_vm(model, vm, conn)
+        # Expand a connection when adding a vm to it
+        self.widget("vm-list").expand_row(model.get_path(parent), False)
 
     def vm_removed(self, conn, connkey):
         vmlist = self.widget("vm-list")
@@ -667,29 +676,6 @@ class vmmManager(vmmGObjectUI):
 
         return row
 
-    def _append_vm(self, model, vm, conn):
-        row_key = self.vm_row_key(vm)
-        if row_key in self.rows:
-            return
-
-        row = self._build_row(None, vm)
-        parent = self.rows[conn.get_uri()].iter
-
-        _iter = model.append(parent, row)
-        path = model.get_path(_iter)
-        self.rows[row_key] = model[path]
-
-        # Expand a connection when adding a vm to it
-        self.widget("vm-list").expand_row(model.get_path(parent), False)
-
-    def _append_conn(self, model, conn):
-        row = self._build_row(conn, None)
-
-        _iter = model.append(None, row)
-        path = model.get_path(_iter)
-        self.rows[conn.get_uri()] = model[path]
-        return _iter
-
     def add_conn(self, engine_ignore, conn):
         # Called from engine.py signal conn-added
 
@@ -699,13 +685,16 @@ class vmmManager(vmmGObjectUI):
         if conn.get_uri() in self.rows:
             return
 
+        model = self.widget("vm-list").get_model()
+        row = self._build_row(conn, None)
+        _iter = model.append(None, row)
+        path = model.get_path(_iter)
+        self.rows[conn.get_uri()] = model[path]
+
         conn.connect("vm-added", self.vm_added)
         conn.connect("vm-removed", self.vm_removed)
         conn.connect("resources-sampled", self.conn_row_updated)
         conn.connect("state-changed", self.conn_state_changed)
-
-        vmlist = self.widget("vm-list")
-        self._append_conn(vmlist.get_model(), conn)
 
     def remove_conn(self, engine_ignore, uri):
         # Called from engine.py signal conn-removed
@@ -754,8 +743,6 @@ class vmmManager(vmmGObjectUI):
             row[ROW_MARKUP] = self._build_vm_markup(name, status)
 
             desc = vm.get_description()
-            if not uiutil.can_set_row_none:
-                desc = desc or ""
             row[ROW_HINT] = util.xml_escape(desc)
         except libvirt.libvirtError, e:
             if util.exception_is_libvirt_error(e, "VIR_ERR_NO_DOMAIN"):
@@ -770,8 +757,6 @@ class vmmManager(vmmGObjectUI):
             return
 
         new_icon = _get_inspection_icon_pixbuf(vm, 16, 16)
-        if not uiutil.can_set_row_none:
-            new_icon = new_icon or ""
         row[ROW_INSPECTION_OS_ICON] = new_icon
 
         self.vm_row_updated(vm)
@@ -962,6 +947,7 @@ class vmmManager(vmmGObjectUI):
         return cmp(obj1.network_traffic_rate(), obj2.network_traffic_rate())
 
     def enable_polling(self, column):
+        # pylint: disable=redefined-variable-type
         if column == COL_GUEST_CPU:
             widgn = ["menu_view_stats_guest_cpu", "menu_view_stats_host_cpu"]
             do_enable = self.config.get_stats_enable_cpu_poll()

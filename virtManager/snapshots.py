@@ -107,6 +107,7 @@ class vmmSnapshotPage(vmmGObjectUI):
         self._snapshot_new = None
 
     def _init_ui(self):
+        # pylint: disable=redefined-variable-type
         blue = Gdk.color_parse("#0072A8")
         self.widget("header").modify_bg(Gtk.StateType.NORMAL, blue)
 
@@ -230,9 +231,6 @@ class vmmSnapshotPage(vmmGObjectUI):
         has_internal = False
         for snap in snapshots:
             desc = snap.get_xmlobj().description
-            if not uiutil.can_set_row_none:
-                desc = desc or ""
-
             name = snap.get_name()
             state = util.xml_escape(snap.run_status())
             if snap.is_external():

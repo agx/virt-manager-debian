@@ -19,6 +19,7 @@ import unittest
 import time
 import logging
 import platform
+import traceback
 
 from tests import URLTEST_LOCAL_MEDIA
 from tests import utils
@@ -39,8 +40,7 @@ from virtinst.urlfetcher import MandrivaDistro
 # Access to protected member, needed to unittest stuff
 
 ARCHIVE_FEDORA_URL = "https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/%s/Fedora/%s/os/"
-OLD_FEDORA_URL = "http://dl.fedoraproject.org/pub/fedora/linux/releases/%s/Fedora/%s/os/"
-DEVFEDORA_URL = "http://dl.fedoraproject.org/pub/fedora/linux/development/%s/%s/os/"
+DEVFEDORA_URL = "http://dl.fedoraproject.org/pub/fedora/linux/development/%s/Server/%s/os/"
 FEDORA_URL = "http://dl.fedoraproject.org/pub/fedora/linux/releases/%s/Server/%s/os/"
 
 OLD_CENTOS_URL = "http://vault.centos.org/%s/os/%s"
@@ -51,15 +51,16 @@ SCIENTIFIC_URL = "http://ftp.scientificlinux.org/linux/scientific/%s/%s/os"
 OPENSUSE10 = "http://ftp.hosteurope.de/mirror/ftp.opensuse.org/discontinued/10.0"
 OLD_OPENSUSE_URL = "http://ftp5.gwdg.de/pub/opensuse/discontinued/distribution/%s/repo/oss"
 OPENSUSE_URL = "http://download.opensuse.org/distribution/%s/repo/oss/"
+OPENSUSE_TUMBLEWEED = "http://download.opensuse.org/tumbleweed/repo/oss/"
 
 OLD_UBUNTU_URL = "http://old-releases.ubuntu.com/ubuntu/dists/%s/main/installer-%s"
-UBUNTU_URL = "http://us.archive.ubuntu.com/ubuntu/dists/%s/main/installer-%s"
+UBUNTU_URL = "http://us.archive.ubuntu.com:80/ubuntu/dists/%s/main/installer-%s"
 
 OLD_DEBIAN_URL = "http://archive.debian.org/debian/dists/%s/main/installer-%s/"
 DAILY_DEBIAN_URL = "http://d-i.debian.org/daily-images/%s/"
-DEBIAN_URL = "ftp://ftp.us.debian.org/debian/dists/%s/main/installer-%s/"
+DEBIAN_URL = "ftp://ftp.us.debian.org:21/debian/dists/%s/main/installer-%s/"
 
-MANDRIVA_URL = "ftp://mirror.cc.columbia.edu/pub/linux/mandriva/official/%s/%s"
+MAGEIA_URL = "http://distro.ibiblio.org/mageia/distrib/%s/%s"
 
 
 urls = {}
@@ -67,7 +68,7 @@ _distro = None
 
 
 class _DistroURL(object):
-    def __init__(self, x86_64, detectdistro="linux", i686=None,
+    def __init__(self, x86_64, detectdistro=None, i686=None,
                  hasxen=True, hasbootiso=True, name=None,
                  testshortcircuit=False):
         self.x86_64 = x86_64
@@ -107,10 +108,11 @@ _set_distro(FedoraDistro)
 _add(ARCHIVE_FEDORA_URL % ("14", "x86_64"), "fedora14",
      i686=ARCHIVE_FEDORA_URL % ("14", "i386"))
 # 2 Latest releases
-_add(FEDORA_URL % ("21", "x86_64"), "fedora21")
 _add(FEDORA_URL % ("22", "x86_64"), "fedora22")
+_add(FEDORA_URL % ("23", "x86_64"), "fedora23", name="fedora23")
 # Any Dev release
-_add(FEDORA_URL % ("23", "x86_64"), "fedora22", name="fedora23")
+_add(DEVFEDORA_URL % ("24", "x86_64"), "fedora23", name="fedora24")
+_add(DEVFEDORA_URL % ("rawhide", "x86_64"), "fedora23", name="fedora-rawhide")
 
 
 _set_distro(CentOSDistro)
@@ -123,7 +125,7 @@ _add(OLD_CENTOS_URL % ("5.0", "x86_64"), name="centos-5.0")
 _add(CENTOS_URL % ("5", "x86_64"), "rhel5.11", name="centos-5-latest",
      i686=CENTOS_URL % ("5", "i386"))
 # Latest centos 6 w/ i686
-_add(CENTOS_URL % ("6", "x86_64"), "rhel6.6", name="centos-6-latest",
+_add(CENTOS_URL % ("6", "x86_64"), "centos6.7", name="centos-6-latest",
      i686=CENTOS_URL % ("6", "i386"))
 # Latest centos 7, but no i686 as of 2014-09-06
 _add(CENTOS_URL % ("7", "x86_64"), "centos7.0", name="centos-7-latest")
@@ -131,9 +133,9 @@ _add(CENTOS_URL % ("7", "x86_64"), "centos7.0", name="centos-7-latest")
 
 _set_distro(SLDistro)
 # scientific 5
-_add(OLD_SCIENTIFIC_URL % ("55", "x86_64"), "rhel5.5", name="sl-5latest")
+_add(OLD_SCIENTIFIC_URL % ("55", "x86_64"), "rhel5.5", name="sl-5.5")
 # Latest scientific 6
-_add(SCIENTIFIC_URL % ("6", "x86_64"), "rhel6.6", name="sl-6latest")
+_add(SCIENTIFIC_URL % ("6", "x86_64"), "rhel6.7", name="sl-6latest")
 
 
 _set_distro(SuseDistro)
@@ -148,13 +150,14 @@ _add(OPENSUSE_URL % ("12.3"), "opensuse12.3",
 # Latest 13.x releases
 _add(OPENSUSE_URL % ("13.1"), "opensuse13.1", hasbootiso=False)
 _add(OPENSUSE_URL % ("13.2"), "opensuse13.2", hasbootiso=False)
+# tumbleweed (rolling distro)
+_add(OPENSUSE_TUMBLEWEED, "opensusetumbleweed", hasbootiso=False)
 
 
 _set_distro(DebianDistro)
 # Debian releases rarely enough that we can just do every release since lenny
 _add(OLD_DEBIAN_URL % ("lenny", "amd64"), "debian5", hasxen=False,
      testshortcircuit=True)
-_add(DEBIAN_URL % ("squeeze", "amd64"), "debian6")
 _add(DEBIAN_URL % ("wheezy", "amd64"), "debian7")
 # And daily builds, since we specially handle that URL
 _add(DAILY_DEBIAN_URL % ("amd64"), "debian8", name="debiandaily")
@@ -170,14 +173,11 @@ _add(OLD_UBUNTU_URL % ("hardy", "amd64"), "ubuntu8.04",
 # Latest LTS
 _add(UBUNTU_URL % ("precise", "amd64"), "ubuntu12.04")
 # Latest release
-_add(OLD_UBUNTU_URL % ("raring", "amd64"), "ubuntu13.04")
+_add(UBUNTU_URL % ("wily", "amd64"), "ubuntu15.10")
 
 
 _set_distro(MandrivaDistro)
-# One old mandriva
-_add(MANDRIVA_URL % ("2010.2", "x86_64"),
-     i686=MANDRIVA_URL % ("2010.2", "i586"),
-     hasxen=False, name="mandriva-2010.2")
+_add(MAGEIA_URL % ("5", "x86_64"), name="mageia5", hasxen=False)
 
 
 testconn = utils.open_testdefault()
@@ -203,7 +203,7 @@ def _storeForDistro(fetcher, guest):
                 time.sleep(.5)
                 continue
             raise
-    raise
+    raise  # pylint: disable=misplaced-bare-raise
 
 
 def _testURL(fetcher, distname, arch, distroobj):
@@ -211,31 +211,50 @@ def _testURL(fetcher, distname, arch, distroobj):
     Test that our URL detection logic works for grabbing kernel, xen
     kernel, and boot.iso
     """
-    print "\nTesting %s-%s" % (distname, arch)
+    import sys
+    sys.stdout.write("\nTesting %-25s " % ("%s-%s:" % (distname, arch)))
+    sys.stdout.flush()
+
     hvmguest.os.arch = arch
     xenguest.os.arch = arch
     if distroobj.testshortcircuit:
         hvmguest.os_variant = distroobj.detectdistro
         xenguest.os_variant = distroobj.detectdistro
 
-    hvmstore = _storeForDistro(fetcher, hvmguest)
-    xenstore = None
-    if distroobj.hasxen:
-        xenstore = _storeForDistro(fetcher, xenguest)
+    try:
+        hvmstore = _storeForDistro(fetcher, hvmguest)
+        xenstore = None
+        if distroobj.hasxen:
+            xenstore = _storeForDistro(fetcher, xenguest)
+    except:
+        raise AssertionError("\nFailed to detect URLDistro class:\n"
+            "name   = %s\n"
+            "url    = %s\n\n%s" %
+            (distname, fetcher.location, "".join(traceback.format_exc())))
 
     for s in [hvmstore, xenstore]:
         if (s and distroobj.distroclass and
             not isinstance(s, distroobj.distroclass)):
-            raise AssertionError("(%s): expected store %s, was %s" %
-                                 (distname, distroobj.distroclass, s))
+            raise AssertionError("Unexpected URLDistro class:\n"
+                "found  = %s\n"
+                "expect = %s\n"
+                "name   = %s\n"
+                "url    = %s" %
+                (s.__class__, distroobj.distroclass, distname,
+                 fetcher.location))
 
         # Make sure the stores are reporting correct distro name/variant
         if (s and distroobj.detectdistro and
             distroobj.detectdistro != s.os_variant):
             raise AssertionError(
-                "Store distro/variant did not match expected values:\n"
-                "url=%s\nstore=%s\nfound=%s\nexpect=%s" %
-                (fetcher.location, s, s.os_variant, distroobj.detectdistro))
+                "Detected OS did not match expected values:\n"
+                "found  = %s\n"
+                "expect = %s\n"
+                "name   = %s\n"
+                "url    = %s\n"
+                "store  = %s" %
+                (s.os_variant, distroobj.detectdistro,
+                 distname, fetcher.location, distroobj.distroclass))
 
     # Do this only after the distro detection, since we actually need
     # to fetch files for that part

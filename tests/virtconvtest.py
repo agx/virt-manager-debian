@@ -15,7 +15,6 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
-from distutils.spawn import find_executable
 import glob
 import os
 import StringIO
@@ -50,7 +49,7 @@ class TestVirtConv(unittest.TestCase):
         ignore, out_xml = guest.start_install(return_xml=True)
         out_expect = out_xml
         if outbuf.getvalue():
-            out_expect += ("\n\n" + outbuf.getvalue())
+            out_expect += ("\n\n" + outbuf.getvalue().replace(base_dir, ""))
 
         if not conn.check_support(conn.SUPPORT_CONN_VMPORT):
             self.skipTest("Not comparing XML because vmport isn't supported")
@@ -65,10 +64,6 @@ class TestVirtConv(unittest.TestCase):
         out_path = "%s/%s_%s.%s" % (out_dir, base, in_base, "libvirt")
         if disk_format:
             out_path += ".disk_%s" % disk_format
-
-        if (os.path.splitext(in_path)[1] in [".zip"] and
-            not find_executable("unar")):
-            self.skipTest("Install 'unar' to run all tests.")
 
         try:
             os.chdir(os.path.dirname(in_path))
@@ -95,3 +90,5 @@ class TestVirtConv(unittest.TestCase):
             base_dir + "ovf_input/test1.ovf", "ovf", disk_format="qcow2")
         self._compare_single_file(
             base_dir + "vmx_input/test1.vmx", "vmx", disk_format="raw")
+        self._compare_single_file(
+            base_dir + "ovf_input/test_gzip.ovf", "ovf", disk_format="raw")

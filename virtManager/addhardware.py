@@ -177,7 +177,7 @@ class vmmAddHardware(vmmGObjectUI):
         hw_list = self.widget("hw-list")
         hw_list.set_model(model)
 
-        hw_col = Gtk.TreeViewColumn("Hardware")
+        hw_col = Gtk.TreeViewColumn(_("Hardware"))
         hw_col.set_spacing(6)
         hw_col.set_min_width(165)
 
@@ -272,7 +272,7 @@ class vmmAddHardware(vmmGObjectUI):
         lst.set_model(model)
         uiutil.init_combo_text_column(lst, 1)
         if self.conn.is_qemu():
-            model.append(["virtio", "virtio"])
+            model.append(["virtio", "VirtIO"])
         else:
             model.append([None, _("Hypervisor default")])
 
@@ -347,32 +347,32 @@ class vmmAddHardware(vmmGObjectUI):
         def add_hw_option(name, icon, page, sensitive, errortxt, devtype=None):
             model.append([name, icon, page, sensitive, errortxt, devtype])
 
-        add_hw_option("Storage", "drive-harddisk", PAGE_DISK, have_storage,
+        add_hw_option(_("Storage"), "drive-harddisk", PAGE_DISK, have_storage,
                       have_storage and storage_tooltip or None)
-        add_hw_option("Controller", "device_pci", PAGE_CONTROLLER, True, None)
-        add_hw_option("Network", "network-idle", PAGE_NETWORK, True, None)
-        add_hw_option("Input", "input-mouse", PAGE_INPUT, self.vm.is_hvm(),
+        add_hw_option(_("Controller"), "device_pci", PAGE_CONTROLLER, True, None)
+        add_hw_option(_("Network"), "network-idle", PAGE_NETWORK, True, None)
+        add_hw_option(_("Input"), "input-mouse", PAGE_INPUT, self.vm.is_hvm(),
                       _("Not supported for this guest type."))
-        add_hw_option("Graphics", "video-display", PAGE_GRAPHICS,
+        add_hw_option(_("Graphics"), "video-display", PAGE_GRAPHICS,
                       True, None)
-        add_hw_option("Sound", "audio-card", PAGE_SOUND,
+        add_hw_option(_("Sound"), "audio-card", PAGE_SOUND,
                       self.vm.is_hvm(),
                       _("Not supported for this guest type."))
-        add_hw_option("Serial", Gtk.STOCK_CONNECT, PAGE_CHAR,
+        add_hw_option(_("Serial"), Gtk.STOCK_CONNECT, PAGE_CHAR,
                       self.vm.is_hvm(),
                       _("Not supported for this guest type."),
                       "serial")
-        add_hw_option("Parallel", Gtk.STOCK_CONNECT, PAGE_CHAR,
+        add_hw_option(_("Parallel"), Gtk.STOCK_CONNECT, PAGE_CHAR,
                       self.vm.is_hvm(),
                       _("Not supported for this guest type."),
                       "parallel")
-        add_hw_option("Console", Gtk.STOCK_CONNECT, PAGE_CHAR,
+        add_hw_option(_("Console"), Gtk.STOCK_CONNECT, PAGE_CHAR,
                       True, None, "console")
-        add_hw_option("Channel", Gtk.STOCK_CONNECT, PAGE_CHAR,
+        add_hw_option(_("Channel"), Gtk.STOCK_CONNECT, PAGE_CHAR,
                       self.vm.is_hvm(),
                       _("Not supported for this guest type."),
                       "channel")
-        add_hw_option("USB Host Device", "system-run", PAGE_HOSTDEV,
+        add_hw_option(_("USB Host Device"), "system-run", PAGE_HOSTDEV,
                       self.conn.is_nodedev_capable(),
                       _("Connection does not support host device enumeration"),
                       "usb")
@@ -383,28 +383,28 @@ class vmmAddHardware(vmmGObjectUI):
         if self.vm.is_container():
             nodedev_enabled = False
             nodedev_errstr = _("Not supported for containers")
-        add_hw_option("PCI Host Device", "system-run", PAGE_HOSTDEV,
+        add_hw_option(_("PCI Host Device"), "system-run", PAGE_HOSTDEV,
                       nodedev_enabled, nodedev_errstr, "pci")
 
-        add_hw_option("Video", "video-display", PAGE_VIDEO, True,
+        add_hw_option(_("Video"), "video-display", PAGE_VIDEO, True,
                       _("Libvirt version does not support video devices."))
-        add_hw_option("Watchdog", "device_pci", PAGE_WATCHDOG,
+        add_hw_option(_("Watchdog"), "device_pci", PAGE_WATCHDOG,
                       self.vm.is_hvm(),
                       _("Not supported for this guest type."))
-        add_hw_option("Filesystem", "folder", PAGE_FILESYSTEM,
+        add_hw_option(_("Filesystem"), "folder", PAGE_FILESYSTEM,
                       self.conn.check_support(
                         self.conn.SUPPORT_CONN_FILESYSTEM) and
                       not self.vm.stable_defaults(),
                       _("Not supported for this hypervisor/libvirt "
                         "combination."))
-        add_hw_option("Smartcard", "device_serial", PAGE_SMARTCARD,
+        add_hw_option(_("Smartcard"), "device_serial", PAGE_SMARTCARD,
                       True, None)
-        add_hw_option("USB Redirection", "device_usb", PAGE_USBREDIR,
+        add_hw_option(_("USB Redirection"), "device_usb", PAGE_USBREDIR,
                       True, None)
-        add_hw_option("TPM", "device_cpu", PAGE_TPM,
+        add_hw_option(_("TPM"), "device_cpu", PAGE_TPM,
                       True, None)
-        add_hw_option("RNG", "system-run", PAGE_RNG, True, None)
-        add_hw_option("Panic Notifier", "system-run", PAGE_PANIC,
+        add_hw_option(_("RNG"), "system-run", PAGE_RNG, True, None)
+        add_hw_option(_("Panic Notifier"), "system-run", PAGE_PANIC,
             self.conn.check_support(self.conn.SUPPORT_CONN_PANIC_DEVICE),
             _("Not supported for this hypervisor/libvirt combination."))
 
@@ -455,9 +455,6 @@ class vmmAddHardware(vmmGObjectUI):
         # FS params
         self._fsdetails.reset_state()
 
-        # Video params
-        self.populate_video_combo(self.vm, self.widget("video-model"))
-
         # TPM params
         self.widget("tpm-device-path").set_text("/dev/tpm0")
 
@@ -490,34 +487,18 @@ class vmmAddHardware(vmmGObjectUI):
     #####################
 
     @staticmethod
-    def populate_video_combo(vm, combo):
-        model = combo.get_model()
-        has_spice = bool([g for g in vm.get_graphics_devices()
-                          if g.type == g.TYPE_SPICE])
-        has_qxl = bool([v for v in vm.get_video_devices()
-                        if v.model == "qxl"])
-
-        model.clear()
-        tmpdev = virtinst.VirtualVideoDevice(vm.conn.get_backend())
-        for m in tmpdev.MODELS:
-            if vm.stable_defaults():
-                if m == "qxl" and not has_spice and not has_qxl:
-                    # Only list QXL video option when VM has SPICE video
-                    continue
-
-            model.append([m, tmpdev.pretty_model(m)])
-
-        if len(model) > 0:
-            combo.set_active(0)
-
-    @staticmethod
     def build_video_combo(vm, combo):
         model = Gtk.ListStore(str, str)
         combo.set_model(model)
         uiutil.init_combo_text_column(combo, 1)
         combo.get_model().set_sort_column_id(1, Gtk.SortType.ASCENDING)
 
-        vmmAddHardware.populate_video_combo(vm, combo)
+        tmpdev = virtinst.VirtualVideoDevice(vm.conn.get_backend())
+        for m in tmpdev.MODELS:
+            model.append([m, tmpdev.pretty_model(m)])
+
+        if len(model) > 0:
+            combo.set_active(0)
 
     @staticmethod
     def build_sound_combo(vm, combo):
@@ -600,8 +581,8 @@ class vmmAddHardware(vmmGObjectUI):
         model.clear()
 
         # [xml value, label]
-        model.append(["passthrough", "Passthrough"])
-        model.append(["host", "Host"])
+        model.append(["passthrough", _("Passthrough")])
+        model.append(["host", _("Host")])
 
     @staticmethod
     def build_smartcard_mode_combo(vm, combo):
@@ -628,7 +609,7 @@ class vmmAddHardware(vmmGObjectUI):
         model.clear()
 
         # [xml value, label, conn details]
-        model.append(["spicevmc", "Spice channel", False])
+        model.append(["spicevmc", _("Spice channel"), False])
         model.append(["tcp", "TCP", True])
 
     @staticmethod
@@ -714,7 +695,7 @@ class vmmAddHardware(vmmGObjectUI):
             if not vm.get_xmlobj().os.is_q35():
                 rows.append(["ide", "IDE"])
             rows.append(["sata", "SATA"])
-            rows.append(["fdc", "Floppy"])
+            rows.append(["fdc", _("Floppy")])
 
             if not vm.stable_defaults():
                 rows.append(["scsi", "SCSI"])
@@ -1117,7 +1098,7 @@ class vmmAddHardware(vmmGObjectUI):
 
         if page == PAGE_CHAR:
             char_class = self._get_char_class()
-            return char_class.virtual_device_type.capitalize() + " Device"
+            return _("%s Device") % char_class.virtual_device_type.capitalize()
         if page == PAGE_HOSTDEV:
             row = self._get_hw_selection()
             if row and row[5] == "pci":

@@ -90,10 +90,10 @@ class vmmNetworkList(vmmGObjectUI):
         combo.set_model(model)
         uiutil.init_combo_text_column(combo, 1)
 
-        model.append(["bridge", "Bridge"])
+        model.append(["bridge", _("Bridge")])
         model.append(["vepa", "VEPA"])
-        model.append(["private", "Private"])
-        model.append(["passthrough", "Passthrough"])
+        model.append(["private", _("Private")])
+        model.append(["passthrough", _("Passthrough")])
         combo.set_active(0)
 
         combo = self.widget("net-portgroup")
@@ -473,18 +473,18 @@ class vmmNetworkList(vmmGObjectUI):
     #############
 
     def _emit_changed(self, *args, **kwargs):
-        ignore = args
-        ignore = kwargs
+        ignore1 = args
+        ignore2 = kwargs
         self.emit("changed")
 
     def _emit_vport_changed(self, *args, **kwargs):
-        ignore = args
-        ignore = kwargs
+        ignore1 = args
+        ignore2 = kwargs
         self.emit("changed-vport")
 
     def _repopulate_network_list(self, *args, **kwargs):
-        ignore = args
-        ignore = kwargs
+        ignore1 = args
+        ignore2 = kwargs
 
         netlist = self.widget("net-source")
         current_label = uiutil.get_list_selection(netlist, column=2)

@@ -29,8 +29,7 @@ import re
 from . import diskbackend
 from . import util
 from .device import VirtualDevice
-from .seclabel import Seclabel
-from .xmlbuilder import XMLChildProperty, XMLProperty
+from .xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
 
 
 def _qemu_sanitize_drvtype(phystype, fmt, manual_format=False):
@@ -89,6 +88,17 @@ def _is_dir_searchable(uid, username, path):
         return False
 
     return bool(re.search("user:%s:..x" % username, out))
+
+
+class _DiskSeclabel(XMLBuilder):
+    """
+    This is for disk source <seclabel>. It's similar to a domain
+    <seclabel> but has fewer options
+    """
+    _XML_ROOT_NAME = "seclabel"
+    model = XMLProperty("./@model")
+    relabel = XMLProperty("./@relabel", is_yesno=True)
+    label = XMLProperty("./label")
 
 
 class VirtualDisk(VirtualDevice):
@@ -161,7 +171,7 @@ class VirtualDisk(VirtualDevice):
         cases.
 
         (In fact if cached storage volume data is out of date, the volume
-         may have disappeared behind out back, but that shouldn't have bad
+         may have disappeared behind our back, but that shouldn't have bad
          effects in practice.)
         """
         if path is None:
@@ -367,7 +377,7 @@ class VirtualDisk(VirtualDevice):
 
     @staticmethod
     def build_vol_install(conn, volname, poolobj, size, sparse,
-                          fmt=None, backing_store=None):
+                          fmt=None, backing_store=None, backing_format=None):
         """
         Helper for building a StorageVolume instance to pass to VirtualDisk
         for eventual storage creation.
@@ -402,6 +412,7 @@ class VirtualDisk(VirtualDevice):
         volinst.capacity = cap
         volinst.allocation = alloc
         volinst.backing_store = backing_store
+        volinst.backing_format = backing_format
 
         if fmt:
             if not volinst.supports_property("format"):
@@ -489,8 +500,8 @@ class VirtualDisk(VirtualDevice):
     def _set_path(self, newpath):
         if (self._storage_backend and
             self._storage_backend.will_create_storage()):
-            raise ValueError("Can't change disk path if storage creation info "
-                             "has been set.")
+            raise ValueError(_("Can't change disk path if storage creation info "
+                               "has been set."))
 
         # User explicitly changed 'path', so try to lookup its storage
         # object since we may need it
@@ -742,7 +753,11 @@ class VirtualDisk(VirtualDevice):
     iotune_wbs = XMLProperty("./iotune/write_bytes_sec", is_int=True)
     iotune_wis = XMLProperty("./iotune/write_iops_sec", is_int=True)
 
-    seclabel = XMLChildProperty(Seclabel, relative_xpath="./source")
+    seclabels = XMLChildProperty(_DiskSeclabel, relative_xpath="./source")
+    def add_seclabel(self):
+        obj = _DiskSeclabel(self.conn)
+        self.add_child(obj)
+        return obj
 
 
     #################################

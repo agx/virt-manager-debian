@@ -28,7 +28,7 @@ class NewVM(unittest.TestCase):
         # Create default PXE VM
         uiutils.find_fuzzy(newvm, "Import", "radio").click()
         uiutils.find_fuzzy(newvm, None,
-            "text", "existing storage").text = "/tmp/foo.img"
+            "text", "existing storage").text = "/dev/default-pool/testvol1.img"
         uiutils.find_fuzzy(newvm, "Forward", "button").click()
         uiutils.find_fuzzy(newvm, "Forward", "button").click()
         uiutils.find_fuzzy(newvm, "Forward", "button").click()
@@ -109,6 +109,7 @@ class NewVM(unittest.TestCase):
         uiutils.find_fuzzy(newvm, "Windows", "menu item").click()
         uiutils.find_fuzzy(newvm, "install-os-version-entry",
             "text").typeText("Microsoft Windows 8")
+        uiutils.find_fuzzy(newvm, "install-os-version-entry", "text").click()
         uiutils.find_fuzzy(newvm, "Forward", "button").click()
 
         # Verify that CPU values are non-default
