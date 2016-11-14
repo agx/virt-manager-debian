@@ -31,7 +31,7 @@ Depends: ${misc:Depends}, ${python:Depends},
  gconf2,
 Recommends: libvirt-daemon-system (>= 1.2.7), gnome-icon-theme,
  gir1.2-spice-client-gtk-3.0,
-Suggests: virt-viewer, ssh-askpass, gnome-keyring, python-gnomekeyring,
+Suggests: virt-viewer, ssh-askpass, gnome-keyring, gir1.2-secret-1,
  python-guestfs
 Description: desktop application for managing virtual machines
  It presents a summary view of running domains and their live performance &
