@@ -1,2 +1,3 @@
 virtinst/fix-path-to-hvmloader.patch
 virtinst/Fix-patch-to-pygrub.patch
+Mark-Jessie-as-having-qemu-guest-agent.patch

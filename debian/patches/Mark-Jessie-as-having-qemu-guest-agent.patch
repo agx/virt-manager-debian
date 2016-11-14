@@ -1,0 +1,21 @@
+From: =?utf-8?q?Guido_G=C3=BCnther?= <agx@sigxcpu.org>
+Date: Mon, 14 Nov 2016 11:34:58 +0100
+Subject: Mark Jessie as having qemu-guest-agent
+
+---
+ virtinst/osdict.py | 2 +-
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+diff --git a/virtinst/osdict.py b/virtinst/osdict.py
+index e8c1487..37426fd 100644
+--- a/virtinst/osdict.py
++++ b/virtinst/osdict.py
+@@ -500,7 +500,7 @@ class _OsVariant(object):
+         return False
+ 
+     def supports_qemu_ga(self):
+-        return self._is_related_to(["fedora18", "rhel6.0", "sles11sp4"])
++        return self._is_related_to(["fedora18", "rhel6.0", "sles11sp4", "debian8"])
+ 
+     def default_videomodel(self, guest):
+         if guest.os.is_pseries():
