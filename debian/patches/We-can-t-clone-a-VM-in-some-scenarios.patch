@@ -1,0 +1,42 @@
+From: Chen Hanxiao <chenhanxiao@gmail.com>
+Date: Thu, 6 Oct 2016 23:12:59 +0800
+Subject: We can't clone a VM in some scenarios, such as a VM is active.
+
+This patch will disable 'Clone' label in VMActionMenu
+if we can't clone a VM,
+as same as we did for 'Clone' button in clone ui page.
+
+Signed-off-by: Chen Hanxiao <chenhanxiao@gmail.com>
+---
+ virtManager/domain.py | 4 ++++
+ virtManager/vmmenu.py | 2 +-
+ 2 files changed, 5 insertions(+), 1 deletion(-)
+
+diff --git a/virtManager/domain.py b/virtManager/domain.py
+index 3185cf8..b9abc76 100644
+--- a/virtManager/domain.py
++++ b/virtManager/domain.py
+@@ -1651,6 +1651,10 @@ class vmmDomain(vmmLibvirtObject):
+         return self.status() in [libvirt.VIR_DOMAIN_PAUSED]
+     def is_paused(self):
+         return self.status() in [libvirt.VIR_DOMAIN_PAUSED]
++    def is_clonable(self):
++        return self.status() in [libvirt.VIR_DOMAIN_SHUTOFF,
++                                 libvirt.VIR_DOMAIN_PAUSED,
++                                 libvirt.VIR_DOMAIN_PMSUSPENDED]
+ 
+     def run_status(self):
+         return self.pretty_run_status(self.status(), self.has_managed_save())
+diff --git a/virtManager/vmmenu.py b/virtManager/vmmenu.py
+index a1ae375..bb23360 100644
+--- a/virtManager/vmmenu.py
++++ b/virtManager/vmmenu.py
+@@ -128,7 +128,7 @@ class VMActionMenu(_VMMenu):
+             "suspend": bool(vm and vm.is_stoppable()),
+             "resume": bool(vm and vm.is_paused()),
+             "migrate": bool(vm and vm.is_stoppable()),
+-            "clone": True,
++            "clone": bool(vm and vm.is_clonable()),
+         }
+         vismap = {
+             "suspend": bool(vm and not vm.is_paused()),
