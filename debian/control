@@ -8,7 +8,7 @@ Vcs-Git: https://anonscm.debian.org/git/git/pkg-libvirt/virt-manager.git
 Vcs-Browser: https://anonscm.debian.org/cgit/pkg-libvirt/virt-manager.git
 Homepage: http://virt-manager.et.redhat.com/
 X-Python-Version: 2.7
-Build-Depends: debhelper (>= 9), python-all,
+Build-Depends: debhelper (>= 10~), python-all,
  intltool,
  libglib2.0-bin,
 
