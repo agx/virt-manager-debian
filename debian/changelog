@@ -1,3 +1,21 @@
+virt-manager (1:1.4.0-4) unstable; urgency=medium
+
+  * [4dc4c05] Suggest gir1.2-secret-1
+    since we're not using python-gnomekeyring since quiete some time.
+    (Closes: #844159)
+  * [287e515] osdict: Fix incorrect usage of virtio input.
+    Thanks to Laurent Bigonville for the concise report (Closes: #846356)
+  * [73327a8] osdict: Don't return virtio1.0-net as a valid device name
+  * [0923a80] Mark Jessie as having qemu-guest-agent
+  * [b83d836] Disable unavailable clone options
+  * [89bbfb5] Bump standards version to 3.9.8
+  * [4c782e7] Switch to debhelper 10
+  * [3e206bc] Use canonical Vcs-Git URL
+  * [6e15ef5] Use /usr/bin/python.  This makes sure we pick up the right
+    version and lintian happy.
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 24 Dec 2016 01:42:56 +0100
+
 virt-manager (1:1.4.0-3) unstable; urgency=medium
 
   * [0d743f2] Remove broken italian translation
