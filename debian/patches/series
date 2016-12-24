@@ -3,3 +3,4 @@ virtinst/Fix-patch-to-pygrub.patch
 Mark-Jessie-as-having-qemu-guest-agent.patch
 osdict-Don-t-return-virtio1.0-net-as-a-valid-device-name.patch
 We-can-t-clone-a-VM-in-some-scenarios.patch
+Use-usr-bin-python.patch
