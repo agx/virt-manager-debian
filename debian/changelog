@@ -1,3 +1,9 @@
+virt-manager (1:1.4.0-5) unstable; urgency=medium
+
+  * Reupload with virtinst (Closes: #849293)
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 24 Dec 2016 19:56:55 +0100
+
 virt-manager (1:1.4.0-4) unstable; urgency=medium
 
   * [4dc4c05] Suggest gir1.2-secret-1
