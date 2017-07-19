@@ -1,3 +1,13 @@
+virt-manager (1:1.4.0-6) unstable; urgency=medium
+
+  * [f3fd6e8] Drop gconf dependency.  We keep installing
+    org.virt-manager.virt-manager.convert so conversion can take place for
+    users explicitly installing gsettings. (Closes: #856527, #868878)
+  * [a088abd] domain: add support to rename domain with nvram vars file
+    (Closes: #862697)
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 19 Jul 2017 19:19:10 +0200
+
 virt-manager (1:1.4.0-5) unstable; urgency=medium
 
   * Reupload with virtinst (Closes: #849293)
