@@ -27,7 +27,7 @@ Depends: ${misc:Depends}, ${python:Depends},
  gir1.2-vte-2.91,
  gir1.2-libosinfo-1.0,
  virtinst (>= ${binary:Version}),
-Recommends: libvirt-daemon-system (>= 1.2.7), gnome-icon-theme,
+Recommends: libvirt-daemon-system (>= 1.2.7),
  gir1.2-spice-client-gtk-3.0,
 Suggests: virt-viewer, ssh-askpass, gnome-keyring, gir1.2-secret-1,
  python-guestfs
