@@ -14,7 +14,7 @@ so we don't have to worry about picking up the wrong version
  7 files changed, 7 insertions(+), 7 deletions(-)
 
 diff --git a/setup.py b/setup.py
-index 89916b5..af9221d 100755
+index 65118ae..778143a 100755
 --- a/setup.py
 +++ b/setup.py
 @@ -1,4 +1,4 @@
@@ -34,7 +34,7 @@ index 370584f..f0a5040 100755
  
  import atexit
 diff --git a/virt-clone b/virt-clone
-index 00d0e30..e83cb9e 100755
+index 572977a..fac3d1f 100755
 --- a/virt-clone
 +++ b/virt-clone
 @@ -1,4 +1,4 @@
@@ -54,7 +54,7 @@ index dd964f5..e2f408d 100755
  # Copyright 2008, 2013, 2014  Red Hat, Inc.
  # Joey Boggs <jboggs@redhat.com>
 diff --git a/virt-install b/virt-install
-index 817f4b3..4c0c62e 100755
+index f1da100..e66e674 100755
 --- a/virt-install
 +++ b/virt-install
 @@ -1,4 +1,4 @@
@@ -64,7 +64,7 @@ index 817f4b3..4c0c62e 100755
  # Copyright 2005-2014 Red Hat, Inc.
  #
 diff --git a/virt-manager b/virt-manager
-index 53b7356..fc196f0 100755
+index b3a8f69..0f457af 100755
 --- a/virt-manager
 +++ b/virt-manager
 @@ -1,4 +1,4 @@
@@ -74,7 +74,7 @@ index 53b7356..fc196f0 100755
  # Copyright (C) 2006, 2014 Red Hat, Inc.
  # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 diff --git a/virt-xml b/virt-xml
-index 39ca18e..4889a3b 100755
+index cfe3796..6ad7779 100755
 --- a/virt-xml
 +++ b/virt-xml
 @@ -1,4 +1,4 @@
