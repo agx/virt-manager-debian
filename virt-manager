@@ -84,6 +84,7 @@ def _import_gtk(leftovers):
 
         globals()["Gtk"] = Gtk
         import virtManager.config
+        ignore = virtManager.config
     except Exception, e:
         # Don't just let the exception raise here. abrt reports bugs
         # when users mess up su/sudo and DISPLAY isn't set. Printing
@@ -261,6 +262,9 @@ def main():
 
     if show_window and options.uri is None:
         raise RuntimeError("can't use --show-* options without --connect")
+
+    if show_window:
+        options.skip_autostart = True
 
     # Hook libvirt events into glib main loop
     LibvirtGLib.init(None)

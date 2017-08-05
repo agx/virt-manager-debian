@@ -336,7 +336,7 @@ class vmmStorageList(vmmGObjectUI):
         self.widget("pool-name-entry").set_text(pool.get_name())
         self.widget("pool-name-entry").set_editable(not active)
         self.widget("pool-sizes").set_markup(
-                """%s Free / <i>%s In Use</i>""" %
+                _("%s Free / <i>%s In Use</i>") %
                 (pool.get_pretty_available(), pool.get_pretty_allocation()))
         self.widget("pool-location").set_text(
                 pool.get_target_path())
@@ -479,13 +479,6 @@ class vmmStorageList(vmmGObjectUI):
 
         self._active_edits = []
         return True
-
-    def _refresh_current_pool(self):
-        cp = self._current_pool()
-        if cp is None:
-            return
-
-        cp.refresh()
 
 
     #############

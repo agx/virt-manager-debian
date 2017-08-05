@@ -21,9 +21,6 @@
     <timer name="pit" tickpolicy="delay"/>
     <timer name="hpet" present="no"/>
   </clock>
-  <on_poweroff>destroy</on_poweroff>
-  <on_reboot>restart</on_reboot>
-  <on_crash>restart</on_crash>
   <pm>
     <suspend-to-mem enabled="no"/>
     <suspend-to-disk enabled="no"/>
@@ -45,7 +42,7 @@
       <mac address="00:11:22:33:44:55"/>
       <model type="virtio"/>
     </interface>
-    <input type="mouse" bus="ps2"/>
+    <input type="tablet" bus="usb"/>
     <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
       <image compression="off"/>
     </graphics>

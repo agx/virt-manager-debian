@@ -17,9 +17,6 @@
 
 import difflib
 import os
-import logging
-
-import libvirt
 
 import virtinst
 import virtinst.cli
@@ -54,6 +51,7 @@ uri_kvm_s390x_KVMIBM = (_uri_kvm_domcaps + _capsprefix + "kvm-s390x-KVMIBM.xml")
 
 uri_xen = uri_test + _capsprefix + "xen-rhel5.4.xml,xen"
 uri_lxc = uri_test + _capsprefix + "lxc.xml,lxc"
+uri_vz = uri_test + _capsprefix + "vz.xml,vz"
 
 
 def get_debug():
@@ -140,11 +138,6 @@ def open_kvm_rhel(connver=None):
 
 def open_test_remote():
     return openconn(uri_test_remote)
-
-
-def _libvirt_callback(ignore, err):
-    logging.warn("libvirt errmsg: %s", err[2])
-libvirt.registerErrorHandler(f=_libvirt_callback, ctx=None)
 
 
 def test_create(testconn, xml, define_func="defineXML"):

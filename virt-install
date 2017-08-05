@@ -595,7 +595,8 @@ def build_guest_instance(conn, options):
     convert_old_os_options(options)
 
     # non-xml install options
-    guest.installer.extraargs = options.extra_args or []
+    options.extra_args = options.extra_args or []
+    guest.installer.extraargs = options.extra_args
     guest.installer.initrd_injections = options.initrd_inject
     guest.autostart = options.autostart
 
@@ -646,7 +647,7 @@ def build_guest_instance(conn, options):
 ###########################
 
 def start_install(guest, options):
-    if options.wait:
+    if options.wait is not None:
         wait_on_install = True
         wait_time = options.wait * 60
         if "VIRTINST_TEST_SUITE" in os.environ and wait_time:

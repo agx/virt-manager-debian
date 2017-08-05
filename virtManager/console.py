@@ -455,14 +455,14 @@ class vmmConsolePages(vmmGObjectUI):
         if not self._viewer.console_get_desktop_resolution():
             return
 
-        topwin_alloc = self.topwin.get_allocation()
+        top_w, top_h = self.topwin.get_size()
         viewer_alloc = self.widget("console-gfx-scroll").get_allocation()
         desktop_w, desktop_h = self._viewer.console_get_desktop_resolution()
 
         self.topwin.unmaximize()
         self.topwin.resize(
-            desktop_w + (topwin_alloc.width - viewer_alloc.width),
-            desktop_h + (topwin_alloc.height - viewer_alloc.height))
+            desktop_w + (top_w - viewer_alloc.width),
+            desktop_h + (top_h - viewer_alloc.height))
 
 
     ################
@@ -609,7 +609,8 @@ class vmmConsolePages(vmmGObjectUI):
         self._close_viewer()
         self.widget("console-pages").set_current_page(
             _CONSOLE_PAGE_UNAVAILABLE)
-        self.widget("console-unavailable").set_label("<b>" + msg + "</b>")
+        if msg:
+            self.widget("console-unavailable").set_label("<b>" + msg + "</b>")
 
     def _activate_auth_page(self, withPassword, withUsername):
         (pw, username) = self.config.get_console_password(self.vm)
@@ -786,7 +787,6 @@ class vmmConsolePages(vmmGObjectUI):
             self._enable_modifiers()
 
     def _viewer_auth_rejected(self, ignore, errmsg):
-        self._close_viewer()
         self._activate_unavailable_page(errmsg)
 
     def _viewer_auth_error(self, ignore, errmsg, viewer_will_disconnect):
@@ -797,7 +797,6 @@ class vmmConsolePages(vmmGObjectUI):
             # GtkVNC will disconnect after an auth error, so lets do it for
             # them and re-init the viewer (which will be triggered by
             # update_vm_widget_states if needed)
-            self._close_viewer()
             self._activate_unavailable_page(errmsg)
 
         self._update_vm_widget_states()
@@ -829,9 +828,7 @@ class vmmConsolePages(vmmGObjectUI):
         self._activate_unavailable_page(msg)
 
     def _viewer_disconnected(self, ignore, errdetails, ssherr):
-        self.widget("console-pages").set_current_page(
-            _CONSOLE_PAGE_UNAVAILABLE)
-        self._close_viewer()
+        self._activate_unavailable_page(_("Viewer disconnected."))
         logging.debug("Viewer disconnected")
 
         # Make sure modifiers are set correctly
@@ -1016,7 +1013,7 @@ class vmmConsolePages(vmmGObjectUI):
         return self._viewer.console_get_pixbuf()
 
     def details_close_viewer(self):
-        return self._close_viewer()
+        return self._activate_unavailable_page(_("Viewer disconnected."))
 
     def details_activate_default_console_page(self):
         return self._activate_default_console_page()

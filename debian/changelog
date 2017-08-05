@@ -1,3 +1,13 @@
+virt-manager (1:1.4.1-1~1.gbp031a05) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @031a0558c703623ea419ce5acb7dfeb706173776 **
+
+  * [2f34677] Drop obsolete gnome-icon-theme recommends (Closes: #869685)
+  * [4d6092c] Update uscan URL
+  * [2c530bc] New upstream version 1.4.1
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 05 Aug 2017 14:09:09 -0300
+
 virt-manager (1:1.4.0-6) unstable; urgency=medium
 
   * [f3fd6e8] Drop gconf dependency.  We keep installing

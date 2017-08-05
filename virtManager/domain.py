@@ -32,6 +32,7 @@ from virtinst import DomainSnapshot
 from virtinst import Guest
 from virtinst import util
 from virtinst import VirtualController
+from virtinst import VirtualDisk
 
 from .libvirtobject import vmmLibvirtObject
 
@@ -149,7 +150,7 @@ def start_job_progress_thread(vm, meter, progtext):
 
 class vmmInspectionData(object):
     def __init__(self):
-        self.type = None
+        self.os_type = None
         self.distro = None
         self.major_version = None
         self.minor_version = None
@@ -286,7 +287,7 @@ class vmmDomain(vmmLibvirtObject):
                 key("SHUTDOWN_USER", 1) : _("User"),
             },
             libvirt.VIR_DOMAIN_SHUTOFF : {
-                key("SHUTOFF_SHUTDOWN", 1) : _("Shutdown"),
+                key("SHUTOFF_SHUTDOWN", 1) : _("Shut Down"),
                 key("SHUTOFF_DESTROYED", 2) : _("Destroyed"),
                 key("SHUTOFF_CRASHED", 3) : _("Crashed"),
                 key("SHUTOFF_MIGRATED", 4) : _("Migrated"),
@@ -479,6 +480,10 @@ class vmmDomain(vmmLibvirtObject):
             return "-"
         return str(i)
 
+    def has_nvram(self):
+        return bool(self.get_xmlobj().os.loader_ro is True and
+                    self.get_xmlobj().os.loader_type == "pflash")
+
     ##################
     # Support checks #
     ##################
@@ -552,10 +557,59 @@ class vmmDomain(vmmLibvirtObject):
         raise RuntimeError(_("Could not find specified device in the "
                              "inactive VM configuration: %s") % repr(origdev))
 
+    def _copy_nvram_file(self, new_name):
+        """
+        We need to do this copy magic because there is no Libvirt storage API
+        to rename storage volume.
+        """
+        old_nvram = VirtualDisk(self.conn.get_backend())
+        old_nvram.path = self.get_xmlobj().os.nvram
+
+        nvram_dir = os.path.dirname(old_nvram.path)
+        new_nvram_path = os.path.join(nvram_dir, "%s_VARS.fd" % new_name)
+        new_nvram = VirtualDisk(self.conn.get_backend())
+
+        nvram_install = VirtualDisk.build_vol_install(
+                self.conn.get_backend(), os.path.basename(new_nvram_path),
+                old_nvram.get_parent_pool(), old_nvram.get_size(), False)
+        nvram_install.input_vol = old_nvram.get_vol_object()
+        nvram_install.sync_input_vol(only_format=True)
+
+        new_nvram.set_vol_install(nvram_install)
+        new_nvram.validate()
+        new_nvram.setup()
+
+        return new_nvram, old_nvram
+
 
     ##############################
     # Persistent XML change APIs #
     ##############################
+
+    def rename_domain(self, new_name):
+        new_nvram = None
+        old_nvram = None
+        if self.has_nvram():
+            new_nvram, old_nvram = self._copy_nvram_file(new_name)
+
+        try:
+            self.define_name(new_name)
+        except Exception as error:
+            if new_nvram:
+                try:
+                    new_nvram.get_vol_object().delete(0)
+                except Exception as warn:
+                    logging.debug("rename failed and new nvram was not "
+                                  "removed: '%s'", warn)
+            raise error
+
+        if new_nvram:
+            try:
+                old_nvram.get_vol_object().delete(0)
+            except Exception as warn:
+                logging.debug("old nvram file was not removed: '%s'", warn)
+
+            self.define_overview(nvram=new_nvram.path)
 
     # Device Add/Remove
     def add_device(self, devobj):
@@ -621,7 +675,8 @@ class vmmDomain(vmmLibvirtObject):
         self._redefine_xmlobj(guest)
 
     def define_overview(self, machine=_SENTINEL, description=_SENTINEL,
-        title=_SENTINEL, idmap_list=_SENTINEL, loader=_SENTINEL):
+        title=_SENTINEL, idmap_list=_SENTINEL, loader=_SENTINEL,
+        nvram=_SENTINEL):
         guest = self._make_xmlobj_to_define()
         if machine != _SENTINEL:
             guest.os.machine = machine
@@ -643,6 +698,9 @@ class vmmDomain(vmmLibvirtObject):
                 guest.os.loader = loader
                 guest.os.loader_type = "pflash"
                 guest.os.loader_ro = True
+
+        if nvram != _SENTINEL:
+            guest.os.nvram = nvram
 
         if idmap_list != _SENTINEL:
             if idmap_list is not None:
@@ -824,15 +882,16 @@ class vmmDomain(vmmLibvirtObject):
             self._redefine_xmlobj(xmlobj)
 
     def define_graphics(self, devobj, do_hotplug,
-        listen=_SENTINEL, port=_SENTINEL, tlsport=_SENTINEL,
-        passwd=_SENTINEL, keymap=_SENTINEL, gtype=_SENTINEL):
+        listen=_SENTINEL, addr=_SENTINEL, port=_SENTINEL, tlsport=_SENTINEL,
+        passwd=_SENTINEL, keymap=_SENTINEL, gtype=_SENTINEL,
+        gl=_SENTINEL, rendernode=_SENTINEL):
         xmlobj = self._make_xmlobj_to_define()
         editdev = self._lookup_device_to_define(xmlobj, devobj, do_hotplug)
         if not editdev:
             return
 
-        if listen != _SENTINEL:
-            editdev.listen = listen
+        if addr != _SENTINEL:
+            editdev.listen = addr
         if port != _SENTINEL:
             editdev.port = port
         if tlsport != _SENTINEL:
@@ -843,6 +902,16 @@ class vmmDomain(vmmLibvirtObject):
             editdev.keymap = keymap
         if gtype != _SENTINEL:
             editdev.type = gtype
+        if gl != _SENTINEL:
+            editdev.gl = gl
+        if rendernode != _SENTINEL:
+            editdev.rendernode = rendernode
+        if listen != _SENTINEL:
+            listentype = editdev.get_first_listen_type()
+            if listen == 'none':
+                editdev.set_listen_none()
+            elif listentype and listentype == 'none':
+                editdev.remove_all_listens()
 
         if do_hotplug:
             self.hotplug(device=editdev)
@@ -865,7 +934,7 @@ class vmmDomain(vmmLibvirtObject):
         else:
             self._redefine_xmlobj(xmlobj)
 
-    def define_video(self, devobj, do_hotplug, model=_SENTINEL):
+    def define_video(self, devobj, do_hotplug, model=_SENTINEL, accel3d=_SENTINEL):
         xmlobj = self._make_xmlobj_to_define()
         editdev = self._lookup_device_to_define(xmlobj, devobj, do_hotplug)
         if not editdev:
@@ -882,6 +951,10 @@ class vmmDomain(vmmLibvirtObject):
             editdev.heads = None
             editdev.ram = None
             editdev.vgamem = None
+            editdev.accel3d = None
+
+        if accel3d != _SENTINEL:
+            editdev.accel3d = accel3d
 
         if do_hotplug:
             self.hotplug(device=editdev)
@@ -949,6 +1022,7 @@ class vmmDomain(vmmLibvirtObject):
 
             else:
                 editdev.model = model
+                editdev.address.clear()
                 self.hotplug(device=editdev)
 
         if model != _SENTINEL:
@@ -1116,7 +1190,8 @@ class vmmDomain(vmmLibvirtObject):
         return self._backend.openConsole(devname, stream, flags)
 
     def open_graphics_fd(self):
-        return self._backend.openGraphicsFD(0)
+        return self._backend.openGraphicsFD(0,
+                libvirt.VIR_DOMAIN_OPEN_GRAPHICS_SKIPAUTH)
 
     def refresh_snapshots(self):
         self._snapshot_list = None
@@ -1409,14 +1484,21 @@ class vmmDomain(vmmLibvirtObject):
 
     @vmmLibvirtObject.lifecycle_action
     def delete(self, force=True):
+        """
+        @force: True if we are deleting domain, False if we are renaming domain
+
+        If the domain is renamed we need to keep the nvram file.
+        """
         flags = 0
         if force:
             flags |= getattr(libvirt,
                              "VIR_DOMAIN_UNDEFINE_SNAPSHOTS_METADATA", 0)
             flags |= getattr(libvirt, "VIR_DOMAIN_UNDEFINE_MANAGED_SAVE", 0)
-            if (self.get_xmlobj().os.loader_ro is True and
-                self.get_xmlobj().os.loader_type == "pflash"):
+            if self.has_nvram():
                 flags |= getattr(libvirt, "VIR_DOMAIN_UNDEFINE_NVRAM", 0)
+        else:
+            if self.has_nvram():
+                flags |= getattr(libvirt, "VIR_DOMAIN_UNDEFINE_KEEP_NVRAM", 0)
         try:
             self._backend.undefineFlags(flags)
         except libvirt.libvirtError:
@@ -1487,7 +1569,11 @@ class vmmDomain(vmmLibvirtObject):
         if meter:
             start_job_progress_thread(self, meter, _("Migrating domain"))
 
-        self._backend.migrate(libvirt_destconn, flags, None, interface, 0)
+        params = {}
+        if interface:
+            params[libvirt.VIR_MIGRATE_PARAM_URI] = interface
+
+        self._backend.migrate3(libvirt_destconn, params, flags)
 
         # Don't schedule any conn update, migrate dialog handles it for us
 
@@ -1651,6 +1737,10 @@ class vmmDomain(vmmLibvirtObject):
         return self.status() in [libvirt.VIR_DOMAIN_PAUSED]
     def is_paused(self):
         return self.status() in [libvirt.VIR_DOMAIN_PAUSED]
+    def is_clonable(self):
+        return self.status() in [libvirt.VIR_DOMAIN_SHUTOFF,
+                                 libvirt.VIR_DOMAIN_PAUSED,
+                                 libvirt.VIR_DOMAIN_PMSUSPENDED]
 
     def run_status(self):
         return self.pretty_run_status(self.status(), self.has_managed_save())

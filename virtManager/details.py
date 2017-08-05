@@ -27,6 +27,10 @@ from gi.repository import Gdk
 
 import libvirt
 
+import virtinst
+from virtinst import util
+from virtinst import VirtualRNGDevice
+
 from . import vmmenu
 from . import uiutil
 from .baseclass import vmmGObjectUI
@@ -38,10 +42,6 @@ from .netlist import vmmNetworkList
 from .snapshots import vmmSnapshotPage
 from .storagebrowse import vmmStorageBrowser
 from .graphwidgets import Sparkline
-
-import virtinst
-from virtinst import util
-from virtinst import VirtualRNGDevice
 
 
 # Parameters that can be edited in the details window
@@ -87,11 +87,15 @@ EDIT_NET_MAC,
 EDIT_GFX_PASSWD,
 EDIT_GFX_TYPE,
 EDIT_GFX_KEYMAP,
+EDIT_GFX_LISTEN,
 EDIT_GFX_ADDRESS,
 EDIT_GFX_TLSPORT,
 EDIT_GFX_PORT,
+EDIT_GFX_OPENGL,
+EDIT_GFX_RENDERNODE,
 
 EDIT_VIDEO_MODEL,
+EDIT_VIDEO_3D,
 
 EDIT_WATCHDOG_MODEL,
 EDIT_WATCHDOG_ACTION,
@@ -104,7 +108,7 @@ EDIT_FS,
 
 EDIT_HOSTDEV_ROMBAR,
 
-) = range(1, 45)
+) = range(1, 49)
 
 
 # Columns in hw list model
@@ -233,10 +237,20 @@ def _label_for_device(dev):
         return _("Filesystem %s") % dev.target[:8]
     if devtype == "controller":
         return _("Controller %s") % dev.pretty_desc()
+    if devtype == "rng":
+        label = _("RNG")
+        if dev.device:
+            print "dev device='%s'" % dev.device
+            print dev.get_xml_config()
+            label += (" %s" % dev.device)
+        return label
+    if devtype == "tpm":
+        label = _("TPM")
+        if dev.device_path:
+            label += (" %s" % dev.device_path)
+        return label
 
     devmap = {
-        "rng": _("RNG"),
-        "tpm": _("TPM"),
         "panic": _("Panic Notifier"),
         "smartcard": _("Smartcard"),
         "watchdog": _("Watchdog"),
@@ -310,6 +324,23 @@ def _warn_cpu_thread_topo(threads, cpu_model):
     return False
 
 
+def _label_for_os_type(os_type):
+    typemap = {
+        "dos": _("MS-DOS/FreeDOS"),
+        "freebsd": _("FreeBSD"),
+        "hurd": _("GNU/Hurd"),
+        "linux": _("Linux"),
+        "minix": _("MINIX"),
+        "netbsd": _("NetBSD"),
+        "openbsd": _("OpenBSD"),
+        "windows": _("Microsoft Windows"),
+    }
+    try:
+        return typemap[os_type]
+    except KeyError:
+        return _("unknown")
+
+
 class vmmDetails(vmmGObjectUI):
     __gsignals__ = {
         "action-save-domain": (GObject.SignalFlags.RUN_FIRST, None, [str, str]),
@@ -328,6 +359,7 @@ class vmmDetails(vmmGObjectUI):
         "details-closed": (GObject.SignalFlags.RUN_FIRST, None, []),
         "details-opened": (GObject.SignalFlags.RUN_FIRST, None, []),
         "customize-finished": (GObject.SignalFlags.RUN_FIRST, None, []),
+        "inspection-refresh": (GObject.SignalFlags.RUN_FIRST, None, [str, str]),
     }
 
     def __init__(self, vm, parent=None):
@@ -376,8 +408,14 @@ class vmmDetails(vmmGObjectUI):
             lambda *x: self.enable_apply(x, EDIT_GFX_TYPE))
         self.gfxdetails.connect("changed-port",
             lambda *x: self.enable_apply(x, EDIT_GFX_PORT))
+        self.gfxdetails.connect("changed-opengl",
+            lambda *x: self.enable_apply(x, EDIT_GFX_OPENGL))
+        self.gfxdetails.connect("changed-rendernode",
+            lambda *x: self.enable_apply(x, EDIT_GFX_RENDERNODE))
         self.gfxdetails.connect("changed-tlsport",
             lambda *x: self.enable_apply(x, EDIT_GFX_TLSPORT))
+        self.gfxdetails.connect("changed-listen",
+            lambda *x: self.enable_apply(x, EDIT_GFX_LISTEN))
         self.gfxdetails.connect("changed-address",
             lambda *x: self.enable_apply(x, EDIT_GFX_ADDRESS))
         self.gfxdetails.connect("changed-keymap",
@@ -467,6 +505,8 @@ class vmmDetails(vmmGObjectUI):
             "on_idmap_gid_count_changed": lambda *x: self.enable_apply(x, EDIT_IDMAP),
             "on_idmap_check_toggled": self.config_idmap_enable,
 
+            "on_details_inspection_refresh_clicked": self.inspection_refresh,
+
             "on_cpu_vcpus_changed": self.config_vcpus_changed,
             "on_cpu_maxvcpus_changed": self.config_maxvcpus_changed,
             "on_cpu_model_changed": lambda *x: self.config_cpu_model_changed(x),
@@ -514,8 +554,8 @@ class vmmDetails(vmmGObjectUI):
             "on_sound_model_combo_changed": lambda *x: self.enable_apply(x,
                                              EDIT_SOUND_MODEL),
 
-            "on_video_model_combo_changed": lambda *x: self.enable_apply(x,
-                                             EDIT_VIDEO_MODEL),
+            "on_video_model_combo_changed": self.video_model_changed,
+            "on_video_3d_toggled": self.video_3d_toggled,
 
             "on_watchdog_model_combo_changed": lambda *x: self.enable_apply(x,
                                                 EDIT_WATCHDOG_MODEL),
@@ -563,6 +603,7 @@ class vmmDetails(vmmGObjectUI):
         # Deliberately keep all this after signal connection
         self.vm.connect("state-changed", self.refresh_vm_state)
         self.vm.connect("resources-sampled", self.refresh_resources)
+        self.vm.connect("inspection-changed", lambda *x: self.refresh_inspection_page())
 
         self.populate_hw_list()
 
@@ -1016,10 +1057,10 @@ class vmmDetails(vmmGObjectUI):
     # Window state listeners #
     ##########################
 
-    def window_resized(self, ignore, event):
+    def window_resized(self, ignore, ignore2):
         if not self.is_visible():
             return
-        self._window_size = (event.width, event.height)
+        self._window_size = self.topwin.get_size()
 
     def popup_addhw_menu(self, widget, event):
         ignore = widget
@@ -1548,6 +1589,10 @@ class vmmDetails(vmmGObjectUI):
             return self.config.get_default_cpu_setting(for_cpu=True)
         return key
 
+    def inspection_refresh(self, src_ignore):
+        self.emit("inspection-refresh",
+                  self.vm.conn.get_uri(), self.vm.get_connkey())
+
 
     ##############################
     # Details/Hardware listeners #
@@ -1705,6 +1750,16 @@ class vmmDetails(vmmGObjectUI):
         do_enable = src.get_active()
         self.widget("cpu-topology-table").set_sensitive(do_enable)
         self.config_cpu_topology_changed()
+
+    def video_model_changed(self, ignore):
+        model = uiutil.get_list_selection(self.widget("video-model"))
+        uiutil.set_grid_row_visible(
+            self.widget("video-3d"), model == "virtio")
+        self.enable_apply(EDIT_VIDEO_MODEL)
+
+    def video_3d_toggled(self, ignore):
+        self.widget("video-3d").set_inconsistent(False)
+        self.enable_apply(EDIT_VIDEO_3D)
 
     # Boot device / Autostart
     def config_bootdev_selected(self, ignore=None):
@@ -1930,7 +1985,7 @@ class vmmDetails(vmmGObjectUI):
         # This needs to be last
         if self.edited(EDIT_NAME):
             # Renaming is pretty convoluted, so do it here synchronously
-            self.vm.define_name(self.widget("overview-name").get_text())
+            self.vm.rename_domain(self.widget("overview-name").get_text())
 
             if not kwargs and not hotplug_args:
                 # Saves some useless redefine attempts
@@ -2132,21 +2187,27 @@ class vmmDetails(vmmGObjectUI):
                                           devobj=devobj)
 
     def config_graphics_apply(self, devobj):
-        (gtype, port,
-         tlsport, addr, passwd, keymap) = self.gfxdetails.get_values()
+        (gtype, port, tlsport, listen,
+         addr, passwd, keymap, gl, rendernode) = self.gfxdetails.get_values()
 
         kwargs = {}
 
         if self.edited(EDIT_GFX_PASSWD):
             kwargs["passwd"] = passwd
-        if self.edited(EDIT_GFX_ADDRESS):
-            kwargs["listen"] = addr
+        if self.edited(EDIT_GFX_LISTEN):
+            kwargs["listen"] = listen
+        if self.edited(EDIT_GFX_ADDRESS) or self.edited(EDIT_GFX_LISTEN):
+            kwargs["addr"] = addr
         if self.edited(EDIT_GFX_KEYMAP):
             kwargs["keymap"] = keymap
-        if self.edited(EDIT_GFX_PORT):
+        if self.edited(EDIT_GFX_PORT) or self.edited(EDIT_GFX_LISTEN):
             kwargs["port"] = port
-        if self.edited(EDIT_GFX_TLSPORT):
+        if self.edited(EDIT_GFX_OPENGL):
+            kwargs["gl"] = gl
+        if self.edited(EDIT_GFX_TLSPORT) or self.edited(EDIT_GFX_LISTEN):
             kwargs["tlsport"] = tlsport
+        if self.edited(EDIT_GFX_RENDERNODE):
+            kwargs["rendernode"] = rendernode
         if self.edited(EDIT_GFX_TYPE):
             kwargs["gtype"] = gtype
 
@@ -2161,6 +2222,9 @@ class vmmDetails(vmmGObjectUI):
             model = uiutil.get_list_selection(self.widget("video-model"))
             if model:
                 kwargs["model"] = model
+
+        if self.edited(EDIT_VIDEO_3D):
+            kwargs["accel3d"] = self.widget("video-3d").get_active()
 
         return vmmAddHardware.change_config_helper(self.vm.define_video,
                                           kwargs, self.vm, self.err,
@@ -2379,6 +2443,10 @@ class vmmDetails(vmmGObjectUI):
             if not hostname:
                 hostname = _("unknown")
             self.widget("inspection-hostname").set_text(hostname)
+            os_type = self.vm.inspection.os_type
+            if not os_type:
+                os_type = "unknown"
+            self.widget("inspection-type").set_text(_label_for_os_type(os_type))
             product_name = self.vm.inspection.product_name
             if not product_name:
                 product_name = _("unknown")
@@ -2398,13 +2466,22 @@ class vmmDetails(vmmGObjectUI):
                 if app["app_display_name"]:
                     name = app["app_display_name"]
                 version = ""
+                if app["app_epoch"] > 0:
+                    version += str(app["app_epoch"]) + ":"
                 if app["app_version"]:
-                    version = app["app_version"]
+                    version += app["app_version"]
                 if app["app_release"]:
                     version += "-" + app["app_release"]
                 summary = ""
                 if app["app_summary"]:
                     summary = app["app_summary"]
+                elif app["app_description"]:
+                    summary = app["app_description"]
+                    pos = summary.find("\n")
+                    if pos > -1:
+                        summary = _("%(summary)s ...") % {
+                            "summary" : summary[0:pos]
+                        }
 
                 apps_model.append([name, version, summary])
 
@@ -2783,6 +2860,8 @@ class vmmDetails(vmmGObjectUI):
                 if r:
                     val = r(val)
             self.widget(k).set_text(val)
+            if "rate" in k:
+                uiutil.set_grid_row_visible(self.widget(k), val != "-")
 
         if is_egd and not udp:
             mode = VirtualRNGDevice.get_pretty_mode(dev.backend_mode()[0])
@@ -2914,6 +2993,11 @@ class vmmDetails(vmmGObjectUI):
         self.widget("video-heads").set_text(heads and str(heads) or "-")
 
         uiutil.set_list_selection(self.widget("video-model"), model)
+
+        if vid.accel3d is None:
+            self.widget("video-3d").set_inconsistent(True)
+        else:
+            self.widget("video-3d").set_active(vid.accel3d)
 
     def refresh_watchdog_page(self):
         watch = self.get_hw_selection(HW_LIST_COL_DEVICE)

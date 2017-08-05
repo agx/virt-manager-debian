@@ -453,27 +453,22 @@ class _OsVariant(object):
         devs = self._os.get_all_devices(fltr)
         for idx in range(devs.get_length()):
             devname = devs.get_nth(idx).get_name()
-            if devname != "virtio-net":
+            if devname in ["pcnet", "ne2k_pci", "rtl8139", "e1000"]:
                 return devname
         return None
 
-    def default_inputtype(self):
-        if self._os:
-            fltr = libosinfo.Filter()
-            fltr.add_constraint("class", "input")
-            devs = self._os.get_all_devices(fltr)
-            if devs.get_length():
-                return devs.get_nth(0).get_name()
-        return "mouse"
+    def supports_usbtablet(self):
+        if not self._os:
+            return False
 
-    def default_inputbus(self):
-        if self._os:
-            fltr = libosinfo.Filter()
-            fltr.add_constraint("class", "input")
-            devs = self._os.get_all_devices(fltr)
-            if devs.get_length():
-                return devs.get_nth(0).get_bus_type()
-        return "ps2"
+        fltr = libosinfo.Filter()
+        fltr.add_constraint("class", "input")
+        fltr.add_constraint("name", "tablet")
+        devs = self._os.get_all_devices(fltr)
+        for idx in range(devs.get_length()):
+            if devs.get_nth(idx).get_bus_type() == "usb":
+                return True
+        return False
 
     def supports_virtiodisk(self):
         if self._os:
@@ -499,8 +494,20 @@ class _OsVariant(object):
 
         return False
 
+    def supports_virtiorng(self):
+        if self._os:
+            fltr = libosinfo.Filter()
+            fltr.add_constraint("class", "rng")
+            devs = self._os.get_all_devices(fltr)
+            for dev in range(devs.get_length()):
+                d = devs.get_nth(dev)
+                if d.get_name() == "virtio-rng":
+                    return True
+
+        return False
+
     def supports_qemu_ga(self):
-        return self._is_related_to(["fedora18", "rhel6.0", "sles11sp4"])
+        return self._is_related_to(["debian8", "fedora18", "rhel6.0", "sles11sp4"])
 
     def default_videomodel(self, guest):
         if guest.os.is_pseries():

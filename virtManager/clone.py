@@ -24,14 +24,14 @@ import os
 from gi.repository import Gtk
 from gi.repository import Gdk
 
+import virtinst
+from virtinst import Cloner
+from virtinst import VirtualNetworkInterface
+
 from . import uiutil
 from .baseclass import vmmGObjectUI
 from .asyncjob import vmmAsyncJob
 from .storagebrowse import vmmStorageBrowser
-
-import virtinst
-from virtinst import Cloner
-from virtinst import VirtualNetworkInterface
 
 STORAGE_COMBO_CLONE = 0
 STORAGE_COMBO_SHARE = 1
@@ -115,6 +115,15 @@ def do_we_default(conn, vol, path, ro, shared, devtype):
         info = append_str(info, _("Read Only"))
     elif not vol and path and not os.access(path, os.W_OK):
         info = append_str(info, _("No write access"))
+
+    if vol:
+        pool_type = vol.get_parent_pool().get_type()
+        if pool_type == virtinst.StoragePool.TYPE_SCSI:
+            info = append_str(info, _("SCSI device"))
+        elif pool_type == virtinst.StoragePool.TYPE_DISK:
+            info = append_str(info, _("Disk device"))
+        elif pool_type == virtinst.StoragePool.TYPE_ISCSI:
+            info = append_str(info, _("iSCSI share"))
 
     if shared:
         info = append_str(info, _("Shareable"))
@@ -407,6 +416,13 @@ class vmmCloneVM(vmmGObjectUI):
                 storage_add(cloneinfo)
                 continue
 
+            storage_row[STORAGE_INFO_CAN_CLONE] = True
+
+            # If we cannot create default clone_path don't even try to do that
+            if not default:
+                storage_add()
+                continue
+
             try:
                 # Generate disk path, make sure that works
                 clone_path = self.generate_clone_path_name(path)
@@ -421,7 +437,6 @@ class vmmCloneVM(vmmGObjectUI):
                                   clone_path)
                 storage_add(str(e))
 
-            storage_row[STORAGE_INFO_CAN_CLONE] = True
             storage_row[STORAGE_INFO_NEW_PATH] = clone_path
             storage_row[STORAGE_INFO_SIZE] = self.pretty_storage(size)
             storage_add()
@@ -575,7 +590,11 @@ class vmmCloneVM(vmmGObjectUI):
                 skip_targets.append(target)
 
         self.clone_design.skip_target = skip_targets
-        self.clone_design.clone_paths = new_disks
+        try:
+            self.clone_design.clone_paths = new_disks
+        except Exception, e:
+            # Just log the error and go on. The UI will fail later if needed
+            logging.debug("Error setting clone_paths: %s", str(e))
 
         # If any storage cannot be cloned or shared, don't allow cloning
         clone = True
@@ -713,9 +732,9 @@ class vmmCloneVM(vmmGObjectUI):
 
         try:
             self.clone_design.clone_paths = new_path
-            self.populate_storage_lists()
             row[STORAGE_INFO_NEW_PATH] = new_path
             row[STORAGE_INFO_MANUAL_PATH] = True
+            self.populate_storage_lists()
         except Exception, e:
             self.err.show_err(_("Error changing storage path: %s") % str(e))
             return

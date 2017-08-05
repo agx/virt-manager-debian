@@ -39,6 +39,7 @@ from .devicedisk import VirtualDisk
 from .devicegraphics import VirtualGraphics
 from .deviceinput import VirtualInputDevice
 from .deviceredirdev import VirtualRedirDevice
+from .devicerng import VirtualRNGDevice
 from .devicevideo import VirtualVideoDevice
 from .distroinstaller import DistroInstaller
 from .domainblkiotune import DomainBlkiotune
@@ -52,7 +53,9 @@ from .idmap import IdMap
 from .osxml import OSXML
 from .pm import PM
 from .seclabel import Seclabel
+from .sysinfo import SYSInfo
 from .xmlbuilder import XMLBuilder, XMLProperty, XMLChildProperty
+from .xmlnsqemu import XMLNSQemu
 
 
 class Guest(XMLBuilder):
@@ -104,9 +107,9 @@ class Guest(XMLBuilder):
     _XML_PROP_ORDER = ["type", "name", "uuid", "title", "description",
         "maxmemory", "memory", "blkiotune", "memtune", "memoryBacking",
         "vcpus", "curvcpus", "vcpu_placement", "cpuset",
-        "numatune", "bootloader", "os", "idmap",
+        "numatune", "resource", "sysinfo", "bootloader", "os", "idmap",
         "features", "cpu", "clock", "on_poweroff", "on_reboot", "on_crash",
-        "resource", "pm", "emulator", "_devices", "seclabels"]
+        "pm", "emulator", "_devices", "seclabels"]
 
     def __init__(self, *args, **kwargs):
         XMLBuilder.__init__(self, *args, **kwargs)
@@ -122,6 +125,7 @@ class Guest(XMLBuilder):
         self.skip_default_sound = False
         self.skip_default_usbredir = False
         self.skip_default_graphics = False
+        self.skip_default_rng = False
         self.x86_cpu_default = self.cpu.SPECIAL_MODE_HOST_MODEL_ONLY
 
         self.__os_object = None
@@ -187,6 +191,7 @@ class Guest(XMLBuilder):
                        validate_cb=lambda s, v: util.validate_uuid(v),
                        default_cb=_get_default_uuid)
 
+
     id = XMLProperty("./@id", is_int=True)
     type = XMLProperty("./@type", default_cb=lambda s: "xen")
     bootloader = XMLProperty("./bootloader")
@@ -194,10 +199,9 @@ class Guest(XMLBuilder):
     title = XMLProperty("./title")
     emulator = XMLProperty("./devices/emulator")
 
-    on_poweroff = XMLProperty("./on_poweroff",
-                              default_cb=lambda s: "destroy")
-    on_reboot = XMLProperty("./on_reboot", default_cb=lambda s: "restart")
-    on_crash = XMLProperty("./on_crash", default_cb=lambda s: "restart")
+    on_poweroff = XMLProperty("./on_poweroff")
+    on_reboot = XMLProperty("./on_reboot")
+    on_crash = XMLProperty("./on_crash")
     on_lockfailure = XMLProperty("./on_lockfailure")
 
     seclabels = XMLChildProperty(Seclabel)
@@ -212,6 +216,9 @@ class Guest(XMLBuilder):
     memoryBacking = XMLChildProperty(DomainMemorybacking, is_single=True)
     idmap = XMLChildProperty(IdMap, is_single=True)
     resource = XMLChildProperty(DomainResource, is_single=True)
+    sysinfo = XMLChildProperty(SYSInfo, is_single=True)
+
+    xmlns_qemu = XMLChildProperty(XMLNSQemu, is_single=True)
 
 
     ###############################
@@ -311,7 +318,7 @@ class Guest(XMLBuilder):
         # We do a shallow copy of the OS block here, so that we can
         # set the install time properties but not permanently overwrite
         # any config the user explicitly requested.
-        data = (self.os, self.on_crash, self.on_reboot)
+        data = (self.os, self.on_reboot)
         try:
             self._propstore["os"] = self.os.copy()
         except:
@@ -321,7 +328,6 @@ class Guest(XMLBuilder):
 
     def _finish_get_xml(self, data):
         (self._propstore["os"],
-         self.on_crash,
          self.on_reboot) = data
 
     def _get_install_xml(self, *args, **kwargs):
@@ -350,11 +356,6 @@ class Guest(XMLBuilder):
 
         if install:
             self.on_reboot = "destroy"
-            self.on_crash = "destroy"
-        elif self.os.is_s390x():
-            # on_crash=restart can cause reboot loops on s390x,
-            # so use preserve
-            self.on_crash = "preserve"
 
         self._set_osxml_defaults()
 
@@ -392,12 +393,27 @@ class Guest(XMLBuilder):
         meter = util.ensure_meter(meter)
         meter.start(size=None, text=meter_label)
 
-        if doboot or transient or self.installer.has_install_phase():
+        if transient:
             self.domain = self.conn.createXML(install_xml or final_xml, 0)
+        else:
+            # Not all hypervisors (vz) support createXML, so avoid it here
+            self.domain = self.conn.defineXML(install_xml or final_xml)
 
-        if not transient:
-            self.domain = self.conn.defineXML(final_xml)
-        meter.end(0)
+            # Handle undefining the VM if the initial startup fails
+            if doboot or self.installer.has_install_phase():
+                try:
+                    self.domain.create()
+                except:
+                    import sys
+                    exc_info = sys.exc_info()
+                    try:
+                        self.domain.undefine()
+                    except:
+                        pass
+                    raise exc_info[0], exc_info[1], exc_info[2]
+
+            if install_xml and install_xml != final_xml:
+                self.domain = self.conn.defineXML(final_xml)
 
         try:
             logging.debug("XML fetched from libvirt object:\n%s",
@@ -627,6 +643,25 @@ class Guest(XMLBuilder):
             return
         self.add_device(VirtualGraphics(self.conn))
 
+    def add_default_rng(self):
+        if self.skip_default_rng:
+            return
+        if self.get_devices("rng"):
+            return
+        if not self.os.is_x86():
+            # Not strictly x86 specific, but some other archs like
+            # arm have limited virtio options in some situations, so
+            # it needs more work there.
+            return
+
+        if (self.conn.is_qemu() and
+            self._os_object.supports_virtiorng() and
+            self.conn.check_support(self.conn.SUPPORT_CONN_RNG_URANDOM)):
+            dev = VirtualRNGDevice(self.conn)
+            dev.type = "random"
+            dev.device = "/dev/urandom"
+            self.add_device(dev)
+
     def add_default_devices(self):
         self.add_default_graphics()
         self.add_default_video_device()
@@ -634,6 +669,7 @@ class Guest(XMLBuilder):
         self.add_default_console_device()
         self.add_default_usb_controller()
         self.add_default_channels()
+        self.add_default_rng()
 
     def _add_install_cdrom(self):
         if self._install_cdrom_device:
@@ -1031,15 +1067,14 @@ class Guest(XMLBuilder):
                 return False
             return all([c.model == "none" for c in controllers])
 
-        input_type = self._os_object.default_inputtype()
-        input_bus = self._os_object.default_inputbus()
+        input_type = "mouse"
+        input_bus = "ps2"
         if self.os.is_xenpv():
             input_type = VirtualInputDevice.TYPE_MOUSE
             input_bus = VirtualInputDevice.BUS_XEN
-        elif _usb_disabled() and input_bus == "usb":
-            input_bus = "ps2"
-            if input_type == "tablet":
-                input_type = "mouse"
+        elif self._os_object.supports_usbtablet() and not _usb_disabled():
+            input_type = "tablet"
+            input_bus = "usb"
 
         for inp in self.get_devices("input"):
             if (inp.type == inp.TYPE_DEFAULT and
@@ -1088,6 +1123,10 @@ class Guest(XMLBuilder):
                 if dev.image_compression is None:
                     dev.image_compression = "off"
 
+            if (dev.type == "spice" and dev.gl and
+                not self.conn.check_support(self.conn.SUPPORT_CONN_SPICE_GL)):
+                raise ValueError(_("Host does not support spice GL"))
+
     def _add_spice_channels(self):
         if self.skip_default_channel:
             return
@@ -1112,6 +1151,8 @@ class Guest(XMLBuilder):
         if self.skip_default_usbredir:
             return
         if self.get_devices("redirdev"):
+            return
+        if not self.os.is_x86():
             return
         if not self.conn.check_support(self.conn.SUPPORT_CONN_USBREDIR):
             return

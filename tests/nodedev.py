@@ -68,18 +68,26 @@ class TestNodeDev(unittest.TestCase):
         return NodeDevice.parse(conn, xml)
 
     def _testCompare(self, devname, vals, devxml=None):
+        def _compare(dev, vals, root=""):
+            for attr in vals.keys():
+                expect = vals[attr]
+                actual = getattr(dev, attr)
+                if isinstance(expect, list):
+                    for adev, exp in zip(actual, expect):
+                        _compare(adev, exp, attr + ".")
+                else:
+                    if expect != actual:
+                        raise AssertionError("devname=%s attribute=%s%s did not match:\n"
+                            "expect=%s\nactual=%s" % (devname, root, attr, expect, actual))
+                    self.assertEqual(vals[attr], getattr(dev, attr))
+
         if devxml:
             dev = NodeDevice.parse(conn, devxml)
         else:
             dev = self._nodeDevFromName(devname)
 
-        for attr in vals.keys():
-            expect = vals[attr]
-            actual = getattr(dev, attr)
-            if expect != actual:
-                raise AssertionError("devname=%s attribute=%s did not match:\n"
-                    "expect=%s\nactual=%s" % (devname, attr, expect, actual))
-            self.assertEqual(vals[attr], getattr(dev, attr))
+        _compare(dev, vals)
+        return dev
 
     def _testNode2DeviceCompare(self, nodename, devfile, nodedev=None):
         devfile = os.path.join("tests/nodedev-xml/devxml", devfile)
@@ -173,6 +181,9 @@ class TestNodeDev(unittest.TestCase):
         devname = "storage_serial_SATA_WDC_WD1600AAJS__WD_WCAP95119685"
         vals = {"name": "storage_serial_SATA_WDC_WD1600AAJS__WD_WCAP95119685",
                 "parent": "pci_8086_27c0_scsi_host_scsi_device_lun0",
+                "devnodes": [
+                    {"path": "/dev/sda", "node_type": "dev"}
+                ],
                 "device_type": NodeDevice.CAPABILITY_TYPE_STORAGE,
                 "block": "/dev/sda", "bus": "scsi", "drive_type": "disk",
                 "model": "WDC WD1600AAJS-2", "vendor": "ATA",
@@ -224,6 +235,21 @@ class TestNodeDev(unittest.TestCase):
                 "host": "0", "bus": "0", "target": "0", "lun": "0",
                 "type": "disk"}
         self._testCompare(devname, vals)
+
+    def testDRMDevice(self):
+        devname = "drm_renderD129"
+        vals = {"name": "drm_renderD129",
+                "parent": "pci_0000_00_02_0",
+                "devnodes": [
+                    {"path": "/dev/dri/renderD129", "node_type": "dev"},
+                    {"path": "/dev/dri/by-path/pci-0000:00:02.0-render", "node_type": "link"},
+                    {"path": "/dev/dri/by-id/foo-render", "node_type": "link"}
+                ],
+                "device_type": NodeDevice.CAPABILITY_TYPE_DRM,
+                "drm_type": "render"}
+        dev = self._testCompare(devname, vals)
+        self.assertEqual(dev.drm_pretty_name(conn),
+                         "0000:00:02:0 Intel Corporation HD Graphics 530 (render)")
 
     def testUnknownDevice(self):
         vals = {"name": "foodevice", "parent": "computer",

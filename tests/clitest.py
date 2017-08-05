@@ -81,6 +81,7 @@ test_files = {
     'URI-KVM-S390X-KVMIBM' : utils.uri_kvm_s390x_KVMIBM,
     'URI-XEN': utils.uri_xen,
     'URI-LXC': utils.uri_lxc,
+    'URI-VZ': utils.uri_vz,
 
     'CLONE_DISK_XML'    : "%s/clone-disk.xml" % xmldir,
     'CLONE_STORAGE_XML' : "%s/clone-disk-managed.xml" % xmldir,
@@ -427,6 +428,9 @@ c.add_compare("""--pxe \
 --memorybacking size=1,unit='G',nodeset='1,2-5',nosharepages=yes,locked=yes \
 --features acpi=off,eoi=on,privnet=on,hyperv_spinlocks=on,hyperv_spinlocks_retries=1234,vmport=off,pmu=off \
 --clock offset=utc,hpet_present=no,rtc_tickpolicy=merge \
+--sysinfo type=smbios,bios_vendor="Acme LLC",bios_version=1.2.3,bios_date=01/01/1970,bios_release=10.22 \
+--sysinfo type=smbios,system_manufacturer="Acme Inc.",system_product=Computer,system_version=3.2.1,system_serial=123456789,system_uuid=00000000-1111-2222-3333-444444444444,system_sku=abc-123,system_family=Server \
+--sysinfo type=smbios,baseBoard_manufacturer="Acme Corp.",baseBoard_product=Motherboard,baseBoard_version=A01,baseBoard_serial=1234-5678,baseBoard_asset=Tag,baseBoard_location=Chassis \
 --pm suspend_to_mem=yes,suspend_to_disk=no \
 --resource partition=/virtualmachines/production \
 --events on_poweroff=destroy,on_reboot=restart,on_crash=preserve,on_lockfailure=ignore \
@@ -471,8 +475,9 @@ c.add_compare(""" \
 --network user,mac=12:34:56:78:11:22,portgroup=foo,link_state=down,rom_bar=on,rom_file=/tmp/foo \
 --network bridge=foobar,model=virtio,driver_name=qemu,driver_queues=3 \
 --network bridge=ovsbr,virtualport_type=openvswitch,virtualport_profileid=demo,virtualport_interfaceid=09b11c53-8b5c-4eeb-8f00-d84eaa0aaa3b,link_state=yes \
---network type=direct,source=eth5,source_mode=vepa,target=mytap12,virtualport_type=802.1Qbg,virtualport_managerid=12,virtualport_typeid=1193046,virtualport_typeidversion=1,virtualport_instanceid=09b11c53-8b5c-4eeb-8f00-d84eaa0aaa3b,boot_order=1 \
+--network type=direct,source=eth5,source_mode=vepa,target=mytap12,virtualport_type=802.1Qbg,virtualport_managerid=12,virtualport_typeid=1193046,virtualport_typeidversion=1,virtualport_instanceid=09b11c53-8b5c-4eeb-8f00-d84eaa0aaa3b,boot_order=1,trustGuestRxFilters=yes \
 --network user,model=virtio,address.type=spapr-vio,address.reg=0x500 \
+--network vhostuser,source_type=unix,source_path=/tmp/vhost1.sock,source_mode=server,model=virtio \
 \
 --graphics sdl \
 --graphics spice,keymap=none \
@@ -481,6 +486,7 @@ c.add_compare(""" \
 --graphics spice,image_compression=foo,streaming_mode=bar,clipboard_copypaste=yes,mouse_mode=client,filetransfer_enable=on \
 --graphics spice,gl=yes,listen=socket \
 --graphics spice,gl=yes,listen=none \
+--graphics spice,gl=yes,listen=none,rendernode=/dev/dri/foo \
 \
 --controller usb,model=ich9-ehci1,address=0:0:4.7,index=0 \
 --controller usb,model=ich9-uhci1,address=0:0:4.0,index=0,master=0 \
@@ -490,7 +496,8 @@ c.add_compare(""" \
 --input type=keyboard,bus=usb \
 --input tablet \
 \
---serial tcp,host=:2222,mode=bind,protocol=telnet \
+--serial tcp,host=:2222,mode=bind,protocol=telnet,log_file=/tmp/foo.log,log_append=yes \
+--serial nmdm,source.master=/dev/foo1,source.slave=/dev/foo2 \
 --parallel udp,host=0.0.0.0:1234,bind_host=127.0.0.1:1234 \
 --parallel unix,path=/tmp/foo-socket \
 --channel pty,target_type=guestfwd,target_address=127.0.0.1:10000 \
@@ -518,7 +525,7 @@ c.add_compare(""" \
 --sound ac97 \
 \
 --video cirrus \
---video model=qxl,vgamem=1,ram=2,vram=3,heads=4,accel3d=yes \
+--video model=qxl,vgamem=1,ram=2,vram=3,heads=4,accel3d=yes,vram64=65 \
 \
 --smartcard passthrough,type=spicevmc \
 --smartcard type=host \
@@ -530,6 +537,11 @@ c.add_compare(""" \
 --rng egd,backend_host=127.0.0.1,backend_service=8000,backend_type=tcp \
 \
 --panic iobase=507 \
+\
+--qemu-commandline env=DISPLAY=:0.1 \
+--qemu-commandline="-display gtk,gl=on" \
+--qemu-commandline="-device vfio-pci,addr=05.0,sysfsdev=/sys/class/mdev_bus/0000:00:02.0/f321853c-c584-4a6b-b99a-3eee22a3919c" \
+--qemu-commandline="-set device.video0.driver=virtio-vga" \
 """, "many-devices", compare_check="2.0.0")  # compare_check=graphics listen=socket support
 
 # Test the implied defaults for gl=yes setting virgl=on
@@ -699,7 +711,7 @@ c.add_compare("--os-variant fedora-unknown --file %(EXISTIMG1)s --location %(TRE
 c.add_compare("--test-media-detection %(TREEDIR)s", "test-url-detection")  # --test-media-detection
 c.add_compare("--os-variant fedora20 --disk %(NEWIMG1)s,size=.01,format=vmdk --location %(TREEDIR)s --extra-args console=ttyS0 --quiet", "quiet-url")  # Quiet URL install should make no noise
 c.add_compare("--cdrom %(EXISTIMG2)s --file %(EXISTIMG1)s --os-variant win2k3 --wait 0 --sound --controller usb", "kvm-win2k3-cdrom")  # HVM windows install with disk
-c.add_compare("--os-variant ubuntusaucy --nodisks --boot cdrom --virt-type qemu --cpu Penryn", "qemu-plain")  # plain qemu
+c.add_compare("--os-variant ubuntusaucy --nodisks --boot cdrom --virt-type qemu --cpu Penryn --input tablet", "qemu-plain")  # plain qemu
 c.add_compare("--os-variant fedora20 --nodisks --boot network --nographics --arch i686", "qemu-32-on-64")  # 32 on 64
 
 # armv7l tests
@@ -767,6 +779,20 @@ c.add_compare("--disk %(BLOCKVOL)s --cdrom %(EXISTIMG1)s --livecd --hvm", "xen-h
 
 
 
+#####################
+# VZ specific tests #
+#####################
+
+c = vinst.add_category("vz", "--connect %(URI-VZ)s --noautoconsole")
+c.add_compare(""" \
+--container \
+--filesystem type=template,source=centos-7-x86_64,target="/" \
+--network network="Bridged" \
+""", "vz-ct-template")
+
+
+
+
 #####################################
 # Device option back compat testing #
 #####################################
@@ -826,6 +852,7 @@ c.add_compare("--build-xml --blkiotune weight=100,device_path=/dev/sdf,device_we
 c.add_compare("--build-xml --idmap uid_start=0,uid_target=1000,uid_count=10,gid_start=0,gid_target=1000,gid_count=10", "build-idmap")
 c.add_compare("test --edit --boot network,cdrom", "edit-bootorder")
 c.add_compare("--confirm test --edit --cpu host-passthrough", "prompt-response")
+c.add_compare("--edit --print-diff --qemu-commandline clearxml=yes", "edit-clearxml-qemu-commandline", input_file=(xmldir + "/virtxml-qemu-commandline-clear.xml"))
 
 
 c = vixml.add_category("simple edit diff", "test-for-virtxml --edit --print-diff --define", compare_check="1.2.2")  # compare_check=input type=keyboard output
@@ -833,6 +860,7 @@ c.add_compare("""--metadata name=foo-my-new-name,uuid=12345678-12F4-1234-1234-12
 new
 very,very=new desc\\\'",title="This is my,funky=new title" """, "edit-simple-metadata")
 c.add_compare("--events on_poweroff=destroy,on_reboot=restart,on_crash=preserve", "edit-simple-events")
+c.add_compare("--qemu-commandline='-foo bar,baz=\"wib wob\"'", "edit-simple-qemu-commandline")
 c.add_compare("--memory 500,maxmemory=1000,hugepages=off", "edit-simple-memory")
 c.add_compare("--vcpus 10,maxvcpus=20,cores=5,sockets=4,threads=1", "edit-simple-vcpus")
 c.add_compare("--cpu model=pentium2,+x2apic,forbid=pbe", "edit-simple-cpu")
@@ -880,7 +908,7 @@ c.add_compare("--edit mac=00:11:7f:33:44:55 --network target=nic55", "edit-selec
 
 c = vixml.add_category("edit clear", "test-for-virtxml --print-diff --define", compare_check="1.2.2")  # compare_check=input type=keyboard output
 c.add_invalid("--edit --memory 200,clearxml=yes")  # clear isn't wired up for memory
-c.add_compare("--edit --disk path=/foo/bar,target=fda,bus=fdc,device=floppy,clearxml=yes", "edit-clear-disk")
+c.add_compare("--edit --disk path=/foo/bar,size=2,target=fda,bus=fdc,device=floppy,clearxml=yes", "edit-clear-disk")
 c.add_compare("--edit --cpu host-passthrough,clearxml=yes", "edit-clear-cpu")
 c.add_compare("--edit --clock offset=utc,clearxml=yes", "edit-clear-clock")
 c.add_compare("--edit --video clearxml=yes,model=virtio,accel3d=yes", "edit-video-virtio")
@@ -916,21 +944,21 @@ c.add_invalid("--original-xml %(CLONE_DISK_XML)s --auto-clone")  # Auto flag w/ 
 
 
 c = vclon.add_category("misc", "")
-c.add_compare("--connect %(URI-KVM)s -o test-for-clone --auto-clone --clone-running", "clone-auto1", compare_check="1.2.15")
+c.add_compare("--connect %(URI-KVM)s -o test-clone --auto-clone --clone-running", "clone-auto1", compare_check="1.2.15")
 c.add_compare("-o test-clone-simple --name newvm --auto-clone --clone-running", "clone-auto2", compare_check="1.2.15")
 c.add_valid("-o test --auto-clone")  # Auto flag, no storage
 c.add_valid("--original-xml %(CLONE_STORAGE_XML)s --auto-clone")  # Auto flag w/ managed storage
 c.add_valid("--original-xml %(CLONE_DISK_XML)s --auto-clone")  # Auto flag w/ local storage
-c.add_valid("-o test-for-clone --auto-clone --clone-running")  # Auto flag, actual VM, skip state check
-c.add_valid("-o test-clone-simple -n newvm --preserve-data --file %(EXISTIMG1)s --clone-running")  # Preserve data shouldn't complain about existing volume
+c.add_valid("-o test-clone --auto-clone --clone-running")  # Auto flag, actual VM, skip state check
+c.add_valid("-o test-clone-simple -n newvm --preserve-data --file %(EXISTIMG1)s")  # Preserve data shouldn't complain about existing volume
 c.add_valid("-n clonetest --original-xml %(CLONE_DISK_XML)s --file %(EXISTIMG3)s --file %(EXISTIMG4)s --check path_exists=off")  # Skip existing file check
 c.add_invalid("--auto-clone")  # Just the auto flag
-c.add_invalid("-o test-for-clone --auto-clone")
+c.add_invalid("-o test-many-devices --auto-clone")  # VM is running, but --clone-running isn't passed
 c.add_invalid("-o test-clone-simple -n newvm --file %(EXISTIMG1)s --clone-running")  # Should complain about overwriting existing file
 
 
 c = vclon.add_category("general", "-n clonetest")
-c.add_valid("-o test")  # Nodisk guest
+c.add_valid("-o test --auto-clone")  # Auto flag, no storage
 c.add_valid("-o test --file %(NEWCLONEIMG1)s --file %(NEWCLONEIMG2)s")  # Nodisk, but with spurious files passed
 c.add_valid("-o test --file %(NEWCLONEIMG1)s --file %(NEWCLONEIMG2)s --prompt")  # Working scenario w/ prompt shouldn't ask anything
 c.add_valid("--original-xml %(CLONE_DISK_XML)s --file %(NEWCLONEIMG1)s --file %(NEWCLONEIMG2)s")  # XML File with 2 disks
@@ -939,7 +967,7 @@ c.add_valid("--original-xml %(CLONE_DISK_XML)s --file %(NEWCLONEIMG1)s --file %(
 c.add_valid("--original-xml %(CLONE_DISK_XML)s --file %(NEWCLONEIMG1)s --file %(NEWCLONEIMG2)s --force-copy=fda")  # XML w/ disks, force copy a target with no media
 c.add_valid("--original-xml %(CLONE_STORAGE_XML)s --file %(MANAGEDNEW1)s")  # XML w/ managed storage, specify managed path
 c.add_valid("--original-xml %(CLONE_NOEXIST_XML)s --file %(EXISTIMG1)s --preserve")  # XML w/ managed storage, specify managed path across pools# Libvirt test driver doesn't support cloning across pools# XML w/ non-existent storage, with --preserve
-c.add_valid("-o test -n test-for-clone --replace")  # Overwriting existing VM
+c.add_valid("-o test -n test-clone --auto-clone --replace")  # Overwriting existing VM
 c.add_invalid("-o test foobar")  # Positional arguments error
 c.add_invalid("-o idontexist")  # Non-existent vm name
 c.add_invalid("-o idontexist --auto-clone")  # Non-existent vm name with auto flag,
