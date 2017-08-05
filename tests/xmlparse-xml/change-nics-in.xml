@@ -14,7 +14,7 @@
   <clock offset="utc"/>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
-  <on_crash>restart</on_crash>
+  <on_crash>destroy</on_crash>
   <vcpu>5</vcpu>
   <devices>
     <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
@@ -32,7 +32,6 @@
     </interface>
     <interface type="ethernet">
       <mac address="00:11:22:33:44:55"/>
-      <source dev="eth0"/>
       <script path="/etc/qemu-ifup"/>
       <target dev="nic02"/>
     </interface>

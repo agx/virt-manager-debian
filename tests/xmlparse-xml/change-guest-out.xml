@@ -44,7 +44,7 @@
   </clock>
   <on_poweroff>restart</on_poweroff>
   <on_reboot>destroy</on_reboot>
-  <on_crash>destroy</on_crash>
+  <on_crash>restart</on_crash>
   <on_lockfailure>restart</on_lockfailure>
   <pm>
     <suspend-to-mem enabled="yes"/>
@@ -103,12 +103,12 @@
     <nosharepages/>
     <locked/>
   </memoryBacking>
+  <resource>
+    <partition>/virtualmachines/production</partition>
+  </resource>
   <bootloader>pygrub</bootloader>
   <idmap>
     <uid start="0" target="1000" count="10"/>
     <gid start="0" target="1000" count="10"/>
   </idmap>
-  <resource>
-    <partition>/virtualmachines/production</partition>
-  </resource>
 </domain>

@@ -22,7 +22,6 @@ import logging
 import os
 import random
 import re
-import stat
 import sys
 
 import libvirt
@@ -35,61 +34,6 @@ def listify(l):
         return [l]
     else:
         return l
-
-
-def xml_indent(xmlstr, level):
-    xml = ""
-    if not xmlstr:
-        return xml
-    if not level:
-        return xmlstr
-    return "\n".join((" " * level + l) for l in xmlstr.splitlines())
-
-
-def stat_disk(path):
-    """Returns the tuple (isreg, size)."""
-    if not os.path.exists(path):
-        return True, 0
-
-    mode = os.stat(path)[stat.ST_MODE]
-
-    # os.path.getsize('/dev/..') can be zero on some platforms
-    if stat.S_ISBLK(mode):
-        try:
-            fd = os.open(path, os.O_RDONLY)
-            # os.SEEK_END is not present on all systems
-            size = os.lseek(fd, 0, 2)
-            os.close(fd)
-        except:
-            size = 0
-        return False, size
-    elif stat.S_ISREG(mode):
-        return True, os.path.getsize(path)
-
-    return True, 0
-
-
-def blkdev_size(path):
-    """Return the size of the block device.  We can't use os.stat() as
-    that returns zero on many platforms."""
-    fd = os.open(path, os.O_RDONLY)
-    # os.SEEK_END is not present on all systems
-    size = os.lseek(fd, 0, 2)
-    os.close(fd)
-    return size
-
-
-def sanitize_arch(arch):
-    """Ensure passed architecture string is the format we expect it.
-       Returns the sanitized result"""
-    if not arch:
-        return arch
-    tmparch = arch.lower().strip()
-    if re.match(r'i[3-9]86', tmparch):
-        return "i686"
-    elif tmparch == "amd64":
-        return "x86_64"
-    return arch
 
 
 def vm_uuid_collision(conn, uuid):
@@ -216,34 +160,6 @@ def generate_name(base, collision_cb, suffix="", lib_collision=True,
     raise ValueError(_("Name generation range exceeded."))
 
 
-def default_bridge(conn):
-    if "VIRTINST_TEST_SUITE" in os.environ:
-        return "eth0"
-
-    if conn.is_remote():
-        return None
-
-    dev = default_route()
-    if not dev:
-        return None
-
-    # New style peth0 == phys dev, eth0 == bridge, eth0 == default route
-    if os.path.exists("/sys/class/net/%s/bridge" % dev):
-        return dev
-
-    # Old style, peth0 == phys dev, eth0 == netloop, xenbr0 == bridge,
-    # vif0.0 == netloop enslaved, eth0 == default route
-    try:
-        defn = int(dev[-1])
-    except:
-        defn = -1
-
-    if (defn >= 0 and
-        os.path.exists("/sys/class/net/peth%d/brport" % defn) and
-        os.path.exists("/sys/class/net/xenbr%d/bridge" % defn)):
-        return "xenbr%d"
-    return None
-
 
 def generate_uuid(conn):
     for ignore in range(256):
@@ -253,36 +169,6 @@ def generate_uuid(conn):
 
     logging.error("Failed to generate non-conflicting UUID")
 
-
-
-def default_route():
-    route_file = "/proc/net/route"
-    d = file(route_file)
-
-    defn = 0
-    for line in d.xreadlines():
-        info = line.split()
-        if (len(info) != 11):  # 11 = typical num of fields in the file
-            logging.warn(_("Invalid line length while parsing %s."),
-                         route_file)
-            logging.warn(_("Defaulting bridge to xenbr%d"), defn)
-            break
-        try:
-            route = int(info[1], 16)
-            if route == 0:
-                return info[0]
-        except ValueError:
-            continue
-    return None
-
-
-def default_network(conn):
-    ret = default_bridge(conn)
-    if ret:
-        return ["bridge", ret]
-
-    # FIXME: Check that this exists
-    return ["network", "default"]
 
 
 def randomUUID(conn):
@@ -438,7 +324,12 @@ def register_libvirt_error_handler():
     def libvirt_callback(userdata, err):
         ignore = userdata
         ignore = err
+    def libxml2_callback(userdata, err):
+        ignore = userdata
+        logging.debug("libxml2 callback error: %s", err)
     libvirt.registerErrorHandler(f=libvirt_callback, ctx=None)
+    import libxml2
+    libxml2.registerErrorHandler(f=libxml2_callback, ctx=None)
 
 
 def ensure_meter(meter):

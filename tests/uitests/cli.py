@@ -38,35 +38,35 @@ class VMMCLI(unittest.TestCase):
         self.app.quit()
 
     def testShowDetails(self):
-        self.app.open(extra_opts=["--show-domain-editor", "test-for-clone"])
+        self.app.open(extra_opts=["--show-domain-editor", "test-clone-simple"])
         time.sleep(.5)
 
-        win = uiutils.find_fuzzy(self.app.root, "test-for-clone on", "frame")
+        win = uiutils.find_fuzzy(self.app.root, "test-clone-simple on", "frame")
         self.assertFalse(
-            uiutils.find_fuzzy(win, "Graphical console not", "label").showing)
+            uiutils.find_fuzzy(win, "Guest is not running", "label").showing)
         self.assertTrue(
             uiutils.find_fuzzy(win, "add-hardware", "button").showing)
         self.app.quit()
 
     def testShowPerformance(self):
         self.app.open(extra_opts=["--show-domain-performance",
-            "test-for-clone"])
+            "test-clone-simple"])
         time.sleep(.5)
 
-        win = uiutils.find_fuzzy(self.app.root, "test-for-clone on", "frame")
+        win = uiutils.find_fuzzy(self.app.root, "test-clone-simple on", "frame")
         self.assertFalse(
-            uiutils.find_fuzzy(win, "Graphical console not", "label").showing)
+            uiutils.find_fuzzy(win, "Guest is not running", "label").showing)
         self.assertTrue(
             uiutils.find_fuzzy(win, "CPU usage", "label").showing)
         self.app.quit()
 
     def testShowConsole(self):
-        self.app.open(extra_opts=["--show-domain-console", "test-for-clone"])
+        self.app.open(extra_opts=["--show-domain-console", "test-clone-simple"])
         time.sleep(.5)
 
-        win = uiutils.find_fuzzy(self.app.root, "test-for-clone on", "frame")
+        win = uiutils.find_fuzzy(self.app.root, "test-clone-simple on", "frame")
         self.assertTrue(
-            uiutils.find_fuzzy(win, "Graphical console not", "label").showing)
+            uiutils.find_fuzzy(win, "Guest is not running", "label").showing)
         self.assertFalse(
             uiutils.find_fuzzy(win, "add-hardware", "button").showing)
         self.app.quit()

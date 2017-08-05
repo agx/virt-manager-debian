@@ -18,8 +18,9 @@
 # MA 02110-1301 USA.
 
 import logging
+import os
 
-from .xmlbuilder import XMLBuilder, XMLProperty
+from .xmlbuilder import XMLBuilder, XMLProperty, XMLChildProperty
 
 
 def _compare_int(nodedev_val, hostdev_val):
@@ -37,6 +38,13 @@ def _compare_int(nodedev_val, hostdev_val):
     return (nodedev_val == hostdev_val or hostdev_val == -1)
 
 
+class DevNode(XMLBuilder):
+    _XML_ROOT_NAME = "devnode"
+
+    node_type = XMLProperty("./@type")
+    path = XMLProperty(".")
+
+
 class NodeDevice(XMLBuilder):
     CAPABILITY_TYPE_SYSTEM = "system"
     CAPABILITY_TYPE_NET = "net"
@@ -46,6 +54,7 @@ class NodeDevice(XMLBuilder):
     CAPABILITY_TYPE_STORAGE = "storage"
     CAPABILITY_TYPE_SCSIBUS = "scsi_host"
     CAPABILITY_TYPE_SCSIDEV = "scsi"
+    CAPABILITY_TYPE_DRM = "drm"
 
     @staticmethod
     def lookupNodedevFromString(conn, idstring):
@@ -104,6 +113,16 @@ class NodeDevice(XMLBuilder):
     name = XMLProperty("./name")
     parent = XMLProperty("./parent")
     device_type = XMLProperty("./capability/@type")
+    devnodes = XMLChildProperty(DevNode)
+
+    def get_devnode(self, parent="by-path"):
+        for d in self.devnodes:
+            paths = d.path.split(os.sep)
+            if len(paths) > 2 and paths[-2] == parent:
+                return d
+        if len(self.devnodes) > 0:
+            return self.devnodes[0]
+        return None
 
     def pretty_name(self):
         """
@@ -310,6 +329,15 @@ class SCSIBus(NodeDevice):
     wwpn = XMLProperty("./capability/capability[@type='fc_host']/wwpn")
 
 
+class DRMDevice(NodeDevice):
+    drm_type = XMLProperty("./capability/type")
+
+    def drm_pretty_name(self, conn):
+        parent = NodeDevice.lookupNodedevFromString(conn, self.parent)
+
+        return "%s (%s)" % (parent.pretty_name(), self.drm_type)
+
+
 def _AddressStringToHostdev(conn, addrstr):
     from .devicehostdev import VirtualHostDevice
     hostdev = VirtualHostDevice(conn)
@@ -392,5 +420,7 @@ def _typeToDeviceClass(t):
         return SCSIBus
     elif t == NodeDevice.CAPABILITY_TYPE_SCSIDEV:
         return SCSIDevice
+    elif t == NodeDevice.CAPABILITY_TYPE_DRM:
+        return DRMDevice
     else:
         return NodeDevice

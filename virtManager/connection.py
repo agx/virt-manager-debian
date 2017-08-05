@@ -213,6 +213,10 @@ class vmmConnection(vmmGObject):
         self._domain_cb_ids = []
         self.using_network_events = False
         self._network_cb_ids = []
+        self.using_storage_pool_events = False
+        self._storage_pool_cb_ids = []
+        self.using_node_device_events = False
+        self._node_device_cb_ids = []
 
         self._xml_flags = {}
 
@@ -445,12 +449,6 @@ class vmmConnection(vmmGObject):
             if self._storage_capable is False:
                 logging.debug("Connection doesn't seem to support storage "
                               "APIs. Skipping all storage polling.")
-            else:
-                # Try to create the default storage pool
-                try:
-                    virtinst.StoragePool.build_default_pool(self.get_backend())
-                except Exception, e:
-                    logging.debug("Building default pool failed: %s", str(e))
 
         return self._storage_capable
 
@@ -744,7 +742,7 @@ class vmmConnection(vmmGObject):
         if not obj:
             return
 
-        self.idle_add(obj.refresh_from_event_loop)
+        self.idle_add(obj.recache_from_event_loop)
 
     def _domain_lifecycle_event(self, conn, domain, event, reason, userdata):
         ignore = conn
@@ -756,7 +754,7 @@ class vmmConnection(vmmGObject):
         obj = self.get_vm(name)
 
         if obj:
-            self.idle_add(obj.refresh_from_event_loop)
+            self.idle_add(obj.recache_from_event_loop)
         else:
             self.schedule_priority_tick(pollvm=True, force=True)
 
@@ -770,9 +768,62 @@ class vmmConnection(vmmGObject):
         obj = self.get_net(name)
 
         if obj:
-            self.idle_add(obj.refresh_from_event_loop)
+            self.idle_add(obj.recache_from_event_loop)
         else:
             self.schedule_priority_tick(pollnet=True, force=True)
+
+    def _storage_pool_lifecycle_event(self, conn, pool,
+                                      event, reason, userdata):
+        ignore = conn
+        ignore = userdata
+
+        name = pool.name()
+        logging.debug("storage pool lifecycle event: storage=%s event=%s "
+            "reason=%s", name, event, reason)
+
+        obj = self.get_pool(name)
+
+        if obj:
+            self.idle_add(obj.recache_from_event_loop)
+        else:
+            self.schedule_priority_tick(pollpool=True, force=True)
+
+    def _storage_pool_refresh_event(self, conn, pool, userdata):
+        ignore = conn
+        ignore = userdata
+
+        name = pool.name()
+        logging.debug("storage pool refresh event: pool=%s", name)
+
+        obj = self.get_pool(name)
+
+        if not obj:
+            return
+
+        self.idle_add(obj.refresh_pool_cache_from_event_loop)
+
+    def _node_device_lifecycle_event(self, conn, dev,
+                                     event, reason, userdata):
+        ignore = conn
+        ignore = userdata
+
+        name = dev.name()
+        logging.debug("node device lifecycle event: device=%s event=%s "
+            "reason=%s", name, event, reason)
+
+        self.schedule_priority_tick(pollnodedev=True, force=True)
+
+    def _node_device_update_event(self, conn, dev, userdata):
+        ignore = conn
+        ignore = userdata
+
+        name = dev.name()
+        logging.debug("node device update event: device=%s", name)
+
+        obj = self.get_nodedev(name)
+
+        if obj:
+            self.idle_add(obj.recache_from_event_loop)
 
     def _add_conn_events(self):
         if not self.check_support(support.SUPPORT_CONN_WORKING_XEN_EVENTS):
@@ -829,6 +880,45 @@ class vmmConnection(vmmGObject):
             self.using_network_events = False
             logging.debug("Error registering network events: %s", e)
 
+        try:
+            if FORCE_DISABLE_EVENTS:
+                raise RuntimeError("FORCE_DISABLE_EVENTS = True")
+
+            eventid = getattr(libvirt,
+                              "VIR_STORAGE_POOL_EVENT_ID_LIFECYCLE", 0)
+            refreshid = getattr(libvirt,
+                              "VIR_STORAGE_POOL_EVENT_ID_REFRESH", 1)
+            self._storage_pool_cb_ids.append(
+                self.get_backend().storagePoolEventRegisterAny(
+                None, eventid, self._storage_pool_lifecycle_event, None))
+            self._storage_pool_cb_ids.append(
+                self.get_backend().storagePoolEventRegisterAny(
+                None, refreshid, self._storage_pool_refresh_event, None))
+            self.using_storage_pool_events = True
+            logging.debug("Using storage pool events")
+        except Exception, e:
+            self.using_storage_pool_events = False
+            logging.debug("Error registering storage pool events: %s", e)
+
+        try:
+            if FORCE_DISABLE_EVENTS:
+                raise RuntimeError("FORCE_DISABLE_EVENTS = True")
+
+            eventid = getattr(libvirt, "VIR_NODE_DEVICE_EVENT_ID_LIFECYCLE", 0)
+            updateid = getattr(libvirt, "VIR_NODE_DEVICE_EVENT_ID_UPDATE", 1)
+            self._node_device_cb_ids.append(
+                self.get_backend().nodeDeviceEventRegisterAny(
+                None, eventid, self._node_device_lifecycle_event, None))
+            self._node_device_cb_ids.append(
+                self.get_backend().nodeDeviceEventRegisterAny(
+                None, updateid, self._node_device_update_event, None))
+
+            self.using_node_device_events = True
+            logging.debug("Using node device events")
+        except Exception, e:
+            self.using_network_events = False
+            logging.debug("Error registering node device events: %s", e)
+
 
     ######################################
     # Connection closing/opening methods #
@@ -849,12 +939,18 @@ class vmmConnection(vmmGObject):
                     self._backend.domainEventDeregisterAny(eid)
                 for eid in self._network_cb_ids:
                     self._backend.networkEventDeregisterAny(eid)
+                for eid in self._storage_pool_cb_ids:
+                    self._backend.storagePoolEventDeregisterAny(eid)
+                for eid in self._node_device_cb_ids:
+                    self._backend.nodeDeviceEventDeregisterAny(eid)
         except:
             logging.debug("Failed to deregister events in conn cleanup",
                 exc_info=True)
         finally:
             self._domain_cb_ids = []
             self._network_cb_ids = []
+            self._storage_pool_cb_ids = []
+            self._node_device_cb_ids = []
 
         self._backend.close()
         self._stats = []
@@ -941,6 +1037,14 @@ class vmmConnection(vmmGObject):
         logging.debug("conn version=%s", self._backend.conn_version())
         logging.debug("%s capabilities:\n%s",
                       self.get_uri(), self.caps.get_xml_config())
+
+        # Try to create the default storage pool
+        # We want this before events setup to save some needless polling
+        try:
+            virtinst.StoragePool.build_default_pool(self.get_backend())
+        except Exception, e:
+            logging.debug("Building default pool failed: %s", str(e))
+
         self._add_conn_events()
 
         # Prime CPU cache
@@ -1177,6 +1281,10 @@ class vmmConnection(vmmGObject):
             pollvm = False
         if self.using_network_events and not force:
             pollnet = False
+        if self.using_storage_pool_events and not force:
+            pollpool = False
+        if self.using_node_device_events and not force:
+            pollnodedev = False
 
         self._hostinfo = self._backend.getInfo()
 

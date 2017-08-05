@@ -364,7 +364,7 @@ class vmmEngine(vmmGObject):
         self._add_obj_to_tick_queue(conn, True, **kwargs)
 
     def tick(self):
-        for uri in self.conns.keys():
+        for uri in self.conns:
             conn = self.conns[uri]["conn"]
             self._add_obj_to_tick_queue(conn, False,
                                         stats_update=True, pollvm=True)
@@ -609,9 +609,8 @@ class vmmEngine(vmmGObject):
         handle_id = vmmGObject.connect(self, name, callback, *args)
 
         if name == "conn-added":
-            for uri in self.conns.keys():
-                self.emit("conn-added",
-                          self.conns[uri]["conn"])
+            for conn_dict in self.conns.values():
+                self.emit("conn-added", conn_dict["conn"])
 
         return handle_id
 
@@ -811,6 +810,7 @@ class vmmEngine(vmmGObject):
         obj.connect("action-clone-domain", self._do_show_clone)
         obj.connect("details-opened", self.increment_window_counter)
         obj.connect("details-closed", self.decrement_window_counter)
+        obj.connect("inspection-refresh", self._do_refresh_inspection)
 
         self.conns[uri]["windowDetails"][connkey] = obj
         return self.conns[uri]["windowDetails"][connkey]
@@ -931,6 +931,14 @@ class vmmEngine(vmmGObject):
             clone_window.show(src.topwin)
         except Exception, e:
             src.err.show_err(_("Error setting clone parameters: %s") % str(e))
+
+    def _do_refresh_inspection(self, src_ignore, uri, connkey):
+        if not self.inspection:
+            return
+
+        conn = self._lookup_conn(uri)
+        vm = conn.get_vm(connkey)
+        self.inspection.vm_refresh(vm)
 
     ##########################################
     # Window launchers from virt-manager cli #

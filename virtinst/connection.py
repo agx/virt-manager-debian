@@ -21,6 +21,8 @@ import weakref
 
 import libvirt
 
+from virtcli import CLIConfig
+
 from . import pollhelpers
 from . import support
 from . import util
@@ -29,7 +31,6 @@ from .guest import Guest
 from .nodedev import NodeDevice
 from .storage import StoragePool, StorageVolume
 from .uri import URI, MagicURI
-from virtcli import CLIConfig
 
 
 class VirtualConnection(object):
@@ -355,6 +356,10 @@ class VirtualConnection(object):
     def get_uri_username(self):
         return self._uriobj.username
     def get_uri_transport(self):
+        if self.get_uri_hostname() and not self._uriobj.transport:
+            # Libvirt defaults to transport=tls if hostname specified but
+            # no transport is specified
+            return "tls"
         return self._uriobj.transport
     def get_uri_path(self):
         return self._uriobj.path

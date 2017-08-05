@@ -115,7 +115,7 @@ class XMLParseTest(unittest.TestCase):
         check("bootloader", None, "pygrub")
         check("on_poweroff", "destroy", "restart")
         check("on_reboot", "restart", "destroy")
-        check("on_crash", "restart", "destroy")
+        check("on_crash", "destroy", "restart")
         check("on_lockfailure", "poweroff", "restart")
 
         check = self._make_checker(guest.clock)
@@ -551,7 +551,6 @@ class XMLParseTest(unittest.TestCase):
 
         check = self._make_checker(dev4)
         check("type", "ethernet")
-        check("source", "eth0", "eth1")
         check("target_dev", "nic02", "nic03")
         check("target_dev", "nic03", None)
 
@@ -652,6 +651,7 @@ class XMLParseTest(unittest.TestCase):
         check("mouse_mode", None, "client")
         check("filetransfer_enable", None, False)
         check("gl", None, True)
+        check("rendernode", None, "/dev/dri/foo")
 
         self._alter_compare(guest.get_xml_config(), outfile)
 

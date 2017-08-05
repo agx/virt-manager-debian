@@ -41,8 +41,6 @@ guest storage (--disk or --filesystem), and an install option.
 
 =over 4
 
-=item B<-c> URI
-
 =item B<--connect> URI
 
 Connect to a non-default hypervisor. If this isn't specified, libvirt
@@ -134,6 +132,24 @@ Use --events=? to see a list of all available sub options. Complete details at L
 Specify resource partitioning for the guest.
 
 Use --resource=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#resPartition>
+
+=item B<--sysinfo> OPT=VAL,[...]
+
+Configure sysinfo/SMBIOS values exposed to the guest OS. '--sysinfo host' can be used to expose the host's SMBIOS info to the VM, otherwise values can be manually specified.
+
+Use --sysinfo=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsSysinfo>
+
+=item B<--qemu-commandline> ARGS
+
+Pass options directly to the qemu emulator. Only works for the libvirt qemu driver. The option can take a string of arguments, for example:
+
+  --qemu-commandline="-display gtk,gl=on"
+
+Environment variables are specified with 'env', for example:
+
+  --qemu-commandline=env=DISPLAY=:0.1
+
+Complete details about the libvirt feature: L<https://libvirt.org/drvqemu.html#qemucommand>
 
 =item B<--vcpus> OPTIONS
 
@@ -300,6 +316,8 @@ Use --pm=? to see a list of all available sub options. Complete details at L<htt
 =head1 INSTALLATION OPTIONS
 
 =over 4
+
+=item B<-c> OPTIONS
 
 =item B<--cdrom> OPTIONS
 
@@ -991,7 +1009,7 @@ keyboard layout. If the special value 'local' is specified, virt-install
 will attempt to configure to use the same keymap as the local system. A value
 of 'none' specifically defers to the hypervisor. Default behavior is
 hypervisor specific, but typically is the same as 'local'. This is used
-by 'vnc'
+by 'vnc' and 'spice'.
 
 =item B<password>
 
@@ -1003,6 +1021,10 @@ is used by 'vnc' and 'spice'
 
 Whether to use OpenGl accelerated rendering. Value is 'yes' or 'no'. This is
 used by 'spice'.
+
+=item B<rendernode>
+
+DRM render node path to use. This is used when 'gl' is enabled.
 
 =back
 
@@ -1659,7 +1681,7 @@ booting from PXE, using VNC server/viewer, with virtio-scsi disk
        --disk path=/dev/HostVG/DemoVM,bus=scsi \
        --controller virtio-scsi \
        --network network=default \
-       --virt-type qemu
+       --virt-type qemu \
        --graphics vnc \
        --os-variant fedora9
 

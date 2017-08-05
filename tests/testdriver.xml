@@ -96,7 +96,7 @@
   </clock>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
-  <on_crash>restart</on_crash>
+  <on_crash>destroy</on_crash>
   <vcpu cpuset="1,2,5-9,11,13-14">9</vcpu>
   <numatune>
     <memory mode='interleave' placement='auto'/>
@@ -157,6 +157,7 @@
     </disk>
 
     <controller type='scsi' index='9' model='virtio-scsi'/>
+    <controller type='usb'/>
 
     <interface type='network'>
       <source network='default'/>
@@ -276,9 +277,36 @@
     <hugepages/>
   </memoryBacking>
   <uuid>12345678-12F4-1234-1234-A23456A89012</uuid>
+  <sysinfo type='smbios'>
+    <bios>
+      <entry name='vendor'>LENOVO</entry>
+      <entry name='version'>6FET82WW (3.12 )</entry>
+      <entry name='date'>01/12/2010</entry>
+      <entry name='release'>3.18</entry>
+    </bios>
+    <system>
+      <entry name='manufacturer'>Fedora</entry>
+      <entry name='product'>Virt-Manager</entry>
+      <entry name='version'>0.8.2-3.fc14</entry>
+      <entry name='serial'>32dfcb37-5af1-552b-357c-be8c3aa38310</entry>
+      <entry name='uuid'>12345678-12F4-1234-1234-A23456A89012</entry>
+      <entry name='sku'>1234567890</entry>
+      <entry name='family'>Red Hat</entry>
+    </system>
+    <baseBoard>
+      <entry name='manufacturer'>Hewlett-Packard</entry>
+      <entry name='product'>0B4Ch</entry>
+      <entry name='version'>D</entry>
+      <entry name='serial'>CZC1065993</entry>
+      <entry name='asset'>CZC1065993</entry>
+      <entry name='location'>Upside down</entry>
+    </baseBoard>
+  </sysinfo>
   <os>
     <type arch='i686'>hvm</type>
-    <loader>/usr/lib/xen/boot/hvmloader</loader>
+    <loader readonly='yes' type='pflash'>/usr/share/edk2/ovmf/OVMF_CODE.fd</loader>
+    <nvram>/nvram/test-many-devices_VARS.fd</nvram>
+    <smbios mode='sysinfo'/>
   </os>
   <idmap>
     <uid start='0' target='1000' count='10'/>
@@ -304,7 +332,7 @@ Foo bar baz &amp; yeah boii &lt; &gt; yeahfoo
   </clock>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
-  <on_crash>restart</on_crash>
+  <on_crash>destroy</on_crash>
   <vcpu cpuset="1,2,5-9,11,13-14">9</vcpu>
   <numatune>
     <memory mode='interleave' placement='auto'/>
@@ -576,6 +604,9 @@ Foo bar baz &amp; yeah boii &lt; &gt; yeahfoo
       <source mode='bind' host='my.source.host' service='1234'/>
       <protocol type='telnet'/>
     </serial>
+    <serial type="nmdm">
+      <source master="/dev/nmdm0A" slave="/dev/nmdm0B"/>
+    </serial>
 
 
     <!-- parallel devices -->
@@ -734,7 +765,8 @@ test-many-devices, like an alternate RNG.
   </devices>
 </domain>
 
-<domain type='test'>
+<domain type='test' xmlns:test='http://libvirt.org/schemas/domain/test/1.0'>
+  <test:runstate>5</test:runstate>
   <name>test-clone-simple</name>
   <currentMemory>204800</currentMemory>
   <memory>409600</memory>
@@ -750,7 +782,7 @@ test-many-devices, like an alternate RNG.
   <clock offset="utc"/>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
-  <on_crash>restart</on_crash>
+  <on_crash>destroy</on_crash>
   <vcpu>5</vcpu>
   <devices>
     <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
@@ -769,8 +801,9 @@ test-many-devices, like an alternate RNG.
 </domain>
 
 
-<domain type='test'>
-  <name>test-for-clone</name>
+<domain type='test' xmlns:test='http://libvirt.org/schemas/domain/test/1.0'>
+  <test:runstate>5</test:runstate>
+  <name>test-clone</name>
   <currentMemory>204800</currentMemory>
   <memory>409600</memory>
   <uuid>12345678-1234-1234-1234-12345678FFFF</uuid>
@@ -785,7 +818,7 @@ test-many-devices, like an alternate RNG.
   <clock offset="utc"/>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
-  <on_crash>restart</on_crash>
+  <on_crash>destroy</on_crash>
   <vcpu>5</vcpu>
   <devices>
     <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
@@ -836,43 +869,9 @@ test-many-devices, like an alternate RNG.
 </domain>
 
 
-<domain type='test'>
-  <name>test-halffull-clone</name>
-  <currentMemory>204800</currentMemory>
-  <memory>409600</memory>
-  <uuid>abcd5678-1234-1234-1234-12345678FFFF</uuid>
-  <os>
-    <type arch='i686'>hvm</type>
-    <loader>/usr/lib/xen/boot/hvmloader</loader>
-    <boot dev='hd'/>
-  </os>
-  <features>
-    <acpi/><apic/>
-  </features>
-  <clock offset="utc"/>
-  <on_poweroff>destroy</on_poweroff>
-  <on_reboot>restart</on_reboot>
-  <on_crash>restart</on_crash>
-  <vcpu>5</vcpu>
-  <devices>
-    <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
-    <disk type='block' device='disk'>
-      <source dev='/halffull-pool/testvol1.img'/>
-      <target dev='hda' bus='ide'/>
-    </disk>
-    <disk type='block' device='disk'>
-      <source dev='/halffull-pool/testvol2.img'/>
-      <target dev='hdb' bus='ide'/>
-    </disk>
-    <interface type='user'>
-      <mac address='22:11:11:11:11:11'/>
-    </interface>
-  </devices>
-</domain>
-
-
-<domain type='test'>
-  <name>test-full-clone</name>
+<domain type='test' xmlns:test='http://libvirt.org/schemas/domain/test/1.0'>
+  <test:runstate>5</test:runstate>
+  <name>test-clone-full</name>
   <currentMemory>204800</currentMemory>
   <memory>409600</memory>
   <uuid>abcd5678-aaaa-1234-1234-12345678FFFF</uuid>
@@ -887,7 +886,7 @@ test-many-devices, like an alternate RNG.
   <clock offset="utc"/>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
-  <on_crash>restart</on_crash>
+  <on_crash>destroy</on_crash>
   <vcpu>5</vcpu>
   <devices>
     <emulator>/usr/lib/xen/bin/qemu-dm</emulator>
@@ -1930,52 +1929,6 @@ ba</description>
 </pool>
 
 
-<pool type='disk'>
-  <name>halffull-pool</name>
-  <uuid>35bb2ad9-388a-cdfe-461a-b8907f6e5444</uuid>
-  <capacity>3000</capacity>
-  <allocation>3000</allocation>
-  <available>0</available>
-  <source>
-    <device path='/dev/hda'/>
-  </source>
-  <target>
-    <path>/halffull-pool</path>
-    <permissions>
-      <mode>0700</mode>
-      <owner>10736</owner>
-      <group>10736</group>
-    </permissions>
-  </target>
-
-  <volume type='block'>
-    <name>testvol1.img</name>
-    <capacity>1000</capacity>
-    <allocation>1000</allocation>
-    <target>
-      <permissions>
-        <mode>0700</mode>
-        <owner>10736</owner>
-        <group>10736</group>
-      </permissions>
-    </target>
-  </volume>
-
-  <volume type='block'>
-    <name>testvol2.img</name>
-    <capacity>1000</capacity>
-    <allocation>1000</allocation>
-    <target>
-      <permissions>
-        <mode>0700</mode>
-        <owner>10736</owner>
-        <group>10736</group>
-      </permissions>
-    </target>
-  </volume>
-</pool>
-
-
 <pool type='dir'>
   <name>full-pool</name>
   <uuid>35bb2ad9-388a-cdfe-461a-b8907f6e5555</uuid>
@@ -2199,6 +2152,97 @@ ba</description>
         <owner>0</owner>
         <group>0</group>
       </permissions>
+    </target>
+  </volume>
+</pool>
+
+
+<pool type="zfs">
+  <name>zfs</name>
+  <source>
+    <name>testzfspool</name>
+    <device path="/dev/ada1"/>
+  </source>
+</pool>
+
+<pool type="dir">
+  <name>nvram</name>
+  <source>
+  </source>
+  <target>
+    <path>/nvram</path>
+    <permissions>
+      <mode>0700</mode>
+      <owner>0</owner>
+      <group>0</group>
+    </permissions>
+  </target>
+
+  <volume type='file'>
+    <name>clone-orig_VARS.fd</name>
+    <capacity>1000</capacity>
+    <allocation>1000</allocation>
+    <target>
+      <permissions>
+        <mode>0700</mode>
+        <owner>0</owner>
+        <group>0</group>
+      </permissions>
+    </target>
+  </volume>
+  <volume type='file'>
+    <name>test-many-devices_VARS.fd</name>
+    <capacity>1000</capacity>
+    <allocation>1000</allocation>
+    <target>
+      <permissions>
+        <mode>0700</mode>
+        <owner>0</owner>
+        <group>0</group>
+      </permissions>
+    </target>
+  </volume>
+
+</pool>
+
+<pool type='mpath'>
+  <name>mpath</name>
+  <target>
+    <path>/dev/mapper</path>
+  </target>
+</pool>
+
+
+<pool type='scsi'>
+  <name>scsi</name>
+  <source>
+    <adapter type='scsi_host' name='host0'/>
+  </source>
+  <target>
+    <path>/dev/disk/by-path</path>
+  </target>
+
+  <volume type='block'>
+    <name>unit:0:0:0</name>
+    <key>35002538043584d30</key>
+    <capacity unit='bytes'>256060514304</capacity>
+    <allocation unit='bytes'>256060514304</allocation>
+    <physical unit='bytes'>256060514304</physical>
+    <target>
+      <path>/dev/disk/by-path/pci-0000:00:17.0-ata-1</path>
+      <format type='dos'/>
+    </target>
+  </volume>
+
+  <volume type='block'>
+    <name>unit:0:0:1</name>
+    <key>35002538043584d31</key>
+    <capacity unit='bytes'>256060514304</capacity>
+    <allocation unit='bytes'>256060514304</allocation>
+    <physical unit='bytes'>256060514304</physical>
+    <target>
+      <path>/dev/disk/by-path/pci-0000:00:17.0-ata-30</path>
+      <format type='gpt'/>
     </target>
   </volume>
 </pool>
@@ -2935,6 +2979,7 @@ ba</description>
 <device>
   <name>storage_serial_SATA_WDC_WD1600AAJS__WD_WCAP95119685</name>
   <parent>pci_8086_27c0_scsi_host_scsi_device_lun0</parent>
+  <devnode type='dev'>/dev/sda</devnode>
   <capability type='storage'>
     <block>/dev/sda</block>
     <bus>scsi</bus>
@@ -3429,7 +3474,34 @@ ba</description>
 </device>
 <!-- End duplicate USB devices -->
 
+<device>
+  <name>pci_0000_00_02_0</name>
+  <path>/sys/devices/pci0000:00/0000:00:02.0</path>
+  <parent>computer</parent>
+  <driver>
+    <name>i915</name>
+  </driver>
+  <capability type='pci'>
+    <domain>0</domain>
+    <bus>0</bus>
+    <slot>2</slot>
+    <function>0</function>
+    <product id='0x191b'>HD Graphics 530</product>
+    <vendor id='0x8086'>Intel Corporation</vendor>
+  </capability>
+</device>
 
+<device>
+  <name>drm_renderD129</name>
+  <path>/sys/devices/pci0000:00/0000:00:02.0/drm/renderD129</path>
+  <devnode type='dev'>/dev/dri/renderD129</devnode>
+  <devnode type='link'>/dev/dri/by-path/pci-0000:00:02.0-render</devnode>
+  <devnode type='link'>/dev/dri/by-id/foo-render</devnode>
+  <parent>pci_0000_00_02_0</parent>
+  <capability type='drm'>
+    <type>render</type>
+  </capability>
+</device>
 
 
 

@@ -134,6 +134,8 @@ class vmmStoragePool(vmmLibvirtObject):
         return self._backend.XMLDesc(flags)
     def _define(self, xml):
         return self.conn.define_pool(xml)
+    def _using_events(self):
+        return self.conn.using_storage_pool_events
     def _check_supports_isactive(self):
         return self.conn.check_support(
             self.conn.SUPPORT_POOL_ISACTIVE, self._backend)
@@ -146,7 +148,12 @@ class vmmStoragePool(vmmLibvirtObject):
 
     def _init_libvirt_state(self):
         self.tick()
-        self.refresh(_do_refresh_xml=False)
+        if not self.conn.is_active():
+            # We only want to refresh a pool on initial conn startup,
+            # since the pools may be out of date. But if a storage pool
+            # shows up while the conn is connected, this means it was
+            # just 'defined' recently and doesn't need to be refreshed.
+            self.refresh(_from_object_init=True)
         for vol in self.get_volumes():
             vol.init_libvirt_state()
 
@@ -173,16 +180,27 @@ class vmmStoragePool(vmmLibvirtObject):
         self._backend.undefine()
         self._backend = None
 
-    def refresh(self, _do_refresh_xml=True):
+    def refresh(self, _from_object_init=False):
         """
-        :param _do_refresh_xml: We want this by default. It's only skipped
-            to avoid double updating XML via init_libvirt_state
+        :param _from_object_init: Only used for the refresh() call from
+            _init_libvirt_state. Tells us to not refresh the XML, since
+            we just updated it.
         """
         if not self.is_active():
             return
 
         self._backend.refresh(0)
-        if _do_refresh_xml:
+        if self._using_events() and not _from_object_init:
+            # If we are using events, we let the event loop trigger
+            # the cache update for us. Except if from init_libvirt_state,
+            # we want the update to be done immediately
+            return
+
+        self.refresh_pool_cache_from_event_loop(
+            _from_object_init=_from_object_init)
+
+    def refresh_pool_cache_from_event_loop(self, _from_object_init=False):
+        if not _from_object_init:
             self.ensure_latest_xml()
         self._update_volumes(force=True)
         self.idle_emit("refreshed")
@@ -213,8 +231,7 @@ class vmmStoragePool(vmmLibvirtObject):
         if not force and self._volumes is not None:
             return
 
-        self._volumes = []
-        keymap = dict((o.get_connkey(), o) for o in self._volumes)
+        keymap = dict((o.get_connkey(), o) for o in self._volumes or [])
         (ignore, ignore, allvols) = pollhelpers.fetch_volumes(
             self.conn.get_backend(), self.get_backend(), keymap,
             lambda obj, key: vmmStorageVolume(self.conn, obj, key))
@@ -232,7 +249,7 @@ class vmmStoragePool(vmmLibvirtObject):
 
     def can_change_alloc(self):
         typ = self.get_type()
-        return (typ in [StoragePool.TYPE_LOGICAL])
+        return (typ in [StoragePool.TYPE_LOGICAL, StoragePool.TYPE_ZFS])
     def supports_volume_creation(self):
         return self.get_xmlobj().supports_volume_creation()
 

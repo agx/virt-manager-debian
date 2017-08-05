@@ -58,7 +58,7 @@ UBUNTU_URL = "http://us.archive.ubuntu.com:80/ubuntu/dists/%s/main/installer-%s"
 
 OLD_DEBIAN_URL = "http://archive.debian.org/debian/dists/%s/main/installer-%s/"
 DAILY_DEBIAN_URL = "http://d-i.debian.org/daily-images/%s/"
-DEBIAN_URL = "ftp://ftp.us.debian.org:21/debian/dists/%s/main/installer-%s/"
+DEBIAN_URL = "ftp://ftp.us.debian.org/debian/dists/%s/main/installer-%s/"
 
 MAGEIA_URL = "http://distro.ibiblio.org/mageia/distrib/%s/%s"
 
@@ -108,11 +108,11 @@ _set_distro(FedoraDistro)
 _add(ARCHIVE_FEDORA_URL % ("14", "x86_64"), "fedora14",
      i686=ARCHIVE_FEDORA_URL % ("14", "i386"))
 # 2 Latest releases
-_add(FEDORA_URL % ("22", "x86_64"), "fedora22")
 _add(FEDORA_URL % ("23", "x86_64"), "fedora23", name="fedora23")
+_add(FEDORA_URL % ("24", "x86_64"), "fedora24", name="fedora24")
 # Any Dev release
-_add(DEVFEDORA_URL % ("24", "x86_64"), "fedora23", name="fedora24")
-_add(DEVFEDORA_URL % ("rawhide", "x86_64"), "fedora23", name="fedora-rawhide")
+# _add(DEVFEDORA_URL % ("25", "x86_64"), "fedora23", name="fedora25")
+_add(DEVFEDORA_URL % ("rawhide", "x86_64"), "fedora24", name="fedora-rawhide")
 
 
 _set_distro(CentOSDistro)
@@ -129,13 +129,16 @@ _add(CENTOS_URL % ("6", "x86_64"), "centos6.7", name="centos-6-latest",
      i686=CENTOS_URL % ("6", "i386"))
 # Latest centos 7, but no i686 as of 2014-09-06
 _add(CENTOS_URL % ("7", "x86_64"), "centos7.0", name="centos-7-latest")
+# Centos 7 ppc64le
+_add("http://mirror.centos.org/altarch/7/os/ppc64le/",
+     "centos7.0", name="centos-7-ppc64", hasbootiso=False, hasxen=False)
 
 
 _set_distro(SLDistro)
 # scientific 5
 _add(OLD_SCIENTIFIC_URL % ("55", "x86_64"), "rhel5.5", name="sl-5.5")
 # Latest scientific 6
-_add(SCIENTIFIC_URL % ("6", "x86_64"), "rhel6.7", name="sl-6latest")
+_add(SCIENTIFIC_URL % ("6", "x86_64"), "rhel6.8", name="sl-6latest")
 
 
 _set_distro(SuseDistro)
@@ -160,8 +163,8 @@ _add(OLD_DEBIAN_URL % ("lenny", "amd64"), "debian5", hasxen=False,
      testshortcircuit=True)
 _add(DEBIAN_URL % ("wheezy", "amd64"), "debian7")
 # And daily builds, since we specially handle that URL
-_add(DAILY_DEBIAN_URL % ("amd64"), "debian8", name="debiandaily")
-_add(DAILY_DEBIAN_URL % ("arm64"), "debian8",
+_add(DAILY_DEBIAN_URL % ("amd64"), "debiantesting", name="debiandaily")
+_add(DAILY_DEBIAN_URL % ("arm64"), "debiantesting",
     name="debiandailyarm64", hasxen=False)
 
 
