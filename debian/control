@@ -28,7 +28,7 @@ Depends: ${misc:Depends}, ${python:Depends},
  gir1.2-libosinfo-1.0,
  virtinst (>= ${binary:Version}),
 Recommends: libvirt-daemon-system (>= 1.2.7),
- gir1.2-spice-client-gtk-3.0,
+ gir1.2-spiceclientgtk-3.0,
 Suggests: virt-viewer, ssh-askpass, gnome-keyring, gir1.2-secret-1,
  python-guestfs
 Description: desktop application for managing virtual machines
