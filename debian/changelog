@@ -1,12 +1,18 @@
-virt-manager (1:1.4.1-1~1.gbp031a05) UNRELEASED; urgency=medium
-
-  ** SNAPSHOT build @031a0558c703623ea419ce5acb7dfeb706173776 **
+virt-manager (1:1.4.1-1) unstable; urgency=medium
 
   * [2f34677] Drop obsolete gnome-icon-theme recommends (Closes: #869685)
   * [4d6092c] Update uscan URL
   * [2c530bc] New upstream version 1.4.1
+  * [6d547b1] Drop patches, fixed upstream:
+      Mark-Jessie-as-having-qemu-guest-agent.patch
+      domain-add-support-to-rename-domain-with-nvram-vars-file.patch
+      osdict-Fix-incorrect-usage-of-virtio-input.patch
+      osdict-Don-t-return-virtio1.0-net-as-a-valid-device-name.patch
+      We-can-t-clone-a-VM-in-some-scenarios.patch
+  * [e873ef7] Adjust to spice client gtk rename (Closes: #873597)
+  * [564f8c4] Build-dep on dh-python
 
- -- Guido Günther <agx@sigxcpu.org>  Sat, 05 Aug 2017 14:09:09 -0300
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 29 Aug 2017 20:25:30 +0200
 
 virt-manager (1:1.4.0-6) unstable; urgency=medium
 
