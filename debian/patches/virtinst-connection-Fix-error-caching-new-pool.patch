@@ -1,0 +1,24 @@
+From: Cole Robinson <crobinso@redhat.com>
+Date: Wed, 30 Aug 2017 10:34:17 -0400
+Subject: virtinst: connection: Fix error caching new pool
+
+$ virt-install --connect test:///default --name foo --ram 64 --import --disk /tmp/idontexist.img
+ERROR    Error: --disk /tmp/idontexist.img: 'vols'
+---
+ virtinst/connection.py | 3 +++
+ 1 file changed, 3 insertions(+)
+
+diff --git a/virtinst/connection.py b/virtinst/connection.py
+index d6d66fc..0b2fbb0 100644
+--- a/virtinst/connection.py
++++ b/virtinst/connection.py
+@@ -249,6 +249,9 @@ class VirtualConnection(object):
+         poollist = self._fetch_cache[self._FETCH_KEY_POOLS]
+         poolxmlobj = self._build_pool_raw(poolobj)
+         poollist.append(poolxmlobj)
++
++        if self._FETCH_KEY_VOLS not in self._fetch_cache:
++            return
+         vollist = self._fetch_cache[self._FETCH_KEY_VOLS]
+         vollist.extend(self._fetch_vols_raw(poolxmlobj))
+ 

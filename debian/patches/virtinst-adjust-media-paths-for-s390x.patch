@@ -1,0 +1,55 @@
+From: Viktor Mihajlovski <mihajlov@linux.vnet.ibm.com>
+Date: Tue, 29 Aug 2017 15:51:43 +0200
+Subject: virtinst: adjust media paths for s390x
+
+The install kernel and intrd files are located in <url-prefix>/generic
+of the Debian and Ubuntu s390x install trees. Further they follow a
+different naming scheme than on x86. Adjust the url fetching accordingly.
+
+Signed-off-by: Viktor Mihajlovski <mihajlov@linux.vnet.ibm.com>
+---
+ virtinst/urlfetcher.py | 17 +++++++++++++++--
+ 1 file changed, 15 insertions(+), 2 deletions(-)
+
+diff --git a/virtinst/urlfetcher.py b/virtinst/urlfetcher.py
+index 1e944a4..96ec583 100644
+--- a/virtinst/urlfetcher.py
++++ b/virtinst/urlfetcher.py
+@@ -1129,6 +1129,12 @@ class DebianDistro(Distro):
+         kernel_basename = "linux"
+         if self._treeArch in ["ppc64el"]:
+             kernel_basename = "vmlinux"
++
++        if self._treeArch == "s390x":
++            hvmroot = "%s/generic/" % self._url_prefix
++            kernel_basename = "kernel.%s" % self.name.lower()
++            initrd_basename = "initrd.%s" % self.name.lower()
++
+         self._hvm_kernel_paths = [
+             (hvmroot + kernel_basename, hvmroot + initrd_basename)]
+ 
+@@ -1147,7 +1153,11 @@ class DebianDistro(Distro):
+             return False
+ 
+         filename = "%s/MANIFEST" % self._url_prefix
+-        regex = ".*%s.*" % self._installer_dirname
++        if self.arch == "s390x":
++            regex = ".*generic/kernel\.%s.*" % self.name.lower()
++        else:
++            regex = ".*%s.*" % self._installer_dirname
++
+         if not self._fetchAndMatchRegex(filename, regex):
+             logging.debug("Regex didn't match, not a %s distro", self.name)
+             return False
+@@ -1196,7 +1206,10 @@ class UbuntuDistro(DebianDistro):
+         if self.fetcher.hasFile("%s/MANIFEST" % self._url_prefix):
+             # For regular trees
+             filename = "%s/MANIFEST" % self._url_prefix
+-            regex = ".*%s.*" % self._installer_dirname
++            if self.arch == "s390x":
++                regex = ".*generic/kernel\.%s.*" % self.name.lower()
++            else:
++                regex = ".*%s.*" % self._installer_dirname
+         elif self.fetcher.hasFile("install/netboot/version.info"):
+             # For trees based on ISO's
+             self._url_prefix = "install"
