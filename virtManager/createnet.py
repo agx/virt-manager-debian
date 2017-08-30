@@ -22,6 +22,7 @@ import logging
 
 from gi.repository import Gtk
 from gi.repository import Gdk
+from gi.repository import Pango
 
 import ipaddr
 
@@ -49,7 +50,7 @@ def _make_ipaddr(addrstr):
         return None
     try:
         return ipaddr.IPNetwork(addrstr)
-    except:
+    except Exception:
         return None
 
 
@@ -68,6 +69,7 @@ class vmmCreateNetwork(vmmGObjectUI):
 
             "on_net_name_activate": self.forward,
             "on_net_forward_toggled" : self.change_forward_type,
+            "on_net_forward_mode_toggled" : self.change_forward_mode_type,
 
             "on_net-ipv4-enable_toggled" :  self.change_ipv4_enable,
             "on_net-ipv4-network_changed":  self.change_ipv4_network,
@@ -120,6 +122,13 @@ class vmmCreateNetwork(vmmGObjectUI):
         self.widget("header").modify_bg(Gtk.StateType.NORMAL, blue)
 
         # [ label, dev name ]
+        pf_list = self.widget("pf-list")
+        pf_model = Gtk.ListStore(str, str)
+        pf_list.set_model(pf_model)
+        text = uiutil.init_combo_text_column(pf_list, 0)
+        text.set_property("ellipsize", Pango.EllipsizeMode.MIDDLE)
+
+        # [ label, dev name ]
         fw_list = self.widget("net-forward")
         fw_model = Gtk.ListStore(str, str)
         fw_list.set_model(fw_model)
@@ -133,6 +142,7 @@ class vmmCreateNetwork(vmmGObjectUI):
 
         mode_model.append([_("NAT"), "nat"])
         mode_model.append([_("Routed"), "route"])
+        mode_model.append([_("Open"), "open"])
 
     def reset_state(self):
         notebook = self.widget("create-pages")
@@ -167,6 +177,8 @@ class vmmCreateNetwork(vmmGObjectUI):
 
         self.widget("net-enable-ipv6-networking").set_active(False)
 
+
+        # Populate physical forward devices
         fw_model = self.widget("net-forward").get_model()
         fw_model.clear()
         fw_model.append([_("Any physical device"), None])
@@ -180,10 +192,37 @@ class vmmCreateNetwork(vmmGObjectUI):
 
         for name in devnames:
             fw_model.append([_("Physical device %s") % name, name])
-
         self.widget("net-forward").set_active(0)
+
         self.widget("net-forward-mode").set_active(0)
+
+
+        # Populate hostdev forward devices
+        pf_model = self.widget("pf-list").get_model()
+        pf_model.clear()
+
+        devprettynames = []
+        ifnames = []
+        for pcidev in self.conn.filter_nodedevs("pci"):
+            if pcidev.xmlobj.capability_type != "virt_functions":
+                continue
+            devdesc = pcidev.xmlobj.pretty_name()
+            for netdev in self.conn.filter_nodedevs("net"):
+                if pcidev.xmlobj.name != netdev.xmlobj.parent:
+                    continue
+                ifname = netdev.xmlobj.interface
+                devprettyname = "%s (%s)" % (ifname, devdesc)
+                devprettynames.append(devprettyname)
+                ifnames.append(ifname)
+                break
+        for devprettyname, ifname in zip(devprettynames, ifnames):
+            pf_model.append([_("%s") % devprettyname, ifname])
+        if len(pf_model) is 0:
+            pf_model.append([_("No available device"), None])
+        self.widget("pf-list").set_active(0)
+
         self.widget("net-forward-none").set_active(True)
+
 
 
     ##################
@@ -223,6 +262,11 @@ class vmmCreateNetwork(vmmGObjectUI):
         return self._get_network_helper("net-dhcpv6-end")
 
     def get_config_forwarding(self):
+        if self.widget("net-forward-mode-hostdev").get_active():
+            name = uiutil.get_list_selection(self.widget("pf-list"), column=1)
+            mode = "hostdev"
+            return [name, mode]
+
         if self.widget("net-forward-none").get_active():
             return [None, None]
 
@@ -257,7 +301,7 @@ class vmmCreateNetwork(vmmGObjectUI):
         try:
             net = self._build_xmlstub()
             net.name = self.widget("net-name").get_text()
-        except Exception, e:
+        except Exception as e:
             return self.err.val_err(_("Invalid network name"), str(e))
 
         return True
@@ -481,10 +525,28 @@ class vmmCreateNetwork(vmmGObjectUI):
             self.widget("create-finish").grab_focus()
 
     def change_forward_type(self, ignore):
-        skip_fwd = self.widget("net-forward-none").get_active()
+        sriov_capable = bool(len(self.widget("pf-list").get_model()))
+        self.widget("net-forward-mode-hostdev").set_sensitive(sriov_capable)
+        mode = uiutil.get_list_selection(self.widget("net-forward-mode"),
+                                        column=1)
 
-        self.widget("net-forward-mode").set_sensitive(not skip_fwd)
-        self.widget("net-forward").set_sensitive(not skip_fwd)
+        is_hostdev = self.widget("net-forward-mode-hostdev").get_active()
+        fwd_sensitive = False
+        if not is_hostdev:
+            fwd_sensitive = not self.widget("net-forward-none").get_active()
+
+        self.widget("net-forward-mode").set_sensitive(fwd_sensitive)
+        self.widget("net-forward").set_sensitive(fwd_sensitive and
+                                                mode != "open")
+        self.widget("net-forward-hostdev-table").set_sensitive(is_hostdev)
+        self.widget("net-enable-ipv6-networking-box").set_sensitive(
+            not is_hostdev)
+        self.widget("dns-domain-name-box").set_sensitive(not is_hostdev)
+
+    def change_forward_mode_type(self, ignore):
+        mode = uiutil.get_list_selection(self.widget("net-forward-mode"),
+                                        column=1)
+        self.widget("net-forward").set_sensitive(mode != "open")
 
     def change_ipv4_enable(self, ignore):
         enabled = self.get_config_ipv4_enable()
@@ -684,7 +746,19 @@ class vmmCreateNetwork(vmmGObjectUI):
         dev, mode = self.get_config_forwarding()
         if mode:
             net.forward.mode = mode
-            net.forward.dev = dev or None
+            if mode == "open":
+                net.forward.dev = None
+            else:
+                net.forward.dev = dev or None
+
+        if net.forward.mode == "hostdev":
+            net.forward.managed = "yes"
+            pfobj = net.forward.add_pf()
+            pfobj.dev = net.forward.dev
+            net.forward.dev = None
+            net.domain_name = None
+            net.ipv6 = None
+            return net
 
         if self.get_config_ipv4_enable():
             ip = self.get_config_ip4()
@@ -730,9 +804,7 @@ class vmmCreateNetwork(vmmGObjectUI):
         return net
 
     def _finish_cb(self, error, details):
-        self.topwin.set_sensitive(True)
-        self.topwin.get_window().set_cursor(
-            Gdk.Cursor.new(Gdk.CursorType.TOP_LEFT_ARROW))
+        self.reset_finish_cursor()
 
         if error:
             error = _("Error creating virtual network: %s") % str(error)
@@ -751,14 +823,11 @@ class vmmCreateNetwork(vmmGObjectUI):
 
         try:
             net = self._build_xmlobj()
-        except Exception, e:
+        except Exception as e:
             self.err.show_err(_("Error generating network xml: %s") % str(e))
             return
 
-        self.topwin.set_sensitive(False)
-        self.topwin.get_window().set_cursor(
-            Gdk.Cursor.new(Gdk.CursorType.WATCH))
-
+        self.set_finish_cursor()
         progWin = vmmAsyncJob(self._async_net_create, [net],
                               self._finish_cb, [],
                               _("Creating virtual network..."),

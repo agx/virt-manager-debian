@@ -19,6 +19,8 @@
 # MA 02110-1301 USA.
 #
 
+from __future__ import print_function
+
 import argparse
 import logging
 import os
@@ -44,7 +46,7 @@ warnings.simplefilter("ignore")
 try:
     gi.check_version("3.14.0")
 except (ValueError, AttributeError):
-    print "pygobject3 3.14.0 or later is required."
+    print("pygobject3 3.14.0 or later is required.")
     sys.exit(1)
 
 
@@ -76,7 +78,7 @@ def _import_gtk(leftovers):
         leftovers = sys.argv[1:]
 
         if Gtk.check_version(3, 14, 0):
-            print "gtk3 3.14.0 or later is required."
+            print("gtk3 3.14.0 or later is required.")
             sys.exit(1)
 
         # This will error if Gtk wasn't correctly initialized
@@ -85,7 +87,7 @@ def _import_gtk(leftovers):
         globals()["Gtk"] = Gtk
         import virtManager.config
         ignore = virtManager.config
-    except Exception, e:
+    except Exception as e:
         # Don't just let the exception raise here. abrt reports bugs
         # when users mess up su/sudo and DISPLAY isn't set. Printing
         # it avoids the issue
@@ -94,7 +96,7 @@ def _import_gtk(leftovers):
         if display:
             msg += ": Could not open display: %s" % display
         logging.debug("".join(traceback.format_exc()))
-        print msg
+        print(msg)
         sys.exit(1)
     finally:
         sys.argv = origargv
@@ -134,26 +136,26 @@ def parse_commandline():
     parser.set_defaults(domain=None)
 
     # Trace every libvirt API call to debug output
-    parser.add_argument("--trace-libvirt", dest="tracelibvirt",
+    parser.add_argument("--trace-libvirt",
         help=argparse.SUPPRESS, action="store_true")
 
     # Don't load any connections on startup to test first run
     # PackageKit integration
-    parser.add_argument("--test-first-run", dest="testfirstrun",
+    parser.add_argument("--test-first-run",
         help=argparse.SUPPRESS, action="store_true")
     # Force use of old style libvirt polling APIs
-    parser.add_argument("--test-old-poll", dest="testoldpoll",
+    parser.add_argument("--test-old-poll",
         help=argparse.SUPPRESS, action="store_true")
     # Force disable use of libvirt object events
-    parser.add_argument("--test-no-events", dest="testnoevents",
+    parser.add_argument("--test-no-events",
         help=argparse.SUPPRESS, action="store_true")
 
     parser.add_argument("-c", "--connect", dest="uri",
         help="Connect to hypervisor at URI", metavar="URI")
-    parser.add_argument("--debug", action="store_true", dest="debug",
+    parser.add_argument("--debug", action="store_true",
         help="Print debug output to stdout (implies --no-fork)",
         default=False)
-    parser.add_argument("--no-fork", action="store_true", dest="nofork",
+    parser.add_argument("--no-fork", action="store_true",
         help="Don't fork into background on startup")
     parser.add_argument("--no-conn-autostart", action="store_true",
         dest="skip_autostart", help="Do not autostart connections")
@@ -183,7 +185,7 @@ def main():
     logging.debug("virt-manager version: %s", CLIConfig.version)
     logging.debug("virtManager import: %s", str(virtManager))
 
-    if options.tracelibvirt:
+    if options.trace_libvirt:
         logging.debug("Libvirt tracing requested")
         import virtManager.module_trace
         import libvirt
@@ -191,7 +193,7 @@ def main():
 
     # Now we've got basic environment up & running we can fork
     do_drop_stdio = False
-    if not options.nofork and not options.debug:
+    if not options.no_fork and not options.debug:
         drop_tty()
         do_drop_stdio = True
 
@@ -218,7 +220,7 @@ def main():
                   Gtk.get_micro_version())
 
     config = virtManager.config.vmmConfig(
-        "virt-manager", CLIConfig, options.testfirstrun)
+        "virt-manager", CLIConfig, options.test_first_run)
 
     if not util.local_libvirt_version() >= 6000:
         # We need this version for threaded virConnect access
@@ -239,10 +241,10 @@ def main():
     Gtk.Window.set_default_icon_name("virt-manager")
 
     import virtManager.connection
-    virtManager.connection.FORCE_DISABLE_EVENTS = bool(options.testnoevents)
+    virtManager.connection.FORCE_DISABLE_EVENTS = bool(options.test_no_events)
 
     import virtinst.pollhelpers
-    virtinst.pollhelpers.FORCE_OLD_POLL = bool(options.testoldpoll)
+    virtinst.pollhelpers.FORCE_OLD_POLL = bool(options.test_old_poll)
 
     show_window = None
     domain = None
@@ -270,6 +272,15 @@ def main():
     LibvirtGLib.init(None)
     LibvirtGLib.event_register()
 
+    # Actually exit when we receive ctrl-c
+    from gi.repository import GLib
+    def _sigint_handler(user_data):
+        ignore = user_data
+        logging.debug("Received KeyboardInterrupt. Exiting application.")
+        sys.exit(0)
+    GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT,
+                         _sigint_handler, None)
+
     engine = vmmEngine()
 
     engine.start(options.uri, show_window, domain, options.skip_autostart)
@@ -282,7 +293,7 @@ if __name__ == "__main__":
         logging.debug("Received KeyboardInterrupt. Exiting application.")
     except SystemExit:
         raise
-    except Exception, run_e:
+    except Exception as run_e:
         if "Gtk" not in globals():
             raise
         _show_startup_error(str(run_e), "".join(traceback.format_exc()))

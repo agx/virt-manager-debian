@@ -186,7 +186,7 @@ class VirtualDisk(VirtualDevice):
 
             if not conn.is_remote():
                 return os.path.exists(path)
-        except:
+        except Exception:
             pass
 
         return False
@@ -212,7 +212,7 @@ class VirtualDisk(VirtualDevice):
         try:
             # Get UID for string name
             uid = pwd.getpwnam(username)[2]
-        except Exception, e:
+        except Exception as e:
             logging.debug("Error looking up username: %s", str(e))
             return []
 
@@ -257,7 +257,7 @@ class VirtualDisk(VirtualDevice):
                     int(label.split(":")[0].replace("+", "")))
                 if pwuid:
                     user = pwuid[0]
-        except:
+        except Exception:
             logging.debug("Exception grabbing qemu DAC user", exc_info=True)
             return None, []
 
@@ -308,7 +308,7 @@ class VirtualDisk(VirtualDevice):
             try:
                 try:
                     fix_perms(dirname, useacl)
-                except:
+                except Exception:
                     # If acl fails, fall back to chmod and retry
                     if not useacl:
                         raise
@@ -316,7 +316,7 @@ class VirtualDisk(VirtualDevice):
 
                     logging.debug("setfacl failed, trying old fashioned way")
                     fix_perms(dirname, useacl)
-            except Exception, e:
+            except Exception as e:
                 errdict[dirname] = str(e)
 
         return errdict
@@ -470,7 +470,8 @@ class VirtualDisk(VirtualDevice):
     _XML_PROP_ORDER = [
         "type", "device",
         "driver_name", "driver_type",
-        "driver_cache", "driver_discard", "driver_io", "error_policy",
+        "driver_cache", "driver_discard", "driver_detect_zeroes",
+        "driver_io", "error_policy",
         "_source_file", "_source_dev", "_source_dir",
         "source_volume", "source_pool", "source_protocol", "source_name",
         "source_host_name", "source_host_port",
@@ -481,6 +482,7 @@ class VirtualDisk(VirtualDevice):
     def __init__(self, *args, **kwargs):
         VirtualDevice.__init__(self, *args, **kwargs)
 
+        self._source_volume_err = None
         self._storage_backend = None
         self.storage_was_created = False
 
@@ -740,11 +742,14 @@ class VirtualDisk(VirtualDevice):
     shareable = XMLProperty("./shareable", is_bool=True)
     driver_cache = XMLProperty("./driver/@cache")
     driver_discard = XMLProperty("./driver/@discard")
+    driver_detect_zeroes = XMLProperty("./driver/@detect_zeroes")
     driver_io = XMLProperty("./driver/@io")
 
     error_policy = XMLProperty("./driver/@error_policy")
     serial = XMLProperty("./serial")
     startup_policy = XMLProperty("./source/@startupPolicy")
+    logical_block_size = XMLProperty("./blockio/@logical_block_size")
+    physical_block_size = XMLProperty("./blockio/@physical_block_size")
 
     iotune_rbs = XMLProperty("./iotune/read_bytes_sec", is_int=True)
     iotune_ris = XMLProperty("./iotune/read_iops_sec", is_int=True)
@@ -768,6 +773,7 @@ class VirtualDisk(VirtualDevice):
         path = None
         vol_object = None
         parent_pool = None
+        self._source_volume_err = None
         typ = self._get_default_type()
 
         if self.type == VirtualDisk.TYPE_NETWORK:
@@ -783,7 +789,8 @@ class VirtualDisk(VirtualDevice):
                 parent_pool = conn.storagePoolLookupByName(self.source_pool)
                 vol_object = parent_pool.storageVolLookupByName(
                     self.source_volume)
-            except:
+            except Exception as e:
+                self._source_volume_err = str(e)
                 logging.debug("Error fetching source pool=%s vol=%s",
                     self.source_pool, self.source_volume, exc_info=True)
 
@@ -840,6 +847,9 @@ class VirtualDisk(VirtualDevice):
 
     def validate(self):
         if self.path is None:
+            if self._source_volume_err:
+                raise RuntimeError(self._source_volume_err)
+
             if not self.can_be_empty():
                 raise ValueError(_("Device type '%s' requires a path") %
                                  self.device)
@@ -1024,7 +1034,7 @@ class VirtualDisk(VirtualDevice):
             raise ValueError(_("Controller number %d for disk of type %s has "
                                "no empty slot to use" % (pref_ctrl, prefix)))
         else:
-            raise ValueError(_("Only %s disks of type '%s' are supported"
-                               % (maxnode, prefix)))
+            raise ValueError(_("Only %s disks for bus '%s' are supported"
+                               % (maxnode, self.bus)))
 
 VirtualDisk.register_type()

@@ -19,6 +19,7 @@
 
 import logging
 import re
+import urllib
 
 from .cli import parse_optstr_tuples
 
@@ -46,9 +47,10 @@ class URI(object):
     """
     def __init__(self, uri):
         self.uri = uri
+        unquoted_uri = urllib.unquote(uri)
 
         (self.scheme, self.username, self.hostname,
-         self.path, self.query, self.fragment) = self._split(self.uri)
+         self.path, self.query, self.fragment) = self._split(unquoted_uri)
 
         self.transport = ''
         if "+" in self.scheme:
@@ -198,14 +200,14 @@ class MagicURI(object):
         """
         # Fake capabilities
         if self.capsfile:
-            capsxml = file(self.capsfile).read()
+            capsxml = open(self.capsfile).read()
             conn.getCapabilities = lambda: capsxml
 
         # Fake domcapabilities. This is insufficient since output should
         # vary per type/arch/emulator combo, but it can be expanded later
         # if needed
         if self.domcapsfile:
-            domcapsxml = file(self.domcapsfile).read()
+            domcapsxml = open(self.domcapsfile).read()
             def fake_domcaps(emulator, arch, machine, virttype, flags=0):
                 ignore = emulator
                 ignore = flags

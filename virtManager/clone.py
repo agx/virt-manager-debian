@@ -405,7 +405,7 @@ class vmmCloneVM(vmmGObjectUI):
             try:
                 cd.skip_target = skip_targets
                 cd.setup_original()
-            except Exception, e:
+            except Exception as e:
                 logging.exception("Disk target '%s' caused clone error",
                                   force_target)
                 storage_add(str(e))
@@ -432,7 +432,7 @@ class vmmCloneVM(vmmGObjectUI):
 
                 cd.clone_paths = clone_path
                 size = cd.original_disks[0].get_size()
-            except Exception, e:
+            except Exception as e:
                 logging.exception("Error setting generated path '%s'",
                                   clone_path)
                 storage_add(str(e))
@@ -469,7 +469,7 @@ class vmmCloneVM(vmmGObjectUI):
             try:
                 newpath = self.generate_clone_path_name(origpath, newname)
                 row[STORAGE_INFO_NEW_PATH] = newpath
-            except Exception, e:
+            except Exception as e:
                 logging.debug("Generating new path from clone name failed: " +
                               str(e))
 
@@ -592,7 +592,7 @@ class vmmCloneVM(vmmGObjectUI):
         self.clone_design.skip_target = skip_targets
         try:
             self.clone_design.clone_paths = new_disks
-        except Exception, e:
+        except Exception as e:
             # Just log the error and go on. The UI will fail later if needed
             logging.debug("Error setting clone_paths: %s", str(e))
 
@@ -695,7 +695,7 @@ class vmmCloneVM(vmmGObjectUI):
             if msg:
                 raise RuntimeError(msg)
             row[NETWORK_INFO_NEW_MAC] = new
-        except Exception, e:
+        except Exception as e:
             self.err.show_err(_("Error changing MAC address: %s") % str(e))
             return
 
@@ -735,7 +735,7 @@ class vmmCloneVM(vmmGObjectUI):
             row[STORAGE_INFO_NEW_PATH] = new_path
             row[STORAGE_INFO_MANUAL_PATH] = True
             self.populate_storage_lists()
-        except Exception, e:
+        except Exception as e:
             self.err.show_err(_("Error changing storage path: %s") % str(e))
             return
 
@@ -803,9 +803,7 @@ class vmmCloneVM(vmmGObjectUI):
         return True
 
     def _finish_cb(self, error, details):
-        self.topwin.set_sensitive(True)
-        self.topwin.get_window().set_cursor(
-            Gdk.Cursor.new(Gdk.CursorType.TOP_LEFT_ARROW))
+        self.reset_finish_cursor()
 
         if error is not None:
             error = (_("Error creating virtual machine clone '%s': %s") %
@@ -820,13 +818,11 @@ class vmmCloneVM(vmmGObjectUI):
         try:
             if not self.validate():
                 return
-        except Exception, e:
+        except Exception as e:
             self.err.show_err(_("Uncaught error validating input: %s") % str(e))
             return
 
-        self.topwin.set_sensitive(False)
-        self.topwin.get_window().set_cursor(
-            Gdk.Cursor.new(Gdk.CursorType.WATCH))
+        self.set_finish_cursor()
 
         title = (_("Creating virtual machine clone '%s'") %
                  self.clone_design.clone_name)
@@ -856,14 +852,13 @@ class vmmCloneVM(vmmGObjectUI):
                 if poolname not in refresh_pools:
                     refresh_pools.append(poolname)
 
-            self.clone_design.setup()
             self.clone_design.start_duplicate(meter)
 
             for poolname in refresh_pools:
                 try:
                     pool = self.conn.get_pool(poolname)
                     self.idle_add(pool.refresh)
-                except:
+                except Exception:
                     logging.debug("Error looking up pool=%s for refresh after "
                         "VM clone.", poolname, exc_info=True)
 

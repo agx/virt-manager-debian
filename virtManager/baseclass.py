@@ -74,24 +74,53 @@ class vmmGObject(GObject.GObject):
                 self.remove_gobject_timeout(h)
 
             self._cleanup()
-        except:
+        except Exception:
             logging.exception("Error cleaning up %s", self)
 
     def _cleanup(self):
         raise NotImplementedError("_cleanup must be implemented in subclass")
 
+    def __del__(self):
+        try:
+            if self.config and self._leak_check:
+                self.config.remove_object(self.object_key)
+        except Exception:
+            logging.exception("Error removing %s", self.object_key)
+
     # pylint: disable=arguments-differ
     # Newer pylint can detect, but warns that overridden arguments are wrong
 
     def connect(self, name, callback, *args):
+        """
+        GObject connect() wrapper to simplify callers, and track handles
+        for easy cleanup
+        """
         ret = GObject.GObject.connect(self, name, callback, *args)
         self._gobject_handles.append(ret)
         return ret
 
     def disconnect(self, handle):
+        """
+        GObject disconnect() wrapper to simplify callers
+        """
         ret = GObject.GObject.disconnect(self, handle)
         self._gobject_handles.remove(handle)
         return ret
+
+    def timeout_add(self, timeout, func, *args):
+        """
+        GLib timeout_add wrapper to simplify callers, and track handles
+        for easy cleanup
+        """
+        ret = GLib.timeout_add(timeout, func, *args)
+        self.add_gobject_timeout(ret)
+        return ret
+
+    def emit(self, signal_name, *args):
+        """
+        GObject emit() wrapper to simplify callers
+        """
+        return GObject.GObject.emit(self, signal_name, *args)
 
     def add_gsettings_handle(self, handle):
         self._gsettings_handles.append(handle)
@@ -123,7 +152,16 @@ class vmmGObject(GObject.GObject):
         t.daemon = True
         t.start()
 
+
+    ##############################
+    # Custom signal/idle helpers #
+    ##############################
+
     def connect_once(self, signal, func, *args):
+        """
+        Like standard glib connect(), but only runs the signal handler
+        once, then unregisters it
+        """
         id_list = []
 
         def wrap_func(*wrapargs):
@@ -138,6 +176,10 @@ class vmmGObject(GObject.GObject):
         return conn_id
 
     def connect_opt_out(self, signal, func, *args):
+        """
+        Like standard glib connect(), but allows the signal handler to
+        unregister itself if it returns True
+        """
         id_list = []
 
         def wrap_func(*wrapargs):
@@ -160,26 +202,6 @@ class vmmGObject(GObject.GObject):
 
         self.idle_add(emitwrap, signal, *args)
 
-    def timeout_add(self, timeout, func, *args):
-        """
-        Make sure timeout functions are run thread safe
-        """
-        def cb():
-            return func(*args)
-        ret = GLib.timeout_add(timeout, cb)
-        self.add_gobject_timeout(ret)
-        return ret
-
-    def emit(self, signal_name, *args):
-        return GObject.GObject.emit(self, signal_name, *args)
-
-    def __del__(self):
-        try:
-            if self.config and self._leak_check:
-                self.config.remove_object(self.object_key)
-        except:
-            logging.exception("Error removing %s", self.object_key)
-
 
 class vmmGObjectUI(vmmGObject):
     @staticmethod
@@ -198,7 +220,7 @@ class vmmGObjectUI(vmmGObject):
 
             self.builder = Gtk.Builder()
             self.builder.set_translation_domain("virt-manager")
-            self.builder.add_from_string(file(uifile).read())
+            self.builder.add_from_string(open(uifile).read())
 
             if not topwin:
                 self.topwin = self.widget(windowname)
@@ -238,3 +260,20 @@ class vmmGObjectUI(vmmGObject):
 
     def bind_escape_key_close(self):
         self.bind_escape_key_close_helper(self.topwin, self.close)
+
+    def set_finish_cursor(self):
+        self.topwin.set_sensitive(False)
+        gdk_window = self.topwin.get_window()
+        cursor = Gdk.Cursor.new_from_name(gdk_window.get_display(), "progress")
+        gdk_window.set_cursor(cursor)
+
+    def reset_finish_cursor(self, topwin=None):
+        if not topwin:
+            topwin = self.topwin
+
+        topwin.set_sensitive(True)
+        gdk_window = topwin.get_window()
+        if not gdk_window:
+            return
+        cursor = Gdk.Cursor.new_from_name(gdk_window.get_display(), "default")
+        gdk_window.set_cursor(cursor)

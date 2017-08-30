@@ -123,7 +123,7 @@ class vmmStorageList(vmmGObjectUI):
             self.conn.disconnect_by_func(self._conn_pool_count_changed)
             self.conn.disconnect_by_func(self._conn_pool_count_changed)
             self.conn.disconnect_by_func(self._conn_state_changed)
-        except:
+        except Exception:
             pass
         self.conn = None
 
@@ -314,7 +314,7 @@ class vmmStorageList(vmmGObjectUI):
             ICON_SHUTOFF, Gtk.IconSize.BUTTON)
         self.widget("pool-state").set_text(_("Inactive"))
         self.widget("vol-list").get_model().clear()
-        self.widget("pool-autostart").set_label(_("Never"))
+        self.widget("pool-autostart").set_label(_("On Boot"))
         self.widget("pool-autostart").set_active(False)
 
         self.widget("pool-delete").set_sensitive(False)
@@ -345,8 +345,7 @@ class vmmStorageList(vmmGObjectUI):
                 Gtk.IconSize.BUTTON)
         self.widget("pool-state").set_text(
                 (active and _("Active")) or _("Inactive"))
-        self.widget("pool-autostart").set_label(
-                (auto and _("On Boot")) or _("Never"))
+        self.widget("pool-autostart").set_label(_("On Boot"))
         self.widget("pool-autostart").set_active(auto)
 
         self.widget("vol-list").set_sensitive(active)
@@ -385,7 +384,7 @@ class vmmStorageList(vmmGObjectUI):
                 try:
                     pool.disconnect_by_func(self._pool_changed)
                     pool.disconnect_by_func(self._pool_changed)
-                except:
+                except Exception:
                     pass
                 pool.connect("state-changed", self._pool_changed)
                 pool.connect("refreshed", self._pool_changed)
@@ -427,7 +426,7 @@ class vmmStorageList(vmmGObjectUI):
                 cap = str(vol.get_capacity())
                 sizestr = vol.get_pretty_capacity()
                 fmt = vol.get_format() or ""
-            except:
+            except Exception:
                 logging.debug("Error getting volume info for '%s', "
                               "hiding it", key, exc_info=True)
                 continue
@@ -440,7 +439,7 @@ class vmmStorageList(vmmGObjectUI):
                     namestr = ", ".join(names)
                     if not namestr:
                         namestr = None
-            except:
+            except Exception:
                 logging.exception("Failed to determine if storage volume in "
                                   "use.")
 
@@ -510,7 +509,7 @@ class vmmStorageList(vmmGObjectUI):
 
         try:
             self._populate_pool_state(connkey)
-        except Exception, e:
+        except Exception as e:
             logging.exception(e)
             self._set_storage_error_page(_("Error selecting pool: %s") % e)
         self._disable_pool_apply()
@@ -536,9 +535,6 @@ class vmmStorageList(vmmGObjectUI):
 
     def _pool_autostart_changed(self, src):
         ignore = src
-        auto = self.widget("pool-autostart").get_active()
-        self.widget("pool-autostart").set_label(
-            auto and _("On Boot") or _("Never"))
         self._enable_pool_apply(EDIT_POOL_AUTOSTART)
 
     def _vol_selected(self, src):
@@ -620,7 +616,7 @@ class vmmStorageList(vmmGObjectUI):
                 self._addpool = vmmCreatePool(self.conn)
                 self._addpool.connect("pool-created", self._pool_created)
             self._addpool.show(self.topwin)
-        except Exception, e:
+        except Exception as e:
             self.err.show_err(_("Error launching pool wizard: %s") % str(e))
 
     def _pool_delete(self, src):
@@ -664,7 +660,7 @@ class vmmStorageList(vmmGObjectUI):
             if EDIT_POOL_NAME in self._active_edits:
                 pool.define_name(self.widget("pool-name-entry").get_text())
                 self.idle_add(self._populate_pools)
-        except Exception, e:
+        except Exception as e:
             self.err.show_err(_("Error changing pool settings: %s") % str(e))
             return
 
@@ -703,7 +699,7 @@ class vmmStorageList(vmmGObjectUI):
             self._addvol.set_modal(self.topwin.get_modal())
             self._addvol.set_name_hint(self._name_hint)
             self._addvol.show(self.topwin)
-        except Exception, e:
+        except Exception as e:
             self.err.show_err(_("Error launching volume wizard: %s") % str(e))
 
     def _vol_delete(self, src_ignore):

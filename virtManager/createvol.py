@@ -66,7 +66,7 @@ class vmmCreateVolume(vmmGObjectUI):
     def show(self, parent):
         try:
             parent_xml = self.parent_pool.xmlobj.get_xml_config()
-        except:
+        except Exception:
             logging.debug("Error getting parent_pool xml", exc_info=True)
             parent_xml = None
 
@@ -112,7 +112,7 @@ class vmmCreateVolume(vmmGObjectUI):
         try:
             ret = StorageVolume.find_free_name(
                 self.parent_pool.get_backend(), self.name_hint, suffix=suffix)
-        except:
+        except Exception:
             logging.exception("Error finding a default vol name")
 
         return ret
@@ -273,9 +273,7 @@ class vmmCreateVolume(vmmGObjectUI):
         self.emit("vol-created", pool.get_connkey(), volname)
 
     def _finish_cb(self, error, details):
-        self.topwin.set_sensitive(True)
-        self.topwin.get_window().set_cursor(
-            Gdk.Cursor.new(Gdk.CursorType.TOP_LEFT_ARROW))
+        self.reset_finish_cursor()
 
         if error:
             error = _("Error creating vol: %s") % error
@@ -291,14 +289,11 @@ class vmmCreateVolume(vmmGObjectUI):
         try:
             if not self.validate():
                 return
-        except Exception, e:
+        except Exception as e:
             self.show_err(_("Uncaught error validating input: %s") % str(e))
             return
 
-        self.topwin.set_sensitive(False)
-        self.topwin.get_window().set_cursor(
-            Gdk.Cursor.new(Gdk.CursorType.WATCH))
-
+        self.set_finish_cursor()
         progWin = vmmAsyncJob(self._async_vol_create, [],
                               self._finish_cb, [],
                               _("Creating storage volume..."),
@@ -342,7 +337,7 @@ class vmmCreateVolume(vmmGObjectUI):
             if fmt:
                 self.vol.format = fmt
             self.vol.validate()
-        except ValueError, e:
+        except ValueError as e:
             return self.val_err(_("Volume Parameter Error"), e)
         return True
 

@@ -30,7 +30,7 @@ def _compare_int(nodedev_val, hostdev_val):
                 return int(val or '0x00', 16)
             else:
                 return int(val)
-        except:
+        except Exception:
             return -1
 
     nodedev_val = _intify(nodedev_val)
@@ -84,11 +84,10 @@ class NodeDevice(XMLBuilder):
 
         try:
             return _AddressStringToNodedev(conn, idstring)
-        except Exception, e:
+        except Exception:
             logging.debug("Error looking up nodedev from idstring=%s",
                 idstring, exc_info=True)
-            raise RuntimeError(_("Did not find node device matching '%s': %s" %
-                (idstring, e)))
+            raise
 
 
     @staticmethod
@@ -182,6 +181,8 @@ class PCIDevice(NodeDevice):
     product_id = XMLProperty("./capability/product/@id")
     vendor_name = XMLProperty("./capability/vendor")
     vendor_id = XMLProperty("./capability/vendor/@id")
+
+    capability_type = XMLProperty("./capability/capability/@type")
 
     iommu_group = XMLProperty("./capability/iommuGroup/@number", is_int=True)
 
@@ -374,7 +375,7 @@ def _AddressStringToHostdev(conn, addrstr):
             hostdev.device = device
         else:
             raise RuntimeError("Unknown address type")
-    except:
+    except Exception:
         logging.debug("Error parsing node device string.", exc_info=True)
         raise
 

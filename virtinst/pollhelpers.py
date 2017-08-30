@@ -35,7 +35,7 @@ def _new_poll_helper(origmap, typename, listfunc, buildfunc):
 
     try:
         objs = listfunc()
-    except Exception, e:
+    except Exception as e:
         logging.debug("Unable to list all %ss: %s", typename, e)
 
     for obj in objs:
@@ -75,11 +75,11 @@ def _old_poll_helper(origmap, typename,
 
     try:
         newActiveNames = active_list()
-    except Exception, e:
+    except Exception as e:
         logging.debug("Unable to list active %ss: %s", typename, e)
     try:
         newInactiveNames = inactive_list()
-    except Exception, e:
+    except Exception as e:
         logging.debug("Unable to list inactive %ss: %s", typename, e)
 
     def check_obj(name):
@@ -89,7 +89,7 @@ def _old_poll_helper(origmap, typename,
         if connkey not in origmap:
             try:
                 obj = lookup_func(name)
-            except Exception, e:
+            except Exception as e:
                 logging.debug("Could not fetch %s '%s': %s",
                               typename, connkey, e)
                 return
@@ -105,7 +105,7 @@ def _old_poll_helper(origmap, typename,
     for name in newActiveNames + newInactiveNames:
         try:
             check_obj(name)
-        except:
+        except Exception:
             logging.exception("Couldn't fetch %s '%s'", typename, name)
 
     return (origmap.values(), new.values(), current.values())
@@ -217,12 +217,12 @@ def _old_fetch_vms(backend, origmap, build_func):
 
     try:
         newActiveIDs = backend.listDomainsID()
-    except Exception, e:
+    except Exception as e:
         logging.debug("Unable to list active domains: %s", e)
 
     try:
         newInactiveNames = backend.listDefinedDomains()
-    except Exception, e:
+    except Exception as e:
         logging.exception("Unable to list inactive domains: %s", e)
 
     def add_vm(vm):
@@ -253,7 +253,7 @@ def _old_fetch_vms(backend, origmap, build_func):
                 connkey = vm.name()
 
                 check_new(vm, connkey)
-            except:
+            except Exception:
                 logging.exception("Couldn't fetch domain id '%s'", _id)
 
 
@@ -269,7 +269,7 @@ def _old_fetch_vms(backend, origmap, build_func):
                 connkey = name
 
                 check_new(vm, connkey)
-            except:
+            except Exception:
                 logging.exception("Couldn't fetch domain '%s'", name)
 
     return (origmap.values(), new.values(), current.values())

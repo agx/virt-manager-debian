@@ -125,9 +125,7 @@ class vmmDeleteDialog(vmmGObjectUI):
         return paths
 
     def _finish_cb(self, error, details):
-        self.topwin.set_sensitive(True)
-        self.topwin.get_window().set_cursor(
-            Gdk.Cursor.new(Gdk.CursorType.TOP_LEFT_ARROW))
+        self.reset_finish_cursor()
 
         if error is not None:
             self.err.show_err(error, details=details)
@@ -149,9 +147,7 @@ class vmmDeleteDialog(vmmGObjectUI):
             if not ret:
                 return
 
-        self.topwin.set_sensitive(False)
-        self.topwin.get_window().set_cursor(
-            Gdk.Cursor.new(Gdk.CursorType.WATCH))
+        self.set_finish_cursor()
 
         title = _("Deleting virtual machine '%s'") % self.vm.get_name()
         text = title
@@ -180,7 +176,7 @@ class vmmDeleteDialog(vmmGObjectUI):
                     logging.debug("Deleting path: %s", path)
                     meter.start(text=_("Deleting path '%s'") % path)
                     self._async_delete_path(conn, path, meter)
-                except Exception, e:
+                except Exception as e:
                     storage_errors.append((str(e),
                                           "".join(traceback.format_exc())))
                 meter.end(0)
@@ -188,7 +184,7 @@ class vmmDeleteDialog(vmmGObjectUI):
             logging.debug("Removing VM '%s'", self.vm.get_name())
             self.vm.delete()
 
-        except Exception, e:
+        except Exception as e:
             error = (_("Error deleting virtual machine '%s': %s") %
                       (self.vm.get_name(), str(e)))
             details = "".join(traceback.format_exc())
@@ -221,7 +217,7 @@ class vmmDeleteDialog(vmmGObjectUI):
 
         try:
             vol = conn.storageVolLookupByPath(path)
-        except:
+        except Exception:
             logging.debug("Path '%s' is not managed. Deleting locally", path)
 
         if vol:
@@ -394,7 +390,7 @@ def do_we_default(conn, vm_name, vol, path, ro, shared, is_media):
                 namestr = append_str(namestr, name, delim="\n- ")
             info = append_str(info, _("Storage is in use by the following "
                                       "virtual machines:\n- %s " % namestr))
-    except Exception, e:
+    except Exception as e:
         logging.exception("Failed checking disk conflict: %s", str(e))
 
     return (not info, info)

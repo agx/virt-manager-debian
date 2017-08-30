@@ -187,7 +187,7 @@ class DistroInstaller(Installer):
             dev.validate()
 
             val = dev.path
-        except Exception, e:
+        except Exception as e:
             logging.debug("Error validating install location", exc_info=True)
             raise ValueError(_("Validating install media '%s' failed: %s") %
                 (str(val), e))
@@ -209,7 +209,7 @@ class DistroInstaller(Installer):
             try:
                 try:
                     fetcher.prepareLocation()
-                except ValueError, e:
+                except ValueError as e:
                     logging.debug("Error preparing install location",
                         exc_info=True)
                     raise ValueError(_("Invalid install location: ") + str(e))
@@ -277,7 +277,7 @@ class DistroInstaller(Installer):
                     "remote connection.")
             else:
                 distro = OSDB.lookup_os_by_media(self.location)
-        except:
+        except Exception:
             logging.debug("Error attempting to detect distro.", exc_info=True)
 
         logging.debug("installer.detect_distro returned=%s", distro)

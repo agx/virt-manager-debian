@@ -1,3 +1,5 @@
+from __future__ import print_function
+
 import os
 import re
 import time
@@ -41,8 +43,8 @@ class _FuzzyPredicate(dogtail.predicate.Predicate):
                 if not self._labeller_pattern.match(node.labeller.text):
                     return
             return True
-        except Exception, e:
-            print "got predicate exception: %s" % e
+        except Exception as e:
+            print("got predicate exception: %s" % e)
 
 
 
@@ -67,7 +69,7 @@ class DogtailApp(object):
             os.path.join(os.getcwd(), "virt-manager"),
             "--test-first-run", "--no-fork", "--connect", self.uri] +
             (extra_opts or []),
-            stdout=file(os.devnull), stderr=file(os.devnull))
+            stdout=open(os.devnull), stderr=open(os.devnull))
         time.sleep(1)
 
         self._root = dogtail.tree.root.application("virt-manager")
@@ -158,9 +160,9 @@ def print_nodes(root):
     """
     def _walk(node):
         try:
-            print node_string(node)
-        except Exception, e:
-            print "got exception: %s" % e
+            print(node_string(node))
+        except Exception as e:
+            print("got exception: %s" % e)
 
     root.findChildren(_walk, isLambda=True)
 
@@ -173,7 +175,7 @@ def focused_nodes(root):
         try:
             if node.focused:
                 return node
-        except Exception, e:
-            print "got exception: %s" % e
+        except Exception as e:
+            print("got exception: %s" % e)
 
     return root.findChildren(_walk, isLambda=True)

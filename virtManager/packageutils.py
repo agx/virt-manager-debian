@@ -38,6 +38,8 @@ def check_packagekit(parent, errbox, packages):
     if not packages:
         logging.debug("No PackageKit packages to search for.")
         return
+    if type(packages) is not list:
+        packages = [packages]
 
     logging.debug("PackageKit check/install for packages=%s", packages)
     try:
@@ -61,7 +63,7 @@ def check_packagekit(parent, errbox, packages):
             packagekit_install(parent, packages)
         else:
             logging.debug("Nothing to install")
-    except Exception, e:
+    except Exception as e:
         # PackageKit frontend should report an error for us, so just log
         # the actual error
         logging.debug("Error talking to PackageKit: %s", str(e), exc_info=True)
@@ -110,7 +112,7 @@ def start_libvirtd():
 
     try:
         bus = Gio.bus_get_sync(Gio.BusType.SYSTEM, None)
-    except:
+    except Exception:
         logging.exception("Error getting system bus handle")
         return
 
@@ -119,7 +121,7 @@ def start_libvirtd():
                                  "org.freedesktop.systemd1",
                                  "/org/freedesktop/systemd1",
                                  "org.freedesktop.systemd1.Manager", None)
-    except:
+    except Exception:
         logging.exception("Couldn't connect to systemd")
         return
 
@@ -134,7 +136,7 @@ def start_libvirtd():
         if str(state).lower().strip("'") == "active":
             logging.debug("libvirtd already active, not starting")
             return True
-    except:
+    except Exception:
         logging.exception("Failed to lookup libvirtd status")
         return
 
@@ -150,5 +152,5 @@ def start_libvirtd():
         time.sleep(2)
         logging.debug("Starting libvirtd appeared to succeed")
         return True
-    except:
+    except Exception:
         logging.exception("Failed to talk to system-config-services")

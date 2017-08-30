@@ -85,7 +85,7 @@ class Guest(XMLBuilder):
 
             logging.info("Undefining guest '%s'", name)
             vm.undefine()
-        except libvirt.libvirtError, e:
+        except libvirt.libvirtError as e:
             raise RuntimeError(_("Could not remove old vm '%s': %s") %
                                (str(e)))
 
@@ -98,16 +98,16 @@ class Guest(XMLBuilder):
 
         try:
             conn.lookupByName(name)
-        except:
+        except Exception:
             return
         raise ValueError(_("Guest name '%s' is already in use.") % name)
 
 
     _XML_ROOT_NAME = "domain"
     _XML_PROP_ORDER = ["type", "name", "uuid", "title", "description",
-        "maxmemory", "memory", "blkiotune", "memtune", "memoryBacking",
-        "vcpus", "curvcpus", "vcpu_placement", "cpuset",
-        "numatune", "resource", "sysinfo", "bootloader", "os", "idmap",
+        "hotplugmemorymax", "hotplugmemoryslots", "maxmemory", "memory", "blkiotune",
+        "memtune", "memoryBacking", "vcpus", "curvcpus", "vcpu_placement",
+        "cpuset", "numatune", "resource", "sysinfo", "bootloader", "os", "idmap",
         "features", "cpu", "clock", "on_poweroff", "on_reboot", "on_crash",
         "pm", "emulator", "_devices", "seclabels"]
 
@@ -163,6 +163,8 @@ class Guest(XMLBuilder):
                          default_cb=lambda s: 1,
                          set_converter=_set_memory)
     maxmemory = XMLProperty("./memory", is_int=True)
+    hotplugmemorymax = XMLProperty("./maxMemory", is_int=True)
+    hotplugmemoryslots = XMLProperty("./maxMemory/@slots", is_int=True)
 
     def _set_vcpus(self, val):
         if val is None:
@@ -321,7 +323,7 @@ class Guest(XMLBuilder):
         data = (self.os, self.on_reboot)
         try:
             self._propstore["os"] = self.os.copy()
-        except:
+        except Exception:
             self._finish_get_xml(data)
             raise
         return data
@@ -383,6 +385,31 @@ class Guest(XMLBuilder):
 
         return install_xml, final_xml
 
+    def _manual_transient_create(self, install_xml, final_xml, needs_boot):
+        """
+        For hypervisors (like vz) that don't implement createXML,
+        we need to define+start, and undefine on start failure
+        """
+        domain = self.conn.defineXML(install_xml or final_xml)
+        if not needs_boot:
+            return domain
+
+        # Handle undefining the VM if the initial startup fails
+        try:
+            domain.create()
+        except Exception:
+            import sys
+            exc_info = sys.exc_info()
+            try:
+                domain.undefine()
+            except Exception:
+                pass
+            raise exc_info[0], exc_info[1], exc_info[2]
+
+        if install_xml and install_xml != final_xml:
+            domain = self.conn.defineXML(final_xml)
+        return domain
+
     def _create_guest(self, meter, install_xml, final_xml, doboot, transient):
         """
         Actually do the XML logging, guest defining/creating
@@ -392,33 +419,26 @@ class Guest(XMLBuilder):
         meter_label = _("Creating domain...")
         meter = util.ensure_meter(meter)
         meter.start(size=None, text=meter_label)
+        needs_boot = doboot or self.installer.has_install_phase()
 
-        if transient:
-            self.domain = self.conn.createXML(install_xml or final_xml, 0)
+        if self.type == "vz":
+            if transient:
+                raise RuntimeError(_("Domain type 'vz' doesn't support "
+                    "transient installs."))
+            domain = self._manual_transient_create(
+                    install_xml, final_xml, needs_boot)
+
         else:
-            # Not all hypervisors (vz) support createXML, so avoid it here
-            self.domain = self.conn.defineXML(install_xml or final_xml)
+            if transient or needs_boot:
+                domain = self.conn.createXML(install_xml or final_xml, 0)
+            if not transient:
+                domain = self.conn.defineXML(final_xml)
 
-            # Handle undefining the VM if the initial startup fails
-            if doboot or self.installer.has_install_phase():
-                try:
-                    self.domain.create()
-                except:
-                    import sys
-                    exc_info = sys.exc_info()
-                    try:
-                        self.domain.undefine()
-                    except:
-                        pass
-                    raise exc_info[0], exc_info[1], exc_info[2]
-
-            if install_xml and install_xml != final_xml:
-                self.domain = self.conn.defineXML(final_xml)
-
+        self.domain = domain
         try:
             logging.debug("XML fetched from libvirt object:\n%s",
                           self.domain.XMLDesc(0))
-        except Exception, e:
+        except Exception as e:
             logging.debug("Error fetching XML from libvirt object: %s", e)
 
 
@@ -431,9 +451,9 @@ class Guest(XMLBuilder):
 
         try:
             self.domain.setAutostart(True)
-        except libvirt.libvirtError, e:
+        except libvirt.libvirtError as e:
             if util.is_error_nosupport(e):
-                logging.warn("Could not set autostart flag: libvirt "
+                logging.warning("Could not set autostart flag: libvirt "
                              "connection does not support autostart.")
             else:
                 raise e
@@ -507,7 +527,7 @@ class Guest(XMLBuilder):
                     os.unlink(disk.path)
 
                 meter.end(0)
-            except Exception, e:
+            except Exception as e:
                 logging.debug("Failed to remove disk '%s'",
                     name, exc_info=True)
                 logging.error("Failed to remove disk '%s': %s", name, e)
@@ -541,6 +561,33 @@ class Guest(XMLBuilder):
         self.os.loader_type = "pflash"
         self.os.loader = path
 
+        self.check_uefi_secure()
+
+
+    def check_uefi_secure(self):
+        """
+        If the firmware name contains "secboot" it is probably build
+        with SMM feature required so we need to enable that feature,
+        otherwise the firmware may fail to load.  True secure boot is
+        currently supported only on x86 architecture and with q35 with
+        SMM feature enabled so change the machine to q35 as well.
+        To actually enforce the secure boot for the guest if Secure Boot
+        Mode is configured we need to enable loader secure feature.
+        """
+
+        if not self.os.is_x86():
+            return
+
+        if "secboot" not in self.os.loader:
+            return
+
+        if (not self.conn.check_support(self.conn.SUPPORT_DOMAIN_FEATURE_SMM) or
+            not self.conn.check_support(self.conn.SUPPORT_DOMAIN_LOADER_SECURE)):
+            return
+
+        self.features.smm = True
+        self.os.loader_secure = True
+        self.os.machine = "q35"
 
     ###################
     # Device defaults #
@@ -564,21 +611,41 @@ class Guest(XMLBuilder):
     def stable_defaults(self, *args, **kwargs):
         return self.conn.stable_defaults(self.emulator, *args, **kwargs)
 
+    def _usb_disabled(self):
+        controllers = [c for c in self.get_devices("controller") if
+            c.type == "usb"]
+        if not controllers:
+            return False
+        return all([c.model == "none" for c in controllers])
+
     def add_default_input_device(self):
         if self.os.is_container():
             return
-        if not self.os.is_x86():
-            return
         if self.get_devices("input"):
             return
-        self.add_device(VirtualInputDevice(self.conn))
+        if not self.get_devices("graphics"):
+            return
+        if self._usb_disabled():
+            return
 
-    def add_default_sound_device(self):
-        if not self.os.is_hvm():
-            return
-        if not self.os.is_x86():
-            return
-        self.add_device(VirtualAudio(self.conn))
+        usb_tablet = False
+        usb_keyboard = False
+        if self.os.is_x86():
+            usb_tablet = self._os_object.supports_usbtablet()
+        if self.os.is_arm_machvirt():
+            usb_tablet = True
+            usb_keyboard = True
+
+        if usb_tablet:
+            dev = VirtualInputDevice(self.conn)
+            dev.type = "tablet"
+            dev.bus = "usb"
+            self.add_device(dev)
+        if usb_keyboard:
+            dev = VirtualInputDevice(self.conn)
+            dev.type = "keyboard"
+            dev.bus = "usb"
+            self.add_device(dev)
 
     def add_default_console_device(self):
         if self.skip_default_console:
@@ -604,15 +671,32 @@ class Guest(XMLBuilder):
     def add_default_usb_controller(self):
         if self.os.is_container():
             return
-        if not self.os.is_x86():
-            return
         if any([d.type == "usb" for d in self.get_devices("controller")]):
             return
-        if not self.conn.check_support(
-            self.conn.SUPPORT_CONN_DEFAULT_USB2):
+
+        usb2 = False
+        usb3 = False
+        if self.os.is_x86():
+            usb2 = True
+        elif (self.os.is_arm_machvirt() and
+              self.conn.check_support(
+                  self.conn.SUPPORT_CONN_MACHVIRT_PCI_DEFAULT)):
+            usb3 = True
+
+
+        if not usb2 and not usb3:
             return
-        for dev in VirtualController.get_usb2_controllers(self.conn):
-            self.add_device(dev)
+
+        if usb2:
+            if not self.conn.check_support(
+                self.conn.SUPPORT_CONN_DEFAULT_USB2):
+                return
+            for dev in VirtualController.get_usb2_controllers(self.conn):
+                self.add_device(dev)
+
+        if usb3:
+            self.add_device(
+                VirtualController.get_usb3_controller(self.conn, self))
 
     def add_default_channels(self):
         if self.skip_default_channel:
@@ -637,9 +721,9 @@ class Guest(XMLBuilder):
             return
         if self.get_devices("graphics"):
             return
-        if self.os.is_container():
+        if self.os.is_container() and not self.conn.is_vz():
             return
-        if self.os.arch not in ["x86_64", "i686", "ppc64", "ppc64le", "ia64"]:
+        if self.os.arch not in ["x86_64", "i686", "ppc64", "ppc64le"]:
             return
         self.add_device(VirtualGraphics(self.conn))
 
@@ -648,10 +732,9 @@ class Guest(XMLBuilder):
             return
         if self.get_devices("rng"):
             return
-        if not self.os.is_x86():
-            # Not strictly x86 specific, but some other archs like
-            # arm have limited virtio options in some situations, so
-            # it needs more work there.
+        if not (self.os.is_x86() or
+                self.os.is_arm_machvirt() or
+                self.os.is_pseries()):
             return
 
         if (self.conn.is_qemu() and
@@ -711,7 +794,6 @@ class Guest(XMLBuilder):
         self._set_disk_defaults()
         self._add_implied_controllers()
         self._set_net_defaults()
-        self._set_input_defaults()
         self._set_video_defaults()
         self._set_sound_defaults()
 
@@ -731,9 +813,6 @@ class Guest(XMLBuilder):
 
         if not self.os.loader and self.os.is_hvm() and self.type == "xen":
             self.os.loader = "/usr/lib/xen/boot/hvmloader"
-        if self.os.os_type == "xen" and self.type == "xen":
-            # Use older libvirt 'linux' value for back compat
-            self.os.os_type = "linux"
         if self.os.kernel or self.os.init:
             self.os.bootorder = []
 
@@ -779,14 +858,14 @@ class Guest(XMLBuilder):
         hv_clock = self.conn.check_support(self.conn.SUPPORT_CONN_HYPERV_CLOCK)
         hv_clock_rhel = self.conn.check_support(self.conn.SUPPORT_CONN_HYPERV_CLOCK_RHEL)
 
-        if (self._os_object.is_windows() and self._hv_supported() and
+        if (self._os_object.is_windows() and self._hyperv_supported() and
             (hv_clock or (self.stable_defaults() and hv_clock_rhel))):
             hyperv = self.clock.add_timer()
             hyperv.name = "hypervclock"
             hyperv.present = True
 
     def _set_emulator_defaults(self):
-        if self.os.is_xenpv():
+        if self.os.is_xenpv() or self.type == "vz":
             self.emulator = None
             return
 
@@ -825,7 +904,7 @@ class Guest(XMLBuilder):
                 self.cpu.add_feature("x2apic", policy="disable")
 
 
-    def _hv_supported(self):
+    def _hyperv_supported(self):
         if (self.os.loader_type == "pflash" and
             self.os_variant in ("win2k8r2", "win7")):
             return False
@@ -836,7 +915,7 @@ class Guest(XMLBuilder):
         # changed through manual intervention via the customize wizard.
 
         # UEFI doesn't work with hyperv bits
-        if not self._hv_supported():
+        if not self._hyperv_supported():
             self.features.hyperv_relaxed = None
             self.features.hyperv_vapic = None
             self.features.hyperv_spinlocks = None
@@ -850,7 +929,7 @@ class Guest(XMLBuilder):
             self.features.acpi = None
             self.features.apic = None
             self.features.pae = None
-            if self._is_full_os_container():
+            if self._is_full_os_container() and self.type != "vz":
                 self.features.privnet = True
             return
 
@@ -884,7 +963,7 @@ class Guest(XMLBuilder):
             self.features.vmport = False
 
         if (self._os_object.is_windows() and
-            self._hv_supported() and
+            self._hyperv_supported() and
             self.conn.check_support(self.conn.SUPPORT_CONN_HYPERV_VAPIC)):
             if self.features.hyperv_relaxed is None:
                 self.features.hyperv_relaxed = True
@@ -969,16 +1048,18 @@ class Guest(XMLBuilder):
             if len(devs) > 1 and 0 in devs:
                 devs[0].address.multifunction = True
 
-    def _hv_only_supports_virtio(self):
-        # Only supports virtio so we need to force it
-        return self.conn.is_qemu() and self.os.is_arm_machvirt()
-
-    def _hv_supports_virtio(self):
+    def _supports_virtio(self, os_support):
         if not self.conn.is_qemu():
             return False
 
-        if self._hv_only_supports_virtio():
+        # These _only_ support virtio so don't check the OS
+        if (self.os.is_arm_machvirt() or
+            self.os.is_s390x() or
+            self.os.is_pseries()):
             return True
+
+        if not os_support:
+            return False
 
         if self.os.is_x86():
             return True
@@ -1011,21 +1092,14 @@ class Guest(XMLBuilder):
                 # We prefer virtio-scsi for machvirt, gets us hotplug
                 d.bus = "scsi"
             elif (d.is_disk() and
-                  (self._hv_only_supports_virtio() or
-                   (self._hv_supports_virtio() and
-                    self._os_object.supports_virtiodisk()))):
+                  self._supports_virtio(self._os_object.supports_virtiodisk())):
                 d.bus = "virtio"
-            elif self.os.is_pseries():
-                if d.is_cdrom():
-                    d.bus = "scsi"
-                else:
-                    d.bus = 'virtio'
+            elif self.os.is_pseries() and d.is_cdrom():
+                d.bus = "scsi"
             elif self.os.is_arm():
                 d.bus = "sd"
             elif self.os.is_q35():
                 d.bus = "sata"
-            elif self.os.is_s390x():
-                d.bus = "virtio"
             else:
                 d.bus = "ide"
 
@@ -1047,9 +1121,7 @@ class Guest(XMLBuilder):
         net_model = None
         if not self.os.is_hvm():
             net_model = None
-        elif (self._hv_only_supports_virtio() or
-              (self._hv_supports_virtio() and
-               self._os_object.supports_virtionet())):
+        elif self._supports_virtio(self._os_object.supports_virtionet()):
             net_model = "virtio"
         else:
             net_model = self._os_object.default_netmodel()
@@ -1058,29 +1130,6 @@ class Guest(XMLBuilder):
             for net in self.get_devices("interface"):
                 if not net.model:
                     net.model = net_model
-
-    def _set_input_defaults(self):
-        def _usb_disabled():
-            controllers = [c for c in self.get_devices("controller") if
-                c.type == "usb"]
-            if not controllers:
-                return False
-            return all([c.model == "none" for c in controllers])
-
-        input_type = "mouse"
-        input_bus = "ps2"
-        if self.os.is_xenpv():
-            input_type = VirtualInputDevice.TYPE_MOUSE
-            input_bus = VirtualInputDevice.BUS_XEN
-        elif self._os_object.supports_usbtablet() and not _usb_disabled():
-            input_type = "tablet"
-            input_bus = "usb"
-
-        for inp in self.get_devices("input"):
-            if (inp.type == inp.TYPE_DEFAULT and
-                inp.bus  == inp.BUS_DEFAULT):
-                inp.type = input_type
-                inp.bus  = input_bus
 
     def _set_sound_defaults(self):
         if self.conn.check_support(
@@ -1145,7 +1194,13 @@ class Guest(XMLBuilder):
             return
         if self.get_devices("sound"):
             return
-        self.add_default_sound_device()
+        if not self.os.is_hvm():
+            return
+        if not (self.os.is_x86() or
+                self.os.is_arm_machvirt):
+            return
+
+        self.add_device(VirtualAudio(self.conn))
 
     def _add_spice_usbredir(self):
         if self.skip_default_usbredir:
@@ -1183,8 +1238,8 @@ class Guest(XMLBuilder):
             self._add_spice_usbredir()
 
         video_model = self._os_object.default_videomodel(self)
-        if video_model == 'vmvga' and self.stable_defaults(force=True):
-            video_model = 'vga'
+        if self.os.is_arm_machvirt():
+            video_model = "virtio"
 
         for video in self.get_devices("video"):
             if video.model == video.MODEL_DEFAULT:

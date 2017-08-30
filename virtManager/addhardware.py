@@ -220,7 +220,7 @@ class vmmAddHardware(vmmGObjectUI):
                       "media-cdrom", _("CDROM device")])
         target_model.append([virtinst.VirtualDisk.DEVICE_FLOPPY,
                       "media-floppy", _("Floppy device")])
-        if self.conn.is_qemu() or self.conn.is_test_conn():
+        if self.conn.is_qemu() or self.conn.is_test():
             target_model.append([virtinst.VirtualDisk.DEVICE_LUN,
                           "drive-harddisk", _("LUN Passthrough")])
         target_list.set_active(0)
@@ -466,7 +466,11 @@ class vmmAddHardware(vmmGObjectUI):
             widget.hide()
 
         # RNG params
-        self.widget("rng-device").set_text("/dev/random")
+        default_rng = "/dev/random"
+        if self.conn.check_support(self.conn.SUPPORT_CONN_RNG_URANDOM):
+            default_rng = "/dev/urandom"
+        self.widget("rng-device").set_text(default_rng)
+
         for i in ["rng-bind-host", "rng-connect-host"]:
             self.widget(i).set_text("localhost")
 
@@ -551,7 +555,7 @@ class vmmAddHardware(vmmGObjectUI):
         model.append([None, _("Hypervisor default")])
         if vm.is_hvm():
             mod_list = []
-            if vm.get_hv_type() in ["kvm", "qemu", "test"]:
+            if vm.get_hv_type() in ["kvm", "qemu", "vz", "test"]:
                 mod_list.append("virtio")
             mod_list.append("rtl8139")
             mod_list.append("e1000")
@@ -716,7 +720,7 @@ class vmmAddHardware(vmmGObjectUI):
                 if "scsi" not in disk_bus_types:
                     disk_bus_types.append("scsi")
 
-            if vm.conn.is_xen() or vm.conn.is_test_conn():
+            if vm.conn.is_xen() or vm.conn.is_test():
                 disk_bus_types.append("xen")
 
         rows = []
@@ -779,7 +783,7 @@ class vmmAddHardware(vmmGObjectUI):
             else:
                 # Guest XML editing
                 define_func(**define_args)
-        except Exception, e:
+        except Exception as e:
             err.show_err((_("Error changing VM configuration: %s") %
                               str(e)))
             return False
@@ -797,7 +801,7 @@ class vmmAddHardware(vmmGObjectUI):
             elif hotplug_args:
                 did_hotplug = True
                 vm.hotplug(**hotplug_args)
-        except Exception, e:
+        except Exception as e:
             did_hotplug = True
             logging.debug("Hotplug failed: %s", str(e))
             hotplug_err = ((str(e), "".join(traceback.format_exc())))
@@ -856,6 +860,8 @@ class vmmAddHardware(vmmGObjectUI):
         _add_row("tablet", "usb")
         _add_row("mouse", "usb")
         _add_row("keyboard", "usb")
+        _add_row("keyboard", "virtio")
+        _add_row("tablet", "virtio")
 
     def _populate_host_device_model(self, devtype, devcap, subtype, subcap):
         devlist = self.widget("host-device")
@@ -1279,7 +1285,7 @@ class vmmAddHardware(vmmGObjectUI):
             try:
                 pool = self.conn.get_pool(poolname)
                 self.idle_add(pool.refresh)
-            except:
+            except Exception:
                 logging.debug("Error looking up pool=%s for refresh after "
                     "storage creation.", poolname, exc_info=True)
 
@@ -1311,7 +1317,7 @@ class vmmAddHardware(vmmGObjectUI):
             if controller is not None:
                 self.vm.attach_device(controller)
             self.vm.attach_device(self._dev)
-        except Exception, e:
+        except Exception as e:
             logging.debug("Device could not be hotplugged: %s", str(e))
             attach_err = (str(e), "".join(traceback.format_exc()))
 
@@ -1335,7 +1341,7 @@ class vmmAddHardware(vmmGObjectUI):
             if controller is not None:
                 self.vm.add_device(controller)
             self.vm.add_device(self._dev)
-        except Exception, e:
+        except Exception as e:
             self.err.show_err(_("Error adding device: %s") % str(e))
             return True
 
@@ -1346,7 +1352,7 @@ class vmmAddHardware(vmmGObjectUI):
         if not error:
             try:
                 failure = self._add_device()
-            except Exception, e:
+            except Exception as e:
                 failure = True
                 error = _("Unable to add device: %s") % str(e)
                 details = "".join(traceback.format_exc())
@@ -1354,9 +1360,7 @@ class vmmAddHardware(vmmGObjectUI):
         if error is not None:
             self.err.show_err(error, details=details)
 
-        self.topwin.set_sensitive(True)
-        self.topwin.get_window().set_cursor(
-            Gdk.Cursor.new(Gdk.CursorType.TOP_LEFT_ARROW))
+        self.reset_finish_cursor()
 
         self._dev = None
         if not failure:
@@ -1366,15 +1370,12 @@ class vmmAddHardware(vmmGObjectUI):
         try:
             if self._validate() is False:
                 return
-        except Exception, e:
+        except Exception as e:
             self.err.show_err(_("Uncaught error validating hardware "
                                 "input: %s") % str(e))
             return
 
-        self.topwin.set_sensitive(False)
-        self.topwin.get_window().set_cursor(
-            Gdk.Cursor.new(Gdk.CursorType.WATCH))
-
+        self.set_finish_cursor()
         progWin = vmmAsyncJob(self._setup_device, [],
                               self._finish_cb, [],
                               _("Creating device"),
@@ -1490,7 +1491,7 @@ class vmmAddHardware(vmmGObjectUI):
         try:
             disk = self.addstorage.validate_storage(self.vm.get_name(),
                 collidelist=collidelist, device=device)
-        except Exception, e:
+        except Exception as e:
             return self.err.val_err(_("Storage parameter error."), e)
 
         if disk is False:
@@ -1513,7 +1514,7 @@ class vmmAddHardware(vmmGObjectUI):
                 disk, controller_model, disks)
 
             disk.generate_target(used, prefer_ctrl)
-        except Exception, e:
+        except Exception as e:
             return self.err.val_err(_("Storage parameter error."), e)
 
         if self.addstorage.validate_disk_object(disk) is False:
@@ -1573,7 +1574,7 @@ class vmmAddHardware(vmmGObjectUI):
                 raise ValueError(_("invalid listen type"))
             if keymap:
                 self._dev.keymap = keymap
-        except ValueError, e:
+        except ValueError as e:
             self.err.val_err(_("Graphics device parameter error"), e)
 
     def _validate_page_sound(self):
@@ -1582,7 +1583,7 @@ class vmmAddHardware(vmmGObjectUI):
         try:
             self._dev = virtinst.VirtualAudio(self.conn.get_backend())
             self._dev.model = smodel
-        except Exception, e:
+        except Exception as e:
             return self.err.val_err(_("Sound device parameter error"), e)
 
     def _validate_page_hostdev(self):
@@ -1608,7 +1609,7 @@ class vmmAddHardware(vmmGObjectUI):
                     return False
             dev.set_from_nodedev(nodedev)
             self._dev = dev
-        except Exception, e:
+        except Exception as e:
             return self.err.val_err(_("Host device parameter error"), e)
 
     def _validate_page_char(self):
@@ -1673,7 +1674,7 @@ class vmmAddHardware(vmmGObjectUI):
 
             # Dump XML for sanity checking
             self._dev.get_xml_config()
-        except Exception, e:
+        except Exception as e:
             return self.err.val_err(
                     _("%s device parameter error") %
                     char_class.virtual_device_type.capitalize(), e)
@@ -1685,7 +1686,7 @@ class vmmAddHardware(vmmGObjectUI):
         try:
             self._dev = VirtualVideoDevice(conn)
             self._dev.model = model
-        except Exception, e:
+        except Exception as e:
             return self.err.val_err(_("Video device parameter error"), e)
 
     def _validate_page_watchdog(self):
@@ -1697,7 +1698,7 @@ class vmmAddHardware(vmmGObjectUI):
             self._dev = VirtualWatchdog(conn)
             self._dev.model = model
             self._dev.action = action
-        except Exception, e:
+        except Exception as e:
             return self.err.val_err(_("Watchdog parameter error"), e)
 
     def _validate_page_filesystem(self):
@@ -1712,7 +1713,7 @@ class vmmAddHardware(vmmGObjectUI):
         try:
             self._dev = VirtualSmartCardDevice(conn)
             self._dev.mode = mode
-        except Exception, e:
+        except Exception as e:
             return self.err.val_err(_("Smartcard device parameter error"), e)
 
     def _validate_page_usbredir(self):
@@ -1731,7 +1732,7 @@ class vmmAddHardware(vmmGObjectUI):
                 self._dev.host = host
             if service:
                 self._dev.service = service
-        except Exception, e:
+        except Exception as e:
             return self.err.val_err(_("USB redirected device parameter error"),
                                     str(e))
 
@@ -1751,7 +1752,7 @@ class vmmAddHardware(vmmGObjectUI):
             for param_name, val in value_mappings.items():
                 if self._dev.supports_property(param_name):
                     setattr(self._dev, param_name, val)
-        except Exception, e:
+        except Exception as e:
             return self.err.val_err(_("TPM device parameter error"), e)
 
     def _validate_page_panic(self):
@@ -1769,7 +1770,7 @@ class vmmAddHardware(vmmGObjectUI):
                 iobase = self._dev.IOBASE_DEFAULT
             for param_name, val in value_mappings.items():
                 setattr(self._dev, param_name, val)
-        except Exception, e:
+        except Exception as e:
             return self.err.val_err(_("Panic device parameter error"), e)
 
     def _validate_page_controller(self):
@@ -1862,7 +1863,7 @@ class vmmAddHardware(vmmGObjectUI):
             for param_name, val in value_mappings.items():
                 if self._dev.supports_property(param_name):
                     setattr(self._dev, param_name, val)
-        except Exception, e:
+        except Exception as e:
             return self.err.val_err(_("RNG device parameter error"), e)
 
 

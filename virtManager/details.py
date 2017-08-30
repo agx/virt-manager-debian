@@ -240,8 +240,6 @@ def _label_for_device(dev):
     if devtype == "rng":
         label = _("RNG")
         if dev.device:
-            print "dev device='%s'" % dev.device
-            print dev.get_xml_config()
             label += (" %s" % dev.device)
         return label
     if devtype == "tpm":
@@ -698,7 +696,7 @@ class vmmDetails(vmmGObjectUI):
         if self.console.details_viewer_is_visible():
             try:
                 self.console.details_close_viewer()
-            except:
+            except Exception:
                 logging.error("Failure when disconnecting from desktop server")
 
         self.emit("details-closed")
@@ -829,7 +827,7 @@ class vmmDetails(vmmGObjectUI):
                 machine=self.vm.get_machtype())
 
             machines = capsinfo.machines[:]
-        except:
+        except Exception:
             logging.exception("Error determining machine list")
 
         show_machine = (arch not in ["i686", "x86_64"])
@@ -885,7 +883,7 @@ class vmmDetails(vmmGObjectUI):
         self.widget("overview-firmware-label").set_visible(
             not self.is_customize_dialog)
         show_firmware = ((self.conn.is_qemu() or
-                          self.conn.is_test_conn() or
+                          self.conn.is_test() or
                           self.conn.is_xen()) and
                          domcaps.arch_can_uefi())
         uiutil.set_grid_row_visible(
@@ -913,7 +911,7 @@ class vmmDetails(vmmGObjectUI):
         self.widget("overview-chipset").set_visible(self.is_customize_dialog)
         self.widget("overview-chipset-label").set_visible(
             not self.is_customize_dialog)
-        show_chipset = ((self.conn.is_qemu() or self.conn.is_test_conn()) and
+        show_chipset = ((self.conn.is_qemu() or self.conn.is_test()) and
                         arch in ["i686", "x86_64"])
         uiutil.set_grid_row_visible(
             self.widget("overview-chipset-title"), show_chipset)
@@ -974,12 +972,6 @@ class vmmDetails(vmmGObjectUI):
         txtCol.add_attribute(text, 'text', BOOT_LABEL)
         txtCol.add_attribute(text, 'sensitive', BOOT_ACTIVE)
 
-        try:
-            cpu_names = caps.get_cpu_values(self.vm.get_arch())
-        except:
-            cpu_names = []
-            logging.exception("Error populating CPU model list")
-
         # CPU model combo
         cpu_model = self.widget("cpu-model")
 
@@ -998,7 +990,7 @@ class vmmDetails(vmmGObjectUI):
         model.append([_("Clear CPU configuration"), "3",
             virtinst.CPU.SPECIAL_MODE_CLEAR, False])
         model.append([None, None, None, True])
-        for name in cpu_names:
+        for name in caps.get_cpu_values(self.vm.get_arch()):
             model.append([name, name, name, False])
 
         # Remove button tooltip
@@ -1228,7 +1220,7 @@ class vmmDetails(vmmGObjectUI):
                 self.refresh_panic_page()
             else:
                 pagetype = -1
-        except Exception, e:
+        except Exception as e:
             self.err.show_err(_("Error refreshing hardware page: %s") % str(e))
             # Don't return, we want the rest of the bits to run regardless
 
@@ -1417,7 +1409,7 @@ class vmmDetails(vmmGObjectUI):
                 self.addhw = vmmAddHardware(self.vm, self.is_customize_dialog)
 
             self.addhw.show(self.topwin)
-        except Exception, e:
+        except Exception as e:
             self.err.show_err((_("Error launching hardware dialog: %s") %
                                str(e)))
 
@@ -1498,7 +1490,7 @@ class vmmDetails(vmmGObjectUI):
         ignore = src
         try:
             return self._take_screenshot()
-        except Exception, e:
+        except Exception as e:
             self.err.show_err(_("Error taking screenshot: %s") % str(e))
 
     def control_vm_usb_redirection(self, src):
@@ -1512,7 +1504,8 @@ class vmmDetails(vmmGObjectUI):
 
         spice_usbdev_widget.show()
         spice_usbdev_dialog.show_info(_("Select USB devices for redirection"),
-                                      widget=spice_usbdev_widget)
+                                      widget=spice_usbdev_widget,
+                                      buttons=Gtk.ButtonsType.CLOSE)
 
     def _take_screenshot(self):
         image = self.console.details_viewer_get_pixbuf()
@@ -1552,7 +1545,7 @@ class vmmDetails(vmmGObjectUI):
         filename = path
         if not filename.endswith(".png"):
             filename += ".png"
-        file(filename, "wb").write(ret)
+        open(filename, "wb").write(ret)
 
 
     ############################
@@ -1835,7 +1828,7 @@ class vmmDetails(vmmGObjectUI):
     def _eject_media(self, disk):
         try:
             self._change_storage_media(disk, None)
-        except Exception, e:
+        except Exception as e:
             self.err.show_err((_("Error disconnecting media: %s") % e))
 
     def _insert_media(self, disk):
@@ -1856,7 +1849,7 @@ class vmmDetails(vmmGObjectUI):
             dialog.disk = disk
 
             dialog.show(self.topwin)
-        except Exception, e:
+        except Exception as e:
             self.err.show_err((_("Error launching media dialog: %s") % e))
             return
 
@@ -1922,7 +1915,7 @@ class vmmDetails(vmmGObjectUI):
                 ret = self.config_hostdev_apply(key)
             else:
                 ret = False
-        except Exception, e:
+        except Exception as e:
             return self.err.show_err(_("Error apply changes: %s") % e)
 
         if ret is not False:
@@ -2054,7 +2047,7 @@ class vmmDetails(vmmGObjectUI):
             auto = self.widget("boot-autostart")
             try:
                 self.vm.set_autostart(auto.get_active())
-            except Exception, e:
+            except Exception as e:
                 self.err.show_err(
                     (_("Error changing autostart value: %s") % str(e)))
                 return False
@@ -2291,7 +2284,7 @@ class vmmDetails(vmmGObjectUI):
         # Define the change
         try:
             self.vm.remove_device(devobj)
-        except Exception, e:
+        except Exception as e:
             self.err.show_err(_("Error Removing Device: %s") % str(e))
             return
 
@@ -2300,7 +2293,7 @@ class vmmDetails(vmmGObjectUI):
         try:
             if self.vm.is_active():
                 self.vm.detach_device(devobj)
-        except Exception, e:
+        except Exception as e:
             logging.debug("Device could not be hotUNplugged: %s", str(e))
             detach_err = (str(e), "".join(traceback.format_exc()))
 
@@ -2330,7 +2323,7 @@ class vmmDetails(vmmGObjectUI):
         try:
             if self.is_visible():
                 self.vm.ensure_latest_xml()
-        except libvirt.libvirtError, e:
+        except libvirt.libvirtError as e:
             if util.exception_is_libvirt_error(e, "VIR_ERR_NO_DOMAIN"):
                 self.close()
                 return
@@ -2646,7 +2639,7 @@ class vmmDetails(vmmGObjectUI):
         is_usb = (bus == "usb")
 
         can_set_removable = (is_usb and (self.conn.is_qemu() or
-                                         self.conn.is_test_conn()))
+                                         self.conn.is_test()))
         if removable is None:
             removable = False
         else:
@@ -2986,7 +2979,7 @@ class vmmDetails(vmmGObjectUI):
         heads = vid.heads
         try:
             ramlabel = ram and "%d MiB" % (int(ram) / 1024) or "-"
-        except:
+        except Exception:
             ramlabel = "-"
 
         self.widget("video-ram").set_text(ramlabel)
@@ -3015,16 +3008,22 @@ class vmmDetails(vmmGObjectUI):
         if not dev:
             return
 
-        self.widget("config-remove").set_sensitive(
-            dev.type != virtinst.VirtualController.TYPE_USB)
+        can_remove = True
+        if self.vm.get_xmlobj().os.is_x86() and dev.type == "usb":
+            can_remove = False
+        if dev.type == "pci":
+            can_remove = False
+        self.widget("config-remove").set_sensitive(can_remove)
 
         type_label = dev.pretty_desc()
         self.widget("controller-type").set_text(type_label)
 
         combo = self.widget("controller-model")
         vmmAddHardware.populate_controller_model_combo(combo, dev.type)
-        uiutil.set_grid_row_visible(combo,
-            dev.model or len(combo.get_model()) > 1)
+        show_model = (dev.model or len(combo.get_model()) > 1)
+        if dev.type == "pci":
+            show_model = False
+        uiutil.set_grid_row_visible(combo, show_model)
         uiutil.set_list_selection(self.widget("controller-model"),
             dev.model or None)
 
@@ -3204,6 +3203,12 @@ class vmmDetails(vmmGObjectUI):
         for dev in self.vm.get_controller_devices():
             # skip USB2 ICH9 companion controllers
             if dev.model in ["ich9-uhci1", "ich9-uhci2", "ich9-uhci3"]:
+                continue
+
+            # These are all parts of a default PCIe setup, which we
+            # condense down to one listing
+            if dev.model in ["pcie-root-port", "dmi-to-pci-bridge",
+                             "pci-bridge"]:
                 continue
 
             update_hwlist(HW_LIST_TYPE_CONTROLLER, dev)

@@ -24,6 +24,7 @@
     <controller type="scsi" index="0" model="virtio-scsi">
       <address type="pci"/>
     </controller>
+    <controller type="usb" index="0" model="qemu-xhci" ports="8"/>
     <interface type="network">
       <source network="default"/>
       <mac address="00:11:22:33:44:55"/>
@@ -35,5 +36,8 @@
       <source mode="bind"/>
       <target type="virtio" name="org.qemu.guest_agent.0"/>
     </channel>
+    <rng model="virtio">
+      <backend model="random">/dev/urandom</backend>
+    </rng>
   </devices>
 </domain>

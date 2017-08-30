@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.18.3 -->
+<!-- Generated with glade 3.20.0 -->
 <interface>
   <requires lib="gtk+" version="3.14"/>
   <object class="GtkAdjustment" id="adjustment1">
@@ -16,9 +16,10 @@
     <property name="type_hint">dialog</property>
     <signal name="delete-event" handler="on_vmm_preferences_delete_event" swapped="no"/>
     <child>
-      <object class="GtkVBox" id="vbox1">
+      <object class="GtkBox" id="vbox1">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
         <property name="spacing">12</property>
         <child>
           <object class="GtkNotebook" id="prefs-pages">
@@ -49,7 +50,6 @@
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
                             <property name="use_underline">True</property>
-                            <property name="xalign">0.5</property>
                             <property name="draw_indicator">True</property>
                             <signal name="toggled" handler="on_prefs_system_tray_toggled" swapped="no"/>
                           </object>
@@ -108,7 +108,7 @@
                           <object class="GtkLabel" id="label13">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">Poll _Disk I/O</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">prefs-stats-enable-disk</property>
@@ -123,7 +123,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="draw_indicator">True</property>
                             <signal name="toggled" handler="on_prefs_stats_enable_disk_toggled" swapped="no"/>
                           </object>
@@ -136,7 +136,7 @@
                           <object class="GtkLabel" id="label14">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">Poll _Network I/O</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">prefs-stats-enable-net</property>
@@ -151,7 +151,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="draw_indicator">True</property>
                             <signal name="toggled" handler="on_prefs_stats_enable_net_toggled" swapped="no"/>
                           </object>
@@ -164,7 +164,7 @@
                           <object class="GtkLabel" id="label9">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">Poll _Memory stats</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">prefs-stats-enable-memory</property>
@@ -179,7 +179,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="draw_indicator">True</property>
                             <signal name="toggled" handler="on_prefs_stats_enable_memory_toggled" swapped="no"/>
                           </object>
@@ -192,7 +192,7 @@
                           <object class="GtkLabel" id="label6">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">_Update status every</property>
                             <property name="use_underline">True</property>
                           </object>
@@ -224,7 +224,7 @@
                               <object class="GtkLabel" id="label8">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="xalign">0</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">seconds</property>
                               </object>
                               <packing>
@@ -243,7 +243,7 @@
                           <object class="GtkLabel" id="label28">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">Poll C_PU usage</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">prefs-stats-enable-cpu</property>
@@ -258,7 +258,7 @@
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="draw_indicator">True</property>
                             <signal name="toggled" handler="on_prefs_stats_enable_cpu_toggled" swapped="no"/>
                           </object>
@@ -324,7 +324,7 @@
                               <object class="GtkLabel" id="label162">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="xalign">0</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">Gra_phics type:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">prefs-graphics-type</property>
@@ -339,7 +339,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="tooltip_text" translatable="yes">Default storage format for new disk images.</property>
-                                <property name="xalign">0</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Storage format:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">prefs-storage-format</property>
@@ -377,9 +377,9 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
+                                <property name="halign">start</property>
                                 <property name="use_underline">True</property>
                                 <property name="use_stock">True</property>
-                                <property name="xalign">0</property>
                                 <property name="draw_indicator">True</property>
                                 <signal name="toggled" handler="on_prefs_new_vm_sound_toggled" swapped="no"/>
                               </object>
@@ -392,7 +392,7 @@
                               <object class="GtkLabel" id="label7">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="xalign">0</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Add sound device:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">prefs-new-vm-sound</property>
@@ -409,7 +409,7 @@
                                 <property name="tooltip_text" translatable="yes">Default CPU setting for new VMs. This is typically a tradeoff between performance
 and migration compatibility: if using the 'copy host' option, your servers will need
 identical CPUs in order to migrate the VM.</property>
-                                <property name="xalign">0</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">CPU _default:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">prefs-cpu-default</property>
@@ -434,7 +434,7 @@ identical CPUs in order to migrate the VM.</property>
                               <object class="GtkLabel" id="label27">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="xalign">0</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">Add Spice _USB
 Redirection:</property>
                                 <property name="use_underline">True</property>
@@ -515,7 +515,7 @@ Redirection:</property>
                           <object class="GtkLabel" id="label17">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">Graphical console _scaling:</property>
                             <property name="use_underline">True</property>
                           </object>
@@ -525,14 +525,14 @@ Redirection:</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkHBox" id="hbox2">
+                          <object class="GtkBox" id="hbox2">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <child>
                               <object class="GtkLabel" id="label24">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="xalign">0</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">Gr_ab keys:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">prefs-keys-grab-changebtn</property>
@@ -547,7 +547,7 @@ Redirection:</property>
                               <object class="GtkLabel" id="prefs-keys-grab-sequence">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="xalign">0</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">Not supported</property>
                               </object>
                               <packing>
@@ -580,7 +580,7 @@ Redirection:</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
                             <property name="tooltip_text" translatable="yes">When the guest graphical console has keyboard focus, do not disable shortcuts for console window menus (Alt+F -&gt; File, etc.) Normally these are disabled to ensure that typing in the guest does not accidentally perform an operation in virt-manager's console window.</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="draw_indicator">True</property>
                             <signal name="toggled" handler="on_prefs_console_accels_toggled" swapped="no"/>
                           </object>
@@ -594,7 +594,7 @@ Redirection:</property>
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="tooltip_text" translatable="yes">When the guest graphical console has keyboard focus, do not disable shortcuts for console window menus (Alt+F -&gt; File, etc.) Normally these are disabled to ensure that typing in the guest does not accidentally perform an operation in virt-manager's console window.</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">_Force console shortcuts:</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">prefs-console-accels</property>
@@ -624,7 +624,7 @@ Redirection:</property>
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="tooltip_text" translatable="yes">Change guest resolution when the guest window size is changed. Only works with properly configured guest using spice and the desktop agent.</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">_Resize guest with window:</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">prefs-console-resizeguest</property>
@@ -698,7 +698,7 @@ Redirection:</property>
                           <object class="GtkLabel" id="label19">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">_Force Poweroff:</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">prefs-confirm-forcepoweroff</property>
@@ -713,7 +713,6 @@ Redirection:</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
-                            <property name="xalign">0.5</property>
                             <property name="draw_indicator">True</property>
                             <signal name="toggled" handler="on_prefs_confirm_forcepoweroff_toggled" swapped="no"/>
                           </object>
@@ -726,7 +725,7 @@ Redirection:</property>
                           <object class="GtkLabel" id="label20">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">Poweroff/_Reboot/Save:</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">prefs-confirm-poweroff</property>
@@ -740,7 +739,7 @@ Redirection:</property>
                           <object class="GtkLabel" id="label21">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">_Pause:</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">prefs-confirm-pause</property>
@@ -755,7 +754,6 @@ Redirection:</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
-                            <property name="xalign">0.5</property>
                             <property name="draw_indicator">True</property>
                             <signal name="toggled" handler="on_prefs_confirm_poweroff_toggled" swapped="no"/>
                           </object>
@@ -769,7 +767,6 @@ Redirection:</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
-                            <property name="xalign">0.5</property>
                             <property name="draw_indicator">True</property>
                             <signal name="toggled" handler="on_prefs_confirm_pause_toggled" swapped="no"/>
                           </object>
@@ -783,7 +780,6 @@ Redirection:</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
-                            <property name="xalign">0.5</property>
                             <property name="draw_indicator">True</property>
                             <signal name="toggled" handler="on_prefs_confirm_removedev_toggled" swapped="no"/>
                           </object>
@@ -796,7 +792,7 @@ Redirection:</property>
                           <object class="GtkLabel" id="label22">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">Device re_moval:</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">prefs-confirm-removedev</property>
@@ -810,7 +806,7 @@ Redirection:</property>
                           <object class="GtkLabel" id="label23">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">_Interface start/stop:</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">prefs-confirm-interface</property>
@@ -825,7 +821,6 @@ Redirection:</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
-                            <property name="xalign">0.5</property>
                             <property name="draw_indicator">True</property>
                             <signal name="toggled" handler="on_prefs_confirm_interface_toggled" swapped="no"/>
                           </object>
@@ -838,7 +833,7 @@ Redirection:</property>
                           <object class="GtkLabel" id="label5">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">_Unapplied changes:</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">prefs-confirm-unapplied</property>
@@ -853,7 +848,6 @@ Redirection:</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
-                            <property name="xalign">0.5</property>
                             <property name="draw_indicator">True</property>
                             <signal name="toggled" handler="on_prefs_confirm_unapplied_toggled" swapped="no"/>
                           </object>
@@ -866,7 +860,7 @@ Redirection:</property>
                           <object class="GtkLabel" id="label66">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">_Deleting storage:</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">prefs-confirm-delstorage</property>
@@ -881,7 +875,7 @@ Redirection:</property>
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
                             <property name="receives_default">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="draw_indicator">True</property>
                             <signal name="toggled" handler="on_prefs_confirm_delstorage_toggled" swapped="no"/>
                           </object>
@@ -927,7 +921,7 @@ Redirection:</property>
           </packing>
         </child>
         <child>
-          <object class="GtkHButtonBox" id="hbuttonbox1">
+          <object class="GtkButtonBox" id="hbuttonbox1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="layout_style">end</property>

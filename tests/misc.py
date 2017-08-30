@@ -93,7 +93,42 @@ class TestMisc(unittest.TestCase):
         self._check_modules(files)
 
 
+    def test_validate_po_files(self):
+        """
+        Validate that po translations don't mess up python format strings,
+        which has broken the app in the past:
+        https://bugzilla.redhat.com/show_bug.cgi?id=1350185
+        https://bugzilla.redhat.com/show_bug.cgi?id=1433800
+        """
+        failures = []
+        for pofile in glob.glob("po/*.po"):
+            import subprocess
+            proc = subprocess.Popen(["msgfmt", "--output-file=/dev/null",
+                "--check", pofile],
+                stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+            ignore, stderr = proc.communicate()
+            if proc.wait():
+                failures.append("%s: %s" % (pofile, stderr))
+
+        if not failures:
+            return
+
+        msg = "The following po files have errors:\n"
+        msg += "\n".join(failures)
+        raise AssertionError(msg)
+
+
     def test_ui_minimum_version(self):
+        """
+        Ensure all glade XML files don't _require_ UI bits later than
+        our minimum supported version
+        """
+        # RHEL 7.3 has gtk 3.14, so that's our current minimum target
+        minimum_version_major = 3
+        minimum_version_minor = 14
+        minimum_version_str = "%s.%s" % (minimum_version_major,
+                                         minimum_version_minor)
+
         failures = []
         for filename in glob.glob("ui/*.ui"):
             required_version = None
@@ -110,13 +145,16 @@ class TestMisc(unittest.TestCase):
 
             if required_version is None:
                 raise AssertionError("ui file=%s doesn't have a <requires> "
-                    "tag for gtk+, it should say 3.10")
+                    "tag for gtk+")
 
-            if (int(required_version.split(".")[0]) != 3 or
-                int(required_version.split(".")[1]) != 14):
+            if (int(required_version.split(".")[0]) != minimum_version_major or
+                int(required_version.split(".")[1]) != minimum_version_minor):
                 failures.append((filename, required_version))
 
-        if failures:
-            raise AssertionError("The following files should require gtk "
-                "version of gtk-3.10, which is what we target:\n" +
-                "\n".join([("%s version=%s" % tup) for tup in failures]))
+        if not failures:
+            return
+
+        err = ("The following files should require version of gtk-%s:\n" %
+            minimum_version_str)
+        err += "\n".join([("%s version=%s" % tup) for tup in failures])
+        raise AssertionError(err)

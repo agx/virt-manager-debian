@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.18.3 -->
+<!-- Generated with glade 3.20.0 -->
 <interface>
   <requires lib="gtk+" version="3.14"/>
   <object class="GtkAdjustment" id="adjustment6">
@@ -13,7 +13,7 @@
     <property name="row_spacing">6</property>
     <property name="column_spacing">6</property>
     <child>
-      <object class="GtkHBox" id="fs-type-box">
+      <object class="GtkBox" id="fs-type-box">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
@@ -32,7 +32,7 @@
           <object class="GtkLabel" id="fs-type-label">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="xalign">0</property>
+            <property name="halign">start</property>
             <property name="label">Passthrough</property>
           </object>
           <packing>
@@ -48,7 +48,7 @@
       </packing>
     </child>
     <child>
-      <object class="GtkHBox" id="fs-mode-box">
+      <object class="GtkBox" id="fs-mode-box">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
@@ -67,7 +67,7 @@
           <object class="GtkLabel" id="fs-mode-label">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="xalign">0</property>
+            <property name="halign">start</property>
             <property name="label" translatable="yes">Default</property>
           </object>
           <packing>
@@ -83,7 +83,7 @@
       </packing>
     </child>
     <child>
-      <object class="GtkHBox" id="fs-driver-box">
+      <object class="GtkBox" id="fs-driver-box">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
@@ -102,7 +102,7 @@
           <object class="GtkLabel" id="fs-driver-label">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="xalign">0</property>
+            <property name="halign">start</property>
             <property name="label" translatable="yes">Default</property>
           </object>
           <packing>
@@ -118,7 +118,7 @@
       </packing>
     </child>
     <child>
-      <object class="GtkHBox" id="fs-wrpolicy-box">
+      <object class="GtkBox" id="fs-wrpolicy-box">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
@@ -137,7 +137,7 @@
           <object class="GtkLabel" id="fs-wrpolicy-label">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="xalign">0</property>
+            <property name="halign">start</property>
             <property name="label" translatable="yes">Default</property>
           </object>
           <packing>
@@ -171,7 +171,6 @@
         <property name="can_focus">True</property>
         <property name="receives_default">False</property>
         <property name="use_underline">True</property>
-        <property name="xalign">0.5</property>
         <property name="draw_indicator">True</property>
         <signal name="toggled" handler="on_fs_readonly_toggled" swapped="no"/>
       </object>
@@ -181,7 +180,7 @@
       </packing>
     </child>
     <child>
-      <object class="GtkHBox" id="fs-source-box">
+      <object class="GtkBox" id="fs-source-box">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="spacing">6</property>
@@ -223,7 +222,7 @@
       <object class="GtkLabel" id="fs-type-title">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="xalign">0</property>
+        <property name="halign">start</property>
         <property name="label" translatable="yes">_Type:</property>
         <property name="use_underline">True</property>
         <property name="mnemonic_widget">fs-type-combo</property>
@@ -237,7 +236,7 @@
       <object class="GtkLabel" id="fs-mode-title">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="xalign">0</property>
+        <property name="halign">start</property>
         <property name="label" translatable="yes">M_ode:</property>
         <property name="use_underline">True</property>
         <property name="mnemonic_widget">fs-mode-combo</property>
@@ -251,7 +250,7 @@
       <object class="GtkLabel" id="fs-driver-title">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="xalign">0</property>
+        <property name="halign">start</property>
         <property name="label" translatable="yes">_Driver:</property>
         <property name="use_underline">True</property>
         <property name="mnemonic_widget">fs-driver-combo</property>
@@ -265,7 +264,7 @@
       <object class="GtkLabel" id="fs-wrpolicy-title">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="xalign">0</property>
+        <property name="halign">start</property>
         <property name="label" translatable="yes">_Write Policy:</property>
         <property name="use_underline">True</property>
         <property name="mnemonic_widget">fs-wrpolicy-combo</property>
@@ -279,7 +278,7 @@
       <object class="GtkLabel" id="fs-source-title">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="xalign">0</property>
+        <property name="halign">start</property>
         <property name="label">src labelll:</property>
         <property name="use_underline">True</property>
         <property name="mnemonic_widget">fs-source</property>
@@ -293,7 +292,7 @@
       <object class="GtkLabel" id="label33">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="xalign">0</property>
+        <property name="halign">start</property>
         <property name="label" translatable="yes">Ta_rget path:</property>
         <property name="use_underline">True</property>
         <property name="mnemonic_widget">fs-target</property>
@@ -320,7 +319,7 @@
       <object class="GtkLabel" id="fs-ram-source-title">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="xalign">0</property>
+        <property name="halign">start</property>
         <property name="label">Usage:</property>
         <property name="use_underline">True</property>
         <property name="mnemonic_widget">fs-source</property>
@@ -339,7 +338,7 @@
           <object class="GtkSpinButton" id="fs-ram-source-spin">
             <property name="visible">True</property>
             <property name="can_focus">True</property>
-            <property name="xalign">1</property>
+            <property name="halign">end</property>
             <property name="adjustment">adjustment6</property>
             <property name="climb_rate">1</property>
             <signal name="changed" handler="on_fs_ram_source_changed" swapped="no"/>
@@ -354,7 +353,7 @@
           <object class="GtkLabel" id="fs-ram-units-label">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="xalign">0</property>
+            <property name="halign">start</property>
             <property name="label" translatable="yes">MiB</property>
           </object>
           <packing>
@@ -373,7 +372,7 @@
       <object class="GtkLabel" id="fs-format-title">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
-        <property name="xalign">0</property>
+        <property name="halign">start</property>
         <property name="label" translatable="yes">_Format:</property>
         <property name="use_underline">True</property>
         <property name="mnemonic_widget">fs-format-combo</property>
@@ -384,7 +383,7 @@
       </packing>
     </child>
     <child>
-      <object class="GtkHBox" id="fs-format-box">
+      <object class="GtkBox" id="fs-format-box">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <child>
@@ -403,7 +402,7 @@
           <object class="GtkLabel" id="fs-format-label">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
-            <property name="xalign">0</property>
+            <property name="halign">start</property>
             <property name="label" translatable="yes">Default</property>
           </object>
           <packing>

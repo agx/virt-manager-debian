@@ -658,7 +658,7 @@ class vmmConsolePages(vmmGObjectUI):
     def _refresh_widget_states(self):
         pagenum = self.widget("console-pages").get_current_page()
         paused = self.vm.is_paused()
-        is_viewer = (pagenum == _CONSOLE_PAGE_VIEWER and
+        is_viewer = bool(pagenum == _CONSOLE_PAGE_VIEWER and
             self._viewer and self._viewer.console_is_open())
 
         self.widget("details-menu-vm-screenshot").set_sensitive(is_viewer)
@@ -690,7 +690,7 @@ class vmmConsolePages(vmmGObjectUI):
             gdev = gdevs and gdevs[0] or None
             if gdev:
                 ginfo = ConnectionInfo(self.vm.conn, gdev)
-        except Exception, e:
+        except Exception as e:
             # We can fail here if VM is destroyed: xen is a bit racy
             # and can't handle domain lookups that soon after
             logging.exception("Getting graphics console failed: %s", str(e))
@@ -733,7 +733,7 @@ class vmmConsolePages(vmmGObjectUI):
             self._refresh_enable_accel()
 
             self._viewer.console_open()
-        except Exception, e:
+        except Exception as e:
             logging.exception("Error connection to graphical console")
             self._activate_unavailable_page(
                     _("Error connecting to graphical console") + ":\n%s" % e)

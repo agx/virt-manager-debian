@@ -83,7 +83,7 @@ class _URLFetcher(object):
 
         try:
             urlobj, size = self._grabber(url)
-        except Exception, e:
+        except Exception as e:
             raise ValueError(_("Couldn't acquire file %s: %s") %
                                (url, str(e)))
 
@@ -155,7 +155,7 @@ class _URLFetcher(object):
         # pylint: disable=redefined-variable-type
         if "VIRTINST_TEST_SUITE" in os.environ:
             fn = os.path.join("/tmp", prefix)
-            fileobj = file(fn, "w")
+            fileobj = open(fn, "w")
         else:
             fileobj = tempfile.NamedTemporaryFile(
                 dir=self.scratchdir, prefix=prefix, delete=False)
@@ -182,7 +182,7 @@ class _HTTPURLFetcher(_URLFetcher):
         try:
             response = requests.head(url, allow_redirects=True)
             response.raise_for_status()
-        except Exception, e:
+        except Exception as e:
             logging.debug("HTTP hasFile request failed: %s", str(e))
             return False
         return True
@@ -195,7 +195,7 @@ class _HTTPURLFetcher(_URLFetcher):
         response.raise_for_status()
         try:
             size = int(response.headers.get('content-length'))
-        except:
+        except Exception:
             size = None
         return response, size
 
@@ -224,7 +224,7 @@ class _FTPURLFetcher(_URLFetcher):
             self._ftp = ftplib.FTP()
             self._ftp.connect(parsed.hostname, parsed.port)
             self._ftp.login()
-        except Exception, e:
+        except Exception as e:
             raise ValueError(_("Opening URL %s failed: %s.") %
                               (self.location, str(e)))
 
@@ -244,7 +244,7 @@ class _FTPURLFetcher(_URLFetcher):
 
         try:
             self._ftp.quit()
-        except:
+        except Exception:
             logging.debug("Error quitting ftp connection", exc_info=True)
 
         self._ftp = None
@@ -259,7 +259,7 @@ class _FTPURLFetcher(_URLFetcher):
             except ftplib.all_errors:
                 # If it's a dir
                 self._ftp.cwd(path)
-        except ftplib.all_errors, e:
+        except ftplib.all_errors as e:
             logging.debug("FTP hasFile: couldn't access %s: %s",
                           url, str(e))
             return False
@@ -275,7 +275,7 @@ class _LocalURLFetcher(_URLFetcher):
         return os.path.exists(url)
 
     def _grabber(self, url):
-        urlobj = file(url, "r")
+        urlobj = open(url, "r")
         size = os.path.getsize(url)
         return urlobj, size
 
@@ -330,7 +330,7 @@ class _MountedURLFetcher(_LocalURLFetcher):
                 subprocess.call(cmd)
                 try:
                     os.rmdir(self._srcdir)
-                except:
+                except Exception:
                     pass
         finally:
             self._mounted = False
@@ -478,10 +478,7 @@ def getDistroStore(guest, fetcher):
 
     arch = guest.os.arch
     _type = guest.os.os_type
-
-    urldistro = None
-    if guest.os_variant:
-        urldistro = OSDB.lookup_os(guest.os_variant).urldistro
+    urldistro = OSDB.lookup_os(guest.os_variant).urldistro
 
     treeinfo = _grabTreeinfo(fetcher)
     if not treeinfo:
@@ -494,12 +491,20 @@ def getDistroStore(guest, fetcher):
     # If user manually specified an os_distro, bump it's URL class
     # to the top of the list
     if urldistro:
+        logging.debug("variant=%s has distro=%s, looking for matching "
+                      "distro store to prioritize",
+                      guest.os_variant, urldistro)
+        found_store = None
         for store in stores:
             if store.urldistro == urldistro:
-                logging.debug("Prioritizing distro store=%s", store)
-                stores.remove(store)
-                stores.insert(0, store)
-                break
+                found_store = store
+
+        if found_store:
+            logging.debug("Prioritizing distro store=%s", found_store)
+            stores.remove(found_store)
+            stores.insert(0, found_store)
+        else:
+            logging.debug("No matching store found, not prioritizing anything")
 
     if treeinfo:
         stores.sort(key=lambda x: not x.uses_treeinfo)
@@ -659,7 +664,7 @@ class Distro(object):
         try:
             initrd = self.fetcher.acquireFile(initrdpath)
             return kernel, initrd, args
-        except:
+        except Exception:
             os.unlink(kernel)
             raise
 
@@ -707,14 +712,14 @@ class GenericDistro(Distro):
                         self._getTreeinfoMedia("kernel"),
                         self._getTreeinfoMedia("initrd"))
                 except (ConfigParser.NoSectionError,
-                        ConfigParser.NoOptionError), e:
+                        ConfigParser.NoOptionError) as e:
                     logging.debug(e)
 
             if self.treeinfo.has_section(isoSection):
                 try:
                     self._valid_iso_path = self.treeinfo.get(isoSection,
                                                              "boot.iso")
-                except ConfigParser.NoOptionError, e:
+                except ConfigParser.NoOptionError as e:
                     logging.debug(e)
 
         if self.type == "xen":
@@ -776,8 +781,8 @@ class RedHatDistro(Distro):
 
     def _get_method_arg(self):
         if (self._version_number is not None and
-            ((self.urldistro is "rhel" and self._version_number >= 7) or
-             (self.urldistro is "fedora" and self._version_number >= 19))):
+            ((self.urldistro == "rhel" and self._version_number >= 7) or
+             (self.urldistro == "fedora" and self._version_number >= 19))):
             return "inst.repo"
         return "method"
 
@@ -869,7 +874,7 @@ class RHELDistro(RedHatDistro):
         def _safeint(c):
             try:
                 val = int(c)
-            except:
+            except Exception:
                 val = 0
             return val
 
@@ -1102,9 +1107,11 @@ class DebianDistro(Distro):
 
         # Check for standard 'i386' and 'amd64' which will be
         # in the URI name for --location $ISO mounts
-        for arch in ["i386", "amd64"]:
+        for arch in ["i386", "amd64", "x86_64"]:
             if arch in self.uri:
                 logging.debug("Found treearch=%s in uri", arch)
+                if arch == "x86_64":
+                    arch = "amd64"
                 return arch
 
         # Otherwise default to i386
