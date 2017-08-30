@@ -67,6 +67,9 @@ def _remove_older_point_releases(distro_list):
     _find_latest("rhel7")
     _find_latest("freebsd9")
     _find_latest("freebsd10")
+    _find_latest("freebsd11")
+    _find_latest("centos6")
+    _find_latest("centos7")
     return ret
 
 
@@ -241,7 +244,7 @@ class _OSDB(object):
         return osname
 
     def list_types(self):
-        approved_types = ["linux", "windows", "unix",
+        approved_types = ["linux", "windows", "bsd", "macos",
             "solaris", "other", "generic"]
         return approved_types
 
@@ -285,6 +288,7 @@ class _OsVariant(object):
         self.name = self._os and self._os.get_short_id() or "generic"
         self.label = self._os and self._os.get_name() or "Generic"
         self.codename = self._os and self._os.get_codename() or ""
+        self.distro = self._os and self._os.get_distro() or ""
 
         self.sortby = self._get_sortby()
         self.urldistro = self._get_urldistro()
@@ -347,11 +351,10 @@ class _OsVariant(object):
             for n in t:
                 new_version = new_version + ("%.4i" % int(n))
             version = new_version
-        except:
+        except Exception:
             pass
 
-        distro = self._os.get_distro()
-        return "%s-%s" % (distro, version)
+        return "%s-%s" % (self.distro, version)
 
     def _get_supported(self):
         if not self._os:
@@ -370,8 +373,8 @@ class _OsVariant(object):
         # EOL date. So assume None == EOL, add some manual work arounds.
         # We should fix this in a new libosinfo version, and then drop
         # this hack
-        if self._is_related_to(["fedora20", "rhel7.0", "debian6",
-            "ubuntu13.04", "win8", "win2k12"],
+        if self._is_related_to(["fedora24", "rhel7.0", "debian6",
+            "ubuntu13.04", "win8", "win2k12", "mageia5", "centos7.0"],
             check_clones=False, check_derives=False):
             return True
         return False
@@ -379,7 +382,7 @@ class _OsVariant(object):
     def _get_urldistro(self):
         if not self._os:
             return None
-        urldistro = self._os.get_distro()
+        urldistro = self.distro
         remap = {
             "opensuse" : "suse",
             "sles" : "suse",
@@ -418,7 +421,10 @@ class _OsVariant(object):
             return "solaris"
 
         if self._family in ['openbsd', 'freebsd', 'netbsd']:
-            return "unix"
+            return "bsd"
+
+        if self._family in ['darwin']:
+            return "macos"
 
         return "other"
 
@@ -512,21 +518,6 @@ class _OsVariant(object):
     def default_videomodel(self, guest):
         if guest.os.is_pseries():
             return "vga"
-
-        # Marc Deslauriers of canonical had previously patched us
-        # to use vmvga for ubuntu, see fb76c4e5. And Fedora users report
-        # issues with ubuntu + qxl for as late as 14.04, so carry the vmvga
-        # default forward until someone says otherwise. In 2014-09 I contacted
-        # Marc offlist and he said this was fine for now.
-        #
-        # But in my testing ubuntu-15.04 works _better_ with qxl (installer
-        # resolution is huge with vmvga but reasonable with qxl), and given
-        # that the qemu vmvga code is not supposed to be of high quality,
-        # let's use qxl for newer ubuntu
-        if (self._os and
-            self._os.get_distro() == "ubuntu" and
-            not self._is_related_to("ubuntu15.04")):
-            return "vmvga"
 
         if guest.has_spice() and guest.os.is_x86():
             if guest.has_gl():

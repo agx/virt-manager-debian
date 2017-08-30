@@ -35,7 +35,7 @@ def sanitize_file_xml(xml):
 
 class XMLParseTest(unittest.TestCase):
     def _roundtrip_compare(self, filename):
-        expectXML = sanitize_file_xml(file(filename).read())
+        expectXML = sanitize_file_xml(open(filename).read())
         guest = virtinst.Guest(conn, parsexml=expectXML)
         actualXML = guest.get_xml_config()
         utils.diff_compare(actualXML, expect_out=expectXML)
@@ -72,12 +72,12 @@ class XMLParseTest(unittest.TestCase):
         set newval, and make sure it is returned properly
         """
         curval = getattr(obj, param)
-        self.assertEquals(initval, curval)
+        self.assertEqual(initval, curval)
 
         for newval in args:
             setattr(obj, param, newval)
             curval = getattr(obj, param)
-            self.assertEquals(newval, curval)
+            self.assertEqual(newval, curval)
 
     def _make_checker(self, obj):
         def check(name, initval, *args):
@@ -88,7 +88,7 @@ class XMLParseTest(unittest.TestCase):
         infile = "tests/xmlparse-xml/%s-in.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
         guest = virtinst.Guest(kvm and kvmconn or conn,
-                               parsexml=file(infile).read())
+                               parsexml=open(infile).read())
         return guest, outfile
 
     def testAlterGuest(self):
@@ -181,7 +181,7 @@ class XMLParseTest(unittest.TestCase):
         check("policy", "force", "disable")
         rmfeat = guest.cpu.features[3]
         guest.cpu.remove_feature(rmfeat)
-        self.assertEquals(rmfeat.get_xml_config(),
+        self.assertEqual(rmfeat.get_xml_config(),
                           """<feature name="foo" policy="bar"/>\n""")
         guest.cpu.add_feature("addfeature")
 
@@ -423,7 +423,7 @@ class XMLParseTest(unittest.TestCase):
                """<target dev="hda" bus="ide"/></disk>\n""")
         d = virtinst.VirtualDisk(conn, parsexml=xml)
         self._set_and_check(d, "target", "hda", "hdb")
-        self.assertEquals(xml.replace("hda", "hdb"), d.get_xml_config())
+        self.assertEqual(xml.replace("hda", "hdb"), d.get_xml_config())
 
     def testAlterChars(self):
         guest, outfile = self._get_test_content("change-chars")
@@ -684,7 +684,7 @@ class XMLParseTest(unittest.TestCase):
         infile  = "tests/xmlparse-xml/change-hostdevs-in.xml"
         outfile = "tests/xmlparse-xml/change-hostdevs-out.xml"
         guest = virtinst.Guest(conn,
-                               parsexml=file(infile).read())
+                               parsexml=open(infile).read())
 
         dev1 = guest.get_devices("hostdev")[0]
         dev2 = guest.get_devices("hostdev")[1]
@@ -781,9 +781,9 @@ class XMLParseTest(unittest.TestCase):
         check("units", "MB", "KiB")
 
         check = self._make_checker(dev6)
-        check("type", "block")
         check("source", "/foo/bar", "/dev/new")
         check("readonly", False, True)
+        check("type", "block", "file")
 
         check = self._make_checker(dev7)
         check("type", "file")
@@ -799,7 +799,7 @@ class XMLParseTest(unittest.TestCase):
         infile  = "tests/xmlparse-xml/change-sounds-in.xml"
         outfile = "tests/xmlparse-xml/change-sounds-out.xml"
         guest = virtinst.Guest(conn,
-                               parsexml=file(infile).read())
+                               parsexml=open(infile).read())
 
         dev1 = guest.get_devices("sound")[0]
         dev2 = guest.get_devices("sound")[1]
@@ -1008,7 +1008,7 @@ class XMLParseTest(unittest.TestCase):
         basename = "change-snapshot"
         infile = "tests/xmlparse-xml/%s-in.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        snap = virtinst.DomainSnapshot(conn, parsexml=file(infile).read())
+        snap = virtinst.DomainSnapshot(conn, parsexml=open(infile).read())
 
         check = self._make_checker(snap)
         check("name", "offline-root-child1", "name-foo")
@@ -1033,10 +1033,10 @@ class XMLParseTest(unittest.TestCase):
         basename = "test-bridge-ip"
         infile = "tests/interface-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/interface-%s-out.xml" % basename
-        iface = virtinst.Interface(conn, parsexml=file(infile).read())
+        iface = virtinst.Interface(conn, parsexml=open(infile).read())
 
-        self.assertEquals(len(iface.protocols), 2)
-        self.assertEquals(len(iface.interfaces), 3)
+        self.assertEqual(len(iface.protocols), 2)
+        self.assertEqual(len(iface.interfaces), 3)
 
         check = self._make_checker(iface)
         check("type", "bridge", "foo", "bridge")
@@ -1048,7 +1048,7 @@ class XMLParseTest(unittest.TestCase):
         check("family", "ipv4", "foo", "ipv4")
         check("dhcp_peerdns", True, False)
         check("gateway", "1.2.3.4", "5.5.5.5")
-        self.assertEquals(iface.protocols[0].ips[1].address, "255.255.255.0")
+        self.assertEqual(iface.protocols[0].ips[1].address, "255.255.255.0")
 
         check = self._make_checker(iface.protocols[1])
         check("dhcp", True, False)
@@ -1064,7 +1064,7 @@ class XMLParseTest(unittest.TestCase):
 
         check = self._make_checker(child_iface)
         check("name", "bond-brbond")
-        self.assertEquals(len(child_iface.interfaces), 2)
+        self.assertEqual(len(child_iface.interfaces), 2)
 
         utils.diff_compare(iface.get_xml_config(), outfile)
         utils.test_create(conn, iface.get_xml_config(), "interfaceDefineXML")
@@ -1073,7 +1073,7 @@ class XMLParseTest(unittest.TestCase):
         basename = "test-bond-arp"
         infile = "tests/interface-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/interface-%s-out.xml" % basename
-        iface = virtinst.Interface(conn, parsexml=file(infile).read())
+        iface = virtinst.Interface(conn, parsexml=open(infile).read())
 
         check = self._make_checker(iface)
         check("start_mode", "onboot", "hotplug")
@@ -1092,7 +1092,7 @@ class XMLParseTest(unittest.TestCase):
         basename = "test-bond-mii"
         infile = "tests/interface-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/interface-%s-out.xml" % basename
-        iface = virtinst.Interface(conn, parsexml=file(infile).read())
+        iface = virtinst.Interface(conn, parsexml=open(infile).read())
 
         check = self._make_checker(iface)
         check("mii_frequency", 123, 111)
@@ -1107,7 +1107,7 @@ class XMLParseTest(unittest.TestCase):
         basename = "test-vlan"
         infile = "tests/interface-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/interface-%s-out.xml" % basename
-        iface = virtinst.Interface(conn, parsexml=file(infile).read())
+        iface = virtinst.Interface(conn, parsexml=open(infile).read())
 
         check = self._make_checker(iface)
         check("tag", 123, 456)
@@ -1125,7 +1125,7 @@ class XMLParseTest(unittest.TestCase):
         basename = "pool-fs"
         infile = "tests/xmlparse-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        pool = virtinst.StoragePool(conn, parsexml=file(infile).read())
+        pool = virtinst.StoragePool(conn, parsexml=open(infile).read())
 
         check = self._make_checker(pool)
         check("type", "fs", "dir")
@@ -1148,7 +1148,7 @@ class XMLParseTest(unittest.TestCase):
         basename = "pool-iscsi"
         infile = "tests/storage-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        pool = virtinst.StoragePool(conn, parsexml=file(infile).read())
+        pool = virtinst.StoragePool(conn, parsexml=open(infile).read())
 
         check = self._make_checker(pool)
         check("iqn", "foo.bar.baz.iqn", "my.iqn")
@@ -1166,7 +1166,7 @@ class XMLParseTest(unittest.TestCase):
         basename = "pool-gluster"
         infile = "tests/storage-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        pool = virtinst.StoragePool(conn, parsexml=file(infile).read())
+        pool = virtinst.StoragePool(conn, parsexml=open(infile).read())
 
         check = self._make_checker(pool)
         check("source_path", "/some/source/path", "/foo")
@@ -1180,7 +1180,7 @@ class XMLParseTest(unittest.TestCase):
         basename = "pool-rbd"
         infile = "tests/xmlparse-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        pool = virtinst.StoragePool(conn, parsexml=file(infile).read())
+        pool = virtinst.StoragePool(conn, parsexml=open(infile).read())
 
         check = self._make_checker(pool.hosts[0])
         check("name", "ceph-mon-1.example.com")
@@ -1200,7 +1200,7 @@ class XMLParseTest(unittest.TestCase):
         basename = "pool-dir-vol"
         infile = "tests/xmlparse-xml/%s-in.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        vol = virtinst.StorageVolume(conn, parsexml=file(infile).read())
+        vol = virtinst.StorageVolume(conn, parsexml=open(infile).read())
 
         check = self._make_checker(vol)
         check("type", None, "file")
@@ -1229,7 +1229,7 @@ class XMLParseTest(unittest.TestCase):
         basename = "network-multi"
         infile = "tests/xmlparse-xml/%s-in.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        net = virtinst.Network(conn, parsexml=file(infile).read())
+        net = virtinst.Network(conn, parsexml=open(infile).read())
 
         check = self._make_checker(net)
         check("name", "ipv6_multirange", "new-foo")
@@ -1241,6 +1241,7 @@ class XMLParseTest(unittest.TestCase):
         check("domain_name", "net7", "newdom")
         check("ipv6", None, True)
         check("macaddr", None, "52:54:00:69:eb:FF")
+        check("virtualport_type", None, "openvswitch")
 
         check = self._make_checker(net.forward)
         check("mode", "nat", "route")
@@ -1255,7 +1256,7 @@ class XMLParseTest(unittest.TestCase):
         check("outbound_peak", "5000", "3000")
         check("outbound_burst", "5120", "5120")
 
-        self.assertEquals(len(net.portgroups), 2)
+        self.assertEqual(len(net.portgroups), 2)
         check = self._make_checker(net.portgroups[0])
         check("name", "engineering", "foo")
         check("default", True, False)
@@ -1292,6 +1293,53 @@ class XMLParseTest(unittest.TestCase):
         utils.diff_compare(net.get_xml_config(), outfile)
         utils.test_create(conn, net.get_xml_config(), "networkDefineXML")
 
+    def testNetOpen(self):
+        basename = "network-open"
+        infile = "tests/xmlparse-xml/%s-in.xml" % basename
+        outfile = "tests/xmlparse-xml/%s-out.xml" % basename
+        net = virtinst.Network(conn, parsexml=open(infile).read())
+
+        check = self._make_checker(net)
+        check("name", "open", "new-foo")
+        check("domain_name", "open", "newdom")
+
+        check = self._make_checker(net.forward)
+        check("mode", "open")
+        check("dev", None)
+
+        self.assertEqual(len(net.ips), 1)
+        check = self._make_checker(net.ips[0])
+        check("address", "192.168.100.1", "192.168.101.1")
+        check("netmask", "255.255.255.0", "255.255.254.0")
+
+        check = self._make_checker(net.ips[0].ranges[0])
+        check("start", "192.168.100.128", "192.168.101.128")
+        check("end", "192.168.100.254", "192.168.101.254")
+
+        utils.diff_compare(net.get_xml_config(), outfile)
+        utils.test_create(conn, net.get_xml_config(), "networkDefineXML")
+
+    def testNetVfPool(self):
+        basename = "network-vf-pool"
+        infile = "tests/xmlparse-xml/%s-in.xml" % basename
+        outfile = "tests/xmlparse-xml/%s-out.xml" % basename
+        net = virtinst.Network(conn, parsexml=open(infile).read())
+
+        check = self._make_checker(net)
+        check("name", "passthrough", "new-foo")
+
+        check = self._make_checker(net.forward)
+        check("mode", "hostdev")
+        check("managed", "yes")
+
+        r = net.forward.add_pf()
+        r.dev = "eth3"
+        check = self._make_checker(r)
+        check("dev", "eth3")
+
+        utils.diff_compare(net.get_xml_config(), outfile)
+        utils.test_create(conn, net.get_xml_config(), "networkDefineXML")
+
 
     ##############
     # Misc tests #
@@ -1302,7 +1350,7 @@ class XMLParseTest(unittest.TestCase):
         basename = "clear-cpu-unknown-vals"
         infile = "tests/xmlparse-xml/%s-in.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        guest = virtinst.Guest(kvmconn, parsexml=file(infile).read())
+        guest = virtinst.Guest(kvmconn, parsexml=open(infile).read())
 
         guest.cpu.copy_host_cpu()
         guest.cpu.clear()

@@ -131,9 +131,10 @@
     <signal name="configure-event" handler="on_vmm_details_configure_event" swapped="no"/>
     <signal name="delete-event" handler="on_vmm_details_delete_event" swapped="no"/>
     <child>
-      <object class="GtkVBox" id="vbox2">
+      <object class="GtkBox" id="vbox2">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
         <child>
           <object class="GtkMenuBar" id="details-menubar">
             <property name="visible">True</property>
@@ -398,7 +399,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkHBox" id="toolbar-box">
+          <object class="GtkBox" id="toolbar-box">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
@@ -590,15 +591,16 @@
             <property name="show_border">False</property>
             <signal name="switch-page" handler="on_details_pages_switch_page" after="yes" swapped="no"/>
             <child>
-              <object class="GtkHBox" id="hbox1">
+              <object class="GtkBox" id="hbox1">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="border_width">12</property>
                 <property name="spacing">12</property>
                 <child>
-                  <object class="GtkVBox" id="vbox53">
+                  <object class="GtkBox" id="vbox53">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="orientation">vertical</property>
                     <property name="spacing">6</property>
                     <child>
                       <object class="GtkScrolledWindow" id="scrolledwindow5">
@@ -665,9 +667,10 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkVBox" id="vbox1">
+                  <object class="GtkBox" id="vbox1">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="orientation">vertical</property>
                     <property name="spacing">6</property>
                     <child>
                       <object class="GtkNotebook" id="hw-panel">
@@ -676,9 +679,10 @@
                         <property name="tab_pos">left</property>
                         <property name="show_border">False</property>
                         <child>
-                          <object class="GtkVBox" id="vbox6">
+                          <object class="GtkBox" id="vbox6">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="orientation">vertical</property>
                             <property name="spacing">12</property>
                             <child>
                               <object class="GtkFrame" id="frame2">
@@ -703,8 +707,8 @@
                                           <object class="GtkLabel" id="label44">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">Status:</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -715,8 +719,8 @@
                                           <object class="GtkLabel" id="label68">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">UUID:</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -727,10 +731,10 @@
                                           <object class="GtkLabel" id="label43">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">_Name:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">overview-name</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -741,9 +745,9 @@
                                           <object class="GtkLabel" id="overview-uuid">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label">8ffc926e-b4da-b3b6-552f-e37b92f918d5</property>
                                             <property name="selectable">True</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -766,10 +770,10 @@
                                           <object class="GtkLabel" id="title-label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">T_itle:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">overview-title</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -796,8 +800,8 @@
                                               <object class="GtkLabel" id="overview-status-text">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
                                                 <property name="label" translatable="yes">Shut down</property>
-                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -809,7 +813,7 @@
                                                 <property name="width_request">22</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="xalign">0</property>
+                                                <property name="halign">start</property>
                                                 <property name="stock">gtk-missing-image</property>
                                               </object>
                                               <packing>
@@ -827,11 +831,11 @@
                                           <object class="GtkLabel" id="label24">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
+                                            <property name="valign">start</property>
                                             <property name="label" translatable="yes">D_escription:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">overview-description</property>
-                                            <property name="xalign">0</property>
-                                            <property name="yalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -902,8 +906,8 @@
                                           <object class="GtkLabel" id="label11">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">Hypervisor:</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -914,8 +918,8 @@
                                           <object class="GtkLabel" id="label12">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">Architecture:</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -926,9 +930,9 @@
                                           <object class="GtkLabel" id="overview-hv">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label">foo</property>
                                             <property name="selectable">True</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -939,9 +943,9 @@
                                           <object class="GtkLabel" id="overview-arch">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label">foo</property>
                                             <property name="selectable">True</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -952,9 +956,9 @@
                                           <object class="GtkLabel" id="overview-emulator">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label">foooooooooooooo</property>
                                             <property name="selectable">True</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -965,8 +969,8 @@
                                           <object class="GtkLabel" id="label13">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">Emulator:</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -977,10 +981,10 @@
                                           <object class="GtkLabel" id="machine-type-title">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
                                             <property name="valign">start</property>
                                             <property name="label" translatable="yes">Machine _Type: </property>
                                             <property name="use_underline">True</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -991,11 +995,11 @@
                                           <object class="GtkLabel" id="overview-chipset-title">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="valign">start</property>
                                             <property name="label" translatable="yes">Chipse_t:</property>
                                             <property name="use_underline">True</property>
                                             <property name="ellipsize">middle</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -1016,8 +1020,8 @@
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
                                                     <property name="halign">start</property>
+                                                    <property name="valign">start</property>
                                                     <property name="hexpand">False</property>
-                                                    <property name="yalign">0</property>
                                                     <property name="stock">gtk-dialog-warning</property>
                                                   </object>
                                                   <packing>
@@ -1069,10 +1073,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                   <object class="GtkLabel" id="overview-chipset-label">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
+                                                    <property name="halign">start</property>
                                                     <property name="valign">start</property>
                                                     <property name="vexpand">True</property>
                                                     <property name="label">label</property>
-                                                    <property name="xalign">0</property>
                                                   </object>
                                                   <packing>
                                                     <property name="expand">False</property>
@@ -1096,9 +1100,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="overview-firmware-title">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="valign">start</property>
                                             <property name="label" translatable="yes">Firmware:</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -1242,7 +1246,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="receives_default">False</property>
-                                            <property name="xalign">0</property>
+                                            <property name="halign">start</property>
                                             <property name="draw_indicator">True</property>
                                             <signal name="toggled" handler="on_idmap_check_toggled" swapped="no"/>
                                           </object>
@@ -1261,9 +1265,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="label19">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">User ID: </property>
                                                 <property name="max_width_chars">15</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">0</property>
@@ -1274,9 +1278,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="label20">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">  Group ID: </property>
                                                 <property name="max_width_chars">15</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">0</property>
@@ -1474,8 +1478,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="label72">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">Product name:</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">0</property>
@@ -1486,9 +1490,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="inspection-hostname">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
                                                 <property name="label">foo</property>
                                                 <property name="selectable">True</property>
-                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -1499,8 +1503,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="label71">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">Hostname:</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">0</property>
@@ -1511,8 +1515,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="label">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">Operating system:</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">0</property>
@@ -1523,9 +1527,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="inspection-product-name">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
                                                 <property name="label">foo</property>
                                                 <property name="selectable">True</property>
-                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -1536,8 +1540,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="inspection-type">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
                                                 <property name="label" translatable="yes">foo</property>
-                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -1627,7 +1631,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="halign">start</property>
-                                    <property name="yalign">0</property>
+                                    <property name="valign">start</property>
                                     <property name="stock">gtk-dialog-warning</property>
                                   </object>
                                   <packing>
@@ -1640,10 +1644,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="halign">start</property>
+                                    <property name="valign">start</property>
                                     <property name="label" translatable="yes">Error message bar</property>
                                     <property name="max_width_chars">80</property>
-                                    <property name="xalign">0</property>
-                                    <property name="yalign">0</property>
                                   </object>
                                   <packing>
                                     <property name="left_attach">1</property>
@@ -1695,9 +1698,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                             <property name="can_focus">False</property>
                             <property name="orientation">vertical</property>
                             <child>
-                              <object class="GtkVBox" id="vbox5">
+                              <object class="GtkBox" id="vbox5">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="orientation">vertical</property>
                                 <property name="spacing">12</property>
                                 <child>
                                   <object class="GtkFrame" id="frame24">
@@ -1735,8 +1739,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="overview-cpu-usage-text">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label">18%</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="expand">False</property>
@@ -1799,8 +1803,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="overview-memory-usage-text">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label">30 MiB of 128 MiB</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="expand">False</property>
@@ -1863,9 +1867,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="overview-disk-usage-text">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">0 KiBytes/s 0 KiBytes/s</property>
                                                 <property name="use_markup">True</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="expand">False</property>
@@ -1928,9 +1932,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="overview-network-traffic-text">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label">0 KiBytes/s 0 KiBytes/s</property>
                                                 <property name="use_markup">True</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="expand">False</property>
@@ -1982,10 +1986,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkVBox" id="vbox14">
+                          <object class="GtkBox" id="vbox14">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="valign">start</property>
+                            <property name="orientation">vertical</property>
                             <property name="spacing">12</property>
                             <child>
                               <object class="GtkFrame" id="CPUs">
@@ -2000,76 +2005,72 @@ if you know what you are doing.&lt;/small&gt;</property>
                                     <property name="top_padding">3</property>
                                     <property name="left_padding">12</property>
                                     <child>
-                                      <object class="GtkHBox" id="hbox5">
+                                      <object class="GtkBox" id="hbox5">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="spacing">6</property>
                                         <child>
-                                          <object class="GtkTable" id="table30">
+                                          <object class="GtkGrid" id="table30">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="border_width">3</property>
-                                            <property name="n_rows">3</property>
-                                            <property name="n_columns">2</property>
-                                            <property name="column_spacing">12</property>
                                             <property name="row_spacing">6</property>
+                                            <property name="column_spacing">12</property>
                                             <child>
                                               <object class="GtkLabel" id="state-host-cpus">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
+                                                <property name="valign">center</property>
                                                 <property name="label">8</property>
                                                 <property name="selectable">True</property>
-                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
-                                                <property name="right_attach">2</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
+                                                <property name="top_attach">0</property>
                                               </packing>
                                             </child>
                                             <child>
                                               <object class="GtkLabel" id="label334">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
+                                                <property name="valign">center</property>
                                                 <property name="label" translatable="yes">Logical host CPUs:</property>
-                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
+                                                <property name="left_attach">0</property>
+                                                <property name="top_attach">0</property>
                                               </packing>
                                             </child>
                                             <child>
                                               <object class="GtkLabel" id="label335">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
+                                                <property name="valign">center</property>
                                                 <property name="label" translatable="yes">Ma_ximum allocation:</property>
                                                 <property name="use_underline">True</property>
                                                 <property name="mnemonic_widget">cpu-maxvcpus</property>
-                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
+                                                <property name="left_attach">0</property>
                                                 <property name="top_attach">2</property>
-                                                <property name="bottom_attach">3</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
                                               </packing>
                                             </child>
                                             <child>
                                               <object class="GtkLabel" id="label333">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
+                                                <property name="valign">center</property>
                                                 <property name="label" translatable="yes">Current a_llocation:</property>
                                                 <property name="use_underline">True</property>
                                                 <property name="mnemonic_widget">cpu-vcpus</property>
-                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
+                                                <property name="left_attach">0</property>
                                                 <property name="top_attach">1</property>
-                                                <property name="bottom_attach">2</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
                                               </packing>
                                             </child>
                                             <child>
@@ -2082,17 +2083,14 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
-                                                <property name="right_attach">2</property>
                                                 <property name="top_attach">2</property>
-                                                <property name="bottom_attach">3</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options">GTK_FILL</property>
                                               </packing>
                                             </child>
                                             <child>
                                               <object class="GtkSpinButton" id="cpu-vcpus">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
+                                                <property name="valign">center</property>
                                                 <property name="invisible_char">●</property>
                                                 <property name="adjustment">adjustment7</property>
                                                 <property name="climb_rate">1</property>
@@ -2107,11 +2105,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
-                                                <property name="right_attach">2</property>
                                                 <property name="top_attach">1</property>
-                                                <property name="bottom_attach">2</property>
-                                                <property name="x_options">GTK_FILL</property>
-                                                <property name="y_options"/>
                                               </packing>
                                             </child>
                                           </object>
@@ -2122,7 +2116,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkHBox" id="cpu-vcpus-warn-box">
+                                          <object class="GtkBox" id="cpu-vcpus-warn-box">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
                                             <property name="spacing">6</property>
@@ -2130,7 +2124,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkImage" id="image9">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="xalign">0</property>
+                                                <property name="halign">start</property>
                                                 <property name="stock">gtk-dialog-warning</property>
                                               </object>
                                               <packing>
@@ -2144,11 +2138,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="width_request">300</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
                                                 <property name="label" translatable="yes">&lt;small&gt;Overcommitting vCPUs can hurt performance&lt;/small&gt;</property>
                                                 <property name="use_markup">True</property>
                                                 <property name="wrap">True</property>
                                                 <property name="max_width_chars">32</property>
-                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="expand">True</property>
@@ -2206,10 +2200,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="label52">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">M_odel:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">combobox-entry</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -2222,8 +2216,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="receives_default">False</property>
+                                            <property name="halign">start</property>
                                             <property name="use_underline">True</property>
-                                            <property name="xalign">0</property>
                                             <property name="draw_indicator">True</property>
                                             <signal name="clicked" handler="on_cpu_copy_host_clicked" swapped="no"/>
                                           </object>
@@ -2281,9 +2275,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                     <property name="left_padding">23</property>
                                     <property name="right_padding">12</property>
                                     <child>
-                                      <object class="GtkVBox" id="vbox15">
+                                      <object class="GtkBox" id="vbox15">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="orientation">vertical</property>
                                         <property name="spacing">4</property>
                                         <child>
                                           <object class="GtkCheckButton" id="cpu-topology-enable">
@@ -2292,7 +2287,6 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="can_focus">True</property>
                                             <property name="receives_default">False</property>
                                             <property name="use_underline">True</property>
-                                            <property name="xalign">0.5</property>
                                             <property name="active">True</property>
                                             <property name="draw_indicator">True</property>
                                             <signal name="toggled" handler="on_cpu_topology_enable_toggled" swapped="no"/>
@@ -2307,65 +2301,59 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkAlignment" id="alignment3">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="xalign">0</property>
+                                            <property name="halign">start</property>
                                             <property name="xscale">0</property>
                                             <child>
-                                              <object class="GtkHBox" id="hbox26">
+                                              <object class="GtkBox" id="hbox26">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="spacing">6</property>
                                                 <child>
-                                                  <object class="GtkTable" id="cpu-topology-table">
+                                                  <object class="GtkGrid" id="cpu-topology-table">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
-                                                    <property name="n_rows">3</property>
-                                                    <property name="n_columns">2</property>
-                                                    <property name="column_spacing">12</property>
                                                     <property name="row_spacing">4</property>
+                                                    <property name="column_spacing">12</property>
                                                     <child>
                                                       <object class="GtkLabel" id="label59">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
+                                                        <property name="halign">start</property>
                                                         <property name="label" translatable="yes">Thread_s:</property>
                                                         <property name="use_underline">True</property>
                                                         <property name="mnemonic_widget">cpu-threads</property>
-                                                        <property name="xalign">0</property>
                                                       </object>
                                                       <packing>
+                                                        <property name="left_attach">0</property>
                                                         <property name="top_attach">2</property>
-                                                        <property name="bottom_attach">3</property>
-                                                        <property name="x_options">GTK_FILL</property>
-                                                        <property name="y_options">GTK_FILL</property>
                                                       </packing>
                                                     </child>
                                                     <child>
                                                       <object class="GtkLabel" id="label58">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
+                                                        <property name="halign">start</property>
                                                         <property name="label" translatable="yes">Cor_es:</property>
                                                         <property name="use_underline">True</property>
                                                         <property name="mnemonic_widget">cpu-cores</property>
-                                                        <property name="xalign">0</property>
                                                       </object>
                                                       <packing>
+                                                        <property name="left_attach">0</property>
                                                         <property name="top_attach">1</property>
-                                                        <property name="bottom_attach">2</property>
-                                                        <property name="x_options">GTK_FILL</property>
-                                                        <property name="y_options">GTK_FILL</property>
                                                       </packing>
                                                     </child>
                                                     <child>
                                                       <object class="GtkLabel" id="label57">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
+                                                        <property name="halign">start</property>
                                                         <property name="label" translatable="yes">Socke_ts:</property>
                                                         <property name="use_underline">True</property>
                                                         <property name="mnemonic_widget">cpu-sockets</property>
-                                                        <property name="xalign">0</property>
                                                       </object>
                                                       <packing>
-                                                        <property name="x_options">GTK_FILL</property>
-                                                        <property name="y_options">GTK_FILL</property>
+                                                        <property name="left_attach">0</property>
+                                                        <property name="top_attach">0</property>
                                                       </packing>
                                                     </child>
                                                     <child>
@@ -2380,7 +2368,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                       </object>
                                                       <packing>
                                                         <property name="left_attach">1</property>
-                                                        <property name="right_attach">2</property>
+                                                        <property name="top_attach">0</property>
                                                       </packing>
                                                     </child>
                                                     <child>
@@ -2389,15 +2377,14 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                         <property name="can_focus">True</property>
                                                         <property name="halign">start</property>
                                                         <property name="hexpand">False</property>
+                                                        <property name="vexpand">True</property>
                                                         <property name="invisible_char">●</property>
                                                         <property name="adjustment">adjustment4</property>
                                                         <signal name="changed" handler="on_cpu_cores_changed" swapped="no"/>
                                                       </object>
                                                       <packing>
                                                         <property name="left_attach">1</property>
-                                                        <property name="right_attach">2</property>
                                                         <property name="top_attach">1</property>
-                                                        <property name="bottom_attach">2</property>
                                                       </packing>
                                                     </child>
                                                     <child>
@@ -2405,15 +2392,15 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">True</property>
                                                         <property name="halign">start</property>
+                                                        <property name="hexpand">True</property>
+                                                        <property name="vexpand">True</property>
                                                         <property name="invisible_char">●</property>
                                                         <property name="adjustment">adjustment5</property>
                                                         <signal name="changed" handler="on_cpu_threads_changed" swapped="no"/>
                                                       </object>
                                                       <packing>
                                                         <property name="left_attach">1</property>
-                                                        <property name="right_attach">2</property>
                                                         <property name="top_attach">2</property>
-                                                        <property name="bottom_attach">3</property>
                                                       </packing>
                                                     </child>
                                                   </object>
@@ -2424,7 +2411,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                   </packing>
                                                 </child>
                                                 <child>
-                                                  <object class="GtkHBox" id="cpu-topology-warn-box">
+                                                  <object class="GtkBox" id="cpu-topology-warn-box">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
                                                     <property name="spacing">6</property>
@@ -2432,8 +2419,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                       <object class="GtkImage" id="image4">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
-                                                        <property name="xalign">0</property>
-                                                        <property name="yalign">1</property>
+                                                        <property name="halign">start</property>
+                                                        <property name="valign">end</property>
                                                         <property name="stock">gtk-dialog-warning</property>
                                                       </object>
                                                       <packing>
@@ -2447,12 +2434,12 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                         <property name="width_request">300</property>
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
+                                                        <property name="halign">start</property>
+                                                        <property name="valign">end</property>
                                                         <property name="label" translatable="yes">&lt;small&gt;Selected CPU model does not support Hyper-Threading&lt;/small&gt;</property>
                                                         <property name="use_markup">True</property>
                                                         <property name="single_line_mode">True</property>
                                                         <property name="max_width_chars">32</property>
-                                                        <property name="xalign">0</property>
-                                                        <property name="yalign">1</property>
                                                       </object>
                                                       <packing>
                                                         <property name="expand">True</property>
@@ -2513,9 +2500,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkVBox" id="vbox7">
+                          <object class="GtkBox" id="vbox7">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="orientation">vertical</property>
                             <child>
                               <object class="GtkFrame" id="frame5">
                                 <property name="visible">True</property>
@@ -2529,77 +2517,75 @@ if you know what you are doing.&lt;/small&gt;</property>
                                     <property name="top_padding">3</property>
                                     <property name="left_padding">12</property>
                                     <child>
-                                      <object class="GtkTable" id="table6">
+                                      <object class="GtkGrid" id="table6">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="border_width">3</property>
-                                        <property name="n_rows">3</property>
-                                        <property name="n_columns">2</property>
-                                        <property name="column_spacing">6</property>
                                         <property name="row_spacing">6</property>
+                                        <property name="column_spacing">6</property>
                                         <child>
                                           <object class="GtkLabel" id="label60">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
+                                            <property name="valign">center</property>
                                             <property name="label" translatable="yes">Current a_llocation:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">mem-memory</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
+                                            <property name="left_attach">0</property>
                                             <property name="top_attach">1</property>
-                                            <property name="bottom_attach">2</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options"/>
                                           </packing>
                                         </child>
                                         <child>
                                           <object class="GtkLabel" id="label307">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
+                                            <property name="valign">center</property>
                                             <property name="label" translatable="yes">Ma_ximum allocation:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">mem-maxmem</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
+                                            <property name="left_attach">0</property>
                                             <property name="top_attach">2</property>
-                                            <property name="bottom_attach">3</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options"/>
                                           </packing>
                                         </child>
                                         <child>
                                           <object class="GtkLabel" id="label61">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
+                                            <property name="valign">center</property>
                                             <property name="label" translatable="yes">Total host memory:</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options"/>
+                                            <property name="left_attach">0</property>
+                                            <property name="top_attach">0</property>
                                           </packing>
                                         </child>
                                         <child>
                                           <object class="GtkLabel" id="state-host-memory">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
+                                            <property name="valign">center</property>
                                             <property name="label">2 GiB</property>
                                             <property name="selectable">True</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
-                                            <property name="right_attach">2</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options"/>
+                                            <property name="top_attach">0</property>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkHBox" id="hbox46">
+                                          <object class="GtkBox" id="hbox46">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="valign">center</property>
+                                            <property name="hexpand">True</property>
                                             <property name="spacing">3</property>
                                             <child>
                                               <object class="GtkSpinButton" id="mem-memory">
@@ -2627,8 +2613,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="label306">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
                                                 <property name="label" translatable="yes">MiB</property>
-                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="expand">True</property>
@@ -2639,16 +2625,14 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
-                                            <property name="right_attach">2</property>
                                             <property name="top_attach">1</property>
-                                            <property name="bottom_attach">2</property>
-                                            <property name="y_options"/>
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkHBox" id="hbox47">
+                                          <object class="GtkBox" id="hbox47">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="valign">center</property>
                                             <property name="spacing">3</property>
                                             <child>
                                               <object class="GtkSpinButton" id="mem-maxmem">
@@ -2676,8 +2660,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="label346">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
                                                 <property name="label" translatable="yes">MiB</property>
-                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="expand">True</property>
@@ -2688,11 +2672,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
-                                            <property name="right_attach">2</property>
                                             <property name="top_attach">2</property>
-                                            <property name="bottom_attach">3</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options"/>
                                           </packing>
                                         </child>
                                       </object>
@@ -2754,7 +2734,6 @@ if you know what you are doing.&lt;/small&gt;</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
                                         <property name="use_underline">True</property>
-                                        <property name="xalign">0.5</property>
                                         <property name="draw_indicator">True</property>
                                         <signal name="toggled" handler="on_boot_autostart_changed" swapped="no"/>
                                       </object>
@@ -2810,10 +2789,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="label69">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">Init _path:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">boot-init-path</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -2824,10 +2803,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="label64">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">Init ar_gs:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">boot-init-args</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -2888,8 +2867,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="receives_default">False</property>
+                                            <property name="halign">start</property>
                                             <property name="use_underline">True</property>
-                                            <property name="xalign">0</property>
                                             <property name="draw_indicator">True</property>
                                             <signal name="toggled" handler="on_boot_kernel_enable_toggled" swapped="no"/>
                                           </object>
@@ -2905,48 +2884,48 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="can_focus">False</property>
                                             <property name="spacing">6</property>
                                             <child>
-                                              <object class="GtkTable" id="table13">
+                                              <object class="GtkGrid" id="table13">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="n_rows">4</property>
-                                                <property name="n_columns">2</property>
                                                 <property name="column_spacing">6</property>
                                                 <child>
                                                   <object class="GtkLabel" id="label38">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
-                                                    <property name="ypad">8</property>
+                                                    <property name="halign">start</property>
+                                                    <property name="margin_top">8</property>
+                                                    <property name="margin_bottom">8</property>
                                                     <property name="label" translatable="yes">Ke_rnel path:</property>
                                                     <property name="use_underline">True</property>
                                                     <property name="mnemonic_widget">boot-kernel</property>
-                                                    <property name="xalign">0</property>
                                                   </object>
                                                   <packing>
-                                                    <property name="x_options">GTK_FILL</property>
-                                                    <property name="y_options">GTK_FILL</property>
+                                                    <property name="left_attach">0</property>
+                                                    <property name="top_attach">0</property>
                                                   </packing>
                                                 </child>
                                                 <child>
                                                   <object class="GtkLabel" id="label39">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
-                                                    <property name="ypad">8</property>
+                                                    <property name="halign">start</property>
+                                                    <property name="margin_top">8</property>
+                                                    <property name="margin_bottom">8</property>
                                                     <property name="label" translatable="yes">_Initrd path:</property>
                                                     <property name="use_underline">True</property>
                                                     <property name="mnemonic_widget">boot-initrd</property>
-                                                    <property name="xalign">0</property>
                                                   </object>
                                                   <packing>
+                                                    <property name="left_attach">0</property>
                                                     <property name="top_attach">1</property>
-                                                    <property name="bottom_attach">2</property>
-                                                    <property name="x_options">GTK_FILL</property>
-                                                    <property name="y_options">GTK_FILL</property>
                                                   </packing>
                                                 </child>
                                                 <child>
                                                   <object class="GtkBox" id="box3">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
+                                                    <property name="valign">center</property>
+                                                    <property name="hexpand">True</property>
                                                     <property name="spacing">6</property>
                                                     <child>
                                                       <object class="GtkEntry" id="boot-initrd">
@@ -2978,16 +2957,15 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                   </object>
                                                   <packing>
                                                     <property name="left_attach">1</property>
-                                                    <property name="right_attach">2</property>
                                                     <property name="top_attach">1</property>
-                                                    <property name="bottom_attach">2</property>
-                                                    <property name="y_options"/>
                                                   </packing>
                                                 </child>
                                                 <child>
                                                   <object class="GtkBox" id="box4">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
+                                                    <property name="valign">center</property>
+                                                    <property name="hexpand">True</property>
                                                     <property name="spacing">6</property>
                                                     <child>
                                                       <object class="GtkEntry" id="boot-kernel">
@@ -3019,64 +2997,61 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                   </object>
                                                   <packing>
                                                     <property name="left_attach">1</property>
-                                                    <property name="right_attach">2</property>
-                                                    <property name="y_options"/>
+                                                    <property name="top_attach">0</property>
                                                   </packing>
                                                 </child>
                                                 <child>
                                                   <object class="GtkLabel" id="label40">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
-                                                    <property name="ypad">8</property>
+                                                    <property name="halign">start</property>
+                                                    <property name="margin_top">8</property>
+                                                    <property name="margin_bottom">8</property>
                                                     <property name="label" translatable="yes">Kernel ar_gs:</property>
                                                     <property name="use_underline">True</property>
                                                     <property name="mnemonic_widget">boot-kernel-args</property>
-                                                    <property name="xalign">0</property>
                                                   </object>
                                                   <packing>
+                                                    <property name="left_attach">0</property>
                                                     <property name="top_attach">3</property>
-                                                    <property name="bottom_attach">4</property>
-                                                    <property name="x_options">GTK_FILL</property>
-                                                    <property name="y_options">GTK_FILL</property>
                                                   </packing>
                                                 </child>
                                                 <child>
                                                   <object class="GtkEntry" id="boot-kernel-args">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">True</property>
+                                                    <property name="hexpand">True</property>
                                                     <property name="invisible_char">●</property>
                                                     <property name="width_chars">40</property>
                                                     <signal name="changed" handler="on_boot_kernel_args_changed" swapped="no"/>
                                                   </object>
                                                   <packing>
                                                     <property name="left_attach">1</property>
-                                                    <property name="right_attach">2</property>
                                                     <property name="top_attach">3</property>
-                                                    <property name="bottom_attach">4</property>
-                                                    <property name="y_options">GTK_FILL</property>
                                                   </packing>
                                                 </child>
                                                 <child>
                                                   <object class="GtkLabel" id="boot-dtb-label">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
-                                                    <property name="ypad">8</property>
+                                                    <property name="halign">start</property>
+                                                    <property name="margin_top">8</property>
+                                                    <property name="margin_bottom">8</property>
                                                     <property name="label" translatable="yes">D_TB Path:</property>
                                                     <property name="use_underline">True</property>
                                                     <property name="mnemonic_widget">boot-dtb</property>
-                                                    <property name="xalign">0</property>
                                                   </object>
                                                   <packing>
+                                                    <property name="left_attach">0</property>
                                                     <property name="top_attach">2</property>
-                                                    <property name="bottom_attach">3</property>
-                                                    <property name="x_options">GTK_FILL</property>
-                                                    <property name="y_options">GTK_FILL</property>
                                                   </packing>
                                                 </child>
                                                 <child>
                                                   <object class="GtkBox" id="boot-dtb-box">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
+                                                    <property name="valign">center</property>
+                                                    <property name="hexpand">True</property>
                                                     <property name="spacing">6</property>
                                                     <child>
                                                       <object class="GtkEntry" id="boot-dtb">
@@ -3108,10 +3083,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                   </object>
                                                   <packing>
                                                     <property name="left_attach">1</property>
-                                                    <property name="right_attach">2</property>
                                                     <property name="top_attach">2</property>
-                                                    <property name="bottom_attach">3</property>
-                                                    <property name="y_options"/>
                                                   </packing>
                                                 </child>
                                               </object>
@@ -3174,9 +3146,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                     <property name="top_padding">3</property>
                                     <property name="left_padding">12</property>
                                     <child>
-                                      <object class="GtkVBox" id="bootvbox">
+                                      <object class="GtkBox" id="bootvbox">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="orientation">vertical</property>
                                         <property name="spacing">6</property>
                                         <child>
                                           <object class="GtkCheckButton" id="boot-menu">
@@ -3184,8 +3157,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="receives_default">False</property>
+                                            <property name="halign">start</property>
                                             <property name="use_underline">True</property>
-                                            <property name="xalign">0</property>
                                             <property name="draw_indicator">True</property>
                                             <signal name="toggled" handler="on_boot_menu_changed" swapped="no"/>
                                           </object>
@@ -3328,9 +3301,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkVBox" id="vbox55">
+                          <object class="GtkBox" id="vbox55">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="orientation">vertical</property>
                             <property name="spacing">12</property>
                             <child>
                               <object class="GtkFrame" id="frame10">
@@ -3345,9 +3319,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                     <property name="top_padding">3</property>
                                     <property name="left_padding">12</property>
                                     <child>
-                                      <object class="GtkVBox" id="vbox13">
+                                      <object class="GtkBox" id="vbox13">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="orientation">vertical</property>
                                         <property name="spacing">12</property>
                                         <child>
                                           <object class="GtkGrid" id="table32">
@@ -3360,10 +3335,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="permissions-label">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">R_eadonly:</property>
                                                 <property name="use_underline">True</property>
                                                 <property name="mnemonic_widget">disk-readonly</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">0</property>
@@ -3374,10 +3349,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="label3">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">Sharea_ble:</property>
                                                 <property name="use_underline">True</property>
                                                 <property name="mnemonic_widget">disk-shareable</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">0</property>
@@ -3389,7 +3364,6 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
-                                                <property name="xalign">0.5</property>
                                                 <property name="draw_indicator">True</property>
                                                 <signal name="toggled" handler="on_disk_readonly_changed" swapped="no"/>
                                               </object>
@@ -3403,7 +3377,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
-                                                <property name="xalign">0</property>
+                                                <property name="halign">start</property>
                                                 <property name="draw_indicator">True</property>
                                                 <signal name="toggled" handler="on_disk_shareable_changed" swapped="no"/>
                                               </object>
@@ -3416,8 +3390,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="label4">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">Storage size:</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">0</property>
@@ -3428,8 +3402,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="disk-size">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
                                                 <property name="label">size</property>
-                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -3440,9 +3414,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="label392">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">Source path:</property>
                                                 <property name="use_underline">True</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">0</property>
@@ -3453,9 +3427,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="disk-target-type">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
                                                 <property name="label">disk	</property>
                                                 <property name="selectable">True</property>
-                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">1</property>
@@ -3471,10 +3445,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                   <object class="GtkLabel" id="disk-source-path">
                                                     <property name="visible">True</property>
                                                     <property name="can_focus">False</property>
+                                                    <property name="halign">start</property>
                                                     <property name="label">path</property>
                                                     <property name="selectable">True</property>
                                                     <property name="ellipsize">start</property>
-                                                    <property name="xalign">0</property>
                                                   </object>
                                                   <packing>
                                                     <property name="expand">False</property>
@@ -3510,9 +3484,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="label375">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">Device type:</property>
                                                 <property name="use_underline">True</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">0</property>
@@ -3523,10 +3497,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="label46">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">Removab_le:</property>
                                                 <property name="use_underline">True</property>
                                                 <property name="mnemonic_widget">disk-removable</property>
-                                                <property name="xalign">1</property>
                                               </object>
                                               <packing>
                                                 <property name="left_attach">0</property>
@@ -3538,8 +3512,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">True</property>
                                                 <property name="receives_default">False</property>
+                                                <property name="halign">start</property>
                                                 <property name="use_stock">True</property>
-                                                <property name="xalign">0</property>
                                                 <property name="draw_indicator">True</property>
                                                 <signal name="toggled" handler="on_disk_removable_changed" swapped="no"/>
                                               </object>
@@ -3575,10 +3549,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                       <object class="GtkLabel" id="label32">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
+                                                        <property name="halign">end</property>
                                                         <property name="label" translatable="yes">Disk b_us:</property>
                                                         <property name="use_underline">True</property>
                                                         <property name="mnemonic_widget">disk-bus-combobox-entry</property>
-                                                        <property name="xalign">1</property>
                                                       </object>
                                                       <packing>
                                                         <property name="left_attach">0</property>
@@ -3619,10 +3593,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                       <object class="GtkLabel" id="label6">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
+                                                        <property name="halign">end</property>
                                                         <property name="label" translatable="yes">Seria_l number:</property>
                                                         <property name="use_underline">True</property>
                                                         <property name="mnemonic_widget">disk-serial</property>
-                                                        <property name="xalign">1</property>
                                                       </object>
                                                       <packing>
                                                         <property name="left_attach">0</property>
@@ -3696,12 +3670,13 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                       <object class="GtkLabel" id="label30">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
-                                                        <property name="ypad">4</property>
+                                                        <property name="halign">end</property>
+                                                        <property name="valign">start</property>
+                                                        <property name="margin_top">4</property>
+                                                        <property name="margin_bottom">4</property>
                                                         <property name="label" translatable="yes">Storage forma_t:</property>
                                                         <property name="use_underline">True</property>
                                                         <property name="mnemonic_widget">disk-format</property>
-                                                        <property name="xalign">1</property>
-                                                        <property name="yalign">0</property>
                                                       </object>
                                                       <packing>
                                                         <property name="left_attach">0</property>
@@ -3712,10 +3687,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                       <object class="GtkLabel" id="label66">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
+                                                        <property name="halign">end</property>
                                                         <property name="label" translatable="yes">_SGIO:</property>
                                                         <property name="use_underline">True</property>
                                                         <property name="mnemonic_widget">disk-sgio-entry</property>
-                                                        <property name="xalign">1</property>
                                                       </object>
                                                       <packing>
                                                         <property name="left_attach">0</property>
@@ -3760,10 +3735,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                           <object class="GtkLabel" id="label123">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
+                                                            <property name="halign">end</property>
                                                             <property name="label" translatable="yes">Cac_he mode:</property>
                                                             <property name="use_underline">True</property>
                                                             <property name="mnemonic_widget">cachemode-entry-box</property>
-                                                            <property name="xalign">1</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">0</property>
@@ -3808,10 +3783,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                           <object class="GtkLabel" id="label79">
                                                             <property name="visible">True</property>
                                                             <property name="can_focus">False</property>
+                                                            <property name="halign">end</property>
                                                             <property name="label" translatable="yes">_IO mode:</property>
                                                             <property name="use_underline">True</property>
                                                             <property name="mnemonic_widget">iomode-entry-box</property>
-                                                            <property name="xalign">1</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">0</property>
@@ -3873,7 +3848,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkHButtonBox" id="hbuttonbox9">
+                              <object class="GtkButtonBox" id="hbuttonbox9">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="spacing">5</property>
@@ -3903,9 +3878,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkVBox" id="vbox54">
+                          <object class="GtkBox" id="vbox54">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="orientation">vertical</property>
                             <property name="spacing">12</property>
                             <child>
                               <object class="GtkFrame" id="frame9">
@@ -3930,10 +3906,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="label509">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
                                             <property name="label" translatable="yes">Device mode_l:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">network-model-combobox</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -3944,9 +3920,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="mac-address-label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
                                             <property name="label" translatable="yes">MAC address:</property>
                                             <property name="use_underline">True</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -4010,9 +3986,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                               <object class="GtkLabel" id="network-mac-label">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
                                                 <property name="label">mac</property>
                                                 <property name="selectable">True</property>
-                                                <property name="xalign">0</property>
                                               </object>
                                               <packing>
                                                 <property name="expand">False</property>
@@ -4088,9 +4064,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkVBox" id="vbox56">
+                          <object class="GtkBox" id="vbox56">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="orientation">vertical</property>
                             <property name="spacing">12</property>
                             <child>
                               <object class="GtkFrame" id="frame11">
@@ -4115,9 +4092,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="label402">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
                                             <property name="label" translatable="yes">Type:</property>
                                             <property name="use_underline">True</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -4128,8 +4105,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="label405">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
                                             <property name="label" translatable="yes">Mode:</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -4140,9 +4117,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="input-dev-mode">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label">label401</property>
                                             <property name="selectable">True</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -4153,9 +4130,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="input-dev-type">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label">label403</property>
                                             <property name="selectable">True</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -4198,9 +4175,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkVBox" id="vbox57">
+                          <object class="GtkBox" id="vbox57">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="orientation">vertical</property>
                             <child>
                               <object class="GtkFrame" id="vnc-frame">
                                 <property name="visible">True</property>
@@ -4250,9 +4228,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkVBox" id="vbox58">
+                          <object class="GtkBox" id="vbox58">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="orientation">vertical</property>
                             <child>
                               <object class="GtkFrame" id="frame13">
                                 <property name="visible">True</property>
@@ -4266,25 +4245,25 @@ if you know what you are doing.&lt;/small&gt;</property>
                                     <property name="top_padding">3</property>
                                     <property name="left_padding">12</property>
                                     <child>
-                                      <object class="GtkTable" id="table36">
+                                      <object class="GtkGrid" id="table36">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="border_width">3</property>
-                                        <property name="n_columns">2</property>
-                                        <property name="column_spacing">8</property>
                                         <property name="row_spacing">4</property>
+                                        <property name="column_spacing">8</property>
                                         <child>
                                           <object class="GtkLabel" id="label452">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
+                                            <property name="valign">center</property>
                                             <property name="label" translatable="yes">Device m_odel:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">combobox-entry12</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options"/>
+                                            <property name="left_attach">0</property>
+                                            <property name="top_attach">0</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -4301,9 +4280,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
-                                            <property name="right_attach">2</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options">GTK_FILL</property>
+                                            <property name="top_attach">0</property>
                                           </packing>
                                         </child>
                                       </object>
@@ -4342,9 +4319,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkVBox" id="vbox59">
+                          <object class="GtkBox" id="vbox59">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="orientation">vertical</property>
                             <child>
                               <object class="GtkFrame" id="frame14">
                                 <property name="visible">True</property>
@@ -4368,8 +4346,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="char-dev-type-label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
                                             <property name="label" translatable="yes">Device type:</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -4380,9 +4358,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="char-dev-type">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">label506</property>
                                             <property name="selectable">True</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -4393,9 +4371,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="char-source-path">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">label508</property>
                                             <property name="selectable">True</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -4406,8 +4384,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="char-bind-host">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label">label</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -4418,8 +4396,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="char-target-type">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label">label</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -4430,9 +4408,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="char-target-name">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">label508</property>
                                             <property name="selectable">True</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -4443,8 +4421,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="char-source-host">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label">label</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -4455,8 +4433,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="char-source-host-label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
                                             <property name="label" translatable="yes">Source host:</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -4467,8 +4445,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="char-bind-host-label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
                                             <property name="label" translatable="yes">Bind host:</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -4479,8 +4457,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="char-target-type-label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
                                             <property name="label" translatable="yes">Target type:</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -4491,8 +4469,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="char-target-name-label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
                                             <property name="label" translatable="yes">Target name:</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -4503,8 +4481,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="char-source-path-label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
                                             <property name="label" translatable="yes">Source path:</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -4547,9 +4525,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkVBox" id="vbox8">
+                          <object class="GtkBox" id="vbox8">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="orientation">vertical</property>
                             <child>
                               <object class="GtkFrame" id="frame6">
                                 <property name="visible">True</property>
@@ -4572,8 +4551,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="label15">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">Device:</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -4584,9 +4563,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="hostdev-source">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label">label</property>
                                             <property name="selectable">True</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -4597,10 +4576,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="label5">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">ROM _BAR:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">hostdev-rombar</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -4612,7 +4591,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="visible">True</property>
                                             <property name="can_focus">True</property>
                                             <property name="receives_default">False</property>
-                                            <property name="xalign">0</property>
+                                            <property name="halign">start</property>
                                             <property name="draw_indicator">True</property>
                                             <signal name="toggled" handler="on_hostdev_rombar_toggled" swapped="no"/>
                                           </object>
@@ -4657,9 +4636,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkVBox" id="vbox9">
+                          <object class="GtkBox" id="vbox9">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="orientation">vertical</property>
                             <child>
                               <object class="GtkFrame" id="frame8">
                                 <property name="visible">True</property>
@@ -4678,10 +4658,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="label18">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">M_odel:</property>
                                         <property name="use_underline">True</property>
                                         <property name="mnemonic_widget">combobox-entry13</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -4709,8 +4689,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="label17">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">RAM:</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -4721,9 +4701,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="video-ram">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label">label</property>
                                         <property name="selectable">True</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -4734,8 +4714,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="label25">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">Heads:</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -4746,9 +4726,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="video-heads">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label">label</property>
                                         <property name="selectable">True</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -4759,8 +4739,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="label9">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">3D acceleration:</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -4817,9 +4797,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkVBox" id="vbox12">
+                          <object class="GtkBox" id="vbox12">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="orientation">vertical</property>
                             <child>
                               <object class="GtkFrame" id="frame15">
                                 <property name="visible">True</property>
@@ -4833,41 +4814,39 @@ if you know what you are doing.&lt;/small&gt;</property>
                                     <property name="top_padding">3</property>
                                     <property name="left_padding">12</property>
                                     <child>
-                                      <object class="GtkTable" id="table8">
+                                      <object class="GtkGrid" id="table8">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="n_rows">2</property>
-                                        <property name="n_columns">2</property>
-                                        <property name="column_spacing">8</property>
                                         <property name="row_spacing">4</property>
+                                        <property name="column_spacing">8</property>
                                         <child>
                                           <object class="GtkLabel" id="label27">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
+                                            <property name="valign">center</property>
                                             <property name="label" translatable="yes">Ac_tion:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">combobox-entry14</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
+                                            <property name="left_attach">0</property>
                                             <property name="top_attach">1</property>
-                                            <property name="bottom_attach">2</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options"/>
                                           </packing>
                                         </child>
                                         <child>
                                           <object class="GtkLabel" id="label35">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
+                                            <property name="valign">center</property>
                                             <property name="label" translatable="yes">M_odel:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">combobox-entry15</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options"/>
+                                            <property name="left_attach">0</property>
+                                            <property name="top_attach">0</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -4884,11 +4863,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
-                                            <property name="right_attach">2</property>
                                             <property name="top_attach">1</property>
-                                            <property name="bottom_attach">2</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options">GTK_FILL</property>
                                           </packing>
                                         </child>
                                         <child>
@@ -4905,9 +4880,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
-                                            <property name="right_attach">2</property>
-                                            <property name="x_options">GTK_FILL</property>
-                                            <property name="y_options">GTK_FILL</property>
+                                            <property name="top_attach">0</property>
                                           </packing>
                                         </child>
                                       </object>
@@ -4967,8 +4940,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="label48">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">Type:</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -4979,8 +4952,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="controller-type">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label">foo</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5087,9 +5060,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkVBox" id="vbox16">
+                          <object class="GtkBox" id="vbox16">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="orientation">vertical</property>
                             <child>
                               <object class="GtkFrame" id="frame18">
                                 <property name="visible">True</property>
@@ -5114,10 +5088,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="label74">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">M_ode:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">combobox-entry17</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="x_options">GTK_FILL</property>
@@ -5201,8 +5175,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="label516">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label" translatable="yes">Type:</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -5213,8 +5187,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="label519">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label" translatable="yes">Address:</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -5225,8 +5199,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="redir-address">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label" translatable="yes">foo:12</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5237,8 +5211,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="redir-type">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label">redir type</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5274,9 +5248,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkVBox" id="vbox17">
+                          <object class="GtkBox" id="vbox17">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="orientation">vertical</property>
                             <property name="spacing">12</property>
                             <child>
                               <object class="GtkFrame" id="frame20">
@@ -5301,8 +5276,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="tpm-dev-type">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label">tpm-dev-type</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -5313,8 +5288,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="tpm-device-path">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label">tpm-device-path</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -5325,8 +5300,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="label183">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
                                             <property name="label" translatable="yes">Type:</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -5337,8 +5312,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <object class="GtkLabel" id="tpm-device-path-label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">end</property>
                                             <property name="label" translatable="yes">Path:</property>
-                                            <property name="xalign">1</property>
                                           </object>
                                           <packing>
                                             <property name="left_attach">0</property>
@@ -5402,8 +5377,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-type">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label">rng-type</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5414,9 +5389,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="label90">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">Type:</property>
                                         <property name="use_underline">True</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -5427,8 +5402,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-device">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label">rng-device</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5439,8 +5414,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-label1">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">Host Device:</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -5451,8 +5426,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-label4">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">Backend type:</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -5463,8 +5438,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-backend-type">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label">rng-backend-type</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5475,8 +5450,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-label7">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">Mode:</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -5487,8 +5462,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-mode">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label">rng-mode</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5499,8 +5474,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-label2">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">Host:</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -5511,8 +5486,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-connect-host">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label">rng-connect-host</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5523,8 +5498,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-label3">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">Service:</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -5535,8 +5510,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-connect-service">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label">rng-connect-service</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5547,8 +5522,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-label8">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">Bind Host:</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -5559,8 +5534,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-bind-host">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label">rng-bind-host</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5571,8 +5546,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-label9">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">Bind Service:</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -5583,8 +5558,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-bind-service">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label">rng-bind-service</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5595,8 +5570,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-label6">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">Rate (period):</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -5607,8 +5582,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-rate-period">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label">rng-rate-period</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5619,8 +5594,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-label5">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">Rate (bytes):</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -5631,8 +5606,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="rng-rate-bytes">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label">rng-rate-bytes</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5688,9 +5663,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="label95">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="ypad">3</property>
+                                        <property name="halign">start</property>
+                                        <property name="margin_top">3</property>
+                                        <property name="margin_bottom">3</property>
                                         <property name="label" translatable="yes">Address Type:</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -5701,8 +5677,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="label96">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label" translatable="yes">IO Base:</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -5713,8 +5689,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="panic-type">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label" translatable="yes">panic-address-type</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5725,8 +5701,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="panic-iobase">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label" translatable="yes">panic-iobase</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -5769,7 +5745,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                       </packing>
                     </child>
                     <child>
-                      <object class="GtkHButtonBox" id="hbuttonbox3">
+                      <object class="GtkButtonBox" id="hbuttonbox3">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
                         <property name="spacing">12</property>
@@ -5910,10 +5886,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                       <object class="GtkLabel" id="label-auth-password">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">start</property>
                         <property name="label" translatable="yes">_Password:</property>
                         <property name="use_underline">True</property>
                         <property name="mnemonic_widget">console-auth-password</property>
-                        <property name="xalign">0</property>
                       </object>
                       <packing>
                         <property name="top_attach">1</property>
@@ -5944,8 +5920,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
                         <property name="tooltip_text" translatable="yes">Check to save password, uncheck to forget password.</property>
+                        <property name="halign">start</property>
                         <property name="use_underline">True</property>
-                        <property name="xalign">0</property>
                         <property name="draw_indicator">True</property>
                       </object>
                       <packing>
@@ -5961,10 +5937,10 @@ if you know what you are doing.&lt;/small&gt;</property>
                       <object class="GtkLabel" id="label-auth-username">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">start</property>
                         <property name="label" translatable="yes">_Username:</property>
                         <property name="use_underline">True</property>
                         <property name="mnemonic_widget">console-auth-username</property>
-                        <property name="xalign">0</property>
                       </object>
                       <packing>
                         <property name="x_options">GTK_FILL</property>

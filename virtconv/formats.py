@@ -19,6 +19,8 @@
 # MA 02110-1301 USA.
 #
 
+from __future__ import print_function
+
 from distutils.spawn import find_executable
 import logging
 import os
@@ -183,7 +185,7 @@ def _find_input(input_file, parser, print_cb):
                         return path, p, force_clean
 
         raise RuntimeError("Could not find parser for file %s" % input_file)
-    except:
+    except Exception:
         for f in force_clean:
             shutil.rmtree(f)
         raise
@@ -202,7 +204,7 @@ class VirtConverter(object):
         if print_cb == -1 or print_cb is None:
             def cb(msg):
                 if print_cb == -1:
-                    print msg
+                    print(msg)
             self.print_cb = cb
         else:
             self.print_cb = print_cb

@@ -83,7 +83,7 @@ class _VMXFile(object):
             try:
                 lineobj = _VMXLine(line)
                 self.lines.append(lineobj)
-            except Exception, e:
+            except Exception as e:
                 raise Exception(_("Syntax error at line %d: %s\n%s") %
                     (len(self.lines) + 1, line.strip(), e))
 
@@ -115,7 +115,7 @@ def parse_vmdk(filename):
 
     try:
         vmdkfile = _VMXFile(content)
-    except:
+    except Exception:
         logging.exception("%s looked like a vmdk file, but parsing failed",
                           filename)
         return

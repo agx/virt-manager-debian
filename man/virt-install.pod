@@ -93,8 +93,13 @@ running C<virt-install>.
 
 =item B<--memory> OPTIONS
 
-Memory to allocate for the guest, in MiB. Sub options are available,
-like 'maxmemory' and 'hugepages'. This deprecates the -r/--ram option.
+Memory to allocate for the guest, in MiB. This deprecates the -r/--ram option.
+Sub options are available, like 'maxmemory', 'hugepages', 'hotplugmemorymax'
+and 'hotplugmemoryslots'.  The memory parameter is mapped to <currentMemory> element,
+the 'maxmemory' sub-option is mapped to <memory> element and 'hotplugmemorymax'
+and 'hotplugmemoryslots' are mapped to <maxMemory> element.
+
+To configure memory modules which can be hotunplugged see B<--memdev> description.
 
 Use --memory=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsMemoryAllocation>
 
@@ -179,7 +184,7 @@ Tune NUMA policy for the domain process. Example invocations
     --numatune 1-3,5,mode=preferred
 
 Specifies the numa nodes to allocate memory from. This has the same syntax
-as C<--cpuset> option. mode can be one of 'interleave', 'preferred', or
+as C<--vcpus cpuset=> option. mode can be one of 'interleave', 'preferred', or
 'strict' (the default). See 'man 8 numactl' for information about each
 mode.
 
@@ -203,7 +208,7 @@ Tune blkio policy for the domain process. Example invocations
 
 Use --blkiotune=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsBlockTuning>
 
-=item B<--cpu> MODEL[,+feature][,-feature][,match=MATCH][,vendor=VENDOR]
+=item B<--cpu> MODEL[,+feature][,-feature][,match=MATCH][,vendor=VENDOR],...
 
 Configure the CPU model and CPU features exposed to the guest. The only
 required value is MODEL, which is a valid CPU model as known to libvirt.
@@ -230,6 +235,17 @@ may cause issues if migrating the guest to a host without an identical CPU.
 
 Expose the nearest host CPU model configuration to the guest.
 It is the best CPU which can be used for a guest on any of the hosts.
+
+=item B<--cpu cell0.memory=1234,cell0.cpus=0-3,cell1.memory=5678,cell1.cpus=4-7>
+
+Example of specifying two NUMA cells. This will generate XML like:
+
+  <cpu>
+    <numa>
+      <cell cpus="0-3" memory="1234"/>
+      <cell cpus="4-7" memory="5678"/>
+    </numa>
+  </cpu>
 
 =back
 
@@ -274,6 +290,12 @@ Notify the guest that the host supports paravirtual spinlocks for example by exp
 
 This is relevant only for ARM architectures. Possible values are "host" or
 version number.
+
+=item B<--features smm=on>
+
+This enables System Management Mode of hypervisor. Some UEFI firmwares may
+require this feature to be present. (QEMU supports SMM only with q35 machine
+type.)
 
 =back
 
@@ -381,7 +403,7 @@ Some distro specific url samples:
 
 =item Fedora/Red Hat Based
 
-http://download.fedoraproject.org/pub/fedora/linux/releases/21/Server/x86_64/os
+http://download.fedoraproject.org/pub/fedora/linux/releases/25/Server/x86_64/os
 
 =item Debian
 
@@ -508,13 +530,14 @@ correct UEFI parameters, libvirt needs to be advertising known UEFI binaries
 via domcapabilities XML, so this will likely only work if using properly
 configured distro packages.
 
-=item B<--boot loader=/.../OVMF_CODE.fd,loader_ro=yes,loader_type=pflash,nvram_template=/.../OVMF_VARS.fd>
+=item B<--boot loader=/.../OVMF_CODE.fd,loader_ro=yes,loader_type=pflash,nvram_template=/.../OVMF_VARS.fd,loader_secure=no>
 
 Specify that the virtual machine use the custom OVMF binary as boot firmware,
 mapped as a virtual flash chip. In addition, request that libvirt instantiate
 the VM-specific UEFI varstore from the custom "/.../OVMF_VARS.fd" varstore
 template. This is the recommended UEFI setup, and should be used if
---boot uefi doesn't know about your UEFI binaries.
+--boot uefi doesn't know about your UEFI binaries. If your UEFI firmware
+supports Secure boot feature you can enable it via loader_secure.
 
 =back
 
@@ -1004,7 +1027,7 @@ This is used by 'vnc' and 'spice'
 
 =item B<keymap>
 
-Request that the virtual VNC console be configured to run with a specific
+Request that the virtual console be configured to run with a specific
 keyboard layout. If the special value 'local' is specified, virt-install
 will attempt to configure to use the same keymap as the local system. A value
 of 'none' specifically defers to the hypervisor. Default behavior is
@@ -1013,7 +1036,7 @@ by 'vnc' and 'spice'.
 
 =item B<password>
 
-Request a VNC password, required at connection time. Beware, this info may
+Request a console password, required at connection time. Beware, this info may
 end up in virt-install log files, so don't use an important password. This
 is used by 'vnc' and 'spice'
 
@@ -1574,7 +1597,12 @@ Attach a panic notifier device to the guest. For the recommended settings, use:
 
 Use --panic=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsPanic>
 
+=item B<--memdev> OPTS
 
+Add a memory module to a guest which can be hotunplugged. To add a memdev you need
+to configure hotplugmemory and NUMA for a guest.
+
+Use --memdev=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsMemory>.
 
 
 =back

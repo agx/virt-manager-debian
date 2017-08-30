@@ -105,7 +105,7 @@ class Cloner(object):
             Guest.validate_name(self.conn, name,
                                 check_collision=not self.replace,
                                 validate=False)
-        except ValueError, e:
+        except ValueError as e:
             raise ValueError(_("Invalid name for new guest: %s") % e)
 
         self._clone_name = name
@@ -115,7 +115,7 @@ class Cloner(object):
     def set_clone_uuid(self, uuid):
         try:
             util.validate_uuid(uuid)
-        except ValueError, e:
+        except ValueError as e:
             raise ValueError(_("Invalid uuid for new guest: %s") % e)
 
         if util.vm_uuid_collision(self.conn, uuid):
@@ -147,7 +147,7 @@ class Cloner(object):
                     disk.set_vol_install(vol_install)
                 disk.validate()
                 disklist.append(disk)
-            except Exception, e:
+            except Exception as e:
                 logging.debug("Error setting clone path.", exc_info=True)
                 raise ValueError(_("Could not use path '%s' for cloning: %s") %
                                  (path, str(e)))
@@ -342,7 +342,7 @@ class Cloner(object):
             # replace vol_install with a CloneVolume instance, otherwise
             # simply set input_vol on the dest vol_install
             if (clone_vol_install.pool.name() ==
-                orig_disk.get_vol_object().storagePoolLookupByVolume().name()):
+                orig_disk.get_parent_pool().name()):
                 vol_install = StorageVolume(self.conn)
                 vol_install.input_vol = orig_disk.get_vol_object()
                 vol_install.sync_input_vol()
@@ -376,6 +376,9 @@ class Cloner(object):
 
             old_nvram = VirtualDisk(self.conn)
             old_nvram.path = self._guest.os.nvram
+            if not old_nvram.get_vol_object():
+                raise RuntimeError(_("Path does not exist: %s") %
+                                     old_nvram.path)
 
             nvram_install = VirtualDisk.build_vol_install(
                     self.conn, os.path.basename(nvram.path),
@@ -411,7 +414,7 @@ class Cloner(object):
         self._clone_macs.reverse()
         for dev in self._guest.get_devices("graphics"):
             if dev.port and dev.port != -1:
-                logging.warn(_("Setting the graphics device port to autoport, "
+                logging.warning(_("Setting the graphics device port to autoport, "
                                "in order to avoid conflicting."))
                 dev.port = -1
 
@@ -456,14 +459,6 @@ class Cloner(object):
         self._clone_xml = self._guest.get_xml_config()
         logging.debug("Clone guest xml is\n%s", self._clone_xml)
 
-    def setup(self):
-        """
-        Helper function that wraps setup_original and setup_clone, with
-        additional debug logging.
-        """
-        self.setup_original()
-        self.setup_clone()
-
     def start_duplicate(self, meter=None):
         """
         Actually perform the duplication: cloning disks if needed and defining
@@ -486,7 +481,7 @@ class Cloner(object):
                     dst_dev.setup(meter=meter)
                 if self._nvram_disk:
                     self._nvram_disk.setup(meter=meter)
-        except Exception, e:
+        except Exception as e:
             logging.debug("Duplicate failed: %s", str(e))
             if dom:
                 dom.undefine()
@@ -580,7 +575,7 @@ class Cloner(object):
                     if newd.wants_storage_creation():
                         raise ValueError(_("Disk path '%s' does not exist.") %
                                          newd.path)
-            except Exception, e:
+            except Exception as e:
                 logging.debug("Exception creating clone disk objects",
                     exc_info=True)
                 raise ValueError(_("Could not determine original disk "

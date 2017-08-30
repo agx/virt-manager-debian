@@ -27,8 +27,12 @@
     <channel type="spicevmc">
       <target type="virtio" name="com.redhat.spice.0"/>
     </channel>
+    <sound model="ich6"/>
     <video>
       <model type="vga"/>
     </video>
+    <rng model="virtio">
+      <backend model="random">/dev/urandom</backend>
+    </rng>
   </devices>
 </domain>

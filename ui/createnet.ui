@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.18.3 -->
+<!-- Generated with glade 3.20.0 -->
 <interface>
   <requires lib="gtk+" version="3.14"/>
   <object class="GtkImage" id="image2">
@@ -24,7 +24,7 @@
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <child>
-              <object class="GtkHBox" id="box77">
+              <object class="GtkBox" id="box77">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="border_width">6</property>
@@ -43,18 +43,19 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkHBox" id="hbox2">
+                  <object class="GtkBox" id="hbox2">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
-                      <object class="GtkVBox" id="vbox3">
+                      <object class="GtkBox" id="vbox3">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="orientation">vertical</property>
                         <child>
                           <object class="GtkLabel" id="label2">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">&lt;span size='large' color='white'&gt;Create virtual network&lt;/span&gt;</property>
                             <property name="use_markup">True</property>
                           </object>
@@ -68,7 +69,7 @@
                           <object class="GtkLabel" id="header-pagenum">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
+                            <property name="halign">start</property>
                             <property name="label">&lt;span color='#59B0E2'&gt;Step foo of bar&lt;/span&gt;</property>
                             <property name="use_markup">True</property>
                           </object>
@@ -102,10 +103,11 @@
           </packing>
         </child>
         <child>
-          <object class="GtkVBox" id="vbox23">
+          <object class="GtkBox" id="vbox23">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="border_width">12</property>
+            <property name="orientation">vertical</property>
             <property name="spacing">12</property>
             <child>
               <object class="GtkNotebook" id="create-pages">
@@ -114,15 +116,16 @@
                 <property name="show_border">False</property>
                 <signal name="switch-page" handler="on_create_pages_switch_page" swapped="no"/>
                 <child>
-                  <object class="GtkVBox" id="vbox25">
+                  <object class="GtkBox" id="vbox25">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="orientation">vertical</property>
                     <property name="spacing">12</property>
                     <child>
                       <object class="GtkLabel" id="label167">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="xalign">0</property>
+                        <property name="halign">start</property>
                         <property name="label" translatable="yes">Choose a name for your virtual network:</property>
                         <property name="use_markup">True</property>
                         <property name="wrap">True</property>
@@ -166,7 +169,7 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkHBox" id="hbox26">
+                              <object class="GtkBox" id="hbox26">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <child>
@@ -204,7 +207,7 @@
                               <object class="GtkLabel" id="label173">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="xalign">1</property>
+                                <property name="halign">end</property>
                                 <property name="label" translatable="yes">Network _Name:</property>
                                 <property name="use_markup">True</property>
                                 <property name="use_underline">True</property>
@@ -251,15 +254,16 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkVBox" id="vbox7">
+                  <object class="GtkBox" id="vbox7">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="orientation">vertical</property>
                     <property name="spacing">6</property>
                     <child>
                       <object class="GtkLabel" id="label19">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="xalign">0</property>
+                        <property name="halign">start</property>
                         <property name="label" translatable="yes">Choose &lt;b&gt;IPv4&lt;/b&gt; address space for the virtual network:</property>
                         <property name="use_markup">True</property>
                         <property name="wrap">True</property>
@@ -277,7 +281,6 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
-                        <property name="xalign">0.5</property>
                         <property name="draw_indicator">True</property>
                         <signal name="toggled" handler="on_net-ipv4-enable_toggled" swapped="no"/>
                       </object>
@@ -313,7 +316,7 @@
                                       <object class="GtkLabel" id="label385">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="xalign">1</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">_Network:</property>
                                         <property name="use_underline">True</property>
                                       </object>
@@ -356,9 +359,11 @@
                                       <object class="GtkImage" id="image105">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="yalign">0</property>
-                                        <property name="xpad">3</property>
-                                        <property name="ypad">3</property>
+                                        <property name="valign">start</property>
+                                        <property name="margin_start">3</property>
+                                        <property name="margin_end">3</property>
+                                        <property name="margin_top">3</property>
+                                        <property name="margin_bottom">3</property>
                                         <property name="stock">gtk-dialog-info</property>
                                       </object>
                                       <packing>
@@ -377,8 +382,8 @@
                                           <object class="GtkLabel" id="label387">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="xalign">0</property>
-                                            <property name="yalign">0</property>
+                                            <property name="halign">start</property>
+                                            <property name="valign">start</property>
                                             <property name="label" translatable="yes">&lt;b&gt;Hint:&lt;/b&gt; The network should be chosen from one of the IPv4 private address ranges. eg 10.0.0.0/8 or 192.168.0.0/16</property>
                                             <property name="use_markup">True</property>
                                             <property name="wrap">True</property>
@@ -401,7 +406,7 @@
                                               <object class="GtkLabel" id="net-info-gateway">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="xalign">0</property>
+                                                <property name="halign">start</property>
                                                 <property name="label" translatable="yes">192.168.100.1</property>
                                               </object>
                                               <packing>
@@ -413,7 +418,7 @@
                                               <object class="GtkLabel" id="net-info-type">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="xalign">0</property>
+                                                <property name="halign">start</property>
                                                 <property name="label" translatable="yes">?</property>
                                               </object>
                                               <packing>
@@ -425,7 +430,7 @@
                                               <object class="GtkLabel" id="label25">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="xalign">1</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">Gateway:</property>
                                               </object>
                                               <packing>
@@ -437,7 +442,7 @@
                                               <object class="GtkLabel" id="label28">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="xalign">1</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">Type:</property>
                                               </object>
                                               <packing>
@@ -514,7 +519,7 @@
                                   <object class="GtkLabel" id="label26">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="xalign">1</property>
+                                    <property name="halign">end</property>
                                     <property name="label" translatable="yes">Start:</property>
                                   </object>
                                   <packing>
@@ -526,7 +531,7 @@
                                   <object class="GtkLabel" id="label27">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="xalign">1</property>
+                                    <property name="halign">end</property>
                                     <property name="label" translatable="yes">End:</property>
                                   </object>
                                   <packing>
@@ -540,7 +545,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
-                                    <property name="xalign">0</property>
+                                    <property name="halign">start</property>
                                     <property name="draw_indicator">True</property>
                                     <signal name="toggled" handler="on_net-dhcpv4-enable_toggled" swapped="no"/>
                                   </object>
@@ -569,7 +574,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
-                                    <property name="xalign">0</property>
+                                    <property name="halign">start</property>
                                     <property name="draw_indicator">True</property>
                                     <signal name="toggled" handler="on_net-routev4-enable_toggled" swapped="no"/>
                                   </object>
@@ -598,7 +603,7 @@
                                   <object class="GtkLabel" id="label14">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="xalign">1</property>
+                                    <property name="halign">end</property>
                                     <property name="label" translatable="yes">&lt;b&gt;to&lt;/b&gt; Network:</property>
                                     <property name="use_markup">True</property>
                                   </object>
@@ -611,7 +616,7 @@
                                   <object class="GtkLabel" id="label20">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="xalign">1</property>
+                                    <property name="halign">end</property>
                                     <property name="label" translatable="yes">&lt;b&gt;via&lt;/b&gt; Gateway:</property>
                                     <property name="use_markup">True</property>
                                   </object>
@@ -669,15 +674,16 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkVBox" id="vbox6">
+                  <object class="GtkBox" id="vbox6">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="orientation">vertical</property>
                     <property name="spacing">6</property>
                     <child>
                       <object class="GtkLabel" id="label5">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="xalign">0</property>
+                        <property name="halign">start</property>
                         <property name="label" translatable="yes">Choose &lt;b&gt;IPv6&lt;/b&gt; address space for the virtual network:</property>
                         <property name="use_markup">True</property>
                         <property name="wrap">True</property>
@@ -695,7 +701,6 @@
                         <property name="visible">True</property>
                         <property name="can_focus">True</property>
                         <property name="receives_default">False</property>
-                        <property name="xalign">0.5</property>
                         <property name="draw_indicator">True</property>
                         <signal name="toggled" handler="on_net-ipv6-enable_toggled" swapped="no"/>
                       </object>
@@ -731,7 +736,7 @@
                                       <object class="GtkLabel" id="label12">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="xalign">1</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">_Network:</property>
                                         <property name="use_underline">True</property>
                                       </object>
@@ -774,9 +779,11 @@
                                       <object class="GtkImage" id="image1">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="yalign">0</property>
-                                        <property name="xpad">3</property>
-                                        <property name="ypad">3</property>
+                                        <property name="valign">start</property>
+                                        <property name="margin_start">3</property>
+                                        <property name="margin_end">3</property>
+                                        <property name="margin_top">3</property>
+                                        <property name="margin_bottom">3</property>
                                         <property name="stock">gtk-dialog-info</property>
                                       </object>
                                       <packing>
@@ -795,8 +802,8 @@
                                           <object class="GtkLabel" id="label11">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="xalign">0</property>
-                                            <property name="yalign">0</property>
+                                            <property name="halign">start</property>
+                                            <property name="valign">start</property>
                                             <property name="label" translatable="yes">&lt;b&gt;Note:&lt;/b&gt; The network could be chosen from one of the IPv6 private address ranges. eg FC00::/7.  The prefix must be &lt;b&gt;64&lt;/b&gt;. A typical IPv6 network address will look something like:  fd00:e81d:a6d7:55::/64</property>
                                             <property name="use_markup">True</property>
                                             <property name="wrap">True</property>
@@ -818,7 +825,7 @@
                                               <object class="GtkLabel" id="net-info-gateway-ip6">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="xalign">0</property>
+                                                <property name="halign">start</property>
                                                 <property name="label" translatable="yes">fd00:100::1</property>
                                               </object>
                                               <packing>
@@ -830,7 +837,7 @@
                                               <object class="GtkLabel" id="net-info-type-ip6">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="xalign">0</property>
+                                                <property name="halign">start</property>
                                                 <property name="label" translatable="yes">?</property>
                                               </object>
                                               <packing>
@@ -842,7 +849,7 @@
                                               <object class="GtkLabel" id="label7">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="xalign">1</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">Type:</property>
                                               </object>
                                               <packing>
@@ -854,7 +861,7 @@
                                               <object class="GtkLabel" id="label6">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
-                                                <property name="xalign">1</property>
+                                                <property name="halign">end</property>
                                                 <property name="label" translatable="yes">Gateway:</property>
                                               </object>
                                               <packing>
@@ -931,7 +938,7 @@
                                   <object class="GtkLabel" id="label29">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="xalign">1</property>
+                                    <property name="halign">end</property>
                                     <property name="label" translatable="yes">Start:</property>
                                   </object>
                                   <packing>
@@ -943,7 +950,7 @@
                                   <object class="GtkLabel" id="label38">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="xalign">0</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">End:</property>
                                   </object>
                                   <packing>
@@ -957,7 +964,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
-                                    <property name="xalign">0</property>
+                                    <property name="halign">start</property>
                                     <property name="draw_indicator">True</property>
                                     <signal name="toggled" handler="on_net-dhcpv6-enable_toggled" swapped="no"/>
                                   </object>
@@ -986,7 +993,7 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
-                                    <property name="xalign">0</property>
+                                    <property name="halign">start</property>
                                     <property name="draw_indicator">True</property>
                                     <signal name="toggled" handler="on_net-routev6-enable_toggled" swapped="no"/>
                                   </object>
@@ -1000,7 +1007,7 @@
                                   <object class="GtkLabel" id="label24">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="xalign">0</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">&lt;b&gt;to&lt;/b&gt; Network:</property>
                                     <property name="use_markup">True</property>
                                   </object>
@@ -1013,7 +1020,7 @@
                                   <object class="GtkLabel" id="label30">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="xalign">1</property>
+                                    <property name="halign">end</property>
                                     <property name="label" translatable="yes">&lt;b&gt;via&lt;/b&gt; Gateway:</property>
                                     <property name="use_markup">True</property>
                                   </object>
@@ -1086,15 +1093,16 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkVBox" id="vbox33">
+                  <object class="GtkBox" id="vbox33">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="orientation">vertical</property>
                     <property name="spacing">6</property>
                     <child>
                       <object class="GtkLabel" id="label205">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="xalign">0</property>
+                        <property name="halign">start</property>
                         <property name="label" translatable="yes">Connected to a &lt;b&gt;physical network&lt;/b&gt;:</property>
                         <property name="use_markup">True</property>
                         <property name="wrap">True</property>
@@ -1103,7 +1111,7 @@
                       <packing>
                         <property name="expand">False</property>
                         <property name="fill">False</property>
-                        <property name="position">0</property>
+                        <property name="position">1</property>
                       </packing>
                     </child>
                     <child>
@@ -1134,9 +1142,9 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
+                                        <property name="halign">start</property>
                                         <property name="valign">start</property>
                                         <property name="use_underline">True</property>
-                                        <property name="xalign">0</property>
                                         <property name="draw_indicator">True</property>
                                         <property name="group">net-forward-dev</property>
                                         <signal name="toggled" handler="on_net_forward_toggled" swapped="no"/>
@@ -1153,9 +1161,9 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
+                                        <property name="halign">start</property>
                                         <property name="valign">start</property>
                                         <property name="use_underline">True</property>
-                                        <property name="xalign">0</property>
                                         <property name="active">True</property>
                                         <property name="draw_indicator">True</property>
                                         <signal name="toggled" handler="on_net_forward_toggled" swapped="no"/>
@@ -1170,7 +1178,7 @@
                                   <packing>
                                     <property name="expand">False</property>
                                     <property name="fill">True</property>
-                                    <property name="position">1</property>
+                                    <property name="position">0</property>
                                   </packing>
                                 </child>
                                 <child>
@@ -1188,8 +1196,7 @@
                                           <object class="GtkLabel" id="label392">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="halign">start</property>
-                                            <property name="xalign">1</property>
+                                            <property name="halign">end</property>
                                             <property name="label" translatable="yes">_Destination:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">net-forward</property>
@@ -1203,8 +1210,7 @@
                                           <object class="GtkLabel" id="label1234">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="halign">start</property>
-                                            <property name="xalign">1</property>
+                                            <property name="halign">end</property>
                                             <property name="label" translatable="yes">_Mode:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">net-forward-mode</property>
@@ -1233,6 +1239,7 @@
                                           <object class="GtkComboBox" id="net-forward-mode">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <signal name="changed" handler="on_net_forward_mode_toggled" swapped="no"/>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -1240,6 +1247,85 @@
                                           </packing>
                                         </child>
                                       </object>
+                                    </child>
+                                  </object>
+                                  <packing>
+                                    <property name="expand">False</property>
+                                    <property name="fill">True</property>
+                                    <property name="position">1</property>
+                                  </packing>
+                                </child>
+                                <child>
+                                  <object class="GtkBox" id="box14">
+                                    <property name="visible">True</property>
+                                    <property name="can_focus">False</property>
+                                    <property name="orientation">vertical</property>
+                                    <property name="spacing">6</property>
+                                    <child>
+                                      <object class="GtkRadioButton" id="net-forward-mode-hostdev">
+                                        <property name="label" translatable="yes">_Pool containing all of VFs of a SR-IOV device</property>
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">True</property>
+                                        <property name="receives_default">False</property>
+                                        <property name="halign">start</property>
+                                        <property name="valign">start</property>
+                                        <property name="use_underline">True</property>
+                                        <property name="draw_indicator">True</property>
+                                        <property name="group">net-forward-dev</property>
+                                        <signal name="toggled" handler="on_net_forward_toggled" swapped="no"/>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">False</property>
+                                        <property name="fill">True</property>
+                                        <property name="position">0</property>
+                                      </packing>
+                                    </child>
+                                    <child>
+                                      <object class="GtkAlignment" id="alignment8">
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">False</property>
+                                        <property name="left_padding">25</property>
+                                        <child>
+                                          <object class="GtkGrid" id="net-forward-hostdev-table">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="row_spacing">4</property>
+                                            <property name="column_spacing">6</property>
+                                            <child>
+                                              <object class="GtkLabel" id="label393">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="halign">end</property>
+                                                <property name="vexpand">True</property>
+                                                <property name="label" translatable="yes">Device _List:</property>
+                                                <property name="use_underline">True</property>
+                                                <property name="mnemonic_widget">net-forward</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">0</property>
+                                                <property name="top_attach">0</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkComboBox" id="pf-list">
+                                                <property name="width_request">200</property>
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="vexpand">True</property>
+                                              </object>
+                                              <packing>
+                                                <property name="left_attach">1</property>
+                                                <property name="top_attach">0</property>
+                                              </packing>
+                                            </child>
+                                          </object>
+                                        </child>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">False</property>
+                                        <property name="fill">True</property>
+                                        <property name="position">1</property>
+                                      </packing>
                                     </child>
                                   </object>
                                   <packing>
@@ -1256,7 +1342,7 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkBox" id="box13">
+                              <object class="GtkBox" id="net-enable-ipv6-networking-box">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="orientation">vertical</property>
@@ -1267,8 +1353,8 @@
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
+                                    <property name="halign">start</property>
                                     <property name="margin_top">12</property>
-                                    <property name="xalign">0</property>
                                     <property name="draw_indicator">True</property>
                                   </object>
                                   <packing>
@@ -1286,7 +1372,7 @@
                                       <object class="GtkLabel" id="label13">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
-                                        <property name="xalign">0</property>
+                                        <property name="halign">start</property>
                                         <property name="label" translatable="yes">If an IPv6 network address is &lt;b&gt;not&lt;/b&gt; specified, this will enable IPv6 internal routing between virtual machines.  By default, IPv4 internal routing is enabled.</property>
                                         <property name="use_markup">True</property>
                                         <property name="wrap">True</property>
@@ -1308,7 +1394,7 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkHBox" id="hbox6">
+                              <object class="GtkBox" id="dns-domain-name-box">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="spacing">6</property>
@@ -1316,7 +1402,7 @@
                                   <object class="GtkLabel" id="label4">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
-                                    <property name="xalign">0</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">DNS Domain Name:</property>
                                   </object>
                                   <packing>
@@ -1354,7 +1440,7 @@
                       <packing>
                         <property name="expand">True</property>
                         <property name="fill">True</property>
-                        <property name="position">1</property>
+                        <property name="position">2</property>
                       </packing>
                     </child>
                   </object>
@@ -1381,7 +1467,7 @@
               </packing>
             </child>
             <child>
-              <object class="GtkHButtonBox" id="hbuttonbox1">
+              <object class="GtkButtonBox" id="hbuttonbox1">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="spacing">12</property>

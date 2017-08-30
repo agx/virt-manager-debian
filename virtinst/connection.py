@@ -74,18 +74,13 @@ class VirtualConnection(object):
         self._support_cache = {}
         self._fetch_cache = {}
 
-        # Setting this means we only do fetch_all* once and just carry
-        # the result. For the virt-* CLI tools this ensures any revalidation
-        # isn't hammering the connection over and over
-        self.cache_object_fetch = False
-
         # These let virt-manager register a callback which provides its
         # own cached object lists, rather than doing fresh calls
         self.cb_fetch_all_guests = None
         self.cb_fetch_all_pools = None
         self.cb_fetch_all_vols = None
         self.cb_fetch_all_nodedevs = None
-        self.cb_clear_cache = None
+        self.cb_cache_new_pool = None
 
 
     ##############
@@ -170,26 +165,11 @@ class VirtualConnection(object):
     _FETCH_KEY_VOLS = "vols"
     _FETCH_KEY_NODEDEVS = "nodedevs"
 
-    def clear_cache(self, pools=False):
-        if self.cb_clear_cache:
-            self.cb_clear_cache(pools=pools)  # pylint: disable=not-callable
-            return
-
-        if pools:
-            self._fetch_cache.pop(self._FETCH_KEY_POOLS, None)
-
-    def _fetch_all_guests_cached(self):
-        key = self._FETCH_KEY_GUESTS
-        if key in self._fetch_cache:
-            return self._fetch_cache[key]
-
+    def _fetch_all_guests_raw(self):
         ignore, ignore, ret = pollhelpers.fetch_vms(
             self, {}, lambda obj, ignore: obj)
-        ret = [Guest(weakref.ref(self), parsexml=obj.XMLDesc(0))
-               for obj in ret]
-        if self.cache_object_fetch:
-            self._fetch_cache[key] = ret
-        return ret
+        return [Guest(weakref.ref(self), parsexml=obj.XMLDesc(0))
+                for obj in ret]
 
     def fetch_all_guests(self):
         """
@@ -197,20 +177,20 @@ class VirtualConnection(object):
         """
         if self.cb_fetch_all_guests:
             return self.cb_fetch_all_guests()  # pylint: disable=not-callable
-        return self._fetch_all_guests_cached()
 
-    def _fetch_all_pools_cached(self):
-        key = self._FETCH_KEY_POOLS
-        if key in self._fetch_cache:
-            return self._fetch_cache[key]
+        key = self._FETCH_KEY_GUESTS
+        if key not in self._fetch_cache:
+            self._fetch_cache[key] = self._fetch_all_guests_raw()
+        return self._fetch_cache[key][:]
 
+    def _build_pool_raw(self, poolobj):
+        return StoragePool(weakref.ref(self),
+                           parsexml=poolobj.XMLDesc(0))
+
+    def _fetch_all_pools_raw(self):
         ignore, ignore, ret = pollhelpers.fetch_pools(
             self, {}, lambda obj, ignore: obj)
-        ret = [StoragePool(weakref.ref(self), parsexml=obj.XMLDesc(0))
-               for obj in ret]
-        if self.cache_object_fetch:
-            self._fetch_cache[key] = ret
-        return ret
+        return [self._build_pool_raw(poolobj) for poolobj in ret]
 
     def fetch_all_pools(self):
         """
@@ -218,31 +198,33 @@ class VirtualConnection(object):
         """
         if self.cb_fetch_all_pools:
             return self.cb_fetch_all_pools()  # pylint: disable=not-callable
-        return self._fetch_all_pools_cached()
 
-    def _fetch_all_vols_cached(self):
-        key = self._FETCH_KEY_VOLS
-        if key in self._fetch_cache:
-            return self._fetch_cache[key]
+        key = self._FETCH_KEY_POOLS
+        if key not in self._fetch_cache:
+            self._fetch_cache[key] = self._fetch_all_pools_raw()
+        return self._fetch_cache[key][:]
 
+    def _fetch_vols_raw(self, poolxmlobj):
         ret = []
-        for xmlobj in self.fetch_all_pools():
-            pool = self._libvirtconn.storagePoolLookupByName(xmlobj.name)
-            if pool.info()[0] != libvirt.VIR_STORAGE_POOL_RUNNING:
-                continue
+        pool = self._libvirtconn.storagePoolLookupByName(poolxmlobj.name)
+        if pool.info()[0] != libvirt.VIR_STORAGE_POOL_RUNNING:
+            return ret
 
-            ignore, ignore, vols = pollhelpers.fetch_volumes(
-                self, pool, {}, lambda obj, ignore: obj)
+        ignore, ignore, vols = pollhelpers.fetch_volumes(
+            self, pool, {}, lambda obj, ignore: obj)
 
-            for vol in vols:
-                try:
-                    xml = vol.XMLDesc(0)
-                    ret.append(StorageVolume(weakref.ref(self), parsexml=xml))
-                except Exception, e:
-                    logging.debug("Fetching volume XML failed: %s", e)
+        for vol in vols:
+            try:
+                xml = vol.XMLDesc(0)
+                ret.append(StorageVolume(weakref.ref(self), parsexml=xml))
+            except Exception as e:
+                logging.debug("Fetching volume XML failed: %s", e)
+        return ret
 
-        if self.cache_object_fetch:
-            self._fetch_cache[key] = ret
+    def _fetch_all_vols_raw(self):
+        ret = []
+        for poolxmlobj in self.fetch_all_pools():
+            ret.extend(self._fetch_vols_raw(poolxmlobj))
         return ret
 
     def fetch_all_vols(self):
@@ -251,20 +233,39 @@ class VirtualConnection(object):
         """
         if self.cb_fetch_all_vols:
             return self.cb_fetch_all_vols()  # pylint: disable=not-callable
-        return self._fetch_all_vols_cached()
 
-    def _fetch_all_nodedevs_cached(self):
-        key = self._FETCH_KEY_NODEDEVS
-        if key in self._fetch_cache:
-            return self._fetch_cache[key]
+        key = self._FETCH_KEY_VOLS
+        if key not in self._fetch_cache:
+            self._fetch_cache[key] = self._fetch_all_vols_raw()
+        return self._fetch_cache[key][:]
 
+    def _cache_new_pool_raw(self, poolobj):
+        # Make sure cache is primed
+        if self._FETCH_KEY_POOLS not in self._fetch_cache:
+            # Nothing cached yet, so next poll will pull in latest bits,
+            # so there's nothing to do
+            return
+
+        poollist = self._fetch_cache[self._FETCH_KEY_POOLS]
+        poolxmlobj = self._build_pool_raw(poolobj)
+        poollist.append(poolxmlobj)
+        vollist = self._fetch_cache[self._FETCH_KEY_VOLS]
+        vollist.extend(self._fetch_vols_raw(poolxmlobj))
+
+    def cache_new_pool(self, poolobj):
+        """
+        Insert the passed poolobj into our cache
+        """
+        if self.cb_cache_new_pool:
+            # pylint: disable=not-callable
+            return self.cb_cache_new_pool(poolobj)
+        return self._cache_new_pool_raw(poolobj)
+
+    def _fetch_all_nodedevs_raw(self):
         ignore, ignore, ret = pollhelpers.fetch_nodedevs(
             self, {}, lambda obj, ignore: obj)
-        ret = [NodeDevice.parse(weakref.ref(self), obj.XMLDesc(0))
-               for obj in ret]
-        if self.cache_object_fetch:
-            self._fetch_cache[key] = ret
-        return ret
+        return [NodeDevice.parse(weakref.ref(self), obj.XMLDesc(0))
+                for obj in ret]
 
     def fetch_all_nodedevs(self):
         """
@@ -272,7 +273,11 @@ class VirtualConnection(object):
         """
         if self.cb_fetch_all_nodedevs:
             return self.cb_fetch_all_nodedevs()  # pylint: disable=not-callable
-        return self._fetch_all_nodedevs_cached()
+
+        key = self._FETCH_KEY_NODEDEVS
+        if key not in self._fetch_cache:
+            self._fetch_cache[key] = self._fetch_all_nodedevs_raw()
+        return self._fetch_cache[key][:]
 
 
     #########################
@@ -387,6 +392,9 @@ class VirtualConnection(object):
         return self._uriobj.scheme.startswith("openvz")
     def is_container(self):
         return self.is_lxc() or self.is_openvz()
+    def is_vz(self):
+        return (self._uriobj.scheme.startswith("vz") or
+                self._uriobj.scheme.startswith("parallels"))
 
 
     #########################
@@ -416,7 +424,8 @@ class VirtualConnection(object):
     # Private helpers #
     ###################
 
-    def _auth_cb(self, creds, (passwordcb, passwordcreds)):
+    def _auth_cb(self, creds, data):
+        passwordcb, passwordcreds = data
         for cred in creds:
             if cred[0] not in passwordcreds:
                 raise RuntimeError("Unknown cred type '%s', expected only "

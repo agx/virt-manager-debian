@@ -254,7 +254,7 @@ def make_scratchdir(conn, hvtype):
         not os.access(scratch, os.W_OK)):
         scratch = os.path.join(get_cache_dir(), "boot")
         if not os.path.exists(scratch):
-            os.makedirs(scratch, 0751)
+            os.makedirs(scratch, 0o751)
 
     return scratch
 
@@ -289,32 +289,6 @@ def get_cache_dir():
     if not ret:
         ret = os.path.expanduser("~/.cache")
     return os.path.join(ret, "virt-manager")
-
-
-def convert_units(value, old_unit, new_unit):
-    def get_factor(unit):
-        factor = 1000
-        if unit[-2:] == 'ib':
-            factor = 1024
-        return factor
-
-    def get_power(unit):
-        powers = ('k', 'm', 'g', 't', 'p', 'e')
-        power = 0
-        if unit[0] in powers:
-            power = powers.index(unit[0]) + 1
-        return power
-
-    # First convert it all into bytes
-    factor = get_factor(old_unit)
-    power = get_power(old_unit)
-    in_bytes = value * pow(factor, power)
-
-    # Then convert it to the target unit
-    factor = get_factor(new_unit)
-    power = get_power(new_unit)
-
-    return in_bytes / pow(factor, power)
 
 
 def register_libvirt_error_handler():

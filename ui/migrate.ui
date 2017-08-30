@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.18.3 -->
+<!-- Generated with glade 3.20.0 -->
 <interface>
   <requires lib="gtk+" version="3.14"/>
   <object class="GtkAdjustment" id="adjustment1">
@@ -51,9 +51,9 @@
                   <object class="GtkLabel" id="header-label">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="halign">start</property>
                     <property name="label">&lt;span size='large' color='white'&gt;Placeholder&lt;/span&gt;</property>
                     <property name="use_markup">True</property>
-                    <property name="xalign">0</property>
                   </object>
                   <packing>
                     <property name="expand">False</property>
@@ -93,9 +93,9 @@
                       <object class="GtkLabel" id="label7">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">end</property>
                         <property name="label" translatable="yes">&lt;span color='#484848'&gt;Migrating VM:&lt;/span&gt;</property>
                         <property name="use_markup">True</property>
-                        <property name="xalign">1</property>
                       </object>
                       <packing>
                         <property name="left_attach">0</property>
@@ -106,9 +106,9 @@
                       <object class="GtkLabel" id="label8">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">end</property>
                         <property name="label" translatable="yes">&lt;span color='#484848'&gt;Original host:&lt;/span&gt;</property>
                         <property name="use_markup">True</property>
-                        <property name="xalign">1</property>
                       </object>
                       <packing>
                         <property name="left_attach">0</property>
@@ -119,11 +119,11 @@
                       <object class="GtkLabel" id="label9">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">end</property>
                         <property name="label" translatable="yes">&lt;span color='#484848'&gt;New _host:&lt;/span&gt;</property>
                         <property name="use_markup">True</property>
                         <property name="use_underline">True</property>
                         <property name="mnemonic_widget">migrate-dest</property>
-                        <property name="xalign">1</property>
                       </object>
                       <packing>
                         <property name="left_attach">0</property>
@@ -134,9 +134,9 @@
                       <object class="GtkLabel" id="migrate-label-name">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">start</property>
                         <property name="label">label</property>
                         <property name="ellipsize">end</property>
-                        <property name="xalign">0</property>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
@@ -147,9 +147,9 @@
                       <object class="GtkLabel" id="migrate-label-src">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">start</property>
                         <property name="label">label</property>
                         <property name="ellipsize">end</property>
-                        <property name="xalign">0</property>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
@@ -206,10 +206,10 @@
                                       <object class="GtkLabel" id="label2">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">_Address:</property>
                                         <property name="use_underline">True</property>
                                         <property name="mnemonic_widget">migrate-set-address</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -220,10 +220,10 @@
                                       <object class="GtkLabel" id="label5">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label" translatable="yes">_Port:</property>
                                         <property name="use_underline">True</property>
                                         <property name="mnemonic_widget">migrate-set-port</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -235,7 +235,7 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
-                                        <property name="xalign">0</property>
+                                        <property name="halign">start</property>
                                         <property name="draw_indicator">True</property>
                                         <signal name="toggled" handler="on_migrate_set_address_toggled" swapped="no"/>
                                       </object>
@@ -249,7 +249,7 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
-                                        <property name="xalign">0</property>
+                                        <property name="halign">start</property>
                                         <property name="draw_indicator">True</property>
                                         <signal name="toggled" handler="on_migrate_set_port_toggled" swapped="no"/>
                                       </object>
@@ -280,8 +280,8 @@
                                           <object class="GtkLabel" id="migrate-port-label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">Let libvirt decide</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="expand">True</property>
@@ -315,8 +315,8 @@
                                           <object class="GtkLabel" id="migrate-address-label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label" translatable="yes">Let libvirt decide</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="expand">False</property>
@@ -339,7 +339,7 @@
                                           <object class="GtkImage" id="image2">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="yalign">0</property>
+                                            <property name="valign">start</property>
                                             <property name="stock">gtk-dialog-warning</property>
                                           </object>
                                           <packing>
@@ -352,11 +352,11 @@
                                           <object class="GtkLabel" id="migrate-address-warning-label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label">&lt;span size="small"&gt;foo bar baz foo bar baz foo bar baz foo bar baz foo bar baz foo bar baz foo bar baz fo&lt;/span&gt;</property>
                                             <property name="use_markup">True</property>
                                             <property name="wrap">True</property>
                                             <property name="max_width_chars">40</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="expand">False</property>
@@ -394,10 +394,10 @@
                                         <property name="tooltip_text" translatable="yes">Tunnel migration through the libvirtd connection channel, rather than having the hypervisor open a separate network connection to the destination. The source libvirt instance connects directly to the destination libvirt instance.
 
 This can simplify setup since no additional firewall ports need to be open, and will encrypt migration traffic if your libvirt connection is encrypted. But it can be difficult to make this work with SSH transport.</property>
+                                        <property name="halign">end</property>
                                         <property name="label" translatable="yes">M_ode:</property>
                                         <property name="use_underline">True</property>
                                         <property name="mnemonic_widget">migrate-mode</property>
-                                        <property name="xalign">1</property>
                                       </object>
                                       <packing>
                                         <property name="expand">False</property>
@@ -440,7 +440,7 @@ This can simplify setup since no additional firewall ports need to be open, and 
                                           <object class="GtkImage" id="image3">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
-                                            <property name="yalign">0</property>
+                                            <property name="valign">start</property>
                                             <property name="stock">gtk-dialog-warning</property>
                                           </object>
                                           <packing>
@@ -453,12 +453,12 @@ This can simplify setup since no additional firewall ports need to be open, and 
                                           <object class="GtkLabel" id="migrate-tunnel-warning-label">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="halign">start</property>
                                             <property name="label">&lt;span size="small"&gt;foo bar baz foo bar baz foo bar baz foo bar baz foo bar baz foo bar baz&lt;/span&gt;</property>
                                             <property name="use_markup">True</property>
                                             <property name="wrap">True</property>
                                             <property name="width_chars">0</property>
                                             <property name="max_width_chars">40</property>
-                                            <property name="xalign">0</property>
                                           </object>
                                           <packing>
                                             <property name="expand">False</property>
@@ -549,10 +549,10 @@ This can simplify setup since no additional firewall ports need to be open, and 
                                     <property name="tooltip_text" translatable="yes">By default libvirt will refuse to migrate a VM for certain configurations that could lead to malfunctioning guests, like if a disk's cache mode is not 'none'.
 
 Enabling this option tells libvirt to skip those checks.</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">A_llow unsafe:</property>
                                     <property name="use_underline">True</property>
                                     <property name="mnemonic_widget">migrate-unsafe</property>
-                                    <property name="xalign">0</property>
                                   </object>
                                   <packing>
                                     <property name="left_attach">0</property>
@@ -561,11 +561,10 @@ Enabling this option tells libvirt to skip those checks.</property>
                                 </child>
                                 <child>
                                   <object class="GtkCheckButton" id="migrate-unsafe">
-                                    <property name="use_action_appearance">False</property>
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
-                                    <property name="xalign">0</property>
+                                    <property name="halign">start</property>
                                     <property name="draw_indicator">True</property>
                                   </object>
                                   <packing>
@@ -580,10 +579,10 @@ Enabling this option tells libvirt to skip those checks.</property>
                                     <property name="tooltip_text" translatable="yes">By default, the migrated VM config is removed from the source host, and saved persistently on the destination host. The destination host is considered the new home of the VM.
 
 If 'temporary' is selected, the migration is considered only a temporary move: the source host maintains a copy of the VM config, and the running copy moved to the destination is only transient, and will disappear when it is shutdown.</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">_Temporary move:</property>
                                     <property name="use_underline">True</property>
                                     <property name="mnemonic_widget">migrate-temporary</property>
-                                    <property name="xalign">0</property>
                                   </object>
                                   <packing>
                                     <property name="left_attach">0</property>
@@ -595,7 +594,7 @@ If 'temporary' is selected, the migration is considered only a temporary move: t
                                     <property name="visible">True</property>
                                     <property name="can_focus">True</property>
                                     <property name="receives_default">False</property>
-                                    <property name="xalign">0</property>
+                                    <property name="halign">start</property>
                                     <property name="draw_indicator">True</property>
                                   </object>
                                   <packing>
@@ -636,7 +635,7 @@ If 'temporary' is selected, the migration is considered only a temporary move: t
               </packing>
             </child>
             <child>
-              <object class="GtkHButtonBox" id="hbuttonbox1">
+              <object class="GtkButtonBox" id="hbuttonbox1">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="spacing">6</property>

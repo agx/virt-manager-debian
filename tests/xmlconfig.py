@@ -28,7 +28,7 @@ from tests import utils
 _default_conn = utils.open_testdriver()
 
 
-def _make_guest(installer=None, conn=None):
+def _make_guest(installer=None, conn=None, os_variant=None):
     if conn is None:
         conn = _default_conn
 
@@ -52,6 +52,8 @@ def _make_guest(installer=None, conn=None):
     g.os.arch = "i686"
     g.os.os_type = "hvm"
 
+    if os_variant:
+        g.os_variant = os_variant
     g.add_default_input_device()
     g.add_default_console_device()
     g.add_device(virtinst.VirtualAudio(g.conn))
@@ -126,11 +128,9 @@ class TestXMLMisc(unittest.TestCase):
 
     def testDefaultBridge(self):
         # Test our handling of the default bridge routines
-        origfunc = None
+        from virtinst import deviceinterface
+        origfunc = getattr(deviceinterface, "_default_bridge")
         try:
-            from virtinst import deviceinterface
-            origfunc = getattr(deviceinterface, "_default_bridge")
-
             def newbridge(ignore_conn):
                 return "bzz0"
             setattr(deviceinterface, "_default_bridge", newbridge)
@@ -164,9 +164,7 @@ class TestXMLMisc(unittest.TestCase):
                                "  <mac address=\"22:22:33:44:55:68\"/>\n"
                                "</interface>\n")
         finally:
-            if origfunc:
-                from virtinst import deviceinterface
-                setattr(deviceinterface, "_default_bridge", origfunc)
+            setattr(deviceinterface, "_default_bridge", origfunc)
 
     def testCpustrToTuple(self):
         # Various testing our cpustr handling
@@ -175,12 +173,12 @@ class TestXMLMisc(unittest.TestCase):
 
         expect = base[:]
         expect[1] = expect[2] = expect[3] = True
-        self.assertEquals(tuple(expect),
+        self.assertEqual(tuple(expect),
             virtinst.DomainNumatune.cpuset_str_to_tuple(conn, "1-3"))
 
         expect = base[:]
         expect[1] = expect[3] = expect[5] = expect[10] = expect[11] = True
-        self.assertEquals(tuple(expect),
+        self.assertEqual(tuple(expect),
             virtinst.DomainNumatune.cpuset_str_to_tuple(conn, "1,3,5,10-11"))
 
         self.assertRaises(ValueError,
@@ -189,40 +187,40 @@ class TestXMLMisc(unittest.TestCase):
 
     def testDiskNumbers(self):
         # Various testing our target generation
-        self.assertEquals("a", VirtualDisk.num_to_target(1))
-        self.assertEquals("b", VirtualDisk.num_to_target(2))
-        self.assertEquals("z", VirtualDisk.num_to_target(26))
-        self.assertEquals("aa", VirtualDisk.num_to_target(27))
-        self.assertEquals("ab", VirtualDisk.num_to_target(28))
-        self.assertEquals("az", VirtualDisk.num_to_target(52))
-        self.assertEquals("ba", VirtualDisk.num_to_target(53))
-        self.assertEquals("zz", VirtualDisk.num_to_target(27 * 26))
-        self.assertEquals("aaa", VirtualDisk.num_to_target(27 * 26 + 1))
+        self.assertEqual("a", VirtualDisk.num_to_target(1))
+        self.assertEqual("b", VirtualDisk.num_to_target(2))
+        self.assertEqual("z", VirtualDisk.num_to_target(26))
+        self.assertEqual("aa", VirtualDisk.num_to_target(27))
+        self.assertEqual("ab", VirtualDisk.num_to_target(28))
+        self.assertEqual("az", VirtualDisk.num_to_target(52))
+        self.assertEqual("ba", VirtualDisk.num_to_target(53))
+        self.assertEqual("zz", VirtualDisk.num_to_target(27 * 26))
+        self.assertEqual("aaa", VirtualDisk.num_to_target(27 * 26 + 1))
 
-        self.assertEquals(VirtualDisk.target_to_num("hda"), 0)
-        self.assertEquals(VirtualDisk.target_to_num("hdb"), 1)
-        self.assertEquals(VirtualDisk.target_to_num("sdz"), 25)
-        self.assertEquals(VirtualDisk.target_to_num("sdaa"), 26)
-        self.assertEquals(VirtualDisk.target_to_num("vdab"), 27)
-        self.assertEquals(VirtualDisk.target_to_num("vdaz"), 51)
-        self.assertEquals(VirtualDisk.target_to_num("xvdba"), 52)
-        self.assertEquals(VirtualDisk.target_to_num("xvdzz"),
+        self.assertEqual(VirtualDisk.target_to_num("hda"), 0)
+        self.assertEqual(VirtualDisk.target_to_num("hdb"), 1)
+        self.assertEqual(VirtualDisk.target_to_num("sdz"), 25)
+        self.assertEqual(VirtualDisk.target_to_num("sdaa"), 26)
+        self.assertEqual(VirtualDisk.target_to_num("vdab"), 27)
+        self.assertEqual(VirtualDisk.target_to_num("vdaz"), 51)
+        self.assertEqual(VirtualDisk.target_to_num("xvdba"), 52)
+        self.assertEqual(VirtualDisk.target_to_num("xvdzz"),
             26 * (25 + 1) + 25)
-        self.assertEquals(VirtualDisk.target_to_num("xvdaaa"),
+        self.assertEqual(VirtualDisk.target_to_num("xvdaaa"),
             26 * 26 * 1 + 26 * 1 + 0)
 
         disk = virtinst.VirtualDisk(_default_conn)
         disk.bus = "ide"
 
-        self.assertEquals("hda", disk.generate_target([]))
-        self.assertEquals("hdb", disk.generate_target(["hda"]))
-        self.assertEquals("hdc", disk.generate_target(["hdb", "sda"]))
-        self.assertEquals("hdb", disk.generate_target(["hda", "hdd"]))
+        self.assertEqual("hda", disk.generate_target([]))
+        self.assertEqual("hdb", disk.generate_target(["hda"]))
+        self.assertEqual("hdc", disk.generate_target(["hdb", "sda"]))
+        self.assertEqual("hdb", disk.generate_target(["hda", "hdd"]))
 
         disk.bus = "virtio-scsi"
-        self.assertEquals("sdb",
+        self.assertEqual("sdb",
             disk.generate_target(["sda", "sdg", "sdi"], 0))
-        self.assertEquals("sdh", disk.generate_target(["sda", "sdg"], 1))
+        self.assertEqual("sdh", disk.generate_target(["sda", "sdg"], 1))
 
     def testQuickTreeinfo(self):
         # Simple sanity test to make sure detect_distro works. test-urls
@@ -231,45 +229,43 @@ class TestXMLMisc(unittest.TestCase):
             location="tests/cli-test-xml/fakefedoratree")
         g = _make_guest(i)
         v = i.detect_distro(g)
-        self.assertEquals(v, "fedora17")
+        self.assertEqual(v, "fedora17")
 
         i = _make_installer(
             location="tests/cli-test-xml/fakerhel6tree")
         g = _make_guest(i)
         v = i.detect_distro(g)
-        self.assertEquals(v, "rhel6.0")
+        self.assertEqual(v, "rhel6.0")
 
     def testCPUTopology(self):
         # Test CPU topology determining
         cpu = virtinst.CPU(_default_conn)
         cpu.sockets = "2"
         cpu.set_topology_defaults(6)
-        self.assertEquals([cpu.sockets, cpu.cores, cpu.threads], [2, 3, 1])
+        self.assertEqual([cpu.sockets, cpu.cores, cpu.threads], [2, 3, 1])
 
         cpu = virtinst.CPU(_default_conn)
         cpu.cores = "4"
         cpu.set_topology_defaults(9)
-        self.assertEquals([cpu.sockets, cpu.cores, cpu.threads], [2, 4, 1])
+        self.assertEqual([cpu.sockets, cpu.cores, cpu.threads], [2, 4, 1])
 
         cpu = virtinst.CPU(_default_conn)
         cpu.threads = "3"
         cpu.set_topology_defaults(14)
-        self.assertEquals([cpu.sockets, cpu.cores, cpu.threads], [4, 1, 3])
+        self.assertEqual([cpu.sockets, cpu.cores, cpu.threads], [4, 1, 3])
 
         cpu = virtinst.CPU(_default_conn)
         cpu.sockets = 5
         cpu.cores = 2
-        self.assertEquals(cpu.vcpus_from_topology(), 10)
+        self.assertEqual(cpu.vcpus_from_topology(), 10)
 
         cpu = virtinst.CPU(_default_conn)
-        self.assertEquals(cpu.vcpus_from_topology(), 1)
+        self.assertEqual(cpu.vcpus_from_topology(), 1)
 
     def testAC97(self):
         # Test setting ac97 version given various version combos
         def has_ac97(conn):
-            g = _make_guest(conn=conn)
-
-            g.os_variant = "fedora11"
+            g = _make_guest(conn=conn, os_variant="fedora11")
 
             # pylint: disable=unpacking-non-sequence
             xml, ignore = g.start_install(return_xml=True, dry=True)
@@ -287,15 +283,13 @@ class TestXMLMisc(unittest.TestCase):
         # Use connver=12005 so that non-rhel displays ac97
         conn = utils.open_kvm_rhel(connver=12005)
 
-        g = _make_guest(conn=conn)
-        g.os_variant = "fedora11"
+        g = _make_guest(conn=conn, os_variant="fedora11")
         self._compare(g, "install-f11-norheldefaults", False)
 
         try:
             CLIConfig.stable_defaults = True
 
-            g = _make_guest(conn=conn)
-            g.os_variant = "fedora11"
+            g = _make_guest(conn=conn, os_variant="fedora11")
             origemu = g.emulator
             g.emulator = "/usr/libexec/qemu-kvm"
             self.assertTrue(g.conn.stable_defaults())
@@ -307,35 +301,10 @@ class TestXMLMisc(unittest.TestCase):
         finally:
             CLIConfig.stable_defaults = False
 
-    def test_no_vmvga_RHEL(self):
-        # Test that vmvga is not used on RHEL
-        conn = utils.open_kvm_rhel()
-        def _make():
-            g = _make_guest(conn=conn)
-            g.emulator = "/usr/libexec/qemu-kvm"
-            g.add_default_video_device()
-            g.os_variant = "ubuntu13.10"
-
-            # Some input handling to work with different libsoinfo dbs
-            g.add_default_input_device()
-            g.get_devices("input")[0].type = "tablet"
-            return g
-
-        try:
-            g = _make()
-            self._compare(g, "install-novmvga-rhel", True)
-
-            CLIConfig.stable_defaults = True
-            g = _make()
-            self._compare(g, "install-novmvga-rhel", True)
-        finally:
-            CLIConfig.stable_defaults = False
-
     def test_hyperv_clock(self):
         def _make(connver):
             conn = utils.open_kvm(libver=1002002, connver=connver)
-            g = _make_guest(conn=conn)
-            g.os_variant = "win7"
+            g = _make_guest(conn=conn, os_variant="win7")
             g.emulator = "/usr/libexec/qemu-kvm"
             return g
 

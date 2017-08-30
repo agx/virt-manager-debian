@@ -160,7 +160,7 @@ class StoragePool(_StorageObject):
 
         try:
             xml = conn.findStoragePoolSources(pool_type, source_xml, 0)
-        except libvirt.libvirtError, e:
+        except libvirt.libvirtError as e:
             if util.is_error_nosupport(e):
                 return []
             raise
@@ -185,9 +185,9 @@ class StoragePool(_StorageObject):
             obj = StoragePool(conn)
             obj.type = pool_type
             obj.source_path = parseobj.source_path
-            for host in parseobj.hosts:
-                parseobj.remove_host(host)
-                obj.add_host_obj(host)
+            for h in parseobj.hosts:
+                parseobj.remove_host(h)
+                obj.add_host_obj(h)
             obj.source_name = parseobj.source_name
             obj.format = parseobj.format
 
@@ -226,9 +226,8 @@ class StoragePool(_StorageObject):
             defpool.name = name
             defpool.target_path = path
             defpool.install(build=True, create=True, autostart=True)
-            conn.clear_cache(pools=True)
             return defpool
-        except Exception, e:
+        except Exception as e:
             raise RuntimeError(
                 _("Couldn't create default storage pool '%s': %s") %
                 (path, str(e)))
@@ -263,7 +262,7 @@ class StoragePool(_StorageObject):
             for pool in conn.fetch_all_pools():
                 if pool.name == "default":
                     return pool.target_path
-        except:
+        except Exception:
             pass
 
         if build:
@@ -295,9 +294,14 @@ class StoragePool(_StorageObject):
         Finds a name similar (or equal) to passed 'basename' that is not
         in use by another pool. Extra params are passed to generate_name
         """
-        return util.generate_name(basename,
-                                  conn.storagePoolLookupByName,
-                                  **kwargs)
+        def cb(name):
+            for pool in conn.fetch_all_pools():
+                if pool.name == name:
+                    return True
+            return False
+
+        kwargs["lib_collision"] = False
+        return util.generate_name(basename, cb, **kwargs)
 
 
     def __init__(self, *args, **kwargs):
@@ -360,10 +364,11 @@ class StoragePool(_StorageObject):
     source_path = property(_get_source, _set_source)
 
     def _default_source_name(self):
-        if not self.supports_property("source_name"):
-            return None
+        srcname = None
 
-        if self.type == StoragePool.TYPE_NETFS:
+        if not self.supports_property("source_name"):
+            srcname = None
+        elif self.type == StoragePool.TYPE_NETFS:
             srcname = self.name
         elif self.type == StoragePool.TYPE_RBD:
             srcname = "rbd"
@@ -529,36 +534,38 @@ class StoragePool(_StorageObject):
 
         try:
             pool = self.conn.storagePoolDefineXML(xml, 0)
-        except Exception, e:
+        except Exception as e:
             raise RuntimeError(_("Could not define storage pool: %s") % str(e))
 
         errmsg = None
         if build:
             try:
                 pool.build(libvirt.VIR_STORAGE_POOL_BUILD_NEW)
-            except Exception, e:
+            except Exception as e:
                 errmsg = _("Could not build storage pool: %s") % str(e)
 
         if create and not errmsg:
             try:
                 pool.create(0)
-            except Exception, e:
+            except Exception as e:
                 errmsg = _("Could not start storage pool: %s") % str(e)
 
         if autostart and not errmsg:
             try:
                 pool.setAutostart(True)
-            except Exception, e:
+            except Exception as e:
                 errmsg = _("Could not set pool autostart flag: %s") % str(e)
 
         if errmsg:
             # Try and clean up the leftover pool
             try:
                 pool.undefine()
-            except Exception, e:
+            except Exception as e:
                 logging.debug("Error cleaning up pool after failure: " +
                               "%s" % str(e))
             raise RuntimeError(errmsg)
+
+        self.conn.cache_new_pool(pool)
 
         return pool
 
@@ -683,22 +690,6 @@ class StorageVolume(_StorageObject):
             raise ValueError(_("Name '%s' already in use by another volume." %
                                 name))
 
-    def _validate_allocation(self, val):
-        ret = self.is_size_conflict(allocation=val)
-        if ret[0]:
-            raise ValueError(ret[1])
-        elif ret[1]:
-            logging.warn(ret[1])
-        return val
-
-    def _validate_capacity(self, val):
-        ret = self.is_size_conflict(capacity=val)
-        if ret[0]:
-            raise ValueError(ret[1])
-        elif ret[1]:
-            logging.warn(ret[1])
-        return val
-
     def _default_format(self):
         if self.file_type == self.TYPE_FILE:
             return "raw"
@@ -728,10 +719,8 @@ class StorageVolume(_StorageObject):
 
     type = XMLProperty("./@type")
     key = XMLProperty("./key")
-    capacity = XMLProperty("./capacity", is_int=True,
-                           validate_cb=_validate_capacity)
-    allocation = XMLProperty("./allocation", is_int=True,
-                             validate_cb=_validate_allocation)
+    capacity = XMLProperty("./capacity", is_int=True)
+    allocation = XMLProperty("./allocation", is_int=True)
     format = XMLProperty("./target/format/@type", default_cb=_default_format)
     target_path = XMLProperty("./target/path")
     backing_store = XMLProperty("./backingStore/path")
@@ -805,9 +794,15 @@ class StorageVolume(_StorageObject):
     def validate(self):
         if self._pool_xml.type == StoragePool.TYPE_LOGICAL:
             if self.allocation != self.capacity:
-                logging.warn(_("Sparse logical volumes are not supported, "
+                logging.warning(_("Sparse logical volumes are not supported, "
                                "setting allocation equal to capacity"))
                 self.allocation = self.capacity
+
+        isfatal, errmsg = self.is_size_conflict()
+        if isfatal:
+            raise ValueError(errmsg)
+        if errmsg:
+            logging.warning(errmsg)
 
     def install(self, meter=None):
         """
@@ -858,7 +853,7 @@ class StorageVolume(_StorageObject):
             logging.debug("Storage volume '%s' install complete.",
                           self.name)
             return vol
-        except Exception, e:
+        except Exception as e:
             logging.debug("Error creating storage volume", exc_info=True)
             raise RuntimeError("Couldn't create storage volume "
                                "'%s': '%s'" % (self.name, str(e)))
@@ -874,7 +869,7 @@ class StorageVolume(_StorageObject):
                     vol = self.pool.storageVolLookupByName(self.name)
                 vol.info()
                 break
-            except:
+            except Exception:
                 if time:  # pylint: disable=using-constant-test
                     # This 'if' check saves some noise from the test suite
                     time.sleep(.2)
@@ -891,7 +886,7 @@ class StorageVolume(_StorageObject):
             time.sleep(1)
 
 
-    def is_size_conflict(self, capacity=None, allocation=None):
+    def is_size_conflict(self):
         """
         Report if requested size exceeds its pool's available amount
 
@@ -900,27 +895,22 @@ class StorageVolume(_StorageObject):
             2. String message if some collision was encountered.
         @rtype: 2 element C{tuple}: (C{bool}, C{str})
         """
-        if capacity is None:
-            capacity = self.capacity
-        if allocation is None:
-            allocation = self.allocation
-
         if not self.pool:
             return (False, "")
 
         # pool info is [pool state, capacity, allocation, available]
         avail = self.pool.info()[3]
-        if allocation > avail:
+        if self.allocation > avail:
             return (True, _("There is not enough free space on the storage "
                             "pool to create the volume. "
                             "(%d M requested allocation > %d M available)") %
-                            ((allocation / (1024 * 1024)),
+                            ((self.allocation / (1024 * 1024)),
                              (avail / (1024 * 1024))))
-        elif capacity > avail:
+        elif self.capacity > avail:
             return (False, _("The requested volume capacity will exceed the "
                              "available pool space when the volume is fully "
                              "allocated. "
                              "(%d M requested capacity > %d M available)") %
-                             ((capacity / (1024 * 1024)),
+                             ((self.capacity / (1024 * 1024)),
                               (avail / (1024 * 1024))))
         return (False, "")

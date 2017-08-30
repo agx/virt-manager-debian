@@ -56,13 +56,13 @@ def _get_flag(flag_name):
 def _try_command(func, run_args, check_all_error=False):
     try:
         func(*run_args)
-    except libvirt.libvirtError, e:
+    except libvirt.libvirtError as e:
         if util.is_error_nosupport(e):
             return False
 
         if check_all_error:
             return False
-    except Exception, e:
+    except Exception as e:
         # Other python exceptions likely mean the bindings are horked
         return False
     return True
@@ -321,6 +321,9 @@ SUPPORT_CONN_VIDEO_VIRTIO_ACCEL3D = _make(version="1.3.0",
     hv_version={"qemu": "2.5.0", "test": 0})
 SUPPORT_CONN_GRAPHICS_LISTEN_NONE = _make(version="2.0.0")
 SUPPORT_CONN_RNG_URANDOM = _make(version="1.3.4")
+SUPPORT_CONN_USB3_PORTS = _make(version="1.3.5")
+SUPPORT_CONN_MACHVIRT_PCI_DEFAULT = _make(version="3.0.0")
+SUPPORT_CONN_QEMU_XHCI = _make(version="3.3.0")
 
 
 # This is for disk <driver name=qemu>. xen supports this, but it's
@@ -361,6 +364,8 @@ SUPPORT_DOMAIN_MEMORY_STATS = _make(
 SUPPORT_DOMAIN_STATE = _make(function="virDomain.state", run_args=())
 SUPPORT_DOMAIN_OPEN_GRAPHICS = _make(function="virDomain.openGraphicsFD",
     version="1.2.8", hv_version={"qemu": 0})
+SUPPORT_DOMAIN_FEATURE_SMM = _make(version="2.1.0")
+SUPPORT_DOMAIN_LOADER_SECURE = _make(version="2.1.0")
 
 
 ###############

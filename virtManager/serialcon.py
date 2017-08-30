@@ -110,7 +110,7 @@ class LocalConsoleConnection(ConsoleConnection):
         try:
             if self.origtermios:
                 termios.tcsetattr(self.fd, termios.TCSANOW, self.origtermios)
-        except:
+        except Exception:
             # domain may already have exited, destroying the pty, so ignore
             pass
 
@@ -165,7 +165,7 @@ class LibvirtConsoleConnection(ConsoleConnection):
         if events & libvirt.VIR_EVENT_HANDLE_READABLE:
             try:
                 got = self.stream.recv(1024 * 100)
-            except:
+            except Exception:
                 logging.exception("Error receiving stream data")
                 self.close()
                 return
@@ -188,7 +188,7 @@ class LibvirtConsoleConnection(ConsoleConnection):
 
             try:
                 done = self.stream.send(self.terminalToStream)
-            except:
+            except Exception:
                 logging.exception("Error sending stream data")
                 self.close()
                 return
@@ -233,11 +233,11 @@ class LibvirtConsoleConnection(ConsoleConnection):
         if self.stream:
             try:
                 self.stream.eventRemoveCallback()
-            except:
+            except Exception:
                 logging.exception("Error removing stream callback")
             try:
                 self.stream.finish()
-            except:
+            except Exception:
                 logging.exception("Error finishing stream")
 
         self.stream = None
@@ -411,12 +411,12 @@ class vmmSerialConsole(vmmGObject):
                 self.console.open(self.lookup_dev(), self.terminal)
             self.box.set_current_page(0)
             return True
-        except Exception, e:
+        except Exception as e:
             logging.exception("Error opening serial console")
             self.show_error(_("Error connecting to text console: %s") % e)
             try:
                 self.console.close()
-            except:
+            except Exception:
                 pass
 
         return False

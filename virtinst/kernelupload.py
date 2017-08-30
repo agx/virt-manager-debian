@@ -36,8 +36,7 @@ def _build_pool(conn, meter, path):
         pool.refresh(0)
         return pool
 
-    name = util.generate_name("boot-scratch",
-                               conn.storagePoolLookupByName)
+    name = StoragePool.find_free_name(conn, "boot-scratch")
     logging.debug("Building storage pool: path=%s name=%s", path, name)
     poolbuild = StoragePool(conn)
     poolbuild.type = poolbuild.TYPE_DIR
@@ -48,7 +47,6 @@ def _build_pool(conn, meter, path):
     # we probably don't have correct perms
     ret = poolbuild.install(meter=meter, create=True, build=False,
                             autostart=True)
-    conn.clear_cache(pools=True)
     return ret
 
 
@@ -95,7 +93,7 @@ def _upload_file(conn, meter, destpool, src):
         vol.upload(stream, offset, length, flags)
 
         # Open source file
-        fileobj = file(src, "r")
+        fileobj = open(src, "r")
 
         # Start transfer
         total = 0
@@ -115,7 +113,7 @@ def _upload_file(conn, meter, destpool, src):
         # Cleanup
         stream.finish()
         meter.end(size)
-    except:
+    except Exception:
         if vol:
             vol.delete(0)
         raise

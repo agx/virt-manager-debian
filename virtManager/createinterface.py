@@ -549,7 +549,7 @@ class vmmCreateInterface(vmmGObjectUI):
                 key = Interface(self.conn.get_backend())
                 key.type = Interface.INTERFACE_TYPE_ETHERNET
                 key.name = name
-            except Exception, e:
+            except Exception as e:
                 logging.debug("Error creating stub interface '%s': %s",
                     name, e)
                 continue
@@ -907,7 +907,7 @@ class vmmCreateInterface(vmmGObjectUI):
             elif pagenum == PAGE_DETAILS:
                 return self.validate_details_page()
 
-        except Exception, e:
+        except Exception as e:
             self.err.show_err(_("Uncaught error validating install "
                                 "parameters: %s") % str(e))
             return
@@ -1011,7 +1011,7 @@ class vmmCreateInterface(vmmGObjectUI):
             iobj.validate()
 
             self.interface = iobj
-        except Exception, e:
+        except Exception as e:
             return self.err.val_err(
                             _("Error setting interface parameters."), e)
 
@@ -1078,7 +1078,7 @@ class vmmCreateInterface(vmmGObjectUI):
     def validate_ip_info(self):
         try:
             self.build_ip_info()
-        except Exception, e:
+        except Exception as e:
             self.err.show_err(_("Error validating IP configuration: %s") %
                               str(e))
             return False
@@ -1111,9 +1111,7 @@ class vmmCreateInterface(vmmGObjectUI):
     #####################
 
     def _finish_cb(self, error, details):
-        self.topwin.set_sensitive(True)
-        self.topwin.get_window().set_cursor(
-            Gdk.Cursor.new(Gdk.CursorType.TOP_LEFT_ARROW))
+        self.reset_finish_cursor()
 
         if error:
             error = _("Error creating interface: '%s'") % error
@@ -1134,10 +1132,7 @@ class vmmCreateInterface(vmmGObjectUI):
         activate = self.widget("interface-activate").get_active()
 
         # Start the install
-        self.topwin.set_sensitive(False)
-        self.topwin.get_window().set_cursor(
-            Gdk.Cursor.new(Gdk.CursorType.WATCH))
-
+        self.set_finish_cursor()
         progWin = vmmAsyncJob(self.do_install, [activate],
                               self._finish_cb, [],
                               _("Creating virtual interface"),

@@ -1,3 +1,11 @@
+virt-manager (1:1.4.2-1~1.gbpf20fef) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @f20fef3baee0e6aa6dbc0f7578229388756e3d05 **
+
+  * [194c3e4] New upstream version 1.4.2
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 30 Aug 2017 18:41:07 +0200
+
 virt-manager (1:1.4.1-1) unstable; urgency=medium
 
   * [2f34677] Drop obsolete gnome-icon-theme recommends (Closes: #869685)

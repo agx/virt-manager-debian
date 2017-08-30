@@ -54,7 +54,7 @@ class VirtualFilesystem(VirtualDevice):
         DRIVER_DEFAULT]
 
 
-    type = XMLProperty("./@type",
+    _type_prop = XMLProperty("./@type",
                        default_cb=lambda s: None,
                        default_name=TYPE_DEFAULT)
     accessmode = XMLProperty("./@accessmode",
@@ -111,11 +111,30 @@ class VirtualFilesystem(VirtualDevice):
         return setattr(self, self._type_to_source_prop(), val)
     source = property(_get_source, _set_source)
 
+    def _get_type(self):
+        return getattr(self, '_type_prop')
+    def _set_type(self, val):
+        # Get type/value of the attrubute of "source" property
+        old_source_type = self._type_to_source_prop()
+        old_source_value = self.source
+
+        # Update "type" property
+        new_type = setattr(self, '_type_prop', val)
+
+        # If the attribute type of 'source' property has changed
+        # restore the value
+        if old_source_type != self._type_to_source_prop():
+            self.source = old_source_value
+
+        return new_type
+
+    type = property(_get_type, _set_type)
+
     def set_defaults(self, guest):
         ignore = guest
 
-        if self.conn.is_qemu() or self.conn.is_test():
-            # type=mount is the libvirt qemu default. But hardcode it
+        if self.conn.is_qemu() or self.conn.is_lxc() or self.conn.is_test():
+            # type=mount is the libvirt default. But hardcode it
             # here since we need it for the accessmode check
             if self.type is None or self.type == self.TYPE_DEFAULT:
                 self.type = self.TYPE_MOUNT

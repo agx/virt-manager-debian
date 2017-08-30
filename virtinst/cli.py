@@ -19,6 +19,8 @@
 # Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
 # MA 02110-1301 USA.
 
+from __future__ import print_function
+
 import argparse
 import collections
 import logging
@@ -48,6 +50,7 @@ from .devicehostdev import VirtualHostDevice
 from .deviceinput import VirtualInputDevice
 from .deviceinterface import VirtualNetworkInterface
 from .devicememballoon import VirtualMemballoon
+from .devicememory import VirtualMemoryDevice
 from .devicepanic import VirtualPanicDevice
 from .deviceredirdev import VirtualRedirDevice
 from .devicerng import VirtualRNGDevice
@@ -128,7 +131,7 @@ class VirtStreamHandler(logging.StreamHandler):
             self.flush()
         except (KeyboardInterrupt, SystemExit):
             raise
-        except:
+        except Exception:
             self.handleError(record)
 
 
@@ -141,6 +144,7 @@ class VirtHelpFormatter(argparse.RawDescriptionHelpFormatter):
     '''
     oldwrap = None
 
+    # pylint: disable=arguments-differ
     def _split_lines(self, *args, **kwargs):
         def return_default():
             return argparse.RawDescriptionHelpFormatter._split_lines(
@@ -154,7 +158,7 @@ class VirtHelpFormatter(argparse.RawDescriptionHelpFormatter):
             if "\n" in text:
                 return text.splitlines()
             return return_default()
-        except:
+        except Exception:
             return return_default()
 
 
@@ -194,8 +198,8 @@ def setupLogging(appname, debug_stdout, do_quiet, cli_app=True):
                 raise RuntimeError("No write access to directory %s" % vi_dir)
 
             try:
-                os.makedirs(vi_dir, 0751)
-            except IOError, e:
+                os.makedirs(vi_dir, 0o751)
+            except IOError as e:
                 raise RuntimeError("Could not create directory %s: %s" %
                                    (vi_dir, e))
 
@@ -203,7 +207,7 @@ def setupLogging(appname, debug_stdout, do_quiet, cli_app=True):
             os.path.exists(logfile) and
             not os.access(logfile, os.W_OK)):
             raise RuntimeError("No write access to logfile %s" % logfile)
-    except Exception, e:
+    except Exception as e:
         logging.warning("Error setting up logfile: %s", e)
         logfile = None
 
@@ -274,7 +278,6 @@ def getConnection(uri):
     logging.debug("Requesting libvirt URI %s", (uri or "default"))
     conn = VirtualConnection(uri)
     conn.open(_do_creds_authname)
-    conn.cache_object_fetch = True
     logging.debug("Received libvirt URI %s", conn.uri)
 
     return conn
@@ -320,12 +323,12 @@ def fail(msg, do_exit=True):
 
 def print_stdout(msg, do_force=False):
     if do_force or not get_global_state().quiet:
-        print msg
+        print(msg)
 
 
 def print_stderr(msg):
     logging.debug(msg)
-    print >> sys.stderr, msg
+    print(msg, file=sys.stderr)
 
 
 def _fail_exit():
@@ -359,7 +362,7 @@ def set_prompt(prompt):
 
 
 def validate_disk(dev, warn_overwrite=False):
-    def _optional_fail(msg, checkname):
+    def _optional_fail(msg, checkname, warn_on_skip=True):
         do_check = get_global_state().get_validation_check(checkname)
         if do_check:
             fail(msg + (_(" (Use --check %s=off or "
@@ -367,7 +370,8 @@ def validate_disk(dev, warn_overwrite=False):
 
         logging.debug("Skipping --check %s error condition '%s'",
             checkname, msg)
-        logging.warn(msg)
+        if warn_on_skip:
+            logging.warning(msg)
 
     def check_path_exists(dev):
         """
@@ -400,7 +404,7 @@ def validate_disk(dev, warn_overwrite=False):
         isfatal, errmsg = dev.is_size_conflict()
         # The isfatal case should have already caused us to fail
         if not isfatal and errmsg:
-            _optional_fail(errmsg, "disk_size")
+            _optional_fail(errmsg, "disk_size", warn_on_skip=False)
 
     def check_path_search(dev):
         user, broken_paths = dev.check_path_search(dev.conn, dev.path)
@@ -471,7 +475,7 @@ def connect_console(guest, consolecb, wait):
     # If we connected the console, wait for it to finish
     try:
         os.waitpid(child, 0)
-    except OSError, e:
+    except OSError as e:
         logging.debug("waitpid: %s: %s", e.errno, e.message)
 
 
@@ -491,13 +495,13 @@ def get_console_cb(guest):
         try:
             subprocess.check_output(["virt-viewer", "--version"])
         except OSError:
-            logging.warn(_("Unable to connect to graphical console: "
+            logging.warning(_("Unable to connect to graphical console: "
                            "virt-viewer not installed. Please install "
                            "the 'virt-viewer' package."))
             return None
 
         if not os.environ.get("DISPLAY", ""):
-            logging.warn(_("Graphics requested but DISPLAY is not set. "
+            logging.warning(_("Graphics requested but DISPLAY is not set. "
                            "Not running virt-viewer."))
             return None
 
@@ -594,7 +598,9 @@ def add_memory_option(grp, backcompat=False):
     grp.add_argument("--memory",
         help=_("Configure guest memory allocation. Ex:\n"
                "--memory 1024 (in MiB)\n"
-               "--memory 512,maxmemory=1024"))
+               "--memory 512,maxmemory=1024\n"
+               "--memory 512,maxmemory=1024,hotplugmemorymax=2048,"
+               "hotplugmemoryslots=2"))
     if backcompat:
         grp.add_argument("-r", "--ram", type=int, dest="oldmemory",
             help=argparse.SUPPRESS)
@@ -698,10 +704,13 @@ def add_device_options(devg, sound_back_compat=False):
                            "--tpm /dev/tpm"))
     devg.add_argument("--rng", action="append",
                     help=_("Configure a guest RNG device. Ex:\n"
-                           "--rng /dev/random"))
+                           "--rng /dev/urandom"))
     devg.add_argument("--panic", action="append",
                     help=_("Configure a guest panic device. Ex:\n"
                            "--panic default"))
+    devg.add_argument("--memdev", action="append",
+                    help=_("Configure a guest memory device. Ex:\n"
+                           "--memdev dimm,target_size=1024"))
 
 
 def add_guest_xml_options(geng):
@@ -789,6 +798,10 @@ def _on_off_convert(key, val):
     if val is not None:
         return val
     raise fail(_("%(key)s must be 'yes' or 'no'") % {"key": key})
+
+
+def _set_attribute(obj, attr, val):  # pylint: disable=unused-argument
+    exec("obj." + attr + " = val ")  # pylint: disable=exec-used
 
 
 class _VirtCLIArgument(object):
@@ -913,8 +926,7 @@ class _VirtCLIArgument(object):
             self.cb(parser, inst,  # pylint: disable=not-callable
                     self.val, self)
         else:
-            exec(  # pylint: disable=exec-used
-                "inst." + self.attrname + " = self.val")
+            _set_attribute(inst, self.attrname, self.val)
 
     def lookup_param(self, parser, inst):
         """
@@ -1091,10 +1103,10 @@ class VirtCLIParser(object):
         """
         Print out all _param names, triggered via ex. --disk help
         """
-        print "--%s options:" % cls.cli_arg_name
+        print("--%s options:" % cls.cli_arg_name)
         for arg in sorted(cls._virtargs, key=lambda p: p.cliname):
-            print "  %s" % arg.cliname
-        print
+            print("  %s" % arg.cliname)
+        print("")
 
 
     def __init__(self, guest, optstr):
@@ -1197,7 +1209,7 @@ class VirtCLIParser(object):
                 self.guest.add_child(obj)
 
             ret += util.listify(objs)
-        except Exception, e:
+        except Exception as e:
             logging.debug("Exception parsing inst=%s optstr=%s",
                           inst, self.optstr, exc_info=True)
             fail(_("Error: --%(cli_arg_name)s %(options)s: %(err)s") %
@@ -1228,7 +1240,7 @@ class VirtCLIParser(object):
                 if valid:
                     ret.append(inst)
                 self._check_leftover_opts(optdict)
-        except Exception, e:
+        except Exception as e:
             logging.debug("Exception parsing inst=%s optstr=%s",
                           inst, self.optstr, exc_info=True)
             fail(_("Error: --%(cli_arg_name)s %(options)s: %(err)s") %
@@ -1350,6 +1362,9 @@ _register_virt_parser(ParserMemory)
 ParserMemory.add_arg("memory", "memory", cb=ParserMemory.set_memory_cb)
 ParserMemory.add_arg("maxmemory", "maxmemory", cb=ParserMemory.set_memory_cb)
 ParserMemory.add_arg("memoryBacking.hugepages", "hugepages", is_onoff=True)
+ParserMemory.add_arg("hotplugmemorymax", "hotplugmemorymax",
+                     cb=ParserMemory.set_memory_cb)
+ParserMemory.add_arg("hotplugmemoryslots", "hotplugmemoryslots")
 
 
 #####################
@@ -1572,6 +1587,13 @@ class ParserBoot(VirtCLIParser):
         inst.os.smbios_mode = val
         self.optdict["smbios_mode"] = val
 
+    def set_loader_secure_cb(self, inst, val, virtarg):
+        if not inst.conn.check_support(inst.conn.SUPPORT_DOMAIN_LOADER_SECURE):
+            raise RuntimeError("secure attribute for loader is not supported "
+                               "by libvirt.")
+        inst.os.loader_secure = val
+        return val
+
     def noset_cb(self, inst, val, virtarg):
         pass
 
@@ -1608,6 +1630,8 @@ ParserBoot.add_arg("os.dtb", "dtb")
 ParserBoot.add_arg("os.loader", "loader")
 ParserBoot.add_arg("os.loader_ro", "loader_ro", is_onoff=True)
 ParserBoot.add_arg("os.loader_type", "loader_type")
+ParserBoot.add_arg("os.loader_secure", "loader_secure", is_onoff=True,
+                   cb=ParserBoot.set_loader_secure_cb)
 ParserBoot.add_arg("os.nvram", "nvram")
 ParserBoot.add_arg("os.nvram_template", "nvram_template")
 ParserBoot.add_arg("os.kernel_args", "kernel_args",
@@ -1665,6 +1689,12 @@ class ParserFeatures(VirtCLIParser):
     cli_arg_name = "features"
     objclass = DomainFeatures
 
+    def set_smm_cb(self, inst, val, virtarg):
+        if not inst.conn.check_support(inst.conn.SUPPORT_DOMAIN_FEATURE_SMM):
+            raise RuntimeError("smm is not supported by libvirt")
+        inst.smm = val
+        return val
+
 _register_virt_parser(ParserFeatures)
 ParserFeatures.add_arg("acpi", "acpi", is_onoff=True)
 ParserFeatures.add_arg("apic", "apic", is_onoff=True)
@@ -1675,17 +1705,21 @@ ParserFeatures.add_arg("viridian", "viridian", is_onoff=True)
 ParserFeatures.add_arg("eoi", "eoi", is_onoff=True)
 ParserFeatures.add_arg("pmu", "pmu", is_onoff=True)
 
+ParserFeatures.add_arg("hyperv_reset", "hyperv_reset", is_onoff=True)
 ParserFeatures.add_arg("hyperv_vapic", "hyperv_vapic", is_onoff=True)
 ParserFeatures.add_arg("hyperv_relaxed", "hyperv_relaxed", is_onoff=True)
 ParserFeatures.add_arg("hyperv_spinlocks", "hyperv_spinlocks", is_onoff=True)
 ParserFeatures.add_arg("hyperv_spinlocks_retries",
                        "hyperv_spinlocks_retries")
+ParserFeatures.add_arg("hyperv_synic", "hyperv_synic", is_onoff=True)
 
 ParserFeatures.add_arg("vmport", "vmport", is_onoff=True)
 ParserFeatures.add_arg("kvm_hidden", "kvm_hidden", is_onoff=True)
 ParserFeatures.add_arg("pvspinlock", "pvspinlock", is_onoff=True)
 
 ParserFeatures.add_arg("gic_version", "gic_version")
+
+ParserFeatures.add_arg("smm", "smm", is_onoff=True, cb=ParserFeatures.set_smm_cb)
 
 
 ###################
@@ -1928,7 +1962,7 @@ class ParserDisk(VirtCLIParser):
                 return None
             try:
                 return float(val)
-            except Exception, e:
+            except Exception as e:
                 fail(_("Improper value for 'size': %s") % str(e))
 
         def convert_perms(val):
@@ -2039,6 +2073,7 @@ ParserDisk.add_arg("bus", "bus")
 ParserDisk.add_arg("removable", "removable", is_onoff=True)
 ParserDisk.add_arg("driver_cache", "cache")
 ParserDisk.add_arg("driver_discard", "discard")
+ParserDisk.add_arg("driver_detect_zeroes", "detect_zeroes")
 ParserDisk.add_arg("driver_name", "driver_name")
 ParserDisk.add_arg("driver_type", "driver_type")
 ParserDisk.add_arg("driver_io", "io")
@@ -2057,6 +2092,8 @@ ParserDisk.add_arg("iotune_ris", "read_iops_sec")
 ParserDisk.add_arg("iotune_wis", "write_iops_sec")
 ParserDisk.add_arg("iotune_tis", "total_iops_sec")
 ParserDisk.add_arg("sgio", "sgio")
+ParserDisk.add_arg("logical_block_size", "logical_block_size")
+ParserDisk.add_arg("physical_block_size", "physical_block_size")
 
 # VirtualDisk.seclabels properties
 ParserDisk.add_arg("model", "seclabel[0-9]*.model",
@@ -2205,16 +2242,16 @@ class ParserGraphics(VirtCLIParser):
 
         if inst.conn.is_qemu() and inst.gl:
             if inst.type != "spice":
-                logging.warn("graphics type=%s does not support GL", inst.type)
+                logging.warning("graphics type=%s does not support GL", inst.type)
             elif not inst.conn.check_support(
                     inst.conn.SUPPORT_CONN_SPICE_GL):
-                logging.warn("qemu/libvirt version may not support spice GL")
+                logging.warning("qemu/libvirt version may not support spice GL")
         if inst.conn.is_qemu() and inst.rendernode:
             if inst.type != "spice":
-                logging.warn("graphics type=%s does not support rendernode", inst.type)
+                logging.warning("graphics type=%s does not support rendernode", inst.type)
             elif not inst.conn.check_support(
                     inst.conn.SUPPORT_CONN_SPICE_RENDERNODE):
-                logging.warn("qemu/libvirt version may not support rendernode")
+                logging.warning("qemu/libvirt version may not support rendernode")
 
         return ret
 
@@ -2435,6 +2472,30 @@ ParserWatchdog.add_arg("model", "model")
 ParserWatchdog.add_arg("action", "action")
 
 
+####################
+# --memdev parsing #
+####################
+
+class ParseMemdev(VirtCLIParser):
+    cli_arg_name = "memdev"
+    objclass = VirtualMemoryDevice
+    remove_first = "model"
+
+    def set_target_size(self, inst, val, virtarg):
+        _set_attribute(inst, virtarg.attrname, int(val) * 1024)
+
+_register_virt_parser(ParseMemdev)
+ParseMemdev.add_arg("model", "model")
+ParseMemdev.add_arg("access", "access")
+ParseMemdev.add_arg("target.size", "target_size", cb=ParseMemdev.set_target_size)
+ParseMemdev.add_arg("target.node", "target_node")
+ParseMemdev.add_arg("target.label_size", "target_label_size",
+                    cb=ParseMemdev.set_target_size)
+ParseMemdev.add_arg("source.pagesize", "source_pagesize")
+ParseMemdev.add_arg("source.path", "source_path")
+ParseMemdev.add_arg("source.nodemask", "source_nodemask", can_comma=True)
+
+
 ########################
 # --memballoon parsing #
 ########################
@@ -2584,11 +2645,11 @@ class ParserVideo(VirtCLIParser):
 
         if inst.conn.is_qemu() and inst.accel3d:
             if inst.model != "virtio":
-                logging.warn("video model=%s does not support accel3d",
+                logging.warning("video model=%s does not support accel3d",
                     inst.model)
             elif not inst.conn.check_support(
                     inst.conn.SUPPORT_CONN_VIDEO_VIRTIO_ACCEL3D):
-                logging.warn("qemu/libvirt version may not support "
+                logging.warning("qemu/libvirt version may not support "
                              "virtio accel3d")
 
         return ret

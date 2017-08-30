@@ -178,6 +178,14 @@ class vmmConfig(object):
         self.default_hvs = CLIConfig.default_hvs
         self.cli_usbredir = None
 
+        if self.test_first_run:
+            # Populate some package defaults to simplify git testing
+            if not self.libvirt_packages:
+                self.libvirt_packages = ["libvirt-daemon",
+                                         "libvirt-daemon-config-network"]
+            if not self.hv_packages:
+                self.hv_packages = ["qemu-kvm"]
+
         self.default_storage_format_from_config = "qcow2"
         self.cpu_default_from_config = CPU.SPECIAL_MODE_HOST_MODEL_ONLY
         self.default_console_resizeguest = 0
@@ -199,7 +207,7 @@ class vmmConfig(object):
             from guestfs import GuestFS  # pylint: disable=import-error
             g = GuestFS(close_on_exit=False)
             return bool(getattr(g, "add_libvirt_dom", None))
-        except:
+        except Exception:
             return False
 
     # General app wide helpers (gsettings agnostic)
@@ -549,11 +557,15 @@ class vmmConfig(object):
                 del urls[len(urls) - 1]
             self.conf.set(gsettings_path, urls)
 
+    def add_container_url(self, url):
+        self._url_add_helper("/urls/containers", url)
     def add_media_url(self, url):
         self._url_add_helper("/urls/urls", url)
     def add_iso_path(self, path):
         self._url_add_helper("/urls/isos", path)
 
+    def get_container_urls(self):
+        return self.conf.get("/urls/containers")
     def get_media_urls(self):
         return self.conf.get("/urls/urls")
     def get_iso_paths(self):

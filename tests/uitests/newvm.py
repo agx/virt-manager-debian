@@ -92,7 +92,7 @@ class NewVM(unittest.TestCase):
         time.sleep(1)
 
         self.assertFalse(browser.showing)
-        self.assertEquals(
+        self.assertEqual(
             uiutils.find_fuzzy(newvm, "os-version-label", "label").text,
             "Unknown")
 
@@ -100,7 +100,7 @@ class NewVM(unittest.TestCase):
         uiutils.find_fuzzy(newvm, "Automatically detect", "check").click()
         version = uiutils.find_fuzzy(newvm,
             "install-os-version-entry", "text")
-        self.assertEquals(version.text, "Generic")
+        self.assertEqual(version.text, "Generic")
 
         ostype = uiutils.find_fuzzy(newvm, "install-os-type", "combo")
         ostype.click()
@@ -113,7 +113,7 @@ class NewVM(unittest.TestCase):
         uiutils.find_fuzzy(newvm, "Forward", "button").click()
 
         # Verify that CPU values are non-default
-        cpus = uiutils.find_fuzzy(newvm, None, "spin button", "CPUs:")
+        cpus = uiutils.find_pattern(newvm, "cpus", "spin button")
         uiutils.check_in_loop(lambda: int(cpus.text) > 1, timeout=5)
         uiutils.find_fuzzy(newvm, "Forward", "button").click()
         uiutils.find_fuzzy(newvm, "Forward", "button").click()
@@ -155,7 +155,7 @@ class NewVM(unittest.TestCase):
         version = uiutils.find_pattern(newvm, "install-os-version-label")
         time.sleep(1)
         uiutils.check_in_loop(lambda: "Detecting" not in version.text)
-        self.assertEquals(version.text, "Red Hat Enterprise Linux 5.5")
+        self.assertEqual(version.text, "Red Hat Enterprise Linux 5.5")
 
         uiutils.find_fuzzy(newvm, "Forward", "button").click()
         uiutils.find_fuzzy(newvm, "Forward", "button").click()
@@ -281,6 +281,27 @@ class NewVM(unittest.TestCase):
         uiutils.find_fuzzy(newvm, "Finish", "button").click()
 
         time.sleep(1)
+        uiutils.find_fuzzy(self.app.root, "container1 on", "frame")
+        self.assertFalse(newvm.showing)
+        self.app.quit()
+
+    def testNewVMContainerVZ(self):
+        """
+        Virtuozzo container install
+        """
+        self.app.uri = tests.utils.uri_vz
+
+        newvm = self._open_create_wizard()
+        uiutils.find_fuzzy(newvm, "Container", "radio").click()
+        uiutils.find_fuzzy(newvm, "Forward", "button").click()
+
+        # Set directory path
+        uiutils.find_fuzzy(newvm, None,
+            "text", "container template").text = "centos-6-x86_64"
+        uiutils.find_fuzzy(newvm, "Forward", "button").click()
+        uiutils.find_fuzzy(newvm, "Forward", "button").click()
+        uiutils.find_fuzzy(newvm, "Finish", "button").click()
+
         uiutils.find_fuzzy(self.app.root, "container1 on", "frame")
         self.assertFalse(newvm.showing)
         self.app.quit()

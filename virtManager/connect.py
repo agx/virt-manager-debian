@@ -22,6 +22,7 @@ import glob
 import os
 import logging
 import socket
+import urllib
 
 from gi.repository import Gio
 from gi.repository import GObject
@@ -34,7 +35,8 @@ from .baseclass import vmmGObjectUI
 HV_XEN,
 HV_LXC,
 HV_QEMU_SESSION,
-HV_BHYVE) = range(5)
+HV_BHYVE,
+HV_VZ) = range(6)
 
 (CONN_SSH,
 CONN_TCP,
@@ -45,7 +47,7 @@ def current_user():
     try:
         import getpass
         return getpass.getuser()
-    except:
+    except Exception:
         return ""
 
 
@@ -98,7 +100,7 @@ class vmmConnect(vmmGObjectUI):
             # Call any API, so we detect if avahi is even available or not
             self.avahiserver.GetAPIVersion()
             logging.debug("Connected to avahi")
-        except Exception, e:
+        except Exception as e:
             self.dbus = None
             self.avahiserver = None
             logging.debug("Couldn't contact avahi: %s", str(e))
@@ -169,6 +171,7 @@ class vmmConnect(vmmGObjectUI):
         _add_hv_row(HV_XEN, "xen", "Xen")
         _add_hv_row(HV_LXC, "lxc", "LXC (" + _("Linux Containers") + ")")
         _add_hv_row(HV_BHYVE, "bhyve", "Bhyve")
+        _add_hv_row(HV_VZ, "vz", "Virtuozzo")
         combo.set_model(model)
         uiutil.init_combo_text_column(combo, 1)
 
@@ -230,7 +233,7 @@ class vmmConnect(vmmGObjectUI):
 
             sig = resint.connect("g-signal", cb)
             self.browser_sigs.append((resint, sig))
-        except Exception, e:
+        except Exception as e:
             logging.exception(e)
 
     def remove_service(self, interface, protocol, name, typ, domain, flags):
@@ -246,7 +249,7 @@ class vmmConnect(vmmGObjectUI):
             for row in model:
                 if row[0] == name:
                     model.remove(row.iter)
-        except Exception, e:
+        except Exception as e:
             logging.exception(e)
 
     def add_conn_to_list(self, interface, protocol, name, typ, domain,
@@ -269,7 +272,7 @@ class vmmConnect(vmmGObjectUI):
 
             host = self.sanitize_hostname(str(host))
             model.append([str(address), str(host), str(name)])
-        except Exception, e:
+        except Exception as e:
             logging.exception(e)
 
     def start_browse(self):
@@ -384,12 +387,14 @@ class vmmConnect(vmmGObjectUI):
             hvstr = "qemu"
         elif hv == HV_BHYVE:
             hvstr = "bhyve"
+        elif hv == HV_VZ:
+            hvstr = "vz"
         else:
             hvstr = "lxc"
 
         addrstr = ""
         if user:
-            addrstr += user + "@"
+            addrstr += urllib.quote(user) + "@"
 
         if host.count(":") > 1:
             host = "[%s]" % host
@@ -408,7 +413,7 @@ class vmmConnect(vmmGObjectUI):
             hoststr += addrstr + "/"
 
         uri = hvstr + hoststr
-        if hv in (HV_QEMU, HV_BHYVE):
+        if hv in (HV_QEMU, HV_BHYVE, HV_VZ):
             uri += "system"
         elif hv == HV_QEMU_SESSION:
             uri += "session"
@@ -467,7 +472,7 @@ class vmmConnect(vmmGObjectUI):
             elif self.can_resolve_local is None:
                 try:
                     socket.getaddrinfo(host, None)
-                except:
+                except Exception:
                     logging.debug("Couldn't resolve host '%s'. Stripping "
                                   "'.local' and retrying.", host)
                     self.can_resolve_local = False
@@ -481,7 +486,7 @@ class vmmConnect(vmmGObjectUI):
             elif self.can_resolve_hostname is None:
                 try:
                     socket.getaddrinfo(host, None)
-                except:
+                except Exception:
                     logging.debug("Couldn't resolve host '%s'. Disabling "
                                   "host name resolution, only using IP addr",
                                   host)

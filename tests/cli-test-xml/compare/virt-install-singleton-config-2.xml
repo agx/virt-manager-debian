@@ -60,9 +60,6 @@
   <os>
     <type arch="x86_64">hvm</type>
     <loader>/foo/bar</loader>
-    <boot dev="cdrom"/>
-    <boot dev="fd"/>
-    <boot dev="hd"/>
     <boot dev="network"/>
     <smbios mode="sysinfo"/>
     <bootmenu enable="no"/>
@@ -76,7 +73,9 @@
     <privnet/>
     <pmu state="off"/>
     <hyperv>
+      <reset state="on"/>
       <spinlocks state="on" retries="1234"/>
+      <synic state="on"/>
     </hyperv>
     <vmport state="off"/>
   </features>
@@ -228,7 +227,9 @@
     <privnet/>
     <pmu state="off"/>
     <hyperv>
+      <reset state="on"/>
       <spinlocks state="on" retries="1234"/>
+      <synic state="on"/>
     </hyperv>
     <vmport state="off"/>
   </features>

@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.18.3 -->
+<!-- Generated with glade 3.20.0 -->
 <interface>
   <requires lib="gtk+" version="3.14"/>
   <object class="GtkImage" id="image1">
@@ -13,16 +13,17 @@
     <property name="type_hint">dialog</property>
     <signal name="delete-event" handler="on_clone_delete_event" swapped="no"/>
     <child>
-      <object class="GtkVBox" id="vbox1">
+      <object class="GtkBox" id="vbox1">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
+        <property name="orientation">vertical</property>
         <child>
           <object class="GtkViewport" id="header">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="resize_mode">queue</property>
             <child>
-              <object class="GtkHBox" id="hbox77">
+              <object class="GtkBox" id="hbox77">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="border_width">6</property>
@@ -41,16 +42,16 @@
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkHBox" id="hbox2">
+                  <object class="GtkBox" id="hbox2">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <child>
                       <object class="GtkLabel" id="label2">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">start</property>
                         <property name="label" translatable="yes">&lt;span size='large' color='white'&gt;Clone virtual machine&lt;/span&gt;</property>
                         <property name="use_markup">True</property>
-                        <property name="xalign">0</property>
                       </object>
                       <packing>
                         <property name="expand">True</property>
@@ -75,20 +76,23 @@
           </packing>
         </child>
         <child>
-          <object class="GtkVBox" id="vbox4">
+          <object class="GtkBox" id="vbox4">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="border_width">12</property>
+            <property name="orientation">vertical</property>
             <property name="spacing">12</property>
             <child>
-              <object class="GtkVBox" id="vbox3">
+              <object class="GtkBox" id="vbox3">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="orientation">vertical</property>
                 <property name="spacing">18</property>
                 <child>
-                  <object class="GtkVBox" id="vbox5">
+                  <object class="GtkBox" id="vbox5">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="orientation">vertical</property>
                     <property name="spacing">12</property>
                     <child>
                       <object class="GtkGrid" id="grid1">
@@ -100,9 +104,9 @@
                           <object class="GtkLabel" id="clone-orig-name">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="halign">start</property>
                             <property name="label">orig name</property>
                             <property name="ellipsize">end</property>
-                            <property name="xalign">0</property>
                           </object>
                           <packing>
                             <property name="left_attach">1</property>
@@ -113,8 +117,8 @@
                           <object class="GtkLabel" id="label4">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="halign">start</property>
                             <property name="label" translatable="yes">Create clone based on:</property>
-                            <property name="xalign">0</property>
                           </object>
                           <packing>
                             <property name="left_attach">0</property>
@@ -125,8 +129,8 @@
                           <object class="GtkLabel" id="label9">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="halign">end</property>
                             <property name="label" translatable="yes">Destination host:</property>
-                            <property name="xalign">1</property>
                           </object>
                           <packing>
                             <property name="left_attach">0</property>
@@ -137,10 +141,10 @@
                           <object class="GtkLabel" id="clone-dest-host">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="halign">start</property>
                             <property name="label">dest host</property>
                             <property name="ellipsize">end</property>
                             <property name="lines">0</property>
-                            <property name="xalign">0</property>
                           </object>
                           <packing>
                             <property name="left_attach">1</property>
@@ -160,23 +164,23 @@
                         <property name="can_focus">False</property>
                         <property name="left_padding">12</property>
                         <child>
-                          <object class="GtkTable" id="table1">
+                          <object class="GtkGrid" id="table1">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="n_rows">3</property>
-                            <property name="n_columns">2</property>
-                            <property name="column_spacing">12</property>
                             <property name="row_spacing">10</property>
+                            <property name="column_spacing">12</property>
                             <child>
-                              <object class="GtkVBox" id="vbox6">
+                              <object class="GtkBox" id="vbox6">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="hexpand">True</property>
+                                <property name="orientation">vertical</property>
                                 <child>
                                   <object class="GtkLabel" id="clone-no-net">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">No networking devices</property>
-                                    <property name="xalign">0</property>
                                   </object>
                                   <packing>
                                     <property name="expand">True</property>
@@ -185,9 +189,10 @@
                                   </packing>
                                 </child>
                                 <child>
-                                  <object class="GtkVBox" id="clone-network-box">
+                                  <object class="GtkBox" id="clone-network-box">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="orientation">vertical</property>
                                     <property name="spacing">6</property>
                                     <child>
                                       <placeholder/>
@@ -202,38 +207,36 @@
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
                                 <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
-                                <property name="y_options">GTK_FILL</property>
                               </packing>
                             </child>
                             <child>
                               <object class="GtkLabel" id="label7">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">end</property>
+                                <property name="valign">start</property>
                                 <property name="label" translatable="yes">&lt;span color='#484848'&gt;Networking:&lt;/span&gt;</property>
                                 <property name="use_markup">True</property>
-                                <property name="xalign">1</property>
-                                <property name="yalign">0</property>
                               </object>
                               <packing>
+                                <property name="left_attach">0</property>
                                 <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options">GTK_FILL</property>
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkVBox" id="vbox77">
+                              <object class="GtkBox" id="vbox77">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="hexpand">True</property>
+                                <property name="vexpand">True</property>
+                                <property name="orientation">vertical</property>
                                 <child>
                                   <object class="GtkLabel" id="clone-no-storage-pass">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">No storage to clone</property>
-                                    <property name="xalign">0</property>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -251,11 +254,12 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <child>
-                                          <object class="GtkVBox" id="vbox7">
+                                          <object class="GtkBox" id="vbox7">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
+                                            <property name="orientation">vertical</property>
                                             <child>
-                                              <object class="GtkHBox" id="hbox6">
+                                              <object class="GtkBox" id="hbox6">
                                                 <property name="visible">True</property>
                                                 <property name="can_focus">False</property>
                                                 <child>
@@ -264,9 +268,10 @@
                                                     <property name="can_focus">False</property>
                                                     <property name="right_padding">6</property>
                                                     <child>
-                                                      <object class="GtkVBox" id="clone-storage-box">
+                                                      <object class="GtkBox" id="clone-storage-box">
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
+                                                        <property name="orientation">vertical</property>
                                                         <property name="spacing">12</property>
                                                         <child>
                                                           <placeholder/>
@@ -329,52 +334,52 @@
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
                                 <property name="top_attach">2</property>
-                                <property name="bottom_attach">3</property>
                               </packing>
                             </child>
                             <child>
                               <object class="GtkLabel" id="label6">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">end</property>
+                                <property name="valign">start</property>
+                                <property name="vexpand">True</property>
                                 <property name="label" translatable="yes">&lt;span color='#484848'&gt;Storage:&lt;/span&gt;</property>
                                 <property name="use_markup">True</property>
-                                <property name="xalign">1</property>
-                                <property name="yalign">0</property>
                               </object>
                               <packing>
+                                <property name="left_attach">0</property>
                                 <property name="top_attach">2</property>
-                                <property name="bottom_attach">3</property>
-                                <property name="x_options">GTK_FILL</property>
                               </packing>
                             </child>
                             <child>
                               <object class="GtkLabel" id="label3">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">end</property>
+                                <property name="valign">center</property>
                                 <property name="label" translatable="yes">&lt;span color='#484848'&gt;_Name:&lt;/span&gt;</property>
                                 <property name="use_markup">True</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">clone-new-name</property>
-                                <property name="xalign">1</property>
                               </object>
                               <packing>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options"/>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                             <child>
                               <object class="GtkEntry" id="clone-new-name">
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="valign">center</property>
+                                <property name="margin_top">3</property>
+                                <property name="margin_bottom">3</property>
                                 <property name="invisible_char">●</property>
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="y_options"/>
-                                <property name="y_padding">3</property>
+                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                           </object>
@@ -408,7 +413,7 @@
                           <object class="GtkImage" id="image6">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="yalign">0</property>
+                            <property name="valign">start</property>
                             <property name="stock">gtk-info</property>
                           </object>
                           <packing>
@@ -426,7 +431,6 @@
                             <property name="label" translatable="yes">&lt;span size='small'&gt;Cloning creates a new, independent copy of the original disk. Sharing
 uses the existing disk image for both the original and the new machine.&lt;/span&gt;</property>
                             <property name="use_markup">True</property>
-                            <property name="xalign">0</property>
                           </object>
                           <packing>
                             <property name="expand">False</property>
@@ -450,8 +454,8 @@ uses the existing disk image for both the original and the new machine.&lt;/span
                           <object class="GtkImage" id="image5">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="xalign">0</property>
-                            <property name="yalign">0</property>
+                            <property name="halign">start</property>
+                            <property name="valign">start</property>
                             <property name="stock">gtk-dialog-warning</property>
                           </object>
                           <packing>
@@ -496,7 +500,7 @@ like change passwords or static IPs, please see the virt-sysprep(1) tool.&lt;/sp
               </packing>
             </child>
             <child>
-              <object class="GtkHButtonBox" id="hbuttonbox1">
+              <object class="GtkButtonBox" id="hbuttonbox1">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="spacing">12</property>
@@ -615,23 +619,22 @@ like change passwords or static IPs, please see the virt-sysprep(1) tool.&lt;/sp
             <property name="top_padding">6</property>
             <property name="left_padding">6</property>
             <child>
-              <object class="GtkVBox" id="vbox8">
+              <object class="GtkBox" id="vbox8">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="orientation">vertical</property>
                 <property name="spacing">12</property>
                 <child>
-                  <object class="GtkHBox" id="hbox4">
+                  <object class="GtkBox" id="hbox4">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="spacing">12</property>
                     <child>
-                      <object class="GtkTable" id="table6">
+                      <object class="GtkGrid" id="table6">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="n_rows">3</property>
-                        <property name="n_columns">3</property>
-                        <property name="column_spacing">6</property>
                         <property name="row_spacing">6</property>
+                        <property name="column_spacing">6</property>
                         <child>
                           <object class="GtkAlignment" id="alignment9">
                             <property name="visible">True</property>
@@ -641,69 +644,61 @@ like change passwords or static IPs, please see the virt-sysprep(1) tool.&lt;/sp
                               <object class="GtkLabel" id="change-mac-type">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label">type string</property>
-                                <property name="xalign">0</property>
                               </object>
                             </child>
                           </object>
                           <packing>
                             <property name="left_attach">2</property>
-                            <property name="right_attach">3</property>
-                            <property name="x_options">GTK_FILL</property>
-                            <property name="y_options">GTK_FILL</property>
+                            <property name="top_attach">0</property>
                           </packing>
                         </child>
                         <child>
                           <object class="GtkAlignment" id="alignment8">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="hexpand">True</property>
                             <property name="left_padding">2</property>
                             <child>
                               <object class="GtkLabel" id="change-mac-orig">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label">orig-mac</property>
-                                <property name="width_chars">20</property>
-                                <property name="xalign">0</property>
+                                <property name="max_width_chars">20</property>
                               </object>
                             </child>
                           </object>
                           <packing>
                             <property name="left_attach">2</property>
-                            <property name="right_attach">3</property>
                             <property name="top_attach">1</property>
-                            <property name="bottom_attach">2</property>
-                            <property name="y_options">GTK_FILL</property>
                           </packing>
                         </child>
                         <child>
                           <object class="GtkEntry" id="change-mac-new">
                             <property name="visible">True</property>
                             <property name="can_focus">True</property>
+                            <property name="hexpand">True</property>
                           </object>
                           <packing>
                             <property name="left_attach">2</property>
-                            <property name="right_attach">3</property>
                             <property name="top_attach">2</property>
-                            <property name="bottom_attach">3</property>
-                            <property name="y_options">GTK_FILL</property>
                           </packing>
                         </child>
                         <child>
                           <object class="GtkLabel" id="label10">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="halign">end</property>
                             <property name="label" translatable="yes">New _MAC:</property>
                             <property name="use_underline">True</property>
                             <property name="mnemonic_widget">change-mac-new</property>
-                            <property name="xalign">1</property>
                           </object>
                           <packing>
-                            <property name="right_attach">2</property>
+                            <property name="left_attach">0</property>
                             <property name="top_attach">2</property>
-                            <property name="bottom_attach">3</property>
-                            <property name="x_options">GTK_FILL</property>
-                            <property name="y_options">GTK_FILL</property>
+                            <property name="width">2</property>
                           </packing>
                         </child>
                         <child>
@@ -722,41 +717,37 @@ like change passwords or static IPs, please see the virt-sysprep(1) tool.&lt;/sp
                             </child>
                           </object>
                           <packing>
-                            <property name="bottom_attach">2</property>
-                            <property name="x_options">GTK_FILL</property>
-                            <property name="y_options">GTK_FILL</property>
+                            <property name="left_attach">0</property>
+                            <property name="top_attach">0</property>
+                            <property name="height">2</property>
                           </packing>
                         </child>
                         <child>
                           <object class="GtkLabel" id="label77">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="halign">end</property>
+                            <property name="valign">center</property>
                             <property name="label" translatable="yes">&lt;span color='#484848'&gt;Type:&lt;/span&gt;</property>
                             <property name="use_markup">True</property>
-                            <property name="xalign">1</property>
                           </object>
                           <packing>
                             <property name="left_attach">1</property>
-                            <property name="right_attach">2</property>
-                            <property name="x_options">GTK_FILL</property>
-                            <property name="y_options"/>
+                            <property name="top_attach">0</property>
                           </packing>
                         </child>
                         <child>
                           <object class="GtkLabel" id="label16">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
+                            <property name="halign">end</property>
+                            <property name="valign">center</property>
                             <property name="label" translatable="yes">&lt;span color='#484848'&gt;MAC:&lt;/span&gt;</property>
                             <property name="use_markup">True</property>
-                            <property name="xalign">1</property>
                           </object>
                           <packing>
                             <property name="left_attach">1</property>
-                            <property name="right_attach">2</property>
                             <property name="top_attach">1</property>
-                            <property name="bottom_attach">2</property>
-                            <property name="x_options">GTK_FILL</property>
-                            <property name="y_options"/>
                           </packing>
                         </child>
                       </object>
@@ -847,19 +838,18 @@ like change passwords or static IPs, please see the virt-sysprep(1) tool.&lt;/sp
           </packing>
         </child>
         <child>
-          <object class="GtkVBox" id="vbox2">
+          <object class="GtkBox" id="vbox2">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="border_width">6</property>
+            <property name="orientation">vertical</property>
             <property name="spacing">12</property>
             <child>
-              <object class="GtkTable" id="table4">
+              <object class="GtkGrid" id="table4">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
-                <property name="n_rows">2</property>
-                <property name="n_columns">2</property>
-                <property name="column_spacing">6</property>
                 <property name="row_spacing">6</property>
+                <property name="column_spacing">6</property>
                 <child>
                   <object class="GtkAlignment" id="alignment6">
                     <property name="visible">True</property>
@@ -876,129 +866,114 @@ like change passwords or static IPs, please see the virt-sysprep(1) tool.&lt;/sp
                     </child>
                   </object>
                   <packing>
+                    <property name="left_attach">0</property>
                     <property name="top_attach">1</property>
-                    <property name="bottom_attach">2</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options">GTK_FILL</property>
                   </packing>
                 </child>
                 <child>
-                  <object class="GtkTable" id="table5">
+                  <object class="GtkGrid" id="table5">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
-                    <property name="n_rows">3</property>
-                    <property name="n_columns">2</property>
-                    <property name="column_spacing">12</property>
+                    <property name="valign">center</property>
+                    <property name="hexpand">True</property>
                     <property name="row_spacing">6</property>
+                    <property name="column_spacing">12</property>
                     <child>
                       <object class="GtkLabel" id="change-storage-size">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">start</property>
                         <property name="label">size</property>
-                        <property name="xalign">0</property>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
-                        <property name="right_attach">2</property>
                         <property name="top_attach">2</property>
-                        <property name="bottom_attach">3</property>
-                        <property name="y_options">GTK_FILL</property>
                       </packing>
                     </child>
                     <child>
                       <object class="GtkLabel" id="change-storage-target">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">start</property>
                         <property name="label">target</property>
-                        <property name="xalign">0</property>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
-                        <property name="right_attach">2</property>
                         <property name="top_attach">1</property>
-                        <property name="bottom_attach">2</property>
-                        <property name="y_options">GTK_FILL</property>
                       </packing>
                     </child>
                     <child>
                       <object class="GtkLabel" id="change-storage-orig">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">start</property>
                         <property name="label">orig-path</property>
                         <property name="ellipsize">start</property>
-                        <property name="width_chars">25</property>
                         <property name="max_width_chars">25</property>
-                        <property name="xalign">0</property>
                       </object>
                       <packing>
                         <property name="left_attach">1</property>
-                        <property name="right_attach">2</property>
-                        <property name="y_options">GTK_FILL</property>
+                        <property name="top_attach">0</property>
                       </packing>
                     </child>
                     <child>
                       <object class="GtkLabel" id="label15">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">end</property>
+                        <property name="valign">end</property>
                         <property name="label" translatable="yes">&lt;span color='#484848'&gt;Size:&lt;/span&gt;</property>
                         <property name="use_markup">True</property>
-                        <property name="xalign">1</property>
-                        <property name="yalign">1</property>
                       </object>
                       <packing>
+                        <property name="left_attach">0</property>
                         <property name="top_attach">2</property>
-                        <property name="bottom_attach">3</property>
-                        <property name="x_options">GTK_FILL</property>
-                        <property name="y_options">GTK_FILL</property>
                       </packing>
                     </child>
                     <child>
                       <object class="GtkLabel" id="label14">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">end</property>
                         <property name="label" translatable="yes">&lt;span color='#484848'&gt;Target:&lt;/span&gt;</property>
                         <property name="use_markup">True</property>
-                        <property name="xalign">1</property>
                       </object>
                       <packing>
+                        <property name="left_attach">0</property>
                         <property name="top_attach">1</property>
-                        <property name="bottom_attach">2</property>
-                        <property name="x_options">GTK_FILL</property>
-                        <property name="y_options">GTK_FILL</property>
                       </packing>
                     </child>
                     <child>
                       <object class="GtkLabel" id="label13">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">end</property>
+                        <property name="valign">center</property>
                         <property name="label" translatable="yes">&lt;span color='#484848'&gt;Path:&lt;/span&gt;</property>
                         <property name="use_markup">True</property>
-                        <property name="xalign">1</property>
                       </object>
                       <packing>
-                        <property name="x_options">GTK_FILL</property>
-                        <property name="y_options"/>
+                        <property name="left_attach">0</property>
+                        <property name="top_attach">0</property>
                       </packing>
                     </child>
                   </object>
                   <packing>
                     <property name="left_attach">1</property>
-                    <property name="right_attach">2</property>
                     <property name="top_attach">1</property>
-                    <property name="bottom_attach">2</property>
-                    <property name="y_options"/>
                   </packing>
                 </child>
                 <child>
                   <object class="GtkLabel" id="label1">
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
+                    <property name="halign">start</property>
                     <property name="label" translatable="yes">Existing disk</property>
-                    <property name="xalign">0</property>
                   </object>
                   <packing>
-                    <property name="right_attach">2</property>
-                    <property name="y_options">GTK_FILL</property>
+                    <property name="left_attach">0</property>
+                    <property name="top_attach">0</property>
+                    <property name="width">2</property>
                   </packing>
                 </child>
               </object>
@@ -1009,14 +984,12 @@ like change passwords or static IPs, please see the virt-sysprep(1) tool.&lt;/sp
               </packing>
             </child>
             <child>
-              <object class="GtkTable" id="table3">
+              <object class="GtkGrid" id="table3">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="border_width">6</property>
-                <property name="n_rows">2</property>
-                <property name="n_columns">3</property>
-                <property name="column_spacing">6</property>
                 <property name="row_spacing">6</property>
+                <property name="column_spacing">6</property>
                 <child>
                   <object class="GtkAlignment" id="alignment5">
                     <property name="visible">True</property>
@@ -1026,19 +999,17 @@ like change passwords or static IPs, please see the virt-sysprep(1) tool.&lt;/sp
                       <object class="GtkLabel" id="label12">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
+                        <property name="halign">end</property>
                         <property name="label" translatable="yes">&lt;span color='#484848'&gt;New _Path:&lt;/span&gt;</property>
                         <property name="use_markup">True</property>
                         <property name="use_underline">True</property>
                         <property name="mnemonic_widget">change-storage-new</property>
-                        <property name="xalign">1</property>
                       </object>
                     </child>
                   </object>
                   <packing>
+                    <property name="left_attach">0</property>
                     <property name="top_attach">1</property>
-                    <property name="bottom_attach">2</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options">GTK_FILL</property>
                   </packing>
                 </child>
                 <child>
@@ -1048,27 +1019,25 @@ like change passwords or static IPs, please see the virt-sysprep(1) tool.&lt;/sp
                     <property name="can_focus">True</property>
                     <property name="receives_default">False</property>
                     <property name="use_underline">True</property>
-                    <property name="xalign">0.5</property>
                     <property name="draw_indicator">True</property>
                     <signal name="toggled" handler="on_change_storage_doclone_toggled" swapped="no"/>
                   </object>
                   <packing>
-                    <property name="right_attach">3</property>
-                    <property name="y_options">GTK_FILL</property>
+                    <property name="left_attach">0</property>
+                    <property name="top_attach">0</property>
+                    <property name="width">3</property>
                   </packing>
                 </child>
                 <child>
                   <object class="GtkEntry" id="change-storage-new">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <property name="halign">center</property>
                     <property name="width_chars">25</property>
                   </object>
                   <packing>
                     <property name="left_attach">1</property>
-                    <property name="right_attach">2</property>
                     <property name="top_attach">1</property>
-                    <property name="bottom_attach">2</property>
-                    <property name="y_options">GTK_FILL</property>
                   </packing>
                 </child>
                 <child>
@@ -1082,11 +1051,7 @@ like change passwords or static IPs, please see the virt-sysprep(1) tool.&lt;/sp
                   </object>
                   <packing>
                     <property name="left_attach">2</property>
-                    <property name="right_attach">3</property>
                     <property name="top_attach">1</property>
-                    <property name="bottom_attach">2</property>
-                    <property name="x_options">GTK_FILL</property>
-                    <property name="y_options">GTK_FILL</property>
                   </packing>
                 </child>
               </object>

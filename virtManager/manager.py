@@ -78,7 +78,7 @@ def _get_inspection_icon_pixbuf(vm, w, h):
         pb.write(png_data)
         pb.close()
         return pb.get_pixbuf()
-    except:
+    except Exception:
         logging.exception("Error loading inspection icon data")
         vm.inspection.icon = None
         return None
@@ -744,7 +744,7 @@ class vmmManager(vmmGObjectUI):
 
             desc = vm.get_description()
             row[ROW_HINT] = util.xml_escape(desc)
-        except libvirt.libvirtError, e:
+        except libvirt.libvirtError as e:
             if util.exception_is_libvirt_error(e, "VIR_ERR_NO_DOMAIN"):
                 return
             raise

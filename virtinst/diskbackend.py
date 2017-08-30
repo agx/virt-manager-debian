@@ -55,7 +55,7 @@ def _lookup_vol_by_path(conn, path):
         vol = conn.storageVolLookupByPath(path)
         vol.info()
         return vol, None
-    except libvirt.libvirtError, e:
+    except libvirt.libvirtError as e:
         if (hasattr(libvirt, "VIR_ERR_NO_STORAGE_VOL") and
             e.get_error_code() != libvirt.VIR_ERR_NO_STORAGE_VOL):
             raise
@@ -89,7 +89,7 @@ def _stat_disk(path):
             # os.SEEK_END is not present on all systems
             size = os.lseek(fd, 0, 2)
             os.close(fd)
-        except:
+        except Exception:
             size = 0
         return False, size
     elif stat.S_ISREG(mode):
@@ -121,9 +121,9 @@ def check_if_path_managed(conn, path):
         if verr:
             try:
                 vol = _lookup_vol_by_basename(pool, path)
-            except:
+            except Exception:
                 pass
-    except Exception, e:
+    except Exception as e:
         vol = None
         pool = None
         verr = str(e)
@@ -175,7 +175,6 @@ def manage_path(conn, path):
     poolxml.type = poolxml.TYPE_DIR
     poolxml.target_path = dirname
     pool = poolxml.install(build=False, create=True, autostart=True)
-    conn.clear_cache(pools=True)
 
     vol = _lookup_vol_by_basename(pool, path)
     return vol, pool
@@ -345,16 +344,17 @@ class _StorageCreator(_StorageBase):
 
         if self._vol_install:
             self._vol_install.validate()
-        else:
-            if self._size is None:
-                raise ValueError(_("size is required for non-existent disk "
-                                   "'%s'" % self.get_path()))
+            return
+
+        if self._size is None:
+            raise ValueError(_("size is required for non-existent disk "
+                               "'%s'" % self.get_path()))
 
         err, msg = self.is_size_conflict()
         if err:
             raise ValueError(msg)
         if msg:
-            logging.warn(msg)
+            logging.warning(msg)
 
     def will_create_storage(self):
         return True
@@ -389,7 +389,7 @@ class CloneStorageCreator(_StorageCreator):
         msg = None
         vfs = os.statvfs(os.path.dirname(self._path))
         avail = vfs[statvfs.F_FRSIZE] * vfs[statvfs.F_BAVAIL]
-        need = long(self._size * 1024L * 1024L * 1024L)
+        need = long(self._size) * long(1024) * long(1024) * long(1024)
         if need > avail:
             if self._sparse:
                 msg = _("The filesystem will not have enough free space"
@@ -409,7 +409,8 @@ class CloneStorageCreator(_StorageCreator):
         text = (_("Cloning %(srcfile)s") %
                 {'srcfile' : os.path.basename(self._input_path)})
 
-        size_bytes = long(self.get_size() * 1024L * 1024L * 1024L)
+        size_bytes = (long(self.get_size()) *
+                      long(1024) * long(1024) * long(1024))
         progresscb.start(filename=self._output_path, size=long(size_bytes),
                          text=text)
 
@@ -434,7 +435,8 @@ class CloneStorageCreator(_StorageCreator):
             sparse = True
             fd = None
             try:
-                fd = os.open(self._output_path, os.O_WRONLY | os.O_CREAT, 0640)
+                fd = os.open(self._output_path, os.O_WRONLY | os.O_CREAT,
+                             0o640)
                 os.ftruncate(fd, size_bytes)
             finally:
                 if fd:
@@ -454,7 +456,7 @@ class CloneStorageCreator(_StorageCreator):
             try:
                 src_fd = os.open(self._input_path, os.O_RDONLY)
                 dst_fd = os.open(self._output_path,
-                                 os.O_WRONLY | os.O_CREAT, 0640)
+                                 os.O_WRONLY | os.O_CREAT, 0o640)
 
                 i = 0
                 while 1:
@@ -474,7 +476,7 @@ class CloneStorageCreator(_StorageCreator):
                     i += s
                     if i < size_bytes:
                         meter.update(i)
-            except OSError, e:
+            except OSError as e:
                 raise RuntimeError(_("Error cloning diskimage %s to %s: %s") %
                                 (self._input_path, self._output_path, str(e)))
         finally:
@@ -544,6 +546,7 @@ class StorageBackend(_StorageBase):
         if self._vol_xml is None:
             self._vol_xml = StorageVolume(self._conn,
                 parsexml=self._vol_object.XMLDesc(0))
+            self._vol_xml.pool = self._parent_pool
         return self._vol_xml
 
     def get_parent_pool(self):

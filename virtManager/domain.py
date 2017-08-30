@@ -134,7 +134,7 @@ def start_job_progress_thread(vm, meter, progtext):
 
                 progress = data_total - data_remaining
                 meter.update(progress)
-            except:
+            except Exception:
                 logging.exception("Error calling jobinfo")
                 return False
 
@@ -698,6 +698,7 @@ class vmmDomain(vmmLibvirtObject):
                 guest.os.loader = loader
                 guest.os.loader_type = "pflash"
                 guest.os.loader_ro = True
+                guest.check_uefi_secure()
 
         if nvram != _SENTINEL:
             guest.os.nvram = nvram
@@ -1163,8 +1164,8 @@ class vmmDomain(vmmLibvirtObject):
     def class_name(self):
         return "domain"
 
-    def _define(self, newxml):
-        self.conn.define_domain(newxml)
+    def _define(self, xml):
+        self.conn.define_domain(xml)
     def _XMLDesc(self, flags):
         return self._backend.XMLDesc(flags)
     def _get_backend_status(self):
@@ -1190,8 +1191,17 @@ class vmmDomain(vmmLibvirtObject):
         return self._backend.openConsole(devname, stream, flags)
 
     def open_graphics_fd(self):
-        return self._backend.openGraphicsFD(0,
-                libvirt.VIR_DOMAIN_OPEN_GRAPHICS_SKIPAUTH)
+        flags = 0
+
+        # Ugly workaround for VNC bug where the display cannot be opened
+        # if the listen type is "none".  When this gets fixed in QEMU
+        # we should skip auth only for broken QEMUs.
+        graphics = self.get_graphics_devices()[0]
+        if (graphics.type == "vnc" and
+            graphics.get_first_listen_type() == "none"):
+            flags = libvirt.VIR_DOMAIN_OPEN_GRAPHICS_SKIPAUTH
+
+        return self._backend.openGraphicsFD(0, flags)
 
     def refresh_snapshots(self):
         self._snapshot_list = None
@@ -1529,7 +1539,7 @@ class vmmDomain(vmmLibvirtObject):
         if self._has_managed_save is None:
             try:
                 self._has_managed_save = self._backend.hasManagedSaveImage(0)
-            except libvirt.libvirtError, e:
+            except libvirt.libvirtError as e:
                 if not util.exception_is_libvirt_error(e, "VIR_ERR_NO_DOMAIN"):
                     raise
                 return False
@@ -1725,12 +1735,13 @@ class vmmDomain(vmmLibvirtObject):
     def is_stoppable(self):
         return self.status() in [libvirt.VIR_DOMAIN_RUNNING,
                                  libvirt.VIR_DOMAIN_PAUSED,
+                                 libvirt.VIR_DOMAIN_CRASHED,
                                  libvirt.VIR_DOMAIN_PMSUSPENDED]
     def is_destroyable(self):
         return (self.is_stoppable() or
                 self.status() in [libvirt.VIR_DOMAIN_CRASHED])
     def is_runable(self):
-        return self.is_shutoff() or self.is_crashed()
+        return self.is_shutoff()
     def is_pauseable(self):
         return self.status() in [libvirt.VIR_DOMAIN_RUNNING]
     def is_unpauseable(self):
@@ -1813,7 +1824,7 @@ class vmmDomain(vmmLibvirtObject):
     def get_cache_dir(self):
         ret = os.path.join(self.conn.get_cache_dir(), self.get_uuid())
         if not os.path.exists(ret):
-            os.makedirs(ret, 0755)
+            os.makedirs(ret, 0o755)
         return ret
 
 
@@ -1843,7 +1854,7 @@ class vmmDomain(vmmLibvirtObject):
                 if io:
                     rx += io[0]
                     tx += io[4]
-            except libvirt.libvirtError, err:
+            except libvirt.libvirtError as err:
                 if util.is_error_nosupport(err):
                     logging.debug("Net stats not supported: %s", err)
                     self._stats_net_supported = False
@@ -1893,7 +1904,7 @@ class vmmDomain(vmmLibvirtObject):
                 if io:
                     rd += io[1]
                     wr += io[3]
-            except libvirt.libvirtError, err:
+            except libvirt.libvirtError as err:
                 if util.is_error_nosupport(err):
                     logging.debug("Disk stats not supported: %s", err)
                     self._stats_disk_supported = False
@@ -1925,7 +1936,7 @@ class vmmDomain(vmmLibvirtObject):
             secs = 5
             self._backend.setMemoryStatsPeriod(secs,
                 libvirt.VIR_DOMAIN_AFFECT_LIVE)
-        except Exception, e:
+        except Exception as e:
             logging.debug("Error setting memstats period: %s", e)
 
     def _sample_mem_stats(self):
@@ -1948,7 +1959,7 @@ class vmmDomain(vmmLibvirtObject):
 
             if "unused" in stats:
                 curmem = max(0, totalmem - stats.get("unused", totalmem))
-        except libvirt.libvirtError, err:
+        except libvirt.libvirtError as err:
             logging.error("Error reading mem stats: %s", err)
 
         pcentCurrMem = (curmem / float(totalmem)) * 100
@@ -2079,8 +2090,8 @@ class vmmDomainVirtinst(vmmDomain):
         ignore = flags
         return self._backend.get_xml_config()
 
-    def _define(self, newxml):
-        ignore = newxml
+    def _define(self, xml):
+        ignore = xml
         self.emit("state-changed")
 
     def _invalidate_xml(self):

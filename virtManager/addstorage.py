@@ -90,7 +90,7 @@ class vmmAddStorage(vmmGObjectUI):
         widget = self.widget("phys-hd-label")
         try:
             max_storage = self._host_disk_space()
-        except:
+        except Exception:
             logging.exception("Error determining host disk space")
             widget.set_markup("")
             return
@@ -117,7 +117,7 @@ class vmmAddStorage(vmmGObjectUI):
             try:
                 default_pool.start()
                 logging.info("Started pool '%s'", default_pool.get_name())
-            except Exception, e:
+            except Exception as e:
                 return self.err.show_err(_("Could not start storage_pool "
                                       "'%s': %s") %
                                     (default_pool.get_name(), str(e)))
@@ -163,10 +163,10 @@ class vmmAddStorage(vmmGObjectUI):
         errmsg = _("Errors were encountered changing permissions for the "
                    "following directories:")
         details = ""
-        for path, error in errors.items():
-            if path not in broken_paths:
+        for p, error in errors.items():
+            if p not in broken_paths:
                 continue
-            details += "%s : %s\n" % (path, error)
+            details += "%s : %s\n" % (p, error)
         details += "\nIt is very likely the VM will fail to start up."
 
         logging.debug("Permission errors:\n%s", details)

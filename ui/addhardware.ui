@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.19.0 -->
+<!-- Generated with glade 3.20.0 -->
 <interface>
   <requires lib="gtk+" version="3.14"/>
   <object class="GtkAdjustment" id="adjustment1">
@@ -29,13 +29,14 @@
     <property name="type_hint">dialog</property>
     <signal name="delete-event" handler="on_vmm_create_delete_event" swapped="no"/>
     <child>
-      <object class="GtkVBox" id="vbox23">
+      <object class="GtkBox" id="vbox23">
         <property name="visible">True</property>
         <property name="can_focus">False</property>
         <property name="border_width">12</property>
+        <property name="orientation">vertical</property>
         <property name="spacing">6</property>
         <child>
-          <object class="GtkHBox" id="mainhbox">
+          <object class="GtkBox" id="mainhbox">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="spacing">12</property>
@@ -67,9 +68,10 @@
               </packing>
             </child>
             <child>
-              <object class="GtkVBox" id="create-vbox">
+              <object class="GtkBox" id="create-vbox">
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
+                <property name="orientation">vertical</property>
                 <property name="spacing">12</property>
                 <child>
                   <object class="GtkEventBox" id="page-title-box">
@@ -79,13 +81,15 @@
                       <object class="GtkLabel" id="page-title-label">
                         <property name="visible">True</property>
                         <property name="can_focus">False</property>
-                        <property name="xpad">6</property>
-                        <property name="ypad">6</property>
+                        <property name="halign">start</property>
+                        <property name="valign">start</property>
+                        <property name="margin_start">6</property>
+                        <property name="margin_end">6</property>
+                        <property name="margin_top">6</property>
+                        <property name="margin_bottom">6</property>
                         <property name="label">Page title</property>
                         <property name="use_markup">True</property>
                         <property name="justify">fill</property>
-                        <property name="xalign">0</property>
-                        <property name="yalign">0</property>
                       </object>
                     </child>
                   </object>
@@ -125,10 +129,11 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkVBox" id="vbox10">
+                          <object class="GtkBox" id="vbox10">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
                             <property name="valign">start</property>
+                            <property name="orientation">vertical</property>
                             <property name="spacing">18</property>
                             <child>
                               <object class="GtkAlignment" id="storage-align">
@@ -158,7 +163,6 @@
                                     <property name="label" translatable="yes">_Device type:</property>
                                     <property name="use_underline">True</property>
                                     <property name="mnemonic_widget">storage-devtype</property>
-                                    <property name="xalign">0</property>
                                   </object>
                                   <packing>
                                     <property name="left_attach">0</property>
@@ -186,10 +190,10 @@
                                   <object class="GtkLabel" id="label21">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">_Bus type:</property>
                                     <property name="use_underline">True</property>
                                     <property name="mnemonic_widget">storage-bustype</property>
-                                    <property name="xalign">0</property>
                                   </object>
                                   <packing>
                                     <property name="left_attach">0</property>
@@ -228,10 +232,10 @@
                                       <object class="GtkLabel" id="label28">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">start</property>
                                         <property name="label" translatable="yes">Cac_he mode:</property>
                                         <property name="use_underline">True</property>
                                         <property name="mnemonic_widget">storage-cache</property>
-                                        <property name="xalign">0</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -295,10 +299,10 @@
                               <object class="GtkLabel" id="label29">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Type:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">controller-type</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -309,10 +313,10 @@
                               <object class="GtkLabel" id="controller-model-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Model:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">controller-model</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -389,7 +393,7 @@
                                 <property name="row_spacing">9</property>
                                 <property name="column_spacing">6</property>
                                 <child>
-                                  <object class="GtkHBox" id="hbox2">
+                                  <object class="GtkBox" id="hbox2">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
                                     <property name="spacing">6</property>
@@ -398,8 +402,8 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">True</property>
                                         <property name="receives_default">False</property>
+                                        <property name="halign">start</property>
                                         <property name="use_underline">True</property>
-                                        <property name="xalign">0</property>
                                         <property name="draw_indicator">True</property>
                                         <signal name="clicked" handler="on_mac_address_clicked" swapped="no"/>
                                       </object>
@@ -438,11 +442,11 @@
                                   <object class="GtkLabel" id="label386">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">_MAC address:</property>
                                     <property name="use_markup">True</property>
                                     <property name="use_underline">True</property>
                                     <property name="mnemonic_widget">create-mac-address</property>
-                                    <property name="xalign">0</property>
                                   </object>
                                   <packing>
                                     <property name="left_attach">0</property>
@@ -453,10 +457,10 @@
                                   <object class="GtkLabel" id="label6">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">Device mode_l:</property>
                                     <property name="use_underline">True</property>
                                     <property name="mnemonic_widget">net-model</property>
-                                    <property name="xalign">0</property>
                                   </object>
                                   <packing>
                                     <property name="left_attach">0</property>
@@ -550,24 +554,23 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkTable" id="table33">
+                          <object class="GtkGrid" id="table33">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="n_columns">2</property>
-                            <property name="column_spacing">6</property>
                             <property name="row_spacing">6</property>
+                            <property name="column_spacing">6</property>
                             <child>
                               <object class="GtkLabel" id="label395">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="valign">center</property>
                                 <property name="label" translatable="yes">_Type:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">input-type</property>
-                                <property name="xalign">1</property>
                               </object>
                               <packing>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options"/>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                             <child>
@@ -577,9 +580,7 @@
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options">GTK_FILL</property>
+                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                           </object>
@@ -622,12 +623,11 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkTable" id="table2">
+                          <object class="GtkGrid" id="table2">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="n_columns">2</property>
-                            <property name="column_spacing">6</property>
                             <property name="row_spacing">6</property>
+                            <property name="column_spacing">6</property>
                             <child>
                               <object class="GtkComboBox" id="sound-model">
                                 <property name="visible">True</property>
@@ -635,23 +635,22 @@
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options">GTK_FILL</property>
+                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                             <child>
                               <object class="GtkLabel" id="label10">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">end</property>
+                                <property name="valign">center</property>
                                 <property name="label" translatable="yes">_Model:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">sound-model</property>
-                                <property name="xalign">1</property>
                               </object>
                               <packing>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options"/>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                           </object>
@@ -671,25 +670,25 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkTable" id="table3">
+                          <object class="GtkGrid" id="table3">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="n_rows">2</property>
-                            <property name="column_spacing">6</property>
                             <property name="row_spacing">6</property>
+                            <property name="column_spacing">6</property>
                             <child>
                               <object class="GtkLabel" id="label20">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
-                                <property name="xpad">1</property>
+                                <property name="halign">start</property>
+                                <property name="margin_start">1</property>
+                                <property name="margin_end">1</property>
                                 <property name="label" translatable="yes">Host _Device:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">host-device</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options">GTK_FILL</property>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                             <child>
@@ -697,6 +696,8 @@
                                 <property name="width_request">500</property>
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
+                                <property name="hexpand">True</property>
+                                <property name="vexpand">True</property>
                                 <property name="shadow_type">etched-in</property>
                                 <child>
                                   <object class="GtkTreeView" id="host-device">
@@ -710,8 +711,8 @@
                                 </child>
                               </object>
                               <packing>
+                                <property name="left_attach">0</property>
                                 <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
                               </packing>
                             </child>
                           </object>
@@ -751,7 +752,6 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="xalign">0.5</property>
                                 <property name="draw_indicator">True</property>
                               </object>
                               <packing>
@@ -771,7 +771,7 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkHBox" id="hbox4">
+                              <object class="GtkBox" id="hbox4">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="spacing">6</property>
@@ -790,10 +790,10 @@
                                   <object class="GtkLabel" id="char-port-label">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">_Port:</property>
                                     <property name="use_underline">True</property>
                                     <property name="mnemonic_widget">char-port</property>
-                                    <property name="xalign">0</property>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -820,7 +820,7 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkHBox" id="hbox10">
+                              <object class="GtkBox" id="hbox10">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="spacing">6</property>
@@ -839,10 +839,10 @@
                                   <object class="GtkLabel" id="char-bind-port-label">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">Po_rt:</property>
                                     <property name="use_underline">True</property>
                                     <property name="mnemonic_widget">char-bind-port</property>
-                                    <property name="xalign">0</property>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -872,10 +872,10 @@
                               <object class="GtkLabel" id="char-path-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Path:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">char-path</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -886,10 +886,10 @@
                               <object class="GtkLabel" id="char-mode-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Mode:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">char-mode</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -900,10 +900,10 @@
                               <object class="GtkLabel" id="char-host-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">H_ost:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">char-host</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -914,10 +914,10 @@
                               <object class="GtkLabel" id="char-bind-host-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Bind Host:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">char-mode</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -928,10 +928,10 @@
                               <object class="GtkLabel" id="char-use-telnet-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">Use Te_lnet:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">char-use-telnet</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -942,10 +942,10 @@
                               <object class="GtkLabel" id="label9">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">Device _Type:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">char-device-type</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -968,10 +968,10 @@
                               <object class="GtkLabel" id="char-target-type-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">T_ype:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">char-target-type</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -993,10 +993,10 @@
                               <object class="GtkLabel" id="char-target-name-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Name:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">combobox-entry</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1040,7 +1040,7 @@
                                 <property name="visible">True</property>
                                 <property name="can_focus">True</property>
                                 <property name="receives_default">False</property>
-                                <property name="xalign">0</property>
+                                <property name="halign">start</property>
                                 <property name="draw_indicator">True</property>
                                 <signal name="toggled" handler="on_char_auto_socket_toggled" swapped="no"/>
                               </object>
@@ -1053,10 +1053,10 @@
                               <object class="GtkLabel" id="char-channel-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Channel:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">char-channel</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1090,12 +1090,11 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkTable" id="table5">
+                          <object class="GtkGrid" id="table5">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="n_columns">2</property>
-                            <property name="column_spacing">6</property>
                             <property name="row_spacing">6</property>
+                            <property name="column_spacing">6</property>
                             <child>
                               <object class="GtkComboBox" id="video-model">
                                 <property name="visible">True</property>
@@ -1103,23 +1102,21 @@
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options">GTK_FILL</property>
+                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                             <child>
                               <object class="GtkLabel" id="label23">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Model:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">video-model</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options">GTK_FILL</property>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                           </object>
@@ -1139,13 +1136,11 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkTable" id="table6">
+                          <object class="GtkGrid" id="table6">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="n_rows">2</property>
-                            <property name="n_columns">2</property>
-                            <property name="column_spacing">6</property>
                             <property name="row_spacing">6</property>
+                            <property name="column_spacing">6</property>
                             <child>
                               <object class="GtkComboBox" id="watchdog-model">
                                 <property name="visible">True</property>
@@ -1153,23 +1148,21 @@
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options">GTK_FILL</property>
+                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                             <child>
                               <object class="GtkLabel" id="label26">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Model:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">watchdog-model</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options">GTK_FILL</property>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                             <child>
@@ -1181,10 +1174,8 @@
                                 <property name="mnemonic_widget">watchdog-action</property>
                               </object>
                               <packing>
+                                <property name="left_attach">0</property>
                                 <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options">GTK_FILL</property>
                               </packing>
                             </child>
                             <child>
@@ -1194,11 +1185,7 @@
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
                                 <property name="top_attach">1</property>
-                                <property name="bottom_attach">2</property>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options">GTK_FILL</property>
                               </packing>
                             </child>
                           </object>
@@ -1242,12 +1229,11 @@
                           </packing>
                         </child>
                         <child>
-                          <object class="GtkTable" id="table10">
+                          <object class="GtkGrid" id="table10">
                             <property name="visible">True</property>
                             <property name="can_focus">False</property>
-                            <property name="n_columns">2</property>
-                            <property name="column_spacing">6</property>
                             <property name="row_spacing">6</property>
+                            <property name="column_spacing">6</property>
                             <child>
                               <object class="GtkComboBox" id="smartcard-mode">
                                 <property name="visible">True</property>
@@ -1255,23 +1241,22 @@
                               </object>
                               <packing>
                                 <property name="left_attach">1</property>
-                                <property name="right_attach">2</property>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options">GTK_FILL</property>
+                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                             <child>
                               <object class="GtkLabel" id="label30">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">end</property>
+                                <property name="valign">center</property>
                                 <property name="label" translatable="yes">_Mode:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">smartcard-mode</property>
-                                <property name="xalign">1</property>
                               </object>
                               <packing>
-                                <property name="x_options">GTK_FILL</property>
-                                <property name="y_options"/>
+                                <property name="left_attach">0</property>
+                                <property name="top_attach">0</property>
                               </packing>
                             </child>
                           </object>
@@ -1297,7 +1282,7 @@
                             <property name="row_spacing">6</property>
                             <property name="column_spacing">12</property>
                             <child>
-                              <object class="GtkHBox" id="usbredir-host-box">
+                              <object class="GtkBox" id="usbredir-host-box">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="spacing">6</property>
@@ -1317,10 +1302,10 @@
                                   <object class="GtkLabel" id="label439">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">_Port:</property>
                                     <property name="use_underline">True</property>
                                     <property name="mnemonic_widget">usbredir-service</property>
-                                    <property name="xalign">0</property>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -1351,10 +1336,10 @@
                               <object class="GtkLabel" id="label3213">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">end</property>
                                 <property name="label" translatable="yes">_Type:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">usbredir-list</property>
-                                <property name="xalign">1</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1365,10 +1350,10 @@
                               <object class="GtkLabel" id="label438">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">end</property>
                                 <property name="label" translatable="yes">_Host:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">usbredir-host</property>
-                                <property name="xalign">1</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1425,10 +1410,10 @@
                               <object class="GtkLabel" id="tpm-device-path-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">Device _Path:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">tpm-device-path</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1450,10 +1435,10 @@
                               <object class="GtkLabel" id="label35">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">end</property>
                                 <property name="label" translatable="yes">_Backend:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">tpm-type</property>
-                                <property name="xalign">1</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1486,10 +1471,10 @@
                               <object class="GtkLabel" id="label4">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Type:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">rng-type</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1511,10 +1496,10 @@
                               <object class="GtkLabel" id="label8">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Backend Type:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">rng-backend-type</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1536,10 +1521,10 @@
                               <object class="GtkLabel" id="label12">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">Backend _Mode:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">rng-backend-mode</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1561,10 +1546,10 @@
                               <object class="GtkLabel" id="label17">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Host:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">rng-connect-host</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1572,7 +1557,7 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkHBox" id="rng-connect-host-box">
+                              <object class="GtkBox" id="rng-connect-host-box">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="spacing">6</property>
@@ -1592,10 +1577,10 @@
                                   <object class="GtkLabel" id="char-port-label1">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">_Port:</property>
                                     <property name="use_underline">True</property>
                                     <property name="mnemonic_widget">rng-connect-service</property>
-                                    <property name="xalign">0</property>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -1626,10 +1611,10 @@
                               <object class="GtkLabel" id="rng-bind-host-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">B_ind Host:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">rng-bind-host</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1637,7 +1622,7 @@
                               </packing>
                             </child>
                             <child>
-                              <object class="GtkHBox" id="rng-bind-host-box">
+                              <object class="GtkBox" id="rng-bind-host-box">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
                                 <property name="spacing">6</property>
@@ -1657,10 +1642,10 @@
                                   <object class="GtkLabel" id="char-port-label2">
                                     <property name="visible">True</property>
                                     <property name="can_focus">False</property>
+                                    <property name="halign">start</property>
                                     <property name="label" translatable="yes">P_ort:</property>
                                     <property name="use_underline">True</property>
                                     <property name="mnemonic_widget">rng-bind-service</property>
-                                    <property name="xalign">0</property>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -1691,10 +1676,10 @@
                               <object class="GtkLabel" id="label5">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_Device:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">rng-device</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1738,10 +1723,10 @@
                               <object class="GtkLabel" id="panic-type-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">Address _Type:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">panic-type</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1762,10 +1747,10 @@
                               <object class="GtkLabel" id="panic-iobase-label">
                                 <property name="visible">True</property>
                                 <property name="can_focus">False</property>
+                                <property name="halign">start</property>
                                 <property name="label" translatable="yes">_IO Base:</property>
                                 <property name="use_underline">True</property>
                                 <property name="mnemonic_widget">panic-iobase</property>
-                                <property name="xalign">0</property>
                               </object>
                               <packing>
                                 <property name="left_attach">0</property>
@@ -1823,7 +1808,7 @@
           </packing>
         </child>
         <child>
-          <object class="GtkHButtonBox" id="hbuttonbox1">
+          <object class="GtkButtonBox" id="hbuttonbox1">
             <property name="visible">True</property>
             <property name="can_focus">False</property>
             <property name="spacing">12</property>
