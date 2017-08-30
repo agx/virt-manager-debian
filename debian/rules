@@ -7,6 +7,9 @@ override_dh_python2:
 	dh_python2 -O--buildsystem=python_distutils
 	dh_python2 -p virtinst usr/share/virt-manager
 
+override_dh_auto_test:
+	python setup.py test
+
 override_dh_auto_install:
 	python setup.py --no-update-icon-cache --no-compile-schemas install --force --root=debian/tmp --no-compile -O0
 	dh_install debian/10_virt-manager.gschema.override \

@@ -14,6 +14,17 @@ Build-Depends:
  intltool,
  libglib2.0-bin,
  python-all,
+# for the tests
+ cpio,
+ gir1.2-libosinfo-1.0,
+ gir1.2-libvirt-glib-1.0,
+ libvirt-daemon,
+ python-gi,
+ python-ipaddr,
+ python-libvirt,
+ python-libxml2,
+ python-requests,
+ unzip,
 
 Package: virt-manager
 Architecture: all
