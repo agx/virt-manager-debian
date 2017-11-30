@@ -1,13 +1,15 @@
-virt-manager (1:1.4.3-1~1.gbpf59c23) UNRELEASED; urgency=medium
-
-  ** SNAPSHOT build @f59c23ff564dac7406d51c7ca70c9923f03f13ea **
+virt-manager (1:1.4.3-1) unstable; urgency=medium
 
   * Depend on gir1.2-spiceclientglib-2.0 (Closes: #873597)
   * Update homepage URL (Closes: #874036)
   * README.Debian: fix libvirt reference (Closes: #877868)
   * New upstream version 1.4.3
+  * Drop patches c-p'ed from upstream
+    virtinst-adjust-media-paths-for-s390x.patch
+    Drop virtinst-connection-Fix-error-caching-new-pool.patch
+  * Bump standards version
 
- -- Guido Günther <agx@sigxcpu.org>  Thu, 30 Nov 2017 09:44:07 +0100
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 30 Nov 2017 14:00:19 +0100
 
 virt-manager (1:1.4.2-1) unstable; urgency=medium
 
