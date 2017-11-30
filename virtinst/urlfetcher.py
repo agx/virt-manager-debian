@@ -224,6 +224,8 @@ class _FTPURLFetcher(_URLFetcher):
             self._ftp = ftplib.FTP()
             self._ftp.connect(parsed.hostname, parsed.port)
             self._ftp.login()
+            # Force binary mode
+            self._ftp.voidcmd("TYPE I")
         except Exception as e:
             raise ValueError(_("Opening URL %s failed: %s.") %
                               (self.location, str(e)))
@@ -593,7 +595,7 @@ class Distro(object):
         if not kernelpath or not initrdpath:
             raise RuntimeError(_("Couldn't find %(type)s kernel for "
                                  "%(distro)s tree.") %
-                                 {"distro": self.name, "type" : self.type})
+                                 {"distro": self.name, "type": self.type})
 
         return self._kernelFetchHelper(guest, kernelpath, initrdpath)
 
@@ -679,17 +681,17 @@ class GenericDistro(Distro):
 
     _xen_paths = [("images/xen/vmlinuz",
                     "images/xen/initrd.img"),           # Fedora
-                ]
+                  ]
     _hvm_paths = [("images/pxeboot/vmlinuz",
                     "images/pxeboot/initrd.img"),       # Fedora
                   ("ppc/ppc64/vmlinuz",
                     "ppc/ppc64/initrd.img"),            # CenOS 7 ppc64le
-                ]
+                  ]
     _iso_paths = ["images/boot.iso",                   # RH/Fedora
                    "boot/boot.iso",                     # Suse
                    "current/images/netboot/mini.iso",   # Debian
                    "install/images/boot.iso",           # Mandriva
-                ]
+                  ]
 
     # Holds values to use when actually pulling down media
     _valid_kernel_path = None
@@ -1090,10 +1092,9 @@ class DebianDistro(Distro):
     def __init__(self, *args, **kwargs):
         Distro.__init__(self, *args, **kwargs)
 
+        self._url_prefix = ""
         self._treeArch = self._find_treearch()
-        self._url_prefix = 'current/images'
         self._installer_dirname = self.name.lower() + "-installer"
-        self._set_media_paths()
 
     def _find_treearch(self):
         for pattern in ["^.*/installer-(\w+)/?$",
@@ -1129,31 +1130,91 @@ class DebianDistro(Distro):
         kernel_basename = "linux"
         if self._treeArch in ["ppc64el"]:
             kernel_basename = "vmlinux"
+
+        if self._treeArch == "s390x":
+            hvmroot = "%s/generic/" % self._url_prefix
+            kernel_basename = "kernel.%s" % self.name.lower()
+            initrd_basename = "initrd.%s" % self.name.lower()
+
         self._hvm_kernel_paths = [
             (hvmroot + kernel_basename, hvmroot + initrd_basename)]
 
         xenroot = "%s/netboot/xen/" % self._url_prefix
         self._xen_kernel_paths = [(xenroot + "vmlinuz", xenroot + "initrd.gz")]
 
-    def isValidStore(self):
-        if self.fetcher.hasFile("%s/MANIFEST" % self._url_prefix):
-            # For regular trees
-            pass
-        elif self.fetcher.hasFile("daily/MANIFEST"):
-            # For daily trees
-            self._url_prefix = "daily"
-            self._set_media_paths()
-        else:
+    def _check_manifest(self, filename):
+        if not self.fetcher.hasFile(filename):
             return False
 
-        filename = "%s/MANIFEST" % self._url_prefix
-        regex = ".*%s.*" % self._installer_dirname
+        if self.arch == "s390x":
+            regex = ".*generic/kernel\.%s.*" % self.name.lower()
+        else:
+            regex = ".*%s.*" % self._installer_dirname
+
         if not self._fetchAndMatchRegex(filename, regex):
             logging.debug("Regex didn't match, not a %s distro", self.name)
             return False
 
-        self.os_variant = self._detect_debian_osdict_from_url()
         return True
+
+    def _check_info(self, filename):
+        if not self.fetcher.hasFile(filename):
+            return False
+
+        regex = "%s.*" % self.name
+
+        if not self._fetchAndMatchRegex(filename, regex):
+            logging.debug("Regex didn't match, not a %s distro", self.name)
+            return False
+
+        return True
+
+    def _is_regular_tree(self):
+        # For regular trees
+        if not self._check_manifest("current/images/MANIFEST"):
+            return False
+
+        self._url_prefix = "current/images"
+        self._set_media_paths()
+        self.os_variant = self._detect_debian_osdict_from_url()
+
+        return True
+
+    def _is_daily_tree(self):
+        # For daily trees
+        if not self._check_manifest("daily/MANIFEST"):
+            return False
+
+        self._url_prefix = "daily"
+        self._set_media_paths()
+        self.os_variant = self._detect_debian_osdict_from_url()
+
+        return True
+
+    def _is_install_cd(self):
+        # For install CDs
+        if not self._check_info(".disk/info"):
+            return False
+
+        if self.arch == "x86_64":
+            kernel_initrd_pair = ("install.amd/vmlinuz", "install.amd/initrd.gz")
+        elif self.arch == "i686":
+            kernel_initrd_pair = ("install.386/vmlinuz", "install.386/initrd.gz")
+        elif self.arch == "s390x":
+            kernel_initrd_pair = ("boot/linux_vm", "boot/root.bin")
+        else:
+            kernel_initrd_pair = ("install/vmlinuz", "install/initrd.gz")
+        self._hvm_kernel_paths += [kernel_initrd_pair]
+        self._xen_kernel_paths += [kernel_initrd_pair]
+
+        return True
+
+    def isValidStore(self):
+        return any(check() for check in [
+            self._is_regular_tree,
+            self._is_daily_tree,
+            self._is_install_cd,
+            ])
 
 
     ################################
@@ -1192,31 +1253,32 @@ class UbuntuDistro(DebianDistro):
     name = "Ubuntu"
     urldistro = "ubuntu"
 
-    def isValidStore(self):
-        if self.fetcher.hasFile("%s/MANIFEST" % self._url_prefix):
-            # For regular trees
-            filename = "%s/MANIFEST" % self._url_prefix
-            regex = ".*%s.*" % self._installer_dirname
-        elif self.fetcher.hasFile("install/netboot/version.info"):
-            # For trees based on ISO's
-            self._url_prefix = "install"
-            self._set_media_paths()
-            filename = "%s/netboot/version.info" % self._url_prefix
-            regex = "%s*" % self.name
-        elif self.fetcher.hasFile(".disk/info") and self.arch == "s390x":
-            self._hvm_kernel_paths += [("boot/kernel.ubuntu", "boot/initrd.ubuntu")]
-            self._xen_kernel_paths += [("boot/kernel.ubuntu", "boot/initrd.ubuntu")]
-            filename = ".disk/info"
-            regex = "%s*" % self.name
-        else:
+    def _is_tree_iso(self):
+        # For trees based on ISO's
+        if not self._check_info("install/netboot/version.info"):
             return False
 
-        if not self._fetchAndMatchRegex(filename, regex):
-            logging.debug("Regex didn't match, not a %s distro", self.name)
-            return False
-
+        self._url_prefix = "install"
+        self._set_media_paths()
         self.os_variant = self._detect_debian_osdict_from_url()
+
         return True
+
+    def _is_install_cd(self):
+        # For install CDs
+        if not self._check_info(".disk/info"):
+            return False
+
+        if not self.arch == "s390x":
+            kernel_initrd_pair = ("linux", "initrd.gz")
+        else:
+            kernel_initrd_pair = ("boot/kernel.ubuntu", "boot/initrd.ubuntu")
+
+        self._hvm_kernel_paths += [kernel_initrd_pair]
+        self._xen_kernel_paths += [kernel_initrd_pair]
+
+        return True
+
 
 
 class MandrivaDistro(Distro):

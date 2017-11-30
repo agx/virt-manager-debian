@@ -1,3 +1,14 @@
+virt-manager (1:1.4.3-1~1.gbpf59c23) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @f59c23ff564dac7406d51c7ca70c9923f03f13ea **
+
+  * Depend on gir1.2-spiceclientglib-2.0 (Closes: #873597)
+  * Update homepage URL (Closes: #874036)
+  * README.Debian: fix libvirt reference (Closes: #877868)
+  * New upstream version 1.4.3
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 30 Nov 2017 09:44:07 +0100
+
 virt-manager (1:1.4.2-1) unstable; urgency=medium
 
   * [194c3e4] New upstream version 1.4.2

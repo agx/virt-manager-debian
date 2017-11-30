@@ -36,8 +36,6 @@ os.environ["LANG"] = "en_US.UTF-8"
 os.environ["HOME"] = "/tmp"
 os.environ["DISPLAY"] = ":3.4"
 
-_defaultconn = utils.open_testdefault()
-
 # Location
 image_prefix = "/tmp/__virtinst_cli_"
 xmldir = "tests/cli-test-xml"
@@ -75,43 +73,43 @@ test_files = {
     'URI-KVM-SESSION': utils.uri_kvm_session,
     'URI-KVM-REMOTE': utils.uri_kvm + ",remote",
     'URI-KVM-NODOMCAPS': utils.uri_kvm_nodomcaps,
-    'URI-KVM-ARMV7L' : utils.uri_kvm_armv7l,
-    'URI-KVM-AARCH64' : utils.uri_kvm_aarch64,
-    'URI-KVM-PPC64LE' : utils.uri_kvm_ppc64le,
-    'URI-KVM-S390X' : utils.uri_kvm_s390x,
-    'URI-KVM-S390X-KVMIBM' : utils.uri_kvm_s390x_KVMIBM,
+    'URI-KVM-ARMV7L': utils.uri_kvm_armv7l,
+    'URI-KVM-AARCH64': utils.uri_kvm_aarch64,
+    'URI-KVM-PPC64LE': utils.uri_kvm_ppc64le,
+    'URI-KVM-S390X': utils.uri_kvm_s390x,
+    'URI-KVM-S390X-KVMIBM': utils.uri_kvm_s390x_KVMIBM,
     'URI-XEN': utils.uri_xen,
     'URI-LXC': utils.uri_lxc,
     'URI-VZ': utils.uri_vz,
 
-    'CLONE_DISK_XML'    : "%s/clone-disk.xml" % xmldir,
-    'CLONE_STORAGE_XML' : "%s/clone-disk-managed.xml" % xmldir,
-    'CLONE_NOEXIST_XML' : "%s/clone-disk-noexist.xml" % xmldir,
-    'IMAGE_XML'         : "%s/image.xml" % xmldir,
-    'IMAGE_NOGFX_XML'   : "%s/image-nogfx.xml" % xmldir,
-    'OVF_IMG1'           : "%s/tests/virtconv-files/ovf_input/test1.ovf" % os.getcwd(),
-    'VMX_IMG1'          : "%s/tests/virtconv-files/vmx_input/test1.vmx" % os.getcwd(),
+    'CLONE_DISK_XML':     "%s/clone-disk.xml" % xmldir,
+    'CLONE_STORAGE_XML':  "%s/clone-disk-managed.xml" % xmldir,
+    'CLONE_NOEXIST_XML':  "%s/clone-disk-noexist.xml" % xmldir,
+    'IMAGE_XML':          "%s/image.xml" % xmldir,
+    'IMAGE_NOGFX_XML':    "%s/image-nogfx.xml" % xmldir,
+    'OVF_IMG1':           "%s/tests/virtconv-files/ovf_input/test1.ovf" % os.getcwd(),
+    'VMX_IMG1':           "%s/tests/virtconv-files/vmx_input/test1.vmx" % os.getcwd(),
 
-    'NEWIMG1'           : "/dev/default-pool/new1.img",
-    'NEWIMG2'           : "/dev/default-pool/new2.img",
-    'NEWCLONEIMG1'      : new_images[0],
-    'NEWCLONEIMG2'      : new_images[1],
-    'NEWCLONEIMG3'      : new_images[2],
-    'AUTOMANAGEIMG'     : "/some/new/pool/dir/new",
-    'BLOCKVOL'          : '/iscsi-pool/diskvol1',
-    'EXISTIMG1'         : "/dev/default-pool/testvol1.img",
-    'EXISTIMG2'         : "/dev/default-pool/testvol2.img",
-    'EXISTIMG3'         : exist_images[0],
-    'EXISTIMG4'         : exist_images[1],
-    'EXISTUPPER'        : "/dev/default-pool/UPPER",
-    'POOL'              : "default-pool",
-    'VOL'               : "testvol1.img",
-    'DIR'               : "/var",
-    'TREEDIR'           : treedir,
-    'MANAGEDNEW1'       : "/dev/default-pool/clonevol",
-    'MANAGEDDISKNEW1'   : "/dev/disk-pool/newvol1.img",
-    'COLLIDE'           : "/dev/default-pool/collidevol1.img",
-    'SHARE'             : "/dev/default-pool/sharevol.img",
+    'NEWIMG1':            "/dev/default-pool/new1.img",
+    'NEWIMG2':            "/dev/default-pool/new2.img",
+    'NEWCLONEIMG1':       new_images[0],
+    'NEWCLONEIMG2':       new_images[1],
+    'NEWCLONEIMG3':       new_images[2],
+    'AUTOMANAGEIMG':      "/some/new/pool/dir/new",
+    'BLOCKVOL':           '/iscsi-pool/diskvol1',
+    'EXISTIMG1':          "/dev/default-pool/testvol1.img",
+    'EXISTIMG2':          "/dev/default-pool/testvol2.img",
+    'EXISTIMG3':          exist_images[0],
+    'EXISTIMG4':          exist_images[1],
+    'EXISTUPPER':         "/dev/default-pool/UPPER",
+    'POOL':               "default-pool",
+    'VOL':                "testvol1.img",
+    'DIR':                "/var",
+    'TREEDIR':            treedir,
+    'MANAGEDNEW1':        "/dev/default-pool/clonevol",
+    'MANAGEDDISKNEW1':    "/dev/disk-pool/newvol1.img",
+    'COLLIDE':            "/dev/default-pool/collidevol1.img",
+    'SHARE':              "/dev/default-pool/sharevol.img",
 }
 
 
@@ -238,9 +236,9 @@ class Command(object):
                 raise AssertionError(
                     ("Expected command to %s, but it didn't.\n" %
                      (self.check_success and "pass" or "fail")) +
-                     ("Command was: %s\n" % self.cmdstr) +
-                     ("Error code : %d\n" % code) +
-                     ("Output was:\n%s" % output))
+                    ("Command was: %s\n" % self.cmdstr) +
+                    ("Error code : %d\n" % code) +
+                    ("Output was:\n%s" % output))
 
             if self.compare_file:
                 if self._check_support(tests, conn, self.compare_check,
@@ -418,7 +416,7 @@ c.add_compare(""" \
 c.add_compare("""--pxe \
 --memory 512,maxmemory=1024 \
 --vcpus 4,cores=2,threads=2,sockets=2 \
---cpu foobar,+x2apic,+x2apicagain,-distest,forbid=foo,forbid=bar,disable=distest2,optional=opttest,require=reqtest,match=strict,vendor=meee,cell.id=0,cell.cpus=1,2,3,cell.memory=1024,cell1.id=1,cell1.memory=256,cell1.cpus=5-8 \
+--cpu foobar,+x2apic,+x2apicagain,-distest,forbid=foo,forbid=bar,disable=distest2,optional=opttest,require=reqtest,match=strict,vendor=meee,cell.id=0,cell.cpus=1,2,3,cell.memory=1024,cell1.id=1,cell1.memory=256,cell1.cpus=5-8,cache.mode=emulate,cache.level=3 \
 --metadata title=my-title,description=my-description,uuid=00000000-1111-2222-3333-444444444444 \
 --boot cdrom,fd,hd,network,menu=off,loader=/foo/bar \
 --idmap uid_start=0,uid_target=1000,uid_count=10,gid_start=0,gid_target=1000,gid_count=10 \
@@ -488,6 +486,9 @@ c.add_compare(""" \
 --graphics spice,gl=yes,listen=socket \
 --graphics spice,gl=yes,listen=none \
 --graphics spice,gl=yes,listen=none,rendernode=/dev/dri/foo \
+--graphics spice,listens0.type=address,listens0.address=1.2.3.4 \
+--graphics spice,listens0.type=network,listens0.network=default \
+--graphics spice,listens0.type=socket,listens0.socket=/tmp/foobar \
 \
 --controller usb,model=ich9-ehci1,address=0:0:4.7,index=0 \
 --controller usb,model=ich9-uhci1,address=0:0:4.0,index=0,master=0 \
@@ -625,6 +626,7 @@ c.add_valid("--disk /dev/zero")  # Referencing a local unmanaged /dev node
 c.add_valid("--disk pool=default,size=.00001")  # Building 'default' pool
 c.add_valid("--disk %(AUTOMANAGEIMG)s,size=.1")  # autocreate the pool
 c.add_valid("--disk %(NEWIMG1)s,sparse=true,size=100000000 --check disk_size=off")  # Don't warn about fully allocated file exceeding disk space
+c.add_valid("--disk %(EXISTIMG1)s,snapshot_policy=no")  # Disable snasphot for disk
 c.add_invalid("--file %(NEWIMG1)s --file-size 100000 --nonsparse")  # Nonexisting file, size too big
 c.add_invalid("--file %(NEWIMG1)s --file-size 100000")  # Huge file, sparse, but no prompting
 c.add_invalid("--file %(NEWIMG1)s")  # Nonexisting file, no size
@@ -646,6 +648,21 @@ c.add_invalid("--disk source_pool=rbd-ceph,source_volume=vol1")  # Collision wit
 c.add_invalid("--disk source_pool=default-pool,source_volume=idontexist")  # trying to lookup non-existent volume, hit specific error code
 c.add_invalid("--disk size=1 --security model=foo,type=bar")  # Libvirt will error on the invalid security params, which should trigger the code path to clean up the disk images we created.
 
+
+################
+# Panic device #
+################
+
+c = vinst.add_category("panic", "--connect %(URI-KVM)s --noautoconsole --import --disk none --graphics none --controller usb,model=none --network none")
+c.add_compare("--panic default", "panic-default")
+c.add_compare("--panic isa", "panic-isa")
+c.add_compare("--panic isa,iobase=0x505", "panic-isa-iobase")
+
+c = vinst.add_category("panic", "--connect %(URI-KVM-PPC64LE)s --noautoconsole --import --disk none --graphics none --controller usb,model=none --network none")
+c.add_compare("--panic default", "panic-pseries-default")
+
+c = vinst.add_category("panic", "--connect %(URI-KVM-S390X)s --noautoconsole --import --disk none --graphics none --controller usb,model=none --network none")
+c.add_compare("--panic default", "panic-s390x-default")
 
 
 ################################################
@@ -840,6 +857,7 @@ c.add_valid("--bridge mybr0 --mac 22:22:33:44:55:AF")  # Old bridge w/ mac
 c.add_valid("--network bridge:mybr0,model=e1000")  # --network bridge:
 c.add_valid("--network network:default --mac RANDOM")  # VirtualNetwork with a random macaddr
 c.add_valid("--vnc --keymap=local")  # --keymap local
+c.add_valid("--panic 0x505")  # ISA panic with iobase specified
 c.add_invalid("--nonetworks")  # no networks
 c.add_invalid("--graphics vnc --vnclisten 1.2.3.4")  # mixing old and new
 c.add_invalid("--network=FOO")  # Nonexistent network

@@ -247,6 +247,10 @@ Example of specifying two NUMA cells. This will generate XML like:
     </numa>
   </cpu>
 
+=item B<--cpu host-passthrough,cache.mode=passthrough>
+
+Example of passing through the host cpu's cache information.
+
 =back
 
 Use --cpu=? to see a list of all available sub options. Complete details at L<http://libvirt.org/formatdomain.html#elementsCPU>
@@ -721,6 +725,12 @@ WD-WMAP9A966149
 
 It defines what to do with the disk if the source file is not accessible.  See
 possible values in L<http://www.libvirt.org/formatdomain.html#elementsDisks>
+
+=item B<snapshot_policy>
+
+Defines default behavior of the disk during disk snapshots.  See possible
+values in L<http://www.libvirt.org/formatdomain.html#elementsDisks>,
+"snapshot" attribute of the <disk> element.
 
 =back
 
@@ -1589,7 +1599,7 @@ Use --rng=? to see a list of all available sub options. Complete details at L<ht
 
 =back
 
-=item B<--panic> OPTS
+=item B<--panic> MODEL[,OPTS]
 
 Attach a panic notifier device to the guest. For the recommended settings, use:
 

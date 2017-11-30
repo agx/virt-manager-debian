@@ -43,23 +43,22 @@ from .baseclass import vmmGObjectUI
 from .addstorage import vmmAddStorage
 
 (PAGE_ERROR,
-PAGE_DISK,
-PAGE_CONTROLLER,
-PAGE_NETWORK,
-PAGE_INPUT,
-PAGE_GRAPHICS,
-PAGE_SOUND,
-PAGE_HOSTDEV,
-PAGE_CHAR,
-PAGE_VIDEO,
-PAGE_WATCHDOG,
-PAGE_FILESYSTEM,
-PAGE_SMARTCARD,
-PAGE_USBREDIR,
-PAGE_TPM,
-PAGE_RNG,
-PAGE_PANIC,
-) = range(0, 17)
+ PAGE_DISK,
+ PAGE_CONTROLLER,
+ PAGE_NETWORK,
+ PAGE_INPUT,
+ PAGE_GRAPHICS,
+ PAGE_SOUND,
+ PAGE_HOSTDEV,
+ PAGE_CHAR,
+ PAGE_VIDEO,
+ PAGE_WATCHDOG,
+ PAGE_FILESYSTEM,
+ PAGE_SMARTCARD,
+ PAGE_USBREDIR,
+ PAGE_TPM,
+ PAGE_RNG,
+ PAGE_PANIC) = range(0, 17)
 
 
 class vmmAddHardware(vmmGObjectUI):
@@ -93,14 +92,14 @@ class vmmAddHardware(vmmGObjectUI):
         self.addstorage.connect("browse-clicked", self._browse_storage_cb)
 
         self.builder.connect_signals({
-            "on_create_cancel_clicked" : self.close,
-            "on_vmm_create_delete_event" : self.close,
-            "on_create_finish_clicked" : self._finish,
+            "on_create_cancel_clicked": self.close,
+            "on_vmm_create_delete_event": self.close,
+            "on_create_finish_clicked": self._finish,
             "on_hw_list_changed": self._hw_selected,
 
             "on_storage_devtype_changed": self._change_storage_devtype,
 
-            "on_mac_address_clicked" : self._change_macaddr_use,
+            "on_mac_address_clicked": self._change_macaddr_use,
 
             "on_char_device_type_changed": self._change_char_device_type,
             "on_char_target_name_changed": self._change_char_target_name,
@@ -317,8 +316,8 @@ class vmmAddHardware(vmmGObjectUI):
         self._build_rng_backend_mode_combo(combo)
 
         # Panic widgets
-        combo = self.widget("panic-type")
-        self._build_panic_address_type(combo)
+        combo = self.widget("panic-model")
+        self._build_panic_models(combo)
 
         # Controller widgets
         combo = self.widget("controller-type")
@@ -476,9 +475,6 @@ class vmmAddHardware(vmmGObjectUI):
 
         for i in ["rng-bind-service", "rng-connect-service"]:
             self.widget(i).set_text("708")
-
-        # Panic device params
-        self.widget("panic-iobase").set_text("0x505")
 
         # Controller device params
         self._populate_controller_type()
@@ -979,13 +975,14 @@ class vmmAddHardware(vmmGObjectUI):
         self._build_combo_with_values(combo, types, default)
 
 
-    def _build_panic_address_type(self, combo):
-        types = []
-        for t in virtinst.VirtualPanicDevice.TYPES:
-            types.append([t, virtinst.VirtualPanicDevice.get_pretty_type(t)])
+    def _build_panic_models(self, combo):
+        models = []
+        for m in virtinst.VirtualPanicDevice.get_models(self.vm.get_xmlobj().os):
+            models.append([m, virtinst.VirtualPanicDevice.get_pretty_model(m)])
 
-        self._build_combo_with_values(combo, types,
-                virtinst.VirtualPanicDevice.ADDRESS_TYPE_ISA)
+        self._build_combo_with_values(combo, models,
+                virtinst.VirtualPanicDevice.get_default_model(
+                        self.vm.get_xmlobj().os))
 
 
     #########################
@@ -1159,7 +1156,7 @@ class vmmAddHardware(vmmGObjectUI):
             return
 
         tpm_widget_mappings = {
-            "device_path" : "tpm-device-path",
+            "device_path": "tpm-device-path",
         }
 
         self._dev = VirtualTPMDevice(self.conn.get_backend())
@@ -1202,12 +1199,12 @@ class vmmAddHardware(vmmGObjectUI):
             return
 
         char_widget_mappings = {
-            "source_path" : "char-path",
-            "source_channel" : "char-channel",
-            "source_mode" : "char-mode",
-            "source_host" : "char-host",
-            "bind_host" : "char-bind-host",
-            "protocol"  : "char-use-telnet",
+            "source_path": "char-path",
+            "source_channel": "char-channel",
+            "source_mode": "char-mode",
+            "source_host": "char-host",
+            "bind_host": "char-bind-host",
+            "protocol": "char-use-telnet",
         }
 
         char_class = self._get_char_class()
@@ -1653,11 +1650,11 @@ class vmmAddHardware(vmmGObjectUI):
             source_host = source_port = source_mode = None
 
         value_mappings = {
-            "source_path" : source_path,
-            "source_channel" : source_channel,
-            "source_mode" : source_mode,
-            "source_host" : source_host,
-            "source_port" : source_port,
+            "source_path": source_path,
+            "source_channel": source_channel,
+            "source_mode": source_mode,
+            "source_host": source_host,
+            "source_port": source_port,
             "bind_port": bind_port,
             "bind_host": bind_host,
             "protocol": protocol,
@@ -1743,7 +1740,7 @@ class vmmAddHardware(vmmGObjectUI):
         device_path = self.widget("tpm-device-path").get_text()
 
         value_mappings = {
-            "device_path" : device_path,
+            "device_path": device_path,
         }
 
         try:
@@ -1758,18 +1755,11 @@ class vmmAddHardware(vmmGObjectUI):
     def _validate_page_panic(self):
         conn = self.conn.get_backend()
 
-        iobase = self.widget("panic-iobase").get_text()
-
-        value_mappings = {
-            "iobase" : iobase,
-        }
+        model = uiutil.get_list_selection(self.widget("panic-model"))
 
         try:
             self._dev = VirtualPanicDevice(conn)
-            if not iobase:
-                iobase = self._dev.IOBASE_DEFAULT
-            for param_name, val in value_mappings.items():
-                setattr(self._dev, param_name, val)
+            self._dev.model = model
         except Exception as e:
             return self.err.val_err(_("Panic device parameter error"), e)
 
@@ -1848,13 +1838,13 @@ class vmmAddHardware(vmmGObjectUI):
                                      _("The EGD service must be specified."))
 
         value_mappings = {
-            "backend_type" : backend_type,
-            "backend_source_mode" : backend_mode,
-            "connect_host" : connect_host,
-            "connect_service" : connect_service,
-            "bind_host" : bind_host,
-            "bind_service" : bind_service,
-            "device" : device,
+            "backend_type": backend_type,
+            "backend_source_mode": backend_mode,
+            "connect_host": connect_host,
+            "connect_service": connect_service,
+            "bind_host": bind_host,
+            "bind_service": bind_service,
+            "device": device,
         }
 
         try:

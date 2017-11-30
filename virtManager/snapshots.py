@@ -85,8 +85,8 @@ class vmmSnapshotPage(vmmGObjectUI):
             # 'Create' dialog
             "on_snapshot_new_delete_event": self._snapshot_new_close,
             "on_snapshot_new_ok_clicked": self._on_new_ok_clicked,
-            "on_snapshot_new_cancel_clicked" : self._snapshot_new_close,
-            "on_snapshot_new_name_changed" : self._snapshot_new_name_changed,
+            "on_snapshot_new_cancel_clicked": self._snapshot_new_close,
+            "on_snapshot_new_name_changed": self._snapshot_new_name_changed,
             "on_snapshot_new_name_activate": self._on_new_ok_clicked,
         })
 
@@ -472,7 +472,7 @@ class vmmSnapshotPage(vmmGObjectUI):
     def _validate_new_snapshot(self):
         name = self.widget("snapshot-new-name").get_text()
         desc = self.widget("snapshot-new-description"
-            ).get_buffer().get_property("text")
+                           ).get_buffer().get_property("text")
 
         try:
             newsnap = DomainSnapshot(self.vm.conn.get_backend())

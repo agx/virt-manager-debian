@@ -18,7 +18,6 @@
 import unittest
 import time
 import logging
-import platform
 import traceback
 
 from tests import URLTEST_LOCAL_MEDIA
@@ -58,7 +57,7 @@ UBUNTU_URL = "http://us.archive.ubuntu.com:80/ubuntu/dists/%s/main/installer-%s"
 
 OLD_DEBIAN_URL = "http://archive.debian.org/debian/dists/%s/main/installer-%s/"
 DAILY_DEBIAN_URL = "http://d-i.debian.org/daily-images/%s/"
-DEBIAN_URL = "ftp://ftp.us.debian.org/debian/dists/%s/main/installer-%s/"
+DEBIAN_URL = "http://ftp.us.debian.org/debian/dists/%s/main/installer-%s/"
 
 MAGEIA_URL = "http://distro.ibiblio.org/mageia/distrib/%s/%s"
 
@@ -68,15 +67,20 @@ _distro = None
 
 
 class _DistroURL(object):
-    def __init__(self, x86_64, detectdistro=None, i686=None,
+    def __init__(self, url, detectdistro=None,
                  hasxen=True, hasbootiso=True, name=None,
-                 testshortcircuit=False):
-        self.x86_64 = x86_64
-        self.i686 = i686
+                 testshortcircuit=False, arch="x86_64"):
+        self.url = url
+        self.arch = arch
         self.detectdistro = detectdistro
         self.hasxen = hasxen
         self.hasbootiso = hasbootiso
-        self.name = name or self.detectdistro
+        if name:
+            self.name = name
+        else:
+            self.name = self.detectdistro
+            if self.arch != "x86_64":
+                self.name += "-%s" % self.arch
         self.distroclass = _distro
 
         # If True, pass in the expected distro value to getDistroStore
@@ -94,7 +98,7 @@ def _add(*args, **kwargs):
     _d = _DistroURL(*args, **kwargs)
     if _d.name in urls:
         raise RuntimeError("distro=%s url=%s collides with entry in urls, "
-                           "set a unique name" % (_d.name, _d.x86_64))
+                           "set a unique name" % (_d.name, _d.url))
     urls[_d.name] = _d
 
 
@@ -105,14 +109,14 @@ def _add(*args, **kwargs):
 
 _set_distro(FedoraDistro)
 # One old Fedora
-_add(ARCHIVE_FEDORA_URL % ("14", "x86_64"), "fedora14",
-     i686=ARCHIVE_FEDORA_URL % ("14", "i386"))
+_add(ARCHIVE_FEDORA_URL % ("14", "x86_64"), "fedora14")
+_add(ARCHIVE_FEDORA_URL % ("14", "i386"), "fedora14", arch="i686")
 # 2 Latest releases
-_add(FEDORA_URL % ("24", "x86_64"), "fedora24", name="fedora24")
-_add(FEDORA_URL % ("25", "x86_64"), "fedora25", name="fedora25")
+_add(FEDORA_URL % ("24", "x86_64"), "fedora24")
+_add(FEDORA_URL % ("25", "x86_64"), "fedora25")
 # Any Dev release
 # _add(DEVFEDORA_URL % ("25", "x86_64"), "fedora23", name="fedora25")
-_add(DEVFEDORA_URL % ("rawhide", "x86_64"), "fedora25", name="fedora-rawhide")
+_add(DEVFEDORA_URL % ("rawhide", "x86_64"), "fedora26", name="fedora-rawhide")
 
 
 _set_distro(CentOSDistro)
@@ -122,11 +126,13 @@ _add(OLD_CENTOS_URL % ("4.9", "x86_64"), name="centos-4.9")
 # One old centos 5
 _add(OLD_CENTOS_URL % ("5.0", "x86_64"), name="centos-5.0")
 # Latest centos 5 w/ i686
-_add(OLD_CENTOS_URL % ("5.11", "x86_64"), "rhel5.11", name="centos-5.11",
-     i686=OLD_CENTOS_URL % ("5.11", "i386"))
+_add(OLD_CENTOS_URL % ("5.11", "x86_64"), "rhel5.11", name="centos-5.11")
+_add(OLD_CENTOS_URL % ("5.11", "i386"), "rhel5.11",
+     name="centos-5.11-i686", arch="i686")
 # Latest centos 6 w/ i686
-_add(CENTOS_URL % ("6", "x86_64"), "centos6.9", name="centos-6-latest",
-     i686=CENTOS_URL % ("6", "i386"))
+_add(CENTOS_URL % ("6", "x86_64"), "centos6.9", name="centos-6-latest")
+_add(CENTOS_URL % ("6", "i386"), "centos6.9",
+     name="centos-6-latest-i686", arch="1686")
 # Latest centos 7, but no i686 as of 2014-09-06
 _add(CENTOS_URL % ("7", "x86_64"), "centos7.0", name="centos-7-latest")
 # Centos 7 ppc64le
@@ -147,21 +153,26 @@ _add(OLD_OPENSUSE_URL % ("10.3"), "opensuse10.3", hasbootiso=False)
 # Latest 11 series
 _add(OLD_OPENSUSE_URL % ("11.4"), "opensuse11.4", hasbootiso=False)
 # Latest 12 series
-# Only keep i686 for the latest opensuse
 _add(OLD_OPENSUSE_URL % ("12.2"), "opensuse12.2",
-     i686=OPENSUSE_URL % ("12.2"), hasbootiso=False, testshortcircuit=True)
+     hasbootiso=False, testshortcircuit=True)
+_add(OLD_OPENSUSE_URL % ("12.2"), "opensuse12.2",
+     hasbootiso=False, testshortcircuit=True, arch="i686")
 # Latest 13.x releases
 _add(OPENSUSE_URL % ("13.1"), "opensuse13.1", hasbootiso=False)
-_add(OPENSUSE_URL % ("13.2"), "opensuse13.2", hasbootiso=False)
 # tumbleweed (rolling distro)
 _add(OPENSUSE_TUMBLEWEED, "opensusetumbleweed", hasbootiso=False)
 
 
 _set_distro(DebianDistro)
+# FTP test case (only one since ftp tends to be horribly slow)
+_add("ftp://ftp.nluug.nl/pub/os/Linux/distr/debian/dists/jessie/main/installer-amd64/", "debian8", name="debian8-ftp")
 # Debian releases rarely enough that we can just do every release since lenny
 _add(OLD_DEBIAN_URL % ("lenny", "amd64"), "debian5", hasxen=False,
      testshortcircuit=True)
 _add(DEBIAN_URL % ("wheezy", "amd64"), "debian7")
+_add(DEBIAN_URL % ("jessie", "amd64"), "debian8")
+_add(DEBIAN_URL % ("jessie", "s390x"), "debian8",
+     hasbootiso=False, hasxen=False, arch="s390x")
 # And daily builds, since we specially handle that URL
 _add(DAILY_DEBIAN_URL % ("amd64"), "debiantesting", name="debiandaily")
 _add(DAILY_DEBIAN_URL % ("arm64"), "debiantesting",
@@ -171,12 +182,13 @@ _add(DAILY_DEBIAN_URL % ("arm64"), "debiantesting",
 _set_distro(UbuntuDistro)
 # One old ubuntu
 _add(OLD_UBUNTU_URL % ("hardy", "amd64"), "ubuntu8.04",
-     i686=OLD_UBUNTU_URL % ("hardy", "i386"), hasxen=False,
-     testshortcircuit=True)
+     hasxen=False, testshortcircuit=True)
+_add(OLD_UBUNTU_URL % ("hardy", "i386"), "ubuntu8.04",
+     hasxen=False, testshortcircuit=True, arch="1686")
 # Latest LTS
 _add(UBUNTU_URL % ("precise", "amd64"), "ubuntu12.04")
 # Latest release
-_add(UBUNTU_URL % ("wily", "amd64"), "ubuntu15.10")
+_add(UBUNTU_URL % ("xenial", "amd64"), "ubuntu16.04")
 
 
 _set_distro(MandrivaDistro)
@@ -209,15 +221,16 @@ def _storeForDistro(fetcher, guest):
     raise  # pylint: disable=misplaced-bare-raise
 
 
-def _testURL(fetcher, distname, arch, distroobj):
+def _testURL(fetcher, distname, distroobj):
     """
     Test that our URL detection logic works for grabbing kernel, xen
     kernel, and boot.iso
     """
     import sys
-    sys.stdout.write("\nTesting %-25s " % ("%s-%s:" % (distname, arch)))
+    sys.stdout.write("\nTesting %-25s " % distname)
     sys.stdout.flush()
 
+    arch = distroobj.arch
     hvmguest.os.arch = arch
     xenguest.os.arch = arch
     if distroobj.testshortcircuit:
@@ -325,7 +338,6 @@ def _make_tests():
     if URLTEST_LOCAL_MEDIA:
         urls = {}
         newidx = 0
-        arch = platform.machine()
         for p in URLTEST_LOCAL_MEDIA:
             newidx += 1
 
@@ -338,13 +350,8 @@ def _make_tests():
     keys.sort()
     for key in keys:
         distroobj = urls[key]
-
-        for arch, url in [("i686", distroobj.i686),
-                          ("x86_64", distroobj.x86_64)]:
-            if not url:
-                continue
-            args = (key, arch, distroobj)
-            testfunc = _make_test_wrapper(url, args)
-            setattr(URLTests, "testURL%s%s" % (key, arch), testfunc)
+        args = (key, distroobj)
+        testfunc = _make_test_wrapper(distroobj.url, args)
+        setattr(URLTests, "testURL%s" % key, testfunc)
 
 _make_tests()
