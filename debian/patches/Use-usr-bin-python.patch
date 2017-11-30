@@ -14,7 +14,7 @@ so we don't have to worry about picking up the wrong version
  7 files changed, 7 insertions(+), 7 deletions(-)
 
 diff --git a/setup.py b/setup.py
-index 6f4b37b..73f6339 100755
+index 2a39921..7b7b72b 100755
 --- a/setup.py
 +++ b/setup.py
 @@ -1,4 +1,4 @@
@@ -54,7 +54,7 @@ index c42f2ef..81c25dc 100755
  # Copyright 2008, 2013, 2014  Red Hat, Inc.
  # Joey Boggs <jboggs@redhat.com>
 diff --git a/virt-install b/virt-install
-index 0c7f9fe..6044d47 100755
+index 4163d0f..bc32b0d 100755
 --- a/virt-install
 +++ b/virt-install
 @@ -1,4 +1,4 @@

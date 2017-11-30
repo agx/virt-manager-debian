@@ -36,10 +36,10 @@ index fbc4f4b..45e044e 100644
      <disk type="file" device="disk">
        <driver name="qemu" type="qcow2"/>
 diff --git a/virtinst/guest.py b/virtinst/guest.py
-index cb9c780..53fa206 100644
+index 4231719..4cb79cb 100644
 --- a/virtinst/guest.py
 +++ b/virtinst/guest.py
-@@ -365,7 +365,7 @@ class Guest(XMLBuilder):
+@@ -366,7 +366,7 @@ class Guest(XMLBuilder):
          if (not install and
              self.os.is_xenpv() and
              not self.os.kernel):
