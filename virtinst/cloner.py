@@ -282,7 +282,8 @@ class Cloner(object):
 
         if self.original_guest is not None and not self.original_xml:
             self.original_dom = self._lookup_vm(self.original_guest)
-            self.original_xml = self.original_dom.XMLDesc(0)
+            flags = libvirt.VIR_DOMAIN_XML_SECURE
+            self.original_xml = self.original_dom.XMLDesc(flags)
 
         logging.debug("Original XML:\n%s", self.original_xml)
 
@@ -404,8 +405,8 @@ class Cloner(object):
         if len(self.clone_disks) < len(self.original_disks):
             raise ValueError(_("More disks to clone than new paths specified. "
                                "(%(passed)d specified, %(need)d needed") %
-                               {"passed" : len(self.clone_disks),
-                                "need"   : len(self.original_disks)})
+                               {"passed": len(self.clone_disks),
+                                "need": len(self.original_disks)})
 
         logging.debug("Clone paths: %s", [d.path for d in self.clone_disks])
 

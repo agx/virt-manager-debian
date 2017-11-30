@@ -618,7 +618,8 @@ def vcpu_cli_options(grp, backcompat=True, editexample=False):
         extramsg = "--cpu host-model,clearxml=yes"
     grp.add_argument("--cpu",
         help=_("CPU model and features. Ex:\n"
-               "--cpu coreduo,+x2apic\n") + extramsg)
+               "--cpu coreduo,+x2apic\n"
+               "--cpu host-passthrough\n") + extramsg)
 
     if backcompat:
         grp.add_argument("--check-cpu", action="store_true",
@@ -1063,7 +1064,7 @@ class VirtCLIParser(object):
     @remove_first: List of parameters to peel off the front of the
         option string, and store in the optdict. So:
         remove_first=["char_type"] for --serial pty,foo=bar
-        maps to {"char_type", "pty", "foo" : "bar"}
+        maps to {"char_type", "pty", "foo": "bar"}
     @stub_none: If the parsed option string is just 'none', make it a no-op.
         This helps us be backwards compatible: for example, --rng none is
         a no-op, but one day we decide to add an rng device by default to
@@ -1467,6 +1468,18 @@ class ParserCPU(VirtCLIParser):
             else:
                 inst.add_feature(feature_name, policy)
 
+    def set_l3_cache_cb(self, inst, val, virtarg, can_edit):
+        cpu = inst
+
+        if can_edit:
+            cpu.set_l3_cache_mode()
+        try:
+            return cpu.cache[0]
+        except IndexError:
+            if not can_edit:
+                return None
+            raise
+
     def _parse(self, inst):
         # Convert +feature, -feature into expected format
         for key, value in self.optdict.items():
@@ -1507,6 +1520,10 @@ ParserCPU.add_arg("cpus", "cell[0-9]*.cpus", can_comma=True,
                   find_inst_cb=ParserCPU.cell_find_inst_cb)
 ParserCPU.add_arg("memory", "cell[0-9]*.memory",
                   find_inst_cb=ParserCPU.cell_find_inst_cb)
+
+# Options for CPU.cache
+ParserCPU.add_arg("mode", "cache.mode", find_inst_cb=ParserCPU.set_l3_cache_cb)
+ParserCPU.add_arg("level", "cache.level", find_inst_cb=ParserCPU.set_l3_cache_cb)
 
 
 ###################
@@ -2069,6 +2086,7 @@ ParserDisk.add_arg("source_host_transport", "source_host_transport")
 
 ParserDisk.add_arg("path", "path")
 ParserDisk.add_arg("device", "device")
+ParserDisk.add_arg("snapshot_policy", "snapshot_policy")
 ParserDisk.add_arg("bus", "bus")
 ParserDisk.add_arg("removable", "removable", is_onoff=True)
 ParserDisk.add_arg("driver_cache", "cache")
@@ -2233,6 +2251,22 @@ class ParserGraphics(VirtCLIParser):
         else:
             inst.listen = val
 
+    def listens_find_inst_cb(self, inst, val, virtarg, can_edit):
+        graphics = inst
+        num = 0
+        if re.search("\d+", virtarg.key):
+            num = int(re.search("\d+", virtarg.key).group())
+
+        if can_edit:
+            while len(graphics.listens) < (num + 1):
+                graphics.add_listen()
+        try:
+            return graphics.listens[num]
+        except IndexError:
+            if not can_edit:
+                return None
+            raise
+
     def _parse(self, inst):
         if self.optstr == "none":
             self.guest.skip_default_graphics = True
@@ -2261,6 +2295,14 @@ ParserGraphics.add_arg(None, "type", cb=ParserGraphics.set_type_cb)
 ParserGraphics.add_arg("port", "port")
 ParserGraphics.add_arg("tlsPort", "tlsport")
 ParserGraphics.add_arg("listen", "listen", cb=ParserGraphics.set_listen_cb)
+ParserGraphics.add_arg("type", "listens[0-9]*.type",
+                       find_inst_cb=ParserGraphics.listens_find_inst_cb)
+ParserGraphics.add_arg("address", "listens[0-9]*.address",
+                       find_inst_cb=ParserGraphics.listens_find_inst_cb)
+ParserGraphics.add_arg("network", "listens[0-9]*.network",
+                       find_inst_cb=ParserGraphics.listens_find_inst_cb)
+ParserGraphics.add_arg("socket", "listens[0-9]*.socket",
+                       find_inst_cb=ParserGraphics.listens_find_inst_cb)
 ParserGraphics.add_arg(None, "keymap", cb=ParserGraphics.set_keymap_cb)
 ParserGraphics.add_arg("passwd", "password")
 ParserGraphics.add_arg("passwdValidTo", "passwordvalidto")
@@ -2518,16 +2560,26 @@ ParserMemballoon.add_arg("model", "model")
 class ParserPanic(VirtCLIParser):
     cli_arg_name = "panic"
     objclass = VirtualPanicDevice
-    remove_first = "iobase"
+    remove_first = "model"
+    compat_mode = False
 
-    def set_iobase_cb(self, inst, val, virtarg):
-        if val == "default":
-            return
-        inst.iobase = val
+    def set_model_cb(self, inst, val, virtarg):
+        if self.compat_mode and val.startswith("0x"):
+            inst.model = VirtualPanicDevice.MODEL_ISA
+            inst.iobase = val
+        else:
+            inst.model = val
+
+    def _parse(self, inst):
+        if (len(self.optstr.split(",")) == 1 and
+                not self.optstr.startswith("model=")):
+            self.compat_mode = True
+        return VirtCLIParser._parse(self, inst)
 
 _register_virt_parser(ParserPanic)
-_add_device_address_args(ParserPanic)
-ParserPanic.add_arg(None, "iobase", cb=ParserPanic.set_iobase_cb)
+ParserPanic.add_arg(None, "model", cb=ParserPanic.set_model_cb,
+                    ignore_default=True)
+ParserPanic.add_arg("iobase", "iobase")
 
 
 ######################################################
@@ -2544,9 +2596,9 @@ class _ParserChar(VirtCLIParser):
         if not inst.supports_property(virtarg.attrname):
             raise ValueError(_("%(devtype)s type '%(chartype)s' does not "
                 "support '%(optname)s' option.") %
-                {"devtype" : inst.virtual_device_type,
+                {"devtype": inst.virtual_device_type,
                  "chartype": inst.type,
-                 "optname" : virtarg.cliname})
+                 "optname": virtarg.cliname})
     support_cb = support_check
 
     def set_host_cb(self, inst, val, virtarg):

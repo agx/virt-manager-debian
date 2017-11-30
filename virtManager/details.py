@@ -46,69 +46,67 @@ from .graphwidgets import Sparkline
 
 # Parameters that can be edited in the details window
 (EDIT_NAME,
-EDIT_TITLE,
-EDIT_MACHTYPE,
-EDIT_FIRMWARE,
-EDIT_DESC,
-EDIT_IDMAP,
+ EDIT_TITLE,
+ EDIT_MACHTYPE,
+ EDIT_FIRMWARE,
+ EDIT_DESC,
+ EDIT_IDMAP,
 
-EDIT_VCPUS,
-EDIT_MAXVCPUS,
-EDIT_CPU,
-EDIT_TOPOLOGY,
+ EDIT_VCPUS,
+ EDIT_MAXVCPUS,
+ EDIT_CPU,
+ EDIT_TOPOLOGY,
 
-EDIT_MEM,
+ EDIT_MEM,
 
-EDIT_AUTOSTART,
-EDIT_BOOTORDER,
-EDIT_BOOTMENU,
-EDIT_KERNEL,
-EDIT_INIT,
+ EDIT_AUTOSTART,
+ EDIT_BOOTORDER,
+ EDIT_BOOTMENU,
+ EDIT_KERNEL,
+ EDIT_INIT,
 
-EDIT_DISK_RO,
-EDIT_DISK_SHARE,
-EDIT_DISK_REMOVABLE,
-EDIT_DISK_CACHE,
-EDIT_DISK_IO,
-EDIT_DISK_BUS,
-EDIT_DISK_SERIAL,
-EDIT_DISK_FORMAT,
-EDIT_DISK_SGIO,
+ EDIT_DISK_RO,
+ EDIT_DISK_SHARE,
+ EDIT_DISK_REMOVABLE,
+ EDIT_DISK_CACHE,
+ EDIT_DISK_IO,
+ EDIT_DISK_BUS,
+ EDIT_DISK_SERIAL,
+ EDIT_DISK_FORMAT,
+ EDIT_DISK_SGIO,
 
-EDIT_SOUND_MODEL,
+ EDIT_SOUND_MODEL,
 
-EDIT_SMARTCARD_MODE,
+ EDIT_SMARTCARD_MODE,
 
-EDIT_NET_MODEL,
-EDIT_NET_VPORT,
-EDIT_NET_SOURCE,
-EDIT_NET_MAC,
+ EDIT_NET_MODEL,
+ EDIT_NET_VPORT,
+ EDIT_NET_SOURCE,
+ EDIT_NET_MAC,
 
-EDIT_GFX_PASSWD,
-EDIT_GFX_TYPE,
-EDIT_GFX_KEYMAP,
-EDIT_GFX_LISTEN,
-EDIT_GFX_ADDRESS,
-EDIT_GFX_TLSPORT,
-EDIT_GFX_PORT,
-EDIT_GFX_OPENGL,
-EDIT_GFX_RENDERNODE,
+ EDIT_GFX_PASSWD,
+ EDIT_GFX_TYPE,
+ EDIT_GFX_KEYMAP,
+ EDIT_GFX_LISTEN,
+ EDIT_GFX_ADDRESS,
+ EDIT_GFX_TLSPORT,
+ EDIT_GFX_PORT,
+ EDIT_GFX_OPENGL,
+ EDIT_GFX_RENDERNODE,
 
-EDIT_VIDEO_MODEL,
-EDIT_VIDEO_3D,
+ EDIT_VIDEO_MODEL,
+ EDIT_VIDEO_3D,
 
-EDIT_WATCHDOG_MODEL,
-EDIT_WATCHDOG_ACTION,
+ EDIT_WATCHDOG_MODEL,
+ EDIT_WATCHDOG_ACTION,
 
-EDIT_CONTROLLER_MODEL,
+ EDIT_CONTROLLER_MODEL,
 
-EDIT_TPM_TYPE,
+ EDIT_TPM_TYPE,
 
-EDIT_FS,
+ EDIT_FS,
 
-EDIT_HOSTDEV_ROMBAR,
-
-) = range(1, 49)
+ EDIT_HOSTDEV_ROMBAR) = range(1, 49)
 
 
 # Columns in hw list model
@@ -519,8 +517,8 @@ class vmmDetails(vmmGObjectUI):
 
 
             "on_boot_list_changed": self.config_bootdev_selected,
-            "on_boot_moveup_clicked" : lambda *x: self.config_boot_move(x, True),
-            "on_boot_movedown_clicked" : lambda *x: self.config_boot_move(x, False),
+            "on_boot_moveup_clicked": lambda *x: self.config_boot_move(x, True),
+            "on_boot_movedown_clicked": lambda *x: self.config_boot_move(x, False),
             "on_boot_autostart_changed": lambda *x: self.enable_apply(x, x, EDIT_AUTOSTART),
             "on_boot_menu_changed": lambda *x: self.enable_apply(x, EDIT_BOOTMENU),
             "on_boot_kernel_enable_toggled": self.boot_kernel_toggled,
@@ -745,7 +743,7 @@ class vmmDetails(vmmGObjectUI):
         rmHW.show()
         rmHW.connect("activate", self.remove_xml_dev)
 
-        self._addhwmenuitems = {"add" : addHW, "remove" : rmHW}
+        self._addhwmenuitems = {"add": addHW, "remove": rmHW}
         for i in self._addhwmenuitems.values():
             self.addhwmenu.add(i)
 
@@ -2473,7 +2471,7 @@ class vmmDetails(vmmGObjectUI):
                     pos = summary.find("\n")
                     if pos > -1:
                         summary = _("%(summary)s ...") % {
-                            "summary" : summary[0:pos]
+                            "summary": summary[0:pos]
                         }
 
                 apps_model.append([name, version, summary])
@@ -2795,38 +2793,27 @@ class vmmDetails(vmmGObjectUI):
         if not dev:
             return
 
-        def show_ui(param, val=None):
-            widgetname = "panic-" + param.replace("_", "-")
-            if not val:
-                val = getattr(dev, param)
-                if not val:
-                    propername = param.upper() + "_DEFAULT"
-                    val = getattr(virtinst.VirtualPanicDevice, propername, "-").upper()
-
-            uiutil.set_grid_row_visible(self.widget(widgetname), True)
-            self.widget(widgetname).set_text(val or "-")
-
-        ptyp = virtinst.VirtualPanicDevice.get_pretty_type(dev.type)
-        show_ui("type", ptyp)
-        show_ui("iobase")
+        model = dev.model or "isa"
+        pmodel = virtinst.VirtualPanicDevice.get_pretty_model(model)
+        self.widget("panic-model").set_text(pmodel)
 
     def refresh_rng_page(self):
         dev = self.get_hw_selection(HW_LIST_COL_DEVICE)
         values = {
-            "rng-bind-host" : "bind_host",
-            "rng-bind-service" : "bind_service",
-            "rng-connect-host" : "connect_host",
-            "rng-connect-service" : "connect_service",
-            "rng-type" : "type",
-            "rng-device" : "device",
-            "rng-backend-type" : "backend_type",
-            "rng-rate-bytes" : "rate_bytes",
-            "rng-rate-period" : "rate_period"
+            "rng-bind-host": "bind_host",
+            "rng-bind-service": "bind_service",
+            "rng-connect-host": "connect_host",
+            "rng-connect-service": "connect_service",
+            "rng-type": "type",
+            "rng-device": "device",
+            "rng-backend-type": "backend_type",
+            "rng-rate-bytes": "rate_bytes",
+            "rng-rate-period": "rate_period"
         }
         rewriter = {
-            "rng-type" : lambda x:
+            "rng-type": lambda x:
             VirtualRNGDevice.get_pretty_type(x),
-            "rng-backend-type" : lambda x:
+            "rng-backend-type": lambda x:
             VirtualRNGDevice.get_pretty_backend_type(x),
         }
 
