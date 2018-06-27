@@ -77,6 +77,15 @@ class _NetworkForwardPf(XMLBuilder):
     dev = XMLProperty("./@dev")
 
 
+class _NetworkForwardAddress(XMLBuilder):
+    _XML_ROOT_NAME = "address"
+    type = XMLProperty("./@type")
+    domain = XMLProperty("./@domain", is_int=True)
+    bus = XMLProperty("./@bus", is_int=True)
+    slot = XMLProperty("./@slot", is_int=True)
+    function = XMLProperty("./@function", is_int=True)
+
+
 class _NetworkForward(XMLBuilder):
     _XML_ROOT_NAME = "forward"
 
@@ -84,6 +93,7 @@ class _NetworkForward(XMLBuilder):
     dev = XMLProperty("./@dev")
     managed = XMLProperty("./@managed")
     pf = XMLChildProperty(_NetworkForwardPf)
+    vfs = XMLChildProperty(_NetworkForwardAddress)
 
     def add_pf(self):
         r = _NetworkForwardPf(self.conn)
@@ -181,10 +191,6 @@ class Network(XMLBuilder):
 
         return desc
 
-    def __init__(self, *args, **kwargs):
-        XMLBuilder.__init__(self, *args, **kwargs)
-        self._random_uuid = None
-
 
     ###################
     # Helper routines #
@@ -213,11 +219,6 @@ class Network(XMLBuilder):
         raise ValueError(_("Name '%s' already in use by another network." %
                          name))
 
-    def _get_default_uuid(self):
-        if self._random_uuid is None:
-            self._random_uuid = util.generate_uuid(self.conn)
-        return self._random_uuid
-
 
     ##################
     # XML properties #
@@ -230,9 +231,7 @@ class Network(XMLBuilder):
 
     ipv6 = XMLProperty("./@ipv6", is_yesno=True)
     name = XMLProperty("./name", validate_cb=_validate_name)
-    uuid = XMLProperty("./uuid",
-                       validate_cb=lambda s, v: util.validate_uuid(v),
-                       default_cb=_get_default_uuid)
+    uuid = XMLProperty("./uuid")
 
     virtualport_type = XMLProperty("./virtualport/@type")
 

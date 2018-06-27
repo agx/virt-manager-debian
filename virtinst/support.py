@@ -187,7 +187,8 @@ class _SupportCheck(object):
         actual_hv_version = conn.conn_version()
 
         # Check that local libvirt version is sufficient
-        if _version_str_to_int(self.version) > actual_libvirt_version:
+        v = _version_str_to_int(self.version)
+        if v and (v > actual_libvirt_version):
             return False
 
         if self.hv_version:
@@ -200,7 +201,7 @@ class _SupportCheck(object):
 
         if self.hv_libvirt_version:
             if hv_type not in self.hv_libvirt_version:
-                if "all" not in self.hv_version:
+                if "all" not in self.hv_libvirt_version:
                     return False
             elif (actual_libvirt_version <
                   _version_str_to_int(self.hv_libvirt_version[hv_type])):
@@ -324,6 +325,7 @@ SUPPORT_CONN_RNG_URANDOM = _make(version="1.3.4")
 SUPPORT_CONN_USB3_PORTS = _make(version="1.3.5")
 SUPPORT_CONN_MACHVIRT_PCI_DEFAULT = _make(version="3.0.0")
 SUPPORT_CONN_QEMU_XHCI = _make(version="3.3.0")
+SUPPORT_CONN_VNC_NONE_AUTH = _make(hv_version={"qemu": "2.9.0"})
 
 
 # This is for disk <driver name=qemu>. xen supports this, but it's

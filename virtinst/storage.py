@@ -304,11 +304,6 @@ class StoragePool(_StorageObject):
         return util.generate_name(basename, cb, **kwargs)
 
 
-    def __init__(self, *args, **kwargs):
-        _StorageObject.__init__(self, *args, **kwargs)
-        self._random_uuid = None
-
-
     ######################
     # Validation helpers #
     ######################
@@ -343,11 +338,6 @@ class StoragePool(_StorageObject):
             return _DEFAULT_MPATH_TARGET
         raise RuntimeError("No default target_path for type=%s" % self.type)
 
-    def _get_default_uuid(self):
-        if self._random_uuid is None:
-            self._random_uuid = util.generate_uuid(self.conn)
-        return self._random_uuid
-
     def _type_to_source_prop(self):
         if (self.type == self.TYPE_NETFS or
             self.type == self.TYPE_GLUSTER):
@@ -375,8 +365,8 @@ class StoragePool(_StorageObject):
         elif self.type == StoragePool.TYPE_GLUSTER:
             srcname = "gv0"
         elif ("target_path" in self._propstore and
-            self.target_path and
-            self.target_path.startswith(_DEFAULT_LVM_TARGET_BASE)):
+                self.target_path and
+                self.target_path.startswith(_DEFAULT_LVM_TARGET_BASE)):
             # If there is a target path, parse it for an expected VG
             # location, and pull the name from there
             vg = self.target_path[len(_DEFAULT_LVM_TARGET_BASE):]
@@ -400,7 +390,8 @@ class StoragePool(_StorageObject):
                        "format", "hosts",
                        "_source_dir", "_source_adapter", "_source_device",
                        "source_name", "target_path",
-                       "permissions"]
+                       "permissions",
+                       "auth_type", "auth_username", "auth_secret_uuid"]
 
 
     _source_dir = XMLProperty("./source/dir/@path")
@@ -409,9 +400,7 @@ class StoragePool(_StorageObject):
 
     type = XMLProperty("./@type",
         doc=_("Storage device type the pool will represent."))
-    uuid = XMLProperty("./uuid",
-                       validate_cb=lambda s, v: util.validate_uuid(v),
-                       default_cb=_get_default_uuid)
+    uuid = XMLProperty("./uuid")
 
     capacity = XMLProperty("./capacity", is_int=True)
     allocation = XMLProperty("./allocation", is_int=True)
@@ -424,6 +413,10 @@ class StoragePool(_StorageObject):
     source_name = XMLProperty("./source/name",
                               default_cb=_default_source_name,
                               doc=_("Name of the Volume Group"))
+
+    auth_type = XMLProperty("./source/auth/@type")
+    auth_username = XMLProperty("./source/auth/@username")
+    auth_secret_uuid = XMLProperty("./source/auth/secret/@uuid")
 
     target_path = XMLProperty("./target/path",
                               default_cb=_get_default_target_path)
@@ -642,7 +635,7 @@ class StorageVolume(_StorageObject):
             raise ValueError(_("input_vol must be a virStorageVol"))
 
         if not self.conn.check_support(
-            self.conn.SUPPORT_POOL_CREATEVOLFROM, self.pool):
+                self.conn.SUPPORT_POOL_CREATEVOLFROM, self.pool):
             raise ValueError(_("Creating storage from an existing volume is"
                                " not supported by this libvirt version."))
 
@@ -904,13 +897,13 @@ class StorageVolume(_StorageObject):
             return (True, _("There is not enough free space on the storage "
                             "pool to create the volume. "
                             "(%d M requested allocation > %d M available)") %
-                            ((self.allocation / (1024 * 1024)),
-                             (avail / (1024 * 1024))))
+                            ((self.allocation // (1024 * 1024)),
+                             (avail // (1024 * 1024))))
         elif self.capacity > avail:
             return (False, _("The requested volume capacity will exceed the "
                              "available pool space when the volume is fully "
                              "allocated. "
                              "(%d M requested capacity > %d M available)") %
-                             ((self.capacity / (1024 * 1024)),
-                              (avail / (1024 * 1024))))
+                             ((self.capacity // (1024 * 1024)),
+                              (avail // (1024 * 1024))))
         return (False, "")

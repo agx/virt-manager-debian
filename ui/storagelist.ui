@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.20.0 -->
+<!-- Generated with glade 3.20.2 -->
 <interface>
   <requires lib="gtk+" version="3.14"/>
   <object class="GtkImage" id="image3">
@@ -35,6 +35,11 @@
                     <property name="stock">gtk-add</property>
                   </object>
                 </child>
+                <child internal-child="accessible">
+                  <object class="AtkObject" id="pool-add-atkobject">
+                    <property name="AtkObject::accessible-name">pool-add</property>
+                  </object>
+                </child>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -54,6 +59,11 @@
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="stock">gtk-media-play</property>
+                  </object>
+                </child>
+                <child internal-child="accessible">
+                  <object class="AtkObject" id="pool-start-atkobject">
+                    <property name="AtkObject::accessible-name">pool-start</property>
                   </object>
                 </child>
               </object>
@@ -77,6 +87,11 @@
                     <property name="stock">gtk-stop</property>
                   </object>
                 </child>
+                <child internal-child="accessible">
+                  <object class="AtkObject" id="pool-stop-atkobject">
+                    <property name="AtkObject::accessible-name">pool-stop</property>
+                  </object>
+                </child>
               </object>
               <packing>
                 <property name="expand">False</property>
@@ -96,6 +111,11 @@
                     <property name="visible">True</property>
                     <property name="can_focus">False</property>
                     <property name="stock">gtk-delete</property>
+                  </object>
+                </child>
+                <child internal-child="accessible">
+                  <object class="AtkObject" id="pool-delete-atkobject">
+                    <property name="AtkObject::accessible-name">pool-delete</property>
                   </object>
                 </child>
               </object>
@@ -230,6 +250,11 @@
                 <property name="headers_visible">False</property>
                 <child internal-child="selection">
                   <object class="GtkTreeSelection" id="treeview-selection"/>
+                </child>
+                <child internal-child="accessible">
+                  <object class="AtkObject" id="pool-list-atkobject">
+                    <property name="AtkObject::accessible-name">pool-list</property>
+                  </object>
                 </child>
               </object>
             </child>
@@ -461,6 +486,11 @@
                                         <property name="stock">gtk-add</property>
                                       </object>
                                     </child>
+                                    <child internal-child="accessible">
+                                      <object class="AtkObject" id="vol-add-atkobject">
+                                        <property name="AtkObject::accessible-name">vol-new</property>
+                                      </object>
+                                    </child>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -483,6 +513,11 @@
                                         <property name="stock">gtk-refresh</property>
                                       </object>
                                     </child>
+                                    <child internal-child="accessible">
+                                      <object class="AtkObject" id="pool-refresh-atkobject">
+                                        <property name="AtkObject::accessible-name">vol-refresh</property>
+                                      </object>
+                                    </child>
                                   </object>
                                   <packing>
                                     <property name="expand">False</property>
@@ -503,6 +538,11 @@
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="stock">gtk-delete</property>
+                                      </object>
+                                    </child>
+                                    <child internal-child="accessible">
+                                      <object class="AtkObject" id="vol-delete-atkobject">
+                                        <property name="AtkObject::accessible-name">vol-delete</property>
                                       </object>
                                     </child>
                                   </object>
@@ -542,6 +582,11 @@
                                     <signal name="changed" handler="on_vol_list_changed" swapped="no"/>
                                   </object>
                                 </child>
+                                <child internal-child="accessible">
+                                  <object class="AtkObject" id="vol-list-atkobject">
+                                    <property name="AtkObject::accessible-name">vol-list</property>
+                                  </object>
+                                </child>
                               </object>
                             </child>
                           </object>
@@ -577,6 +622,11 @@
                 <property name="visible">True</property>
                 <property name="can_focus">False</property>
                 <property name="label">some error here</property>
+                <child internal-child="accessible">
+                  <object class="AtkObject" id="storage-error-label-atkobject">
+                    <property name="AtkObject::accessible-name">pool-error-label</property>
+                  </object>
+                </child>
               </object>
               <packing>
                 <property name="position">1</property>

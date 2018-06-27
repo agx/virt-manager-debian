@@ -953,21 +953,26 @@ class XMLParseTest(unittest.TestCase):
     def testAddRemoveDevices(self):
         guest, outfile = self._get_test_content("add-devices")
 
+        # Basic removal of existing device
         rmdev = guest.get_devices("disk")[2]
         guest.remove_device(rmdev)
 
+        # Basic device add
+        guest.add_device(virtinst.VirtualWatchdog(conn))
+
+        # Test adding device with child properties (address value)
         adddev = virtinst.VirtualNetworkInterface(conn=conn)
         adddev.type = "network"
         adddev.source = "default"
         adddev.macaddr = "1A:2A:3A:4A:5A:6A"
         adddev.address.set_addrstr("spapr-vio")
 
-        guest.add_device(virtinst.VirtualWatchdog(conn))
-
+        # Test adding and removing the same device
         guest.add_device(adddev)
         guest.remove_device(adddev)
         guest.add_device(adddev)
 
+        # Test adding device built from parsed XML
         guest.add_device(virtinst.VirtualAudio(conn,
             parsexml="""<sound model='pcspk'/>"""))
 
@@ -1332,10 +1337,15 @@ class XMLParseTest(unittest.TestCase):
         check("mode", "hostdev")
         check("managed", "yes")
 
-        r = net.forward.add_pf()
-        r.dev = "eth3"
-        check = self._make_checker(r)
+        check = self._make_checker(net.forward.pf[0])
         check("dev", "eth3")
+
+        check = self._make_checker(net.forward.vfs[0])
+        check("type", "pci")
+        check("domain", 0x0000)
+        check("bus", 0x03)
+        check("slot", 0x10)
+        check("function", 0x0)
 
         utils.diff_compare(net.get_xml_config(), outfile)
         utils.test_create(conn, net.get_xml_config(), "networkDefineXML")

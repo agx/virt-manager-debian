@@ -1039,7 +1039,7 @@ bar</property>
                                                             <property name="can_focus">True</property>
                                                             <property name="valign">center</property>
                                                             <property name="hexpand">True</property>
-                                                            <property name="invisible_char">•</property>
+                                                            <property name="invisible_char">●</property>
                                                           </object>
                                                           <packing>
                                                             <property name="left_attach">1</property>
@@ -1674,7 +1674,7 @@ User shouldn't see this.</property>
                                                 <property name="can_focus">False</property>
                                                 <property name="halign">start</property>
                                                 <property name="label" translatable="yes">&lt;small&gt;The OS directory tree must already exist. To enable OS directory tree creation,
-please install &lt;a href="https://github.com/virt-manager/virt-bootstrap"&gt;virt-bootrap&lt;/a&gt;&lt;/small&gt;</property>
+please install &lt;a href="https://github.com/virt-manager/virt-bootstrap"&gt;virt-bootstrap&lt;/a&gt;&lt;/small&gt;</property>
                                                 <property name="use_markup">True</property>
                                               </object>
                                               <packing>
@@ -1776,7 +1776,12 @@ connections is not yet supported.&lt;/small&gt;</property>
                                                     <child internal-child="entry">
                                                       <object class="GtkEntry" id="install-oscontainer-source-url-entry">
                                                         <property name="can_focus">True</property>
-                                                        <property name="placeholder_text" translatable="yes">docker://fedora</property>
+                                                        <property name="tooltip_text" translatable="yes">Possible URL formats:
+ * file:///path/to/rootfs.tar
+ * docker://registry:port/image:tag
+ * virt-builder://template
+</property>
+
                                                       </object>
                                                     </child>
                                                   </object>
@@ -1853,7 +1858,7 @@ connections is not yet supported.&lt;/small&gt;</property>
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">True</property>
                                                         <property name="visibility">False</property>
-                                                        <property name="invisible_char">*</property>
+                                                        <property name="invisible_char">●</property>
                                                         <property name="input_purpose">password</property>
                                                       </object>
                                                       <packing>
@@ -1885,6 +1890,42 @@ connections is not yet supported.&lt;/small&gt;</property>
                                           </packing>
                                         </child>
                                       </object>
+                                    </child>
+                                    <child>
+                                      <object class="GtkBox" id="install-oscontainer-rootpw-box">
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">False</property>
+                                        <child>
+                                          <object class="GtkLabel">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <property name="label" translatable="yes">Root password:</property>
+                                          </object>
+                                          <packing>
+                                            <property name="expand">False</property>
+                                            <property name="fill">True</property>
+                                            <property name="position">0</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkEntry" id="install-oscontainer-rootpw">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">True</property>
+                                            <property name="visibility">False</property>
+                                            <property name="invisible_char">●</property>
+                                          </object>
+                                          <packing>
+                                            <property name="expand">True</property>
+                                            <property name="fill">True</property>
+                                            <property name="position">1</property>
+                                          </packing>
+                                        </child>
+                                      </object>
+                                      <packing>
+                                        <property name="expand">False</property>
+                                        <property name="fill">True</property>
+                                        <property name="position">4</property>
+                                      </packing>
                                     </child>
                                   </object>
                                   <packing>

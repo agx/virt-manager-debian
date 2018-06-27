@@ -22,11 +22,19 @@ import virtinst
 import virtinst.cli
 import virtinst.uri
 
-# DON'T EDIT THIS. Use 'setup.py test --regenerate-output'
-REGENERATE_OUTPUT = False
 
 # pylint: disable=protected-access
 # Access to protected member, needed to unittest stuff
+
+class _CLIState(object):
+    """
+    Class containing any bits passed in from setup.py
+    """
+    def __init__(self):
+        self.regenerate_output = False
+        self.use_coverage = False
+clistate = _CLIState()
+
 
 _capsprefix  = ",caps=%s/tests/capabilities-xml/" % os.getcwd()
 _domcapsprefix  = ",domcaps=%s/tests/capabilities-xml/" % os.getcwd()
@@ -175,13 +183,13 @@ def read_file(filename):
 def diff_compare(actual_out, filename=None, expect_out=None):
     """Compare passed string output to contents of filename"""
     if not expect_out:
-        if not os.path.exists(filename) or REGENERATE_OUTPUT:
+        if not os.path.exists(filename) or clistate.regenerate_output:
             open(filename, "w").write(actual_out)
         expect_out = read_file(filename)
 
     diff = "".join(difflib.unified_diff(expect_out.splitlines(1),
                                         actual_out.splitlines(1),
-                                        fromfile=filename,
+                                        fromfile=filename or '',
                                         tofile="Generated Output"))
     if diff:
         raise AssertionError("Conversion outputs did not match.\n%s" % diff)

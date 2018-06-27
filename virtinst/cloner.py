@@ -88,7 +88,7 @@ class Cloner(object):
                               doc="Original guest name.")
 
     def set_original_xml(self, val):
-        if type(val) is not str:
+        if not isinstance(val, str):
             raise ValueError(_("Original xml must be a string."))
         self._original_xml = val
         self._original_guest = Guest(self.conn,
@@ -113,14 +113,6 @@ class Cloner(object):
                           doc="Name to use for the new guest clone.")
 
     def set_clone_uuid(self, uuid):
-        try:
-            util.validate_uuid(uuid)
-        except ValueError as e:
-            raise ValueError(_("Invalid uuid for new guest: %s") % e)
-
-        if util.vm_uuid_collision(self.conn, uuid):
-            raise ValueError(_("UUID '%s' is in use by another guest.") %
-                             uuid)
         self._clone_uuid = uuid
     def get_clone_uuid(self):
         return self._clone_uuid
@@ -214,7 +206,7 @@ class Cloner(object):
                                "(not Cloner.preserve)")
 
     def set_force_target(self, dev):
-        if type(dev) is list:
+        if isinstance(dev, list):
             self._force_target = dev[:]
         else:
             self._force_target.append(dev)
@@ -225,7 +217,7 @@ class Cloner(object):
                                 "despite Cloner's recommendation.")
 
     def set_skip_target(self, dev):
-        if type(dev) is list:
+        if isinstance(dev, list):
             self._skip_target = dev[:]
         else:
             self._skip_target.append(dev)
@@ -237,7 +229,7 @@ class Cloner(object):
                                "takes precedence over force_target.")
 
     def set_clone_policy(self, policy_list):
-        if type(policy_list) != list:
+        if not isinstance(policy_list, list):
             raise ValueError(_("Cloning policy must be a list of rules."))
         self._clone_policy = policy_list
     def get_clone_policy(self):
@@ -430,8 +422,7 @@ class Cloner(object):
             iface.macaddr = mac
 
         # Changing storage XML
-        for i in range(len(self._original_disks)):
-            orig_disk = self._original_disks[i]
+        for i, orig_disk in enumerate(self._original_disks):
             clone_disk = self._clone_disks[i]
 
             for disk in self._guest.get_devices("disk"):

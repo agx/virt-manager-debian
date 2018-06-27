@@ -18,10 +18,10 @@
 # MA 02110-1301 USA.
 #
 
+import io
 import logging
 import pkgutil
 import os
-import cStringIO
 import threading
 import time
 
@@ -444,6 +444,7 @@ class vmmCreate(vmmGObjectUI):
         self.widget("install-oscontainer-source-insecure").set_active(False)
         self.widget("install-oscontainer-bootstrap").set_active(False)
         self.widget("install-oscontainer-auth-options").set_expanded(False)
+        self.widget("install-oscontainer-rootpw").set_text("")
         src_model = (self.widget("install-oscontainer-source-url-combo")
                          .get_model())
         _populate_media_model(src_model, self.config.get_container_urls())
@@ -680,7 +681,8 @@ class vmmCreate(vmmGObjectUI):
             "install-oscontainer-notsupport-conn": not is_local,
             "install-oscontainer-notsupport": not vb_installed,
             "install-oscontainer-bootstrap": vb_enabled,
-            "install-oscontainer-source": vb_enabled
+            "install-oscontainer-source": vb_enabled,
+            "install-oscontainer-rootpw-box": vb_enabled
             }
         for w in oscontainer_widget_conf:
             self.widget(w).set_visible(oscontainer_widget_conf[w])
@@ -691,7 +693,7 @@ class vmmCreate(vmmGObjectUI):
                      {'maxmem': _pretty_memory(memory)})
         mem_label = ("<span size='small' color='#484848'>%s</span>" %
                      mem_label)
-        self.widget("mem").set_range(50, memory / 1024)
+        self.widget("mem").set_range(50, memory // 1024)
         self.widget("phys-mem-label").set_markup(mem_label)
 
         # CPU
@@ -1308,6 +1310,10 @@ class vmmCreate(vmmGObjectUI):
         return self.widget("install-oscontainer-source-insecure").get_active()
 
 
+    def _get_config_oscontainer_root_password(self):
+        return self.widget("install-oscontainer-rootpw").get_text()
+
+
     def _should_skip_disk_page(self):
         return self._get_config_install_page() in [INSTALL_PAGE_IMPORT,
                                                    INSTALL_PAGE_CONTAINER_APP,
@@ -1652,6 +1658,7 @@ class vmmCreate(vmmGObjectUI):
     def _container_source_toggle(self, ignore):
         enable_src = self.widget("install-oscontainer-bootstrap").get_active()
         self.widget("install-oscontainer-source").set_sensitive(enable_src)
+        self.widget("install-oscontainer-rootpw-box").set_sensitive(enable_src)
 
         # Auto-generate a path if not specified
         if enable_src and not self.widget("install-oscontainer-fs").get_text():
@@ -1692,7 +1699,7 @@ class vmmCreate(vmmGObjectUI):
         else:
             def callback(ignore, text):
                 widget = cbwidget
-                if type(cbwidget) is str:
+                if isinstance(cbwidget, str):
                     widget = self.widget(cbwidget)
                 widget.set_text(text)
 
@@ -2142,7 +2149,7 @@ class vmmCreate(vmmGObjectUI):
         # Change the default values suggested to the user.
         ram_size = DEFAULT_MEM
         if res and res.get("ram") > 0:
-            ram_size = res["ram"] / (1024 ** 2)
+            ram_size = res["ram"] // (1024 ** 2)
         self.widget("mem").set_value(ram_size)
 
         n_cpus = 1
@@ -2151,7 +2158,7 @@ class vmmCreate(vmmGObjectUI):
         self.widget("cpus").set_value(n_cpus)
 
         if res and res.get("storage"):
-            storage_size = int(res["storage"]) / (1024 ** 3)
+            storage_size = int(res["storage"]) // (1024 ** 3)
             self._addstorage.widget("storage-size").set_value(storage_size)
 
         # Validation passed, store the install path (if there is one) in
@@ -2497,9 +2504,10 @@ class vmmCreate(vmmGObjectUI):
                 'dest': self.widget("install-oscontainer-fs").get_text,
                 'user': self._get_config_oscontainer_source_username,
                 'passwd': self._get_config_oscontainer_source_password,
-                'insecure': self._get_config_oscontainer_isecure
+                'insecure': self._get_config_oscontainer_isecure,
+                'root_password': self._get_config_oscontainer_root_password,
             }
-            for key, getter in bootstrap_arg_keys.iteritems():
+            for key, getter in bootstrap_arg_keys.items():
                 bootstrap_args[key] = getter()
 
         parentobj = self._customize_window or self
@@ -2633,7 +2641,7 @@ class vmmCreate(vmmGObjectUI):
                 return True
 
         # Use string buffer to store log messages
-        log_stream = cStringIO.StringIO()
+        log_stream = io.StringIO()
 
         # Get virt-bootstrap logger
         vbLogger = logging.getLogger('virtBootstrap')
@@ -2653,6 +2661,8 @@ class vmmCreate(vmmGObjectUI):
         if bootstrap_args['user'] and bootstrap_args['passwd']:
             kwargs['username'] = bootstrap_args['user']
             kwargs['password'] = bootstrap_args['passwd']
+        if bootstrap_args['root_password']:
+            kwargs['root_password'] = bootstrap_args['root_password']
         logging.debug('Start container bootstrap')
         try:
             virtBootstrap.bootstrap(**kwargs)

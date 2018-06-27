@@ -149,7 +149,7 @@ class LibvirtConsoleConnection(ConsoleConnection):
 
         self.stream = None
 
-        self.streamToTerminal = ""
+        self.streamToTerminal = b""
         self.terminalToStream = ""
 
     def _event_on_stream(self, stream, events, opaque):
@@ -187,7 +187,7 @@ class LibvirtConsoleConnection(ConsoleConnection):
             self.terminalToStream):
 
             try:
-                done = self.stream.send(self.terminalToStream)
+                done = self.stream.send(self.terminalToStream.encode())
             except Exception:
                 logging.exception("Error sending stream data")
                 self.close()
@@ -262,7 +262,7 @@ class LibvirtConsoleConnection(ConsoleConnection):
             return
 
         terminal.feed(self.streamToTerminal)
-        self.streamToTerminal = ""
+        self.streamToTerminal = b""
 
 
 class vmmSerialConsole(vmmGObject):
@@ -336,6 +336,7 @@ class vmmSerialConsole(vmmGObject):
         self.terminal = Vte.Terminal()
         self.terminal.set_scrollback_lines(1000)
         self.terminal.set_audible_bell(False)
+        self.terminal.get_accessible().set_name("Serial Terminal")
 
         self.terminal.connect("button-press-event", self.show_serial_rcpopup)
         self.terminal.connect("commit", self.console.send_data, self.terminal)

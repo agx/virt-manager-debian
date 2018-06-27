@@ -1,5 +1,20 @@
 # Virtual Machine Manager News
 
+## Release 1.5.1 (February 28, 2018)
+- Bug fix release
+- Fix potential crash with libxml2 error callbacks
+- Fix disk/net/mem VM graphs
+
+## Release 1.5.0 (February 06, 2018)
+- python3 prep work (Radostin Stoyanov, Cole Robinson, Cédric Bosdonnat)
+- Switch --location ISO to use isoinfo (Andrew Wong)
+- virt-install: add --cpu numa distance handling (Menno Lageman)
+- virt-install: fix --disk for rbd volumes with auth (Rauno Väli)
+- virt-install: add --cputune vcpupin handling (Wim ten Have)
+- details ui: Showing attached scsi devices per controller (Lin Ma)
+- network ui: Show details about SR-IOV VF pool (Lin Ma)
+- Greatly expand UI test suite coverage
+
 ## Release 1.4.3 (September 19, 2017)
 - Improve install of debian/ubuntu non-x86 media (Viktor Mihajlovski, Andrew
   Wong)
@@ -10,7 +25,7 @@
 
 ## Release 1.4.2 (August 08, 2017)
 
-- New VM wixard virt-bootstrap integration (Radostin Stoyanov)
+- New VM wizard virt-bootstrap integration (Radostin Stoyanov)
 - New VM wizard support for virtuozzo containers (Mikhail Feoktistov)
 - network UI: add support to create SR-IOV VF pool (Lin Ma)
 - Nicer OS list in New VM wizard (Pino Toscano)

@@ -539,13 +539,13 @@ class vmmConnection(vmmGObject):
             inact = 0
 
             if self.check_support(
-                self._backend.SUPPORT_DOMAIN_XML_INACTIVE, vm):
+                    self._backend.SUPPORT_DOMAIN_XML_INACTIVE, vm):
                 inact = libvirt.VIR_DOMAIN_XML_INACTIVE
             else:
                 logging.debug("Domain XML inactive flag not supported.")
 
             if self.check_support(
-                self._backend.SUPPORT_DOMAIN_XML_SECURE, vm):
+                    self._backend.SUPPORT_DOMAIN_XML_SECURE, vm):
                 inact |= libvirt.VIR_DOMAIN_XML_SECURE
                 act = libvirt.VIR_DOMAIN_XML_SECURE
             else:
@@ -563,7 +563,7 @@ class vmmConnection(vmmGObject):
             inact = 0
 
             if self.check_support(
-                self._backend.SUPPORT_INTERFACE_XML_INACTIVE, iface):
+                    self._backend.SUPPORT_INTERFACE_XML_INACTIVE, iface):
                 inact = libvirt.VIR_INTERFACE_XML_INACTIVE
             else:
                 logging.debug("Interface XML inactive flag not supported.")
@@ -1030,11 +1030,13 @@ class vmmConnection(vmmGObject):
         warnconsole = False
         libvirt_error_code = None
         libvirt_error_message = None
+        exc = None
 
         try:
             self._backend.open(self._do_creds_password)
             return True, None
-        except Exception as exc:
+        except Exception as e:
+            exc = e
             tb = "".join(traceback.format_exc())
             if isinstance(exc, libvirt.libvirtError):
                 # pylint: disable=no-member
@@ -1088,7 +1090,7 @@ class vmmConnection(vmmGObject):
         try:
             self._backend.setKeepAlive(20, 1)
         except Exception as e:
-            if (type(e) is not AttributeError and
+            if (not isinstance(e, AttributeError) and
                 not util.is_error_nosupport(e)):
                 raise
             logging.debug("Connection doesn't support KeepAlive, "
@@ -1439,8 +1441,8 @@ class vmmConnection(vmmGObject):
             self._tick(*args, **kwargs)
         except KeyboardInterrupt:
             raise
-        except Exception as e:
-            pass
+        except Exception as err:
+            e = err
 
         if e is None:
             return

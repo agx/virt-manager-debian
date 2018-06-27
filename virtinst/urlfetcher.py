@@ -21,11 +21,10 @@
 
 import ConfigParser
 import ftplib
+import io
 import logging
 import os
 import re
-import stat
-import StringIO
 import subprocess
 import tempfile
 import urllib2
@@ -155,7 +154,7 @@ class _URLFetcher(object):
         # pylint: disable=redefined-variable-type
         if "VIRTINST_TEST_SUITE" in os.environ:
             fn = os.path.join("/tmp", prefix)
-            fileobj = open(fn, "w")
+            fileobj = open(fn, "wb")
         else:
             fileobj = tempfile.NamedTemporaryFile(
                 dir=self.scratchdir, prefix=prefix, delete=False)
@@ -169,7 +168,7 @@ class _URLFetcher(object):
         """
         Grab the passed filename from self.location and return it as a string
         """
-        fileobj = StringIO.StringIO()
+        fileobj = io.BytesIO()
         self._grabURL(filename, fileobj)
         return fileobj.getvalue()
 
@@ -302,14 +301,7 @@ class _MountedURLFetcher(_LocalURLFetcher):
         mountcmd = "/bin/mount"
 
         logging.debug("Preparing mount at " + self._srcdir)
-        if self.location.startswith("nfs:"):
-            cmd = [mountcmd, "-o", "ro", self.location[4:], self._srcdir]
-        else:
-            if stat.S_ISBLK(os.stat(self.location)[stat.ST_MODE]):
-                mountopt = "ro"
-            else:
-                mountopt = "ro,loop"
-            cmd = [mountcmd, "-o", mountopt, self.location, self._srcdir]
+        cmd = [mountcmd, "-o", "ro", self.location[4:], self._srcdir]
 
         logging.debug("mount cmd: %s", cmd)
         if not self._in_test_suite:
@@ -338,6 +330,38 @@ class _MountedURLFetcher(_LocalURLFetcher):
             self._mounted = False
 
 
+class _ISOURLFetcher(_URLFetcher):
+    _cache_file_list = None
+
+    def _make_full_url(self, filename):
+        return "/" + filename
+
+    def _grabber(self, url):
+        """
+        Use isoinfo to grab the file
+        """
+        cmd = ["isoinfo", "-J", "-i", self.location, "-x", url]
+
+        logging.debug("Running isoinfo: %s", cmd)
+        output = subprocess.check_output(cmd)
+
+        return io.BytesIO(output), len(output)
+
+    def _hasFile(self, url):
+        """
+        Use isoinfo to list and search for the file
+        """
+        if not self._cache_file_list:
+            cmd = ["isoinfo", "-J", "-i", self.location, "-f"]
+
+            logging.debug("Running isoinfo: %s", cmd)
+            output = subprocess.check_output(cmd)
+
+            self._cache_file_list = output.splitlines(False)
+
+        return url in self._cache_file_list
+
+
 def fetcherForURI(uri, *args, **kwargs):
     if uri.startswith("http://") or uri.startswith("https://"):
         fclass = _HTTPURLFetcher
@@ -349,8 +373,8 @@ def fetcherForURI(uri, *args, **kwargs):
         # Pointing to a local tree
         fclass = _LocalURLFetcher
     else:
-        # Pointing to a path, like an .iso to mount
-        fclass = _MountedURLFetcher
+        # Pointing to a path (e.g. iso), or a block device (e.g. /dev/cdrom)
+        fclass = _ISOURLFetcher
     return fclass(uri, *args, **kwargs)
 
 
@@ -448,7 +472,7 @@ def _distroFromSUSEContent(fetcher, arch, vmtype=None):
     dclass = GenericDistro
     if distribution:
         if re.match(".*SUSE Linux Enterprise Server*", distribution[1]) or \
-            re.match(".*SUSE SLES*", distribution[1]):
+                re.match(".*SUSE SLES*", distribution[1]):
             dclass = SLESDistro
             if distro_version is None:
                 distro_version = _parse_sle_distribution(distribution)
@@ -1108,7 +1132,7 @@ class DebianDistro(Distro):
 
         # Check for standard 'i386' and 'amd64' which will be
         # in the URI name for --location $ISO mounts
-        for arch in ["i386", "amd64", "x86_64"]:
+        for arch in ["i386", "amd64", "x86_64", "arm64"]:
             if arch in self.uri:
                 logging.debug("Found treearch=%s in uri", arch)
                 if arch == "x86_64":
@@ -1197,9 +1221,17 @@ class DebianDistro(Distro):
             return False
 
         if self.arch == "x86_64":
-            kernel_initrd_pair = ("install.amd/vmlinuz", "install.amd/initrd.gz")
+            kernel_initrd_pair = ("install.amd/vmlinuz",
+                                  "install.amd/initrd.gz")
         elif self.arch == "i686":
-            kernel_initrd_pair = ("install.386/vmlinuz", "install.386/initrd.gz")
+            kernel_initrd_pair = ("install.386/vmlinuz",
+                                  "install.386/initrd.gz")
+        elif self.arch == "aarch64":
+            kernel_initrd_pair = ("install.a64/vmlinuz",
+                                  "install.a64/initrd.gz")
+        elif self.arch == "ppc64le":
+            kernel_initrd_pair = ("install/vmlinux",
+                                  "install/initrd.gz")
         elif self.arch == "s390x":
             kernel_initrd_pair = ("boot/linux_vm", "boot/root.bin")
         else:
@@ -1270,7 +1302,7 @@ class UbuntuDistro(DebianDistro):
             return False
 
         if not self.arch == "s390x":
-            kernel_initrd_pair = ("linux", "initrd.gz")
+            kernel_initrd_pair = ("install/vmlinuz", "install/initrd.gz")
         else:
             kernel_initrd_pair = ("boot/kernel.ubuntu", "boot/initrd.ubuntu")
 
@@ -1340,7 +1372,7 @@ class ALTLinuxDistro(Distro):
         if not self.fetcher.hasFile(".disk/info"):
             return False
 
-        if self._fetchAndMatchRegex(".disk/info", ".*%s.*" % self.name):
+        if self._fetchAndMatchRegex(".disk/info", ".*ALT .*"):
             return True
 
         logging.debug("Regex didn't match, not a %s distro", self.name)
@@ -1351,7 +1383,7 @@ class ALTLinuxDistro(Distro):
 def _build_distro_list():
     allstores = []
     for obj in globals().values():
-        if type(obj) is type and issubclass(obj, Distro) and obj.name:
+        if isinstance(obj, type) and issubclass(obj, Distro) and obj.name:
             allstores.append(obj)
 
     seen_urldistro = []

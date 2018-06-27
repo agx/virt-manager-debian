@@ -16,6 +16,8 @@
 # MA 02110-1301 USA.
 
 import atexit
+from distutils.spawn import find_executable
+import io
 import logging
 import os
 import shlex
@@ -23,7 +25,6 @@ import shutil
 import sys
 import traceback
 import unittest
-import StringIO
 
 from virtinst import support
 
@@ -40,6 +41,7 @@ os.environ["DISPLAY"] = ":3.4"
 image_prefix = "/tmp/__virtinst_cli_"
 xmldir = "tests/cli-test-xml"
 treedir = "%s/faketree" % xmldir
+fakeiso = "%s/fakefedora.iso" % xmldir
 vcdir = "%s/virtconv" % xmldir
 compare_xmldir = "%s/compare" % xmldir
 virtconv_out = "/tmp/__virtinst_tests__virtconv-outdir"
@@ -144,7 +146,7 @@ class Command(object):
         oldstdin = sys.stdin
         oldargv = sys.argv
         try:
-            out = StringIO.StringIO()
+            out = io.BytesIO()
             sys.stdout = out
             sys.stderr = out
             sys.argv = self.argv
@@ -201,7 +203,10 @@ class Command(object):
         if conn is None:
             raise RuntimeError("skip check is not None, but conn is None")
 
-        if type(check) is str:
+        if isinstance(check, bool):
+            if not check:
+                return
+        elif isinstance(check, str):
             # pylint: disable=protected-access
             if support._check_version(conn, check):
                 return
@@ -247,7 +252,8 @@ class Command(object):
 
                 # Generate test files that don't exist yet
                 filename = self.compare_file
-                if utils.REGENERATE_OUTPUT or not os.path.exists(filename):
+                if (utils.clistate.regenerate_output or
+                    not os.path.exists(filename)):
                     open(filename, "w").write(output)
 
                 if "--print-diff" in self.argv and output.count("\n") > 3:
@@ -416,7 +422,15 @@ c.add_compare(""" \
 c.add_compare("""--pxe \
 --memory 512,maxmemory=1024 \
 --vcpus 4,cores=2,threads=2,sockets=2 \
---cpu foobar,+x2apic,+x2apicagain,-distest,forbid=foo,forbid=bar,disable=distest2,optional=opttest,require=reqtest,match=strict,vendor=meee,cell.id=0,cell.cpus=1,2,3,cell.memory=1024,cell1.id=1,cell1.memory=256,cell1.cpus=5-8,cache.mode=emulate,cache.level=3 \
+--cpu foobar,+x2apic,+x2apicagain,-distest,forbid=foo,forbid=bar,disable=distest2,optional=opttest,require=reqtest,match=strict,vendor=meee,\
+cell.id=0,cell.cpus=1,2,3,cell.memory=1024,\
+cell1.id=1,cell1.memory=256,cell1.cpus=5-8,\
+cell0.distances.sibling0.id=0,cell0.distances.sibling0.value=10,\
+cell0.distances.sibling1.id=1,cell0.distances.sibling1.value=21,\
+cell1.distances.sibling0.id=0,cell1.distances.sibling0.value=21,\
+cell1.distances.sibling1.id=1,cell1.distances.sibling1.value=10,\
+cache.mode=emulate,cache.level=3 \
+--cputune vcpupin0.vcpu=0,vcpupin0.cpuset=0-3 \
 --metadata title=my-title,description=my-description,uuid=00000000-1111-2222-3333-444444444444 \
 --boot cdrom,fd,hd,network,menu=off,loader=/foo/bar \
 --idmap uid_start=0,uid_target=1000,uid_count=10,gid_start=0,gid_target=1000,gid_count=10 \
@@ -787,7 +801,8 @@ c.add_compare("--arch s390x --machine s390-ccw-virtio --connect %(URI-KVM-S390X-
 c.add_compare("--connect %(URI-KVM-SESSION)s --disk size=8 --os-variant fedora21 --cdrom %(EXISTIMG1)s", "kvm-session-defaults")
 
 # misc KVM config tests
-c.add_compare("--disk none --location %(EXISTIMG3)s --nonetworks", "location-iso")  # Using --location iso mounting
+c.add_compare("--disk none --location %(EXISTIMG3)s --nonetworks", "location-iso", skip_check=not find_executable("isoinfo"))  # Using --location iso mounting
+c.add_compare("--disk none --location nfs:example.com/fake --nonetworks", "location-nfs")  # Using --location nfs
 c.add_compare("--disk %(EXISTIMG1)s --pxe --os-variant rhel6.4", "kvm-rhel6")  # RHEL6 defaults
 c.add_compare("--disk %(EXISTIMG1)s --pxe --os-variant rhel7.0", "kvm-rhel7")  # RHEL7 defaults
 c.add_compare("--disk %(EXISTIMG1)s --pxe --os-variant centos7.0", "kvm-centos7")  # Centos 7 defaults
@@ -1060,7 +1075,8 @@ def setup():
     """
     Create initial test files/dirs
     """
-    for i in exist_files:
+    os.system("ln -s %s %s" % (os.path.abspath(fakeiso), exist_files[0]))
+    for i in exist_files[1:]:
         os.system("touch %s" % i)
 
 

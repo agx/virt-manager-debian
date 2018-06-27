@@ -31,6 +31,7 @@ from . import support
 from .osdict import OSDB
 from .clock import Clock
 from .cpu import CPU
+from .cputune import CPUTune
 from .device import VirtualDevice
 from .deviceaudio import VirtualAudio
 from .devicechar import VirtualChannelDevice, VirtualConsoleDevice
@@ -190,9 +191,7 @@ class Guest(XMLBuilder):
         if self._random_uuid is None:
             self._random_uuid = util.generate_uuid(self.conn)
         return self._random_uuid
-    uuid = XMLProperty("./uuid",
-                       validate_cb=lambda s, v: util.validate_uuid(v),
-                       default_cb=_get_default_uuid)
+    uuid = XMLProperty("./uuid", default_cb=_get_default_uuid)
 
 
     id = XMLProperty("./@id", is_int=True)
@@ -212,6 +211,7 @@ class Guest(XMLBuilder):
     features = XMLChildProperty(DomainFeatures, is_single=True)
     clock = XMLChildProperty(Clock, is_single=True)
     cpu = XMLChildProperty(CPU, is_single=True)
+    cputune = XMLChildProperty(CPUTune, is_single=True)
     numatune = XMLChildProperty(DomainNumatune, is_single=True)
     pm = XMLChildProperty(PM, is_single=True)
     blkiotune = XMLChildProperty(DomainBlkiotune, is_single=True)
@@ -690,7 +690,7 @@ class Guest(XMLBuilder):
 
         if usb2:
             if not self.conn.check_support(
-                self.conn.SUPPORT_CONN_DEFAULT_USB2):
+                    self.conn.SUPPORT_CONN_DEFAULT_USB2):
                 return
             for dev in VirtualController.get_usb2_controllers(self.conn):
                 self.add_device(dev)
@@ -830,7 +830,7 @@ class Guest(XMLBuilder):
         if not self.os.is_x86():
             return
         if not self.conn.check_support(
-            self.conn.SUPPORT_CONN_ADVANCED_CLOCK):
+                self.conn.SUPPORT_CONN_ADVANCED_CLOCK):
             return
 
         # Set clock policy that maps to qemu options:
@@ -1014,7 +1014,7 @@ class Guest(XMLBuilder):
                     break
 
         # Add virtio-scsi controller if needed
-        if (self.os.is_arm_machvirt() and
+        if ((self.os.is_arm_machvirt() or self.os.is_pseries()) and
             not has_any_scsi and
             not has_virtio_scsi):
             for dev in self.get_devices("disk"):
@@ -1174,9 +1174,21 @@ class Guest(XMLBuilder):
                 if dev.image_compression is None:
                     dev.image_compression = "off"
 
-            if (dev.type == "spice" and dev.gl and
-                not self.conn.check_support(self.conn.SUPPORT_CONN_SPICE_GL)):
-                raise ValueError(_("Host does not support spice GL"))
+            if dev.type == "spice" and dev.gl:
+                if not self.conn.check_support(
+                        self.conn.SUPPORT_CONN_SPICE_GL):
+                    raise ValueError(_("Host does not support spice GL"))
+
+                # If spice GL but rendernode wasn't specified, hardcode
+                # the first one
+                if not dev.rendernode and self.conn.check_support(
+                        self.conn.SUPPORT_CONN_SPICE_RENDERNODE):
+                    for nodedev in self.conn.fetch_all_nodedevs():
+                        if (nodedev.device_type != 'drm' or
+                            nodedev.drm_type != 'render'):
+                            continue
+                        dev.rendernode = nodedev.get_devnode().path
+                        break
 
     def _add_spice_channels(self):
         if self.skip_default_channel:
@@ -1232,6 +1244,13 @@ class Guest(XMLBuilder):
         for gfx in self.get_devices("graphics"):
             if gfx.gl:
                 return True
+
+    def has_listen_none(self):
+        for gfx in self.get_devices("graphics"):
+            listen = gfx.get_first_listen_type()
+            if listen and listen == "none":
+                return True
+        return False
 
     def _set_video_defaults(self):
         if self.has_spice():

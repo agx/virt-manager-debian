@@ -64,6 +64,7 @@ DETAILS_CONSOLE = 3
 
 
 class vmmEngine(vmmGObject):
+    CLI_SHOW_MANAGER = "manager"
     CLI_SHOW_DOMAIN_CREATOR = "creator"
     CLI_SHOW_DOMAIN_EDITOR = "editor"
     CLI_SHOW_DOMAIN_PERFORMANCE = "performance"
@@ -152,7 +153,7 @@ class vmmEngine(vmmGObject):
         action.connect("activate", self._handle_cli_command)
         self._application.add_action(action)
 
-    def _default_startup(self, skip_autostart):
+    def _default_startup(self, skip_autostart, cliuri):
         uris = self.conns.keys()
         if not uris:
             logging.debug("No stored URIs found.")
@@ -163,12 +164,14 @@ class vmmEngine(vmmGObject):
         if not skip_autostart:
             self.idle_add(self.autostart_conns)
 
-        if not self.config.get_conn_uris():
+        if not self.config.get_conn_uris() and not cliuri:
             # Only add default if no connections are currently known
             self.timeout_add(1000, self._add_default_conn)
 
     def start(self, uri, show_window, domain, skip_autostart):
         # Dispatch dbus CLI command
+        if uri and not show_window:
+            show_window = self.CLI_SHOW_MANAGER
         data = GLib.Variant("(sss)",
             (uri or "", show_window or "", domain or ""))
         self._application.activate_action("cli_command", data)
@@ -177,7 +180,7 @@ class vmmEngine(vmmGObject):
             logging.debug("Connected to remote app instance.")
             return
 
-        self._default_startup(skip_autostart)
+        self._default_startup(skip_autostart, uri)
         self._application.run(None)
 
 
@@ -482,7 +485,7 @@ class vmmEngine(vmmGObject):
             # Engine will always appear to leak
             objs.remove(self.object_key)
 
-            if src.object_key in objs:
+            if src and src.object_key in objs:
                 # UI that initiates the app exit will always appear to leak
                 objs.remove(src.object_key)
 
@@ -670,7 +673,7 @@ class vmmEngine(vmmGObject):
                 show_errmsg = False
 
         probe_connection = self.conns[conn.get_uri()]["probeConnection"]
-        msg = _("Unable to connect to libvirt.")
+        msg = _("Unable to connect to libvirt %s." % conn.get_uri())
         if show_errmsg:
             msg += "\n\n%s" % errmsg
         if hint:
@@ -987,7 +990,10 @@ class vmmEngine(vmmGObject):
     def _launch_cli_window(self, uri, show_window, clistr):
         try:
             logging.debug("Launching requested window '%s'", show_window)
-            if show_window == self.CLI_SHOW_DOMAIN_CREATOR:
+            if show_window == self.CLI_SHOW_MANAGER:
+                self.get_manager().set_initial_selection(uri)
+                self._show_manager()
+            elif show_window == self.CLI_SHOW_DOMAIN_CREATOR:
                 self._show_domain_creator(uri)
             elif show_window == self.CLI_SHOW_DOMAIN_EDITOR:
                 self._show_domain_editor(uri, clistr)
@@ -1075,8 +1081,8 @@ class vmmEngine(vmmGObject):
         vm = conn.get_vm(connkey)
 
         if not src.err.chkbox_helper(self.config.get_confirm_poweroff,
-            self.config.set_confirm_poweroff,
-            text1=_("Are you sure you want to save '%s'?") % vm.get_name()):
+                self.config.set_confirm_poweroff,
+                text1=_("Are you sure you want to save '%s'?") % vm.get_name()):
             return
 
         _cancel_cb = None

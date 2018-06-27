@@ -129,7 +129,7 @@ class vmmNetworkList(vmmGObjectUI):
         return ret
 
     def _build_source_row(self, nettype, source_name,
-        label, is_sensitive, is_running, manual_bridge=False, key=None):
+            label, is_sensitive, is_running, manual_bridge=False, key=None):
         return [nettype, source_name, label,
                 is_sensitive, is_running, manual_bridge,
                 key]
@@ -288,8 +288,8 @@ class vmmNetworkList(vmmGObjectUI):
             model.insert(0, row)
             default = 0
         elif label:
-            default = [idx for idx in range(len(model)) if
-                       model[idx][2] == label][0]
+            default = [idx for idx, model_label in enumerate(model) if
+                       model_label[2] == label][0]
 
         _add_manual_bridge_row()
         return default
@@ -314,7 +314,7 @@ class vmmNetworkList(vmmGObjectUI):
 
         if net_check_bridge and bridge_entry:
             net_type = virtinst.VirtualNetworkInterface.TYPE_BRIDGE
-            net_src = bridge_entry.get_text()
+            net_src = bridge_entry.get_text() or None
 
         mode = None
         if self.widget("net-source-mode").is_visible():

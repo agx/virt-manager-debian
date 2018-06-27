@@ -1,3 +1,12 @@
+virt-manager (1:1.5.1-1~1.gbp7a4682) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @7a4682ebb6dfd23631dda54a11f7f2ae44c9b730 **
+
+  * Depend on e2fsprogs (Closes: #887285)
+  * New upstream version 1.5.1
+
+ -- Guido Günther <agx@sigxcpu.org>  Wed, 27 Jun 2018 10:29:23 +0200
+
 virt-manager (1:1.4.3-1) unstable; urgency=medium
 
   * Depend on gir1.2-spiceclientglib-2.0 (Closes: #873597)

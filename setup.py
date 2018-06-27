@@ -389,6 +389,8 @@ class TestBaseCommand(distutils.core.Command):
         self._testfiles = []
         self._dir = os.getcwd()
         self.testfile = None
+        self._force_verbose = False
+        self._external_coverage = False
 
     def finalize_options(self):
         if self.debug and "DEBUG_TESTS" not in os.environ:
@@ -419,28 +421,22 @@ class TestBaseCommand(distutils.core.Command):
         return testfiles
 
     def run(self):
-        try:
+        cov = None
+        if self.coverage:
             import coverage
-            use_cov = True
-        except ImportError:
-            use_cov = False
-            cov = None
-
-        if use_cov:
-            # The latter is required to not give errors on f23, probably
-            # a temporary bug.
-            omit = ["/usr/*", "/*/tests/*", "/builddir/*"]
+            omit = ["/usr/*", "/*/tests/*"]
             cov = coverage.coverage(omit=omit)
             cov.erase()
-            cov.start()
+            if not self._external_coverage:
+                cov.start()
 
         import tests as testsmodule
-        testsmodule.cov = cov
-        testsmodule.utils.REGENERATE_OUTPUT = bool(self.regenerate_output)
+        testsmodule.utils.clistate.regenerate_output = bool(
+                self.regenerate_output)
+        testsmodule.utils.clistate.use_coverage = bool(cov)
 
-        if hasattr(unittest, "installHandler"):
-            # Install the control-c handler.
-            unittest.installHandler()
+        # This makes the test runner report results before exiting from ctrl-c
+        unittest.installHandler()
 
         tests = unittest.TestLoader().loadTestsFromNames(self._testfiles)
         if self.only:
@@ -460,20 +456,26 @@ class TestBaseCommand(distutils.core.Command):
                 print("%s" % test)
             print("")
 
-        t = unittest.TextTestRunner(verbosity=self.debug and 2 or 1)
+        verbosity = 1
+        if self.debug or self._force_verbose:
+            verbosity = 2
+        t = unittest.TextTestRunner(verbosity=verbosity)
 
         try:
             result = t.run(tests)
         except KeyboardInterrupt:
             sys.exit(1)
 
-        if use_cov:
-            cov.stop()
-            cov.save()
+        if cov:
+            if self._external_coverage:
+                cov.load()
+            else:
+                cov.stop()
+                cov.save()
 
         err = int(bool(len(result.failures) > 0 or
                        len(result.errors) > 0))
-        if not err and use_cov and self.coverage:
+        if cov and not err:
             cov.report(show_missing=False)
         sys.exit(err)
 
@@ -481,13 +483,9 @@ class TestBaseCommand(distutils.core.Command):
 
 class TestCommand(TestBaseCommand):
     description = "Runs a quick unit test suite"
-    user_options = TestBaseCommand.user_options + [
-        ("skipcli", None, "Skip CLI tests"),
-    ]
 
     def initialize_options(self):
         TestBaseCommand.initialize_options(self)
-        self.skipcli = None
 
     def finalize_options(self):
         TestBaseCommand.finalize_options(self)
@@ -497,8 +495,6 @@ class TestCommand(TestBaseCommand):
         Finds all the tests modules in tests/, and runs them.
         '''
         excludes = ["test_urls.py", "test_inject.py"]
-        if self.skipcli:
-            excludes += ["clitest.py"]
         testfiles = self._find_tests_in_dir("tests", excludes)
 
         # Put clitest at the end, since it takes the longest
@@ -511,7 +507,7 @@ class TestCommand(TestBaseCommand):
         for f in testfiles[:]:
             if "checkprops" in f:
                 testfiles.remove(f)
-                if not self.testfile and not self.skipcli:
+                if not self.testfile:
                     testfiles.append(f)
 
         self._testfiles = testfiles
@@ -523,16 +519,13 @@ class TestUI(TestBaseCommand):
 
     def run(self):
         self._testfiles = self._find_tests_in_dir("tests/uitests", [])
+        self._force_verbose = True
+        self._external_coverage = True
         TestBaseCommand.run(self)
 
 
 class TestURLFetch(TestBaseCommand):
     description = "Test fetching kernels and isos from various distro trees"
-
-    user_options = TestBaseCommand.user_options + [
-        ("path=", None, "Paths to local iso or directory or check"
-                        " for installable distro. Comma separated"),
-    ]
 
     def initialize_options(self):
         TestBaseCommand.initialize_options(self)
@@ -548,9 +541,6 @@ class TestURLFetch(TestBaseCommand):
 
     def run(self):
         self._testfiles = ["tests.test_urls"]
-        if self.path:
-            import tests
-            tests.URLTEST_LOCAL_MEDIA += self.path
         TestBaseCommand.run(self)
 
 
