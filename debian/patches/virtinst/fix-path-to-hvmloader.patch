@@ -8,7 +8,7 @@ Closes: #685749
  1 file changed, 1 insertion(+), 1 deletion(-)
 
 diff --git a/virtinst/guest.py b/virtinst/guest.py
-index 143a36f..4231719 100644
+index 32acd52..e136a17 100644
 --- a/virtinst/guest.py
 +++ b/virtinst/guest.py
 @@ -814,7 +814,7 @@ class Guest(XMLBuilder):
