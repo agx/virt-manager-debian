@@ -83,7 +83,7 @@ def compare_device(origdev, newdev, idx):
     if id(origdev) == id(newdev):
         return True
 
-    if type(origdev) is not type(newdev):
+    if not isinstance(origdev, type(newdev)):
         return False
 
     for devprop in devprops[origdev.virtual_device_type]:
@@ -484,6 +484,9 @@ class vmmDomain(vmmLibvirtObject):
         return bool(self.get_xmlobj().os.loader_ro is True and
                     self.get_xmlobj().os.loader_type == "pflash")
 
+    def is_persistent(self):
+        return bool(self._backend.isPersistent())
+
     ##################
     # Support checks #
     ##################
@@ -500,7 +503,7 @@ class vmmDomain(vmmLibvirtObject):
 
     def snapshots_supported(self):
         if not self.conn.check_support(
-            self.conn.SUPPORT_DOMAIN_LIST_SNAPSHOTS, self._backend):
+                self.conn.SUPPORT_DOMAIN_LIST_SNAPSHOTS, self._backend):
             return _("Libvirt connection does not support snapshots.")
 
         if self.list_snapshots():
@@ -644,8 +647,8 @@ class vmmDomain(vmmLibvirtObject):
         self._redefine_xmlobj(xmlobj)
 
     def define_cpu(self, vcpus=_SENTINEL, maxvcpus=_SENTINEL,
-        model=_SENTINEL, sockets=_SENTINEL,
-        cores=_SENTINEL, threads=_SENTINEL):
+            model=_SENTINEL, sockets=_SENTINEL,
+            cores=_SENTINEL, threads=_SENTINEL):
         guest = self._make_xmlobj_to_define()
 
         if vcpus != _SENTINEL:
@@ -675,8 +678,8 @@ class vmmDomain(vmmLibvirtObject):
         self._redefine_xmlobj(guest)
 
     def define_overview(self, machine=_SENTINEL, description=_SENTINEL,
-        title=_SENTINEL, idmap_list=_SENTINEL, loader=_SENTINEL,
-        nvram=_SENTINEL):
+            title=_SENTINEL, idmap_list=_SENTINEL, loader=_SENTINEL,
+            nvram=_SENTINEL):
         guest = self._make_xmlobj_to_define()
         if machine != _SENTINEL:
             guest.os.machine = machine
@@ -720,8 +723,8 @@ class vmmDomain(vmmLibvirtObject):
         self._redefine_xmlobj(guest)
 
     def define_boot(self, boot_order=_SENTINEL, boot_menu=_SENTINEL,
-        kernel=_SENTINEL, initrd=_SENTINEL, dtb=_SENTINEL,
-        kernel_args=_SENTINEL, init=_SENTINEL, initargs=_SENTINEL):
+            kernel=_SENTINEL, initrd=_SENTINEL, dtb=_SENTINEL,
+            kernel_args=_SENTINEL, init=_SENTINEL, initargs=_SENTINEL):
 
         guest = self._make_xmlobj_to_define()
         def _change_boot_order():
@@ -776,10 +779,10 @@ class vmmDomain(vmmLibvirtObject):
     ######################
 
     def define_disk(self, devobj, do_hotplug,
-        path=_SENTINEL, readonly=_SENTINEL, serial=_SENTINEL,
-        shareable=_SENTINEL, removable=_SENTINEL, cache=_SENTINEL,
-        io=_SENTINEL, driver_type=_SENTINEL, bus=_SENTINEL, addrstr=_SENTINEL,
-        sgio=_SENTINEL):
+            path=_SENTINEL, readonly=_SENTINEL, serial=_SENTINEL,
+            shareable=_SENTINEL, removable=_SENTINEL, cache=_SENTINEL,
+            io=_SENTINEL, driver_type=_SENTINEL, bus=_SENTINEL, addrstr=_SENTINEL,
+            sgio=_SENTINEL):
         xmlobj = self._make_xmlobj_to_define()
         editdev = self._lookup_device_to_define(xmlobj, devobj, do_hotplug)
         if not editdev:
@@ -844,11 +847,11 @@ class vmmDomain(vmmLibvirtObject):
             self._redefine_xmlobj(xmlobj)
 
     def define_network(self, devobj, do_hotplug,
-        ntype=_SENTINEL, source=_SENTINEL,
-        mode=_SENTINEL, model=_SENTINEL, addrstr=_SENTINEL,
-        vtype=_SENTINEL, managerid=_SENTINEL, typeid=_SENTINEL,
-        typeidversion=_SENTINEL, instanceid=_SENTINEL,
-        portgroup=_SENTINEL, macaddr=_SENTINEL):
+            ntype=_SENTINEL, source=_SENTINEL,
+            mode=_SENTINEL, model=_SENTINEL, addrstr=_SENTINEL,
+            vtype=_SENTINEL, managerid=_SENTINEL, typeid=_SENTINEL,
+            typeidversion=_SENTINEL, instanceid=_SENTINEL,
+            portgroup=_SENTINEL, macaddr=_SENTINEL):
         xmlobj = self._make_xmlobj_to_define()
         editdev = self._lookup_device_to_define(xmlobj, devobj, do_hotplug)
         if not editdev:
@@ -884,9 +887,9 @@ class vmmDomain(vmmLibvirtObject):
             self._redefine_xmlobj(xmlobj)
 
     def define_graphics(self, devobj, do_hotplug,
-        listen=_SENTINEL, addr=_SENTINEL, port=_SENTINEL, tlsport=_SENTINEL,
-        passwd=_SENTINEL, keymap=_SENTINEL, gtype=_SENTINEL,
-        gl=_SENTINEL, rendernode=_SENTINEL):
+            listen=_SENTINEL, addr=_SENTINEL, port=_SENTINEL, tlsport=_SENTINEL,
+            passwd=_SENTINEL, keymap=_SENTINEL, gtype=_SENTINEL,
+            gl=_SENTINEL, rendernode=_SENTINEL):
         xmlobj = self._make_xmlobj_to_define()
         editdev = self._lookup_device_to_define(xmlobj, devobj, do_hotplug)
         if not editdev:
@@ -964,7 +967,7 @@ class vmmDomain(vmmLibvirtObject):
             self._redefine_xmlobj(xmlobj)
 
     def define_watchdog(self, devobj, do_hotplug,
-        model=_SENTINEL, action=_SENTINEL):
+            model=_SENTINEL, action=_SENTINEL):
         xmlobj = self._make_xmlobj_to_define()
         editdev = self._lookup_device_to_define(xmlobj, devobj, do_hotplug)
         if not editdev:
@@ -1109,7 +1112,7 @@ class vmmDomain(vmmLibvirtObject):
         self._backend.updateDeviceFlags(xml, flags)
 
     def hotplug(self, vcpus=_SENTINEL, memory=_SENTINEL, maxmem=_SENTINEL,
-        description=_SENTINEL, title=_SENTINEL, device=_SENTINEL):
+            description=_SENTINEL, title=_SENTINEL, device=_SENTINEL):
         if not self.is_active():
             return
 
@@ -1195,11 +1198,11 @@ class vmmDomain(vmmLibvirtObject):
         flags = 0
 
         # Ugly workaround for VNC bug where the display cannot be opened
-        # if the listen type is "none".  When this gets fixed in QEMU
-        # we should skip auth only for broken QEMUs.
+        # if the listen type is "none".  This bug was fixed in QEMU-2.9.0.
         graphics = self.get_graphics_devices()[0]
         if (graphics.type == "vnc" and
-            graphics.get_first_listen_type() == "none"):
+                graphics.get_first_listen_type() == "none" and
+                not self.conn.SUPPORT_CONN_VNC_NONE_AUTH):
             flags = libvirt.VIR_DOMAIN_OPEN_GRAPHICS_SKIPAUTH
 
         return self._backend.openGraphicsFD(0, flags)
@@ -1570,7 +1573,7 @@ class vmmDomain(vmmLibvirtObject):
 
 
     def migrate(self, destconn, dest_uri=None,
-        tunnel=False, unsafe=False, temporary=False, meter=None):
+            tunnel=False, unsafe=False, temporary=False, meter=None):
         self._install_abort = True
 
         flags = 0
@@ -1596,7 +1599,7 @@ class vmmDomain(vmmLibvirtObject):
             start_job_progress_thread(self, meter, _("Migrating domain"))
 
         params = {}
-        if dest_uri:
+        if dest_uri and not tunnel:
             params[libvirt.VIR_MIGRATE_PARAM_URI] = dest_uri
 
         if tunnel:
@@ -2030,10 +2033,10 @@ class vmmDomain(vmmLibvirtObject):
             "cpuGuestPercent": pcentGuestCpu,
             "curmem": curmem,
             "currMemPercent": pcentCurrMem,
-            "diskRdKiB": rdBytes / 1024,
-            "diskWrKiB": wrBytes / 1024,
-            "netRxKiB": rxBytes / 1024,
-            "netTxKiB": txBytes / 1024,
+            "diskRdKiB": rdBytes // 1024,
+            "diskWrKiB": wrBytes // 1024,
+            "netRxKiB": rxBytes // 1024,
+            "netTxKiB": txBytes // 1024,
         }
 
         for r in ["diskRd", "diskWr", "netRx", "netTx"]:

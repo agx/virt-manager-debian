@@ -22,7 +22,6 @@ import logging
 import os
 import re
 import stat
-import statvfs
 
 import libvirt
 
@@ -387,9 +386,12 @@ class CloneStorageCreator(_StorageCreator):
     def is_size_conflict(self):
         ret = False
         msg = None
-        vfs = os.statvfs(os.path.dirname(self._path))
-        avail = vfs[statvfs.F_FRSIZE] * vfs[statvfs.F_BAVAIL]
-        need = long(self._size) * long(1024) * long(1024) * long(1024)
+        if self.get_dev_type() == "block":
+            avail = _stat_disk(self._path)[1]
+        else:
+            vfs = os.statvfs(os.path.dirname(self._path))
+            avail = vfs.f_frsize * vfs.f_bavail
+        need = long(self._size * 1024 * 1024 * 1024)
         if need > avail:
             if self._sparse:
                 msg = _("The filesystem will not have enough free space"
@@ -402,16 +404,15 @@ class CloneStorageCreator(_StorageCreator):
 
             if msg:
                 msg += (_(" %d M requested > %d M available") %
-                        ((need / (1024 * 1024)), (avail / (1024 * 1024))))
+                        ((need // (1024 * 1024)), (avail // (1024 * 1024))))
         return (ret, msg)
 
     def create(self, progresscb):
         text = (_("Cloning %(srcfile)s") %
                 {'srcfile': os.path.basename(self._input_path)})
 
-        size_bytes = (long(self.get_size()) *
-                      long(1024) * long(1024) * long(1024))
-        progresscb.start(filename=self._output_path, size=long(size_bytes),
+        size_bytes = long(self.get_size() * 1024 * 1024 * 1024)
+        progresscb.start(filename=self._output_path, size=size_bytes,
                          text=text)
 
         # Plain file clone

@@ -20,7 +20,6 @@
 
 import logging
 import traceback
-import collections
 
 from gi.repository import Gtk
 from gi.repository import Gdk
@@ -404,13 +403,16 @@ class vmmAddHardware(vmmGObjectUI):
                       True, None)
         add_hw_option(_("RNG"), "system-run", PAGE_RNG, True, None)
         add_hw_option(_("Panic Notifier"), "system-run", PAGE_PANIC,
-            self.conn.check_support(self.conn.SUPPORT_CONN_PANIC_DEVICE),
-            _("Not supported for this hypervisor/libvirt combination."))
+            self.conn.check_support(self.conn.SUPPORT_CONN_PANIC_DEVICE) and
+            virtinst.VirtualPanicDevice.get_models(self.vm.get_xmlobj().os),
+            _("Not supported for this hypervisor/libvirt/arch combination."))
 
     def _reset_state(self):
         # Storage init
         self.widget("storage-devtype").set_active(0)
         self.widget("storage-devtype").emit("changed")
+        self.widget("storage-cache").set_active(0)
+        self.widget("disk-advanced-expander").set_expanded(False)
         self.addstorage.reset_state()
 
         # Network init
@@ -594,9 +596,8 @@ class vmmAddHardware(vmmGObjectUI):
         vmmAddHardware.populate_smartcard_mode_combo(vm, combo)
 
         idx = -1
-        for rowid in range(len(combo.get_model())):
+        for rowid, row in enumerate(combo.get_model()):
             idx = 0
-            row = combo.get_model()[rowid]
             if row[0] == virtinst.VirtualSmartCardDevice.MODE_DEFAULT:
                 idx = rowid
                 break
@@ -641,9 +642,8 @@ class vmmAddHardware(vmmGObjectUI):
         vmmAddHardware.populate_tpm_type_combo(vm, combo)
 
         idx = -1
-        for rowid in range(len(combo.get_model())):
+        for rowid, row in enumerate(combo.get_model()):
             idx = 0
-            row = combo.get_model()[rowid]
             if row[0] == virtinst.VirtualTPMDevice.TYPE_DEFAULT:
                 idx = rowid
                 break
@@ -888,7 +888,9 @@ class vmmAddHardware(vmmGObjectUI):
         model.clear()
 
         for t in VirtualController.TYPES:
-            if t == VirtualController.TYPE_PCI:
+            if t in [VirtualController.TYPE_IDE,
+                     VirtualController.TYPE_PCI,
+                     VirtualController.TYPE_FDC]:
                 continue
             model.append([t, VirtualController.pretty_type(t)])
 
@@ -1456,13 +1458,19 @@ class vmmAddHardware(vmmGObjectUI):
                       if x.model == controller_model]
 
         # Save occupied places per controller
-        occupied = collections.defaultdict(int)
+        occupied = {}
         for d in used_disks:
-            if d.get_target_prefix() == disk.get_target_prefix():
+            if (d.get_target_prefix() == disk.get_target_prefix() and
+                d.bus == "scsi"):
                 num = virtinst.VirtualDisk.target_to_num(d.target)
-                occupied[num / 7] += 1
+                idx = num // 7
+                if idx not in occupied:
+                    occupied[idx] = []
+                if d.target not in occupied[idx]:
+                    occupied[idx].append(d.target)
+
         for c in ctrls_scsi:
-            if occupied[c.index] < 7:
+            if c.index not in occupied or len(occupied[c.index]) < 7:
                 controller = c
                 break
         else:
@@ -1481,7 +1489,9 @@ class vmmAddHardware(vmmGObjectUI):
         controller_model = None
         if (bus == "scsi" and
             self.vm.get_hv_type() in ["qemu", "kvm", "test"] and
-            not self.vm.xmlobj.os.is_pseries()):
+            not self.vm.xmlobj.os.is_pseries() and not
+            any([c.type == "scsi"
+                 for c in self.vm.get_controller_devices()])):
             controller_model = "virtio-scsi"
 
         collidelist = [d.path for d in self.vm.get_disk_devices()]
@@ -1531,10 +1541,6 @@ class vmmAddHardware(vmmGObjectUI):
         if not nettype:
             return self.err.val_err(_("Network selection error."),
                                     _("A network source must be selected."))
-
-        if not mac:
-            return self.err.val_err(_("Invalid MAC address"),
-                                    _("A MAC address must be entered."))
 
         ret = self._netlist.validate_network(mac, model)
         if ret is False:

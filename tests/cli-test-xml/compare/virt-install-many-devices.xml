@@ -84,8 +84,13 @@
     </disk>
     <disk type="network" device="disk">
       <driver name="qemu" type="raw"/>
+      <auth username="admin">
+        <secret type="ceph" uuid="f65cc5a8-b77b-4254-9030-d50a528fb456"/>
+      </auth>
       <source protocol="rbd" name="rbd/foobar">
         <host name="ceph-mon-1.example.com" port="6789"/>
+        <host name="ceph-mon-2.example.com" port="6789"/>
+        <host name="ceph-mon-3.example.com" port="6789"/>
       </source>
       <target dev="vdh" bus="virtio"/>
     </disk>
@@ -235,12 +240,12 @@
       <filetransfer enable="yes"/>
     </graphics>
     <graphics type="spice">
-      <gl enable="yes"/>
+      <gl enable="yes" rendernode="/dev/dri/by-path/pci-0000:00:02.0-render"/>
       <image compression="off"/>
       <listen type="socket"/>
     </graphics>
     <graphics type="spice">
-      <gl enable="yes"/>
+      <gl enable="yes" rendernode="/dev/dri/by-path/pci-0000:00:02.0-render"/>
       <image compression="off"/>
       <listen type="none"/>
     </graphics>
@@ -386,12 +391,12 @@
     </panic>
   </devices>
   <qemu:commandline>
-    <qemu:env name="DISPLAY" value=":0.1"/>
     <qemu:arg value="-display"/>
     <qemu:arg value="gtk,gl=on"/>
     <qemu:arg value="-device"/>
     <qemu:arg value="vfio-pci,addr=05.0,sysfsdev=/sys/class/mdev_bus/0000:00:02.0/f321853c-c584-4a6b-b99a-3eee22a3919c"/>
     <qemu:arg value="-set"/>
     <qemu:arg value="device.video0.driver=virtio-vga"/>
+    <qemu:env name="DISPLAY" value=":0.1"/>
   </qemu:commandline>
 </domain>

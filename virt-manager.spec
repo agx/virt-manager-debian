@@ -19,7 +19,7 @@
 # End local config
 
 Name: virt-manager
-Version: 1.4.3
+Version: 1.5.1
 Release: 1%{?dist}
 %global verrel %{version}-%{release}
 
@@ -80,6 +80,8 @@ Requires: python-ipaddr
 Requires: libosinfo >= 0.2.10
 # Required for gobject-introspection infrastructure
 Requires: pygobject3-base
+# Required for pulling files from iso media with isoinfo
+Requires: genisoimage
 
 %description common
 Common files used by the different virt-manager interfaces, as well as

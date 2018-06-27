@@ -1,5 +1,5 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Generated with glade 3.20.0 -->
+<!-- Generated with glade 3.20.2 -->
 <interface>
   <requires lib="gtk+" version="3.14"/>
   <object class="GtkAccelGroup" id="accelgroup1"/>
@@ -1007,96 +1007,6 @@
                                           </packing>
                                         </child>
                                         <child>
-                                          <object class="GtkGrid" id="grid4">
-                                            <property name="visible">True</property>
-                                            <property name="can_focus">False</property>
-                                            <property name="row_spacing">3</property>
-                                            <child>
-                                              <object class="GtkBox" id="overview-chipset-warn-box">
-                                                <property name="can_focus">False</property>
-                                                <property name="spacing">6</property>
-                                                <child>
-                                                  <object class="GtkImage" id="image3">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="halign">start</property>
-                                                    <property name="valign">start</property>
-                                                    <property name="hexpand">False</property>
-                                                    <property name="stock">gtk-dialog-warning</property>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">True</property>
-                                                    <property name="position">0</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
-                                                  <object class="GtkLabel" id="overview-chipset-warn">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="label" translatable="yes">&lt;small&gt;Q35 is not the default chipset and has received far less testing.
-Once this change is made it is difficult to go back. Only use this
-if you know what you are doing.&lt;/small&gt;</property>
-                                                    <property name="use_markup">True</property>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">True</property>
-                                                    <property name="position">1</property>
-                                                  </packing>
-                                                </child>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">0</property>
-                                                <property name="top_attach">1</property>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkBox" id="overview-chipset-box">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
-                                                <child>
-                                                  <object class="GtkComboBoxText" id="overview-chipset">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="halign">start</property>
-                                                    <property name="hexpand">False</property>
-                                                    <signal name="changed" handler="on_overview_chipset_changed" swapped="no"/>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">True</property>
-                                                    <property name="position">0</property>
-                                                  </packing>
-                                                </child>
-                                                <child>
-                                                  <object class="GtkLabel" id="overview-chipset-label">
-                                                    <property name="visible">True</property>
-                                                    <property name="can_focus">False</property>
-                                                    <property name="halign">start</property>
-                                                    <property name="valign">start</property>
-                                                    <property name="vexpand">True</property>
-                                                    <property name="label">label</property>
-                                                  </object>
-                                                  <packing>
-                                                    <property name="expand">False</property>
-                                                    <property name="fill">True</property>
-                                                    <property name="position">1</property>
-                                                  </packing>
-                                                </child>
-                                              </object>
-                                              <packing>
-                                                <property name="left_attach">0</property>
-                                                <property name="top_attach">0</property>
-                                              </packing>
-                                            </child>
-                                          </object>
-                                          <packing>
-                                            <property name="left_attach">1</property>
-                                            <property name="top_attach">5</property>
-                                          </packing>
-                                        </child>
-                                        <child>
                                           <object class="GtkLabel" id="overview-firmware-title">
                                             <property name="visible">True</property>
                                             <property name="can_focus">False</property>
@@ -1202,6 +1112,45 @@ if you know what you are doing.&lt;/small&gt;</property>
                                           <packing>
                                             <property name="left_attach">1</property>
                                             <property name="top_attach">3</property>
+                                          </packing>
+                                        </child>
+                                        <child>
+                                          <object class="GtkBox" id="overview-chipset-box">
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">False</property>
+                                            <child>
+                                              <object class="GtkComboBoxText" id="overview-chipset">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
+                                                <property name="hexpand">False</property>
+                                                <signal name="changed" handler="on_overview_chipset_changed" swapped="no"/>
+                                              </object>
+                                              <packing>
+                                                <property name="expand">False</property>
+                                                <property name="fill">True</property>
+                                                <property name="position">0</property>
+                                              </packing>
+                                            </child>
+                                            <child>
+                                              <object class="GtkLabel" id="overview-chipset-label">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">False</property>
+                                                <property name="halign">start</property>
+                                                <property name="valign">start</property>
+                                                <property name="vexpand">True</property>
+                                                <property name="label">label</property>
+                                              </object>
+                                              <packing>
+                                                <property name="expand">False</property>
+                                                <property name="fill">True</property>
+                                                <property name="position">1</property>
+                                              </packing>
+                                            </child>
+                                          </object>
+                                          <packing>
+                                            <property name="left_attach">1</property>
+                                            <property name="top_attach">5</property>
                                           </packing>
                                         </child>
                                       </object>
@@ -1431,6 +1380,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="fill">True</property>
                                 <property name="position">2</property>
                               </packing>
+                            </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox6-atkobject">
+                                <property name="AtkObject::accessible-name">overview-tab</property>
+                              </object>
                             </child>
                           </object>
                         </child>
@@ -1674,6 +1628,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="fill">False</property>
                                 <property name="position">2</property>
                               </packing>
+                            </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="box12-atkobject">
+                                <property name="AtkObject::accessible-name">inspection-tab</property>
+                              </object>
                             </child>
                           </object>
                           <packing>
@@ -1968,6 +1927,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="position">0</property>
                               </packing>
                             </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="box2-atkobject">
+                                <property name="AtkObject::accessible-name">performance-tab</property>
+                              </object>
+                            </child>
                           </object>
                           <packing>
                             <property name="position">2</property>
@@ -2238,6 +2202,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="can_focus">True</property>
                                               </object>
                                             </child>
+                                            <child internal-child="accessible">
+                                              <object class="AtkObject" id="cpu-model-atkobject">
+                                                <property name="AtkObject::accessible-name">cpu-model</property>
+                                              </object>
+                                            </child>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -2483,6 +2452,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="position">2</property>
                               </packing>
                             </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox14-atkobject">
+                                <property name="AtkObject::accessible-name">cpu-tab</property>
+                              </object>
+                            </child>
                           </object>
                           <packing>
                             <property name="position">3</property>
@@ -2693,6 +2667,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="fill">True</property>
                                 <property name="position">0</property>
                               </packing>
+                            </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox7-atkobject">
+                                <property name="AtkObject::accessible-name">memory-tab</property>
+                              </object>
                             </child>
                           </object>
                           <packing>
@@ -2947,6 +2926,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                         <property name="can_focus">True</property>
                                                         <property name="receives_default">True</property>
                                                         <signal name="clicked" handler="on_boot_initrd_browse_clicked" swapped="no"/>
+                                                        <child internal-child="accessible">
+                                                          <object class="AtkObject" id="boot-initrd-browse-atkobject">
+                                                            <property name="AtkObject::accessible-name">initrd-browse</property>
+                                                          </object>
+                                                        </child>
                                                       </object>
                                                       <packing>
                                                         <property name="expand">False</property>
@@ -2987,6 +2971,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                         <property name="can_focus">True</property>
                                                         <property name="receives_default">True</property>
                                                         <signal name="clicked" handler="on_boot_kernel_browse_clicked" swapped="no"/>
+                                                        <child internal-child="accessible">
+                                                          <object class="AtkObject" id="boot-kernel-browse-atkobject">
+                                                            <property name="AtkObject::accessible-name">kernel-browse</property>
+                                                          </object>
+                                                        </child>
                                                       </object>
                                                       <packing>
                                                         <property name="expand">False</property>
@@ -3037,7 +3026,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                     <property name="halign">start</property>
                                                     <property name="margin_top">8</property>
                                                     <property name="margin_bottom">8</property>
-                                                    <property name="label" translatable="yes">D_TB Path:</property>
+                                                    <property name="label" translatable="yes">D_TB path:</property>
                                                     <property name="use_underline">True</property>
                                                     <property name="mnemonic_widget">boot-dtb</property>
                                                   </object>
@@ -3073,6 +3062,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                         <property name="can_focus">True</property>
                                                         <property name="receives_default">True</property>
                                                         <signal name="clicked" handler="on_boot_dtb_browse_clicked" swapped="no"/>
+                                                        <child internal-child="accessible">
+                                                          <object class="AtkObject" id="boot-dtb-browse-atkobject">
+                                                            <property name="AtkObject::accessible-name">dtb-browse</property>
+                                                          </object>
+                                                        </child>
                                                       </object>
                                                       <packing>
                                                         <property name="expand">False</property>
@@ -3091,20 +3085,6 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="expand">False</property>
                                                 <property name="fill">True</property>
                                                 <property name="position">0</property>
-                                              </packing>
-                                            </child>
-                                            <child>
-                                              <object class="GtkAlignment" id="alignment12">
-                                                <property name="visible">True</property>
-                                                <property name="can_focus">False</property>
-                                                <child>
-                                                  <placeholder/>
-                                                </child>
-                                              </object>
-                                              <packing>
-                                                <property name="expand">True</property>
-                                                <property name="fill">True</property>
-                                                <property name="position">1</property>
                                               </packing>
                                             </child>
                                           </object>
@@ -3223,6 +3203,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                         <property name="stock">gtk-go-up</property>
                                                       </object>
                                                     </child>
+                                                    <child internal-child="accessible">
+                                                      <object class="AtkObject" id="boot-moveup-atkobject">
+                                                        <property name="AtkObject::accessible-name">boot-moveup</property>
+                                                      </object>
+                                                    </child>
                                                   </object>
                                                   <packing>
                                                     <property name="expand">False</property>
@@ -3244,6 +3229,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                         <property name="visible">True</property>
                                                         <property name="can_focus">False</property>
                                                         <property name="stock">gtk-go-down</property>
+                                                      </object>
+                                                    </child>
+                                                    <child internal-child="accessible">
+                                                      <object class="AtkObject" id="boot-movedown-atkobject">
+                                                        <property name="AtkObject::accessible-name">boot-movedown</property>
                                                       </object>
                                                     </child>
                                                   </object>
@@ -3283,6 +3273,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="left_attach">0</property>
                                 <property name="top_attach">1</property>
                               </packing>
+                            </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox4-atkobject">
+                                <property name="AtkObject::accessible-name">boot-tab</property>
+                              </object>
                             </child>
                           </object>
                           <packing>
@@ -3449,6 +3444,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                     <property name="label">path</property>
                                                     <property name="selectable">True</property>
                                                     <property name="ellipsize">start</property>
+                                                    <child internal-child="accessible">
+                                                      <object class="AtkObject" id="disk-source-path-atkobject">
+                                                        <property name="AtkObject::accessible-name">disk-source-path</property>
+                                                      </object>
+                                                    </child>
                                                   </object>
                                                   <packing>
                                                     <property name="expand">False</property>
@@ -3861,6 +3861,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="position">1</property>
                               </packing>
                             </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox55-atkobject">
+                                <property name="AtkObject::accessible-name">disk-tab</property>
+                              </object>
+                            </child>
                           </object>
                           <packing>
                             <property name="position">6</property>
@@ -4047,6 +4052,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="position">1</property>
                               </packing>
                             </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox54-atkobject">
+                                <property name="AtkObject::accessible-name">network-tab</property>
+                              </object>
+                            </child>
                           </object>
                           <packing>
                             <property name="position">7</property>
@@ -4158,6 +4168,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="position">0</property>
                               </packing>
                             </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox56-atkobject">
+                                <property name="AtkObject::accessible-name">input-tab</property>
+                              </object>
+                            </child>
                           </object>
                           <packing>
                             <property name="position">8</property>
@@ -4211,6 +4226,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="position">0</property>
                               </packing>
                             </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox57-atkobject">
+                                <property name="AtkObject::accessible-name">graphics-tab</property>
+                              </object>
+                            </child>
                           </object>
                           <packing>
                             <property name="position">9</property>
@@ -4257,7 +4277,7 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="can_focus">False</property>
                                             <property name="halign">start</property>
                                             <property name="valign">center</property>
-                                            <property name="label" translatable="yes">Device m_odel:</property>
+                                            <property name="label" translatable="yes">M_odel:</property>
                                             <property name="use_underline">True</property>
                                             <property name="mnemonic_widget">combobox-entry12</property>
                                           </object>
@@ -4301,6 +4321,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="fill">True</property>
                                 <property name="position">0</property>
                               </packing>
+                            </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox58-atkobject">
+                                <property name="AtkObject::accessible-name">sound-tab</property>
+                              </object>
                             </child>
                           </object>
                           <packing>
@@ -4508,6 +4533,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="position">0</property>
                               </packing>
                             </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox59-atkobject">
+                                <property name="AtkObject::accessible-name">char-tab</property>
+                              </object>
+                            </child>
                           </object>
                           <packing>
                             <property name="position">11</property>
@@ -4618,6 +4648,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="fill">True</property>
                                 <property name="position">0</property>
                               </packing>
+                            </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox8-atkobject">
+                                <property name="AtkObject::accessible-name">host-tab</property>
+                              </object>
                             </child>
                           </object>
                           <packing>
@@ -4740,7 +4775,9 @@ if you know what you are doing.&lt;/small&gt;</property>
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
                                         <property name="halign">end</property>
-                                        <property name="label" translatable="yes">3D acceleration:</property>
+                                        <property name="label" translatable="yes">_3D acceleration:</property>
+                                        <property name="use_underline">True</property>
+                                        <property name="mnemonic_widget">video-3d</property>
                                       </object>
                                       <packing>
                                         <property name="left_attach">0</property>
@@ -4779,6 +4816,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="fill">True</property>
                                 <property name="position">0</property>
                               </packing>
+                            </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox9-atkobject">
+                                <property name="AtkObject::accessible-name">video-tab</property>
+                              </object>
                             </child>
                           </object>
                           <packing>
@@ -4902,6 +4944,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="position">0</property>
                               </packing>
                             </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox12-atkobject">
+                                <property name="AtkObject::accessible-name">watchdog-tab</property>
+                              </object>
+                            </child>
                           </object>
                           <packing>
                             <property name="position">14</property>
@@ -4971,6 +5018,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                             <property name="can_focus">True</property>
                                           </object>
                                         </child>
+                                        <child internal-child="accessible">
+                                          <object class="AtkObject" id="controller-model-atkobject">
+                                            <property name="AtkObject::accessible-name">controller-model</property>
+                                          </object>
+                                        </child>
                                       </object>
                                       <packing>
                                         <property name="left_attach">1</property>
@@ -4981,6 +5033,8 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <object class="GtkLabel" id="mlabel48">
                                         <property name="visible">True</property>
                                         <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
+                                        <property name="hexpand">False</property>
                                         <property name="label" translatable="yes">M_odel:</property>
                                         <property name="use_underline">True</property>
                                         <property name="mnemonic_widget">combobox-entry16</property>
@@ -4988,6 +5042,56 @@ if you know what you are doing.&lt;/small&gt;</property>
                                       <packing>
                                         <property name="left_attach">0</property>
                                         <property name="top_attach">1</property>
+                                      </packing>
+                                    </child>
+                                    <child>
+                                      <object class="GtkLabel" id="device-list-label">
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">False</property>
+                                        <property name="halign">end</property>
+                                        <property name="valign">start</property>
+                                        <property name="vexpand">False</property>
+                                        <property name="label" translatable="yes">Devices:</property>
+                                        <property name="use_markup">True</property>
+                                      </object>
+                                      <packing>
+                                        <property name="left_attach">0</property>
+                                        <property name="top_attach">2</property>
+                                      </packing>
+                                    </child>
+                                    <child>
+                                      <object class="GtkBox" id="controller-device-box">
+                                        <property name="visible">True</property>
+                                        <property name="can_focus">False</property>
+                                        <property name="orientation">vertical</property>
+                                        <property name="spacing">3</property>
+                                        <child>
+                                          <object class="GtkScrolledWindow" id="controller-device-scroll">
+                                            <property name="width_request">270</property>
+                                            <property name="height_request">100</property>
+                                            <property name="visible">True</property>
+                                            <property name="can_focus">True</property>
+                                            <property name="shadow_type">in</property>
+                                            <child>
+                                              <object class="GtkTreeView" id="controller-device-list">
+                                                <property name="visible">True</property>
+                                                <property name="can_focus">True</property>
+                                                <child internal-child="selection">
+                                                  <object class="GtkTreeSelection" id="controller-device-selection"/>
+                                                </child>
+                                              </object>
+                                            </child>
+                                          </object>
+                                          <packing>
+                                            <property name="expand">True</property>
+                                            <property name="fill">True</property>
+                                            <property name="position">0</property>
+                                          </packing>
+                                        </child>
+                                      </object>
+                                      <packing>
+                                        <property name="left_attach">1</property>
+                                        <property name="top_attach">2</property>
                                       </packing>
                                     </child>
                                   </object>
@@ -5000,6 +5104,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="can_focus">False</property>
                                 <property name="label" translatable="yes">&lt;b&gt;Controller&lt;/b&gt;</property>
                                 <property name="use_markup">True</property>
+                              </object>
+                            </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="frame12-atkobject">
+                                <property name="AtkObject::accessible-name">controller-tab</property>
                               </object>
                             </child>
                           </object>
@@ -5041,6 +5150,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="can_focus">False</property>
                                 <property name="label" translatable="yes">&lt;b&gt;Filesystem&lt;/b&gt;</property>
                                 <property name="use_markup">True</property>
+                              </object>
+                            </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="frame16-atkobject">
+                                <property name="AtkObject::accessible-name">filesystem-tab</property>
                               </object>
                             </child>
                           </object>
@@ -5109,6 +5223,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                                 <property name="can_focus">True</property>
                                               </object>
                                             </child>
+                                            <child internal-child="accessible">
+                                              <object class="AtkObject" id="smartcard-mode-atkobject">
+                                                <property name="AtkObject::accessible-name">smartcard-mode</property>
+                                              </object>
+                                            </child>
                                           </object>
                                           <packing>
                                             <property name="left_attach">1</property>
@@ -5135,6 +5254,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="fill">True</property>
                                 <property name="position">0</property>
                               </packing>
+                            </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox16-atkobject">
+                                <property name="AtkObject::accessible-name">smartcard-tab</property>
+                              </object>
                             </child>
                           </object>
                           <packing>
@@ -5229,6 +5353,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="can_focus">False</property>
                                 <property name="label" translatable="yes">&lt;b&gt;Redirected device&lt;/b&gt;</property>
                                 <property name="use_markup">True</property>
+                              </object>
+                            </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="frame19-atkobject">
+                                <property name="AtkObject::accessible-name">redir-tab</property>
                               </object>
                             </child>
                           </object>
@@ -5338,6 +5467,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="fill">True</property>
                                 <property name="position">0</property>
                               </packing>
+                            </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="vbox17-atkobject">
+                                <property name="AtkObject::accessible-name">tpm-tab</property>
+                              </object>
                             </child>
                           </object>
                           <packing>
@@ -5626,6 +5760,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="use_markup">True</property>
                               </object>
                             </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="frame21-atkobject">
+                                <property name="AtkObject::accessible-name">rng-tab</property>
+                              </object>
+                            </child>
                           </object>
                           <packing>
                             <property name="position">20</property>
@@ -5695,6 +5834,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                                 <property name="can_focus">False</property>
                                 <property name="label" translatable="yes">&lt;b&gt;Panic Notifier&lt;/b&gt;</property>
                                 <property name="use_markup">True</property>
+                              </object>
+                            </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="frame17-atkobject">
+                                <property name="AtkObject::accessible-name">panic-tab</property>
                               </object>
                             </child>
                           </object>
@@ -6021,6 +6165,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                   <object class="GtkNotebook" id="serial-pages">
                     <property name="visible">True</property>
                     <property name="can_focus">True</property>
+                    <child internal-child="accessible">
+                      <object class="AtkObject" id="serial-pages-atkobject">
+                        <property name="AtkObject::accessible-name">serial-pages</property>
+                      </object>
+                    </child>
                   </object>
                   <packing>
                     <property name="position">2</property>
@@ -6053,6 +6202,11 @@ if you know what you are doing.&lt;/small&gt;</property>
                             <property name="shadow_type">none</property>
                             <child>
                               <placeholder/>
+                            </child>
+                            <child internal-child="accessible">
+                              <object class="AtkObject" id="console-gfx-viewport-atkobject">
+                                <property name="AtkObject::accessible-name">console-gfx-viewport</property>
+                              </object>
                             </child>
                           </object>
                         </child>
@@ -6125,6 +6279,9 @@ if you know what you are doing.&lt;/small&gt;</property>
           </packing>
         </child>
       </object>
+    </child>
+    <child type="titlebar">
+      <placeholder/>
     </child>
   </object>
 </interface>

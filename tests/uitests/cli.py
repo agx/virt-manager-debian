@@ -1,19 +1,10 @@
-import time
-import unittest
-
-import tests
 from tests.uitests import utils as uiutils
 
 
-class VMMCLI(unittest.TestCase):
+class VMMCLI(uiutils.UITestCase):
     """
     UI tests for virt-manager's command line --show options
     """
-    def setUp(self):
-        self.app = uiutils.DogtailApp(tests.utils.uri_test)
-    def tearDown(self):
-        self.app.kill()
-
 
     ##############
     # Test cases #
@@ -21,52 +12,66 @@ class VMMCLI(unittest.TestCase):
 
     def testShowNewVM(self):
         self.app.open(extra_opts=["--show-domain-creator"])
-        time.sleep(.5)
-
-        uiutils.find_pattern(self.app.root, "New VM", "frame")
-        self.app.quit()
+        self.assertEqual(self.app.topwin.name, "New VM")
 
     def testShowHost(self):
         self.app.open(extra_opts=["--show-host-summary"])
-        time.sleep(.5)
 
-        win = uiutils.find_pattern(self.app.root,
-            "test testdriver.xml Connection Details", "frame")
+        self.assertEqual(self.app.topwin.name,
+            "test testdriver.xml Connection Details")
         self.assertEqual(
-            uiutils.find_fuzzy(win, None, "text", "Name:").text,
+            self.app.topwin.find_fuzzy("Name:", "text").text,
             "test testdriver.xml")
-        self.app.quit()
 
     def testShowDetails(self):
         self.app.open(extra_opts=["--show-domain-editor", "test-clone-simple"])
-        time.sleep(.5)
 
-        win = uiutils.find_fuzzy(self.app.root, "test-clone-simple on", "frame")
+        self.assertTrue("test-clone-simple on" in self.app.topwin.name)
         self.assertFalse(
-            uiutils.find_fuzzy(win, "Guest is not running", "label").showing)
+            self.app.topwin.find_fuzzy(
+                               "Guest is not running", "label").showing)
         self.assertTrue(
-            uiutils.find_fuzzy(win, "add-hardware", "button").showing)
-        self.app.quit()
+            self.app.topwin.find_fuzzy(
+                               "add-hardware", "button").showing)
 
     def testShowPerformance(self):
         self.app.open(extra_opts=["--show-domain-performance",
             "test-clone-simple"])
-        time.sleep(.5)
 
-        win = uiutils.find_fuzzy(self.app.root, "test-clone-simple on", "frame")
+        self.assertTrue("test-clone-simple on" in self.app.topwin.name)
         self.assertFalse(
-            uiutils.find_fuzzy(win, "Guest is not running", "label").showing)
+            self.app.topwin.find_fuzzy(
+                               "Guest is not running", "label").showing)
         self.assertTrue(
-            uiutils.find_fuzzy(win, "CPU usage", "label").showing)
-        self.app.quit()
+            self.app.topwin.find_fuzzy("CPU usage", "label").showing)
 
     def testShowConsole(self):
         self.app.open(extra_opts=["--show-domain-console", "test-clone-simple"])
-        time.sleep(.5)
 
-        win = uiutils.find_fuzzy(self.app.root, "test-clone-simple on", "frame")
+        self.assertTrue("test-clone-simple on" in self.app.topwin.name)
         self.assertTrue(
-            uiutils.find_fuzzy(win, "Guest is not running", "label").showing)
+            self.app.topwin.find_fuzzy(
+                               "Guest is not running", "label").showing)
         self.assertFalse(
-            uiutils.find_fuzzy(win, "add-hardware", "button").showing)
-        self.app.quit()
+            self.app.topwin.find_fuzzy(
+                               "add-hardware", "button").showing)
+
+    def testShowRemoteConnect(self):
+        """
+        Test the remote app dbus connection
+        """
+        self.app.open()
+        newapp = uiutils.VMMDogtailApp("test:///default")
+        newapp.open()
+        uiutils.check_in_loop(lambda: not newapp.is_running())
+        import dogtail.tree
+        vapps = [a for a in dogtail.tree.root.applications() if
+                 a.name == "virt-manager"]
+        self.assertEqual(len(vapps), 1)
+
+        self.app.topwin.find("test default", "table cell")
+
+    def testShowError(self):
+        self.app.open(extra_opts=["--idontexist"])
+        alert = self.app.root.find("vmm dialog")
+        alert.find_fuzzy("Unhandled command line")

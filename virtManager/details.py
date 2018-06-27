@@ -228,13 +228,13 @@ def _label_for_device(dev):
     if devtype == "hostdev":
         return dev.pretty_name()
     if devtype == "sound":
-        return _("Sound: %s") % dev.model
+        return _("Sound %s") % dev.model
     if devtype == "video":
         return _("Video %s") % dev.pretty_model(dev.model)
     if devtype == "filesystem":
         return _("Filesystem %s") % dev.target[:8]
     if devtype == "controller":
-        return _("Controller %s") % dev.pretty_desc()
+        return _("Controller %s %s") % (dev.pretty_desc(), dev.index)
     if devtype == "rng":
         label = _("RNG")
         if dev.device:
@@ -896,16 +896,6 @@ class vmmDetails(vmmGObjectUI):
             model.append([_chipset_label_from_machine("q35"), "q35"])
         combo.set_active(0)
 
-        def chipset_changed(*args):
-            ignore = args
-            combo = self.widget("overview-chipset")
-            model = combo.get_model()
-            show_warn = (combo.get_active() >= 0 and
-                model[combo.get_active()][1] == "q35")
-            uiutil.set_grid_row_visible(
-                self.widget("overview-chipset-warn-box"), show_warn)
-        combo.connect("changed", chipset_changed)
-
         self.widget("overview-chipset").set_visible(self.is_customize_dialog)
         self.widget("overview-chipset-label").set_visible(
             not self.is_customize_dialog)
@@ -1042,6 +1032,16 @@ class vmmDetails(vmmGObjectUI):
         uiutil.init_combo_text_column(combo, 1)
         combo.set_active(-1)
 
+        combo = self.widget("controller-device-list")
+        model = Gtk.ListStore(str)
+        combo.set_model(model)
+        combo.set_headers_visible(False)
+        col = Gtk.TreeViewColumn()
+        text = Gtk.CellRendererText()
+        col.pack_start(text, True)
+        col.add_attribute(text, 'text', 0)
+        combo.append_column(col)
+
 
     ##########################
     # Window state listeners #
@@ -1129,12 +1129,12 @@ class vmmDetails(vmmGObjectUI):
             return False
 
         if not self.err.chkbox_helper(
-            self.config.get_confirm_unapplied,
-            self.config.set_confirm_unapplied,
-            text1=(_("There are unapplied changes. Would you like to apply "
-                     "them now?")),
-            chktext=_("Don't warn me again."),
-            default=False):
+                self.config.get_confirm_unapplied,
+                self.config.set_confirm_unapplied,
+                text1=(_("There are unapplied changes. Would you like to apply "
+                    "them now?")),
+                chktext=_("Don't warn me again."),
+                default=False):
             return False
 
         return not self.config_apply(row=row)
@@ -1520,7 +1520,7 @@ class vmmDetails(vmmGObjectUI):
         # On Fedora 19, ret is (bool, str)
         # Someday the bindings might be fixed to just return the str, try
         # and future proof it a bit
-        if type(ret) is tuple and len(ret) >= 2:
+        if isinstance(ret, tuple) and len(ret) >= 2:
             ret = ret[1]
         # F24 rawhide, ret[1] is a named tuple with a 'buffer' element...
         if hasattr(ret, "buffer"):
@@ -2275,8 +2275,8 @@ class vmmDetails(vmmGObjectUI):
         logging.debug("Removing device: %s", devobj)
 
         if not self.err.chkbox_helper(self.config.get_confirm_removedev,
-            self.config.set_confirm_removedev,
-            text1=(_("Are you sure you want to remove this device?"))):
+                self.config.set_confirm_removedev,
+                text1=(_("Are you sure you want to remove this device?"))):
             return
 
         # Define the change
@@ -2584,7 +2584,7 @@ class vmmDetails(vmmGObjectUI):
 
     def refresh_config_memory(self):
         host_mem_widget = self.widget("state-host-memory")
-        host_mem = self.vm.conn.host_memory_size() / 1024
+        host_mem = self.vm.conn.host_memory_size() // 1024
         vm_cur_mem = self.vm.get_memory() / 1024.0
         vm_max_mem = self.vm.maximum_memory() / 1024.0
 
@@ -2965,7 +2965,7 @@ class vmmDetails(vmmGObjectUI):
             ram = vid.vram
         heads = vid.heads
         try:
-            ramlabel = ram and "%d MiB" % (int(ram) / 1024) or "-"
+            ramlabel = ram and "%d MiB" % (int(ram) // 1024) or "-"
         except Exception:
             ramlabel = "-"
 
@@ -2991,28 +2991,43 @@ class vmmDetails(vmmGObjectUI):
         uiutil.set_list_selection(self.widget("watchdog-action"), action)
 
     def refresh_controller_page(self):
-        dev = self.get_hw_selection(HW_LIST_COL_DEVICE)
-        if not dev:
+        controller = self.get_hw_selection(HW_LIST_COL_DEVICE)
+        if not controller:
             return
 
+        uiutil.set_grid_row_visible(self.widget("device-list-label"), False)
+        uiutil.set_grid_row_visible(self.widget("controller-device-box"), False)
+
         can_remove = True
-        if self.vm.get_xmlobj().os.is_x86() and dev.type == "usb":
+        if self.vm.get_xmlobj().os.is_x86() and controller.type == "usb":
             can_remove = False
-        if dev.type == "pci":
+        if controller.type == "pci":
             can_remove = False
+        if controller.type == "scsi":
+            model = self.widget("controller-device-list").get_model()
+            model.clear()
+            for disk in self.vm.get_disk_devices():
+                if disk.address.compare_controller(controller, disk.bus):
+                    can_remove = False
+                    name = _label_for_device(disk)
+                    infoStr = ("%s on %s" % (name, disk.address.pretty_desc()))
+                    model.append([infoStr])
+            uiutil.set_grid_row_visible(self.widget("device-list-label"), True)
+            uiutil.set_grid_row_visible(self.widget("controller-device-box"), True)
+
         self.widget("config-remove").set_sensitive(can_remove)
 
-        type_label = dev.pretty_desc()
+        type_label = controller.pretty_desc()
         self.widget("controller-type").set_text(type_label)
 
         combo = self.widget("controller-model")
-        vmmAddHardware.populate_controller_model_combo(combo, dev.type)
-        show_model = (dev.model or len(combo.get_model()) > 1)
-        if dev.type == "pci":
+        vmmAddHardware.populate_controller_model_combo(combo, controller.type)
+        show_model = (controller.model or len(combo.get_model()) > 1)
+        if controller.type == "pci":
             show_model = False
         uiutil.set_grid_row_visible(combo, show_model)
         uiutil.set_list_selection(self.widget("controller-model"),
-            dev.model or None)
+            controller.model or None)
 
     def refresh_filesystem_page(self):
         dev = self.get_hw_selection(HW_LIST_COL_DEVICE)
@@ -3218,7 +3233,7 @@ class vmmDetails(vmmGObjectUI):
             olddev = hw_list_model[i][HW_LIST_COL_DEVICE]
 
             # Existing device, don't remove it
-            if type(olddev) is str or olddev in currentDevices:
+            if isinstance(olddev, str) or olddev in currentDevices:
                 continue
 
             hw_list_model.remove(_iter)

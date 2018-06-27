@@ -412,7 +412,7 @@ Foo bar baz &amp; yeah boii &lt; &gt; yeahfoo
       <source file='/tmp/foobar2'/>
       <target dev='sda' bus='scsi'/>
       <boot order='1'/>
-      <address type='drive' controller='9'/>
+      <address type='drive' controller='9' bus='0' target='0' unit='0'/>
       <shareable/>
     </disk>
 
@@ -527,6 +527,11 @@ Foo bar baz &amp; yeah boii &lt; &gt; yeahfoo
         <parameters managerid="12" typeid="1193046" typeidversion="1" instanceid="09b11c53-8b5c-4eeb-8f00-d84eaa0aaa3b"/>
       </virtualport>
       <address type="pci" domain="0x0000" bus="0x00" slot="0x07" function="0x0"/>
+    </interface>
+    <interface type="vhostuser">
+      <source type="unix" path="/tmp/vhost1.sock" mode="server"/>
+      <mac address="00:11:22:33:44:66"/>
+      <model type="virtio"/>
     </interface>
 
 
@@ -2073,6 +2078,9 @@ ba</description>
     <host name='ceph-mon-2.example.com' port='6789'/>
     <host name='ceph-mon-3.example.com' port='6789'/>
     <name>rbd</name>
+    <auth type='ceph' username='admin'>
+      <secret uuid='f65cc5a8-b77b-4254-9030-d50a528fb456'/>
+    </auth>
   </source>
 
   <volume type='network'>

@@ -614,7 +614,7 @@ class SpiceViewer(Viewer):
         GObject.GObject.connect(channel, "open-fd",
                                 self._channel_open_fd_request)
 
-        if (type(channel) == SpiceClientGLib.MainChannel and
+        if (isinstance(channel, SpiceClientGLib.MainChannel) and
             not self._main_channel):
             self._main_channel = channel
             hid = self._main_channel.connect_after("channel-event",
@@ -625,7 +625,7 @@ class SpiceViewer(Viewer):
             self._main_channel_hids.append(hid)
 
         elif (type(channel) == SpiceClientGLib.DisplayChannel and
-            not self._display):
+                not self._display):
             channel_id = channel.get_property("channel-id")
 
             if channel_id != 0:
@@ -640,7 +640,7 @@ class SpiceViewer(Viewer):
 
         elif (type(channel) in [SpiceClientGLib.PlaybackChannel,
                                 SpiceClientGLib.RecordChannel] and
-            not self._audio):
+                                not self._audio):
             self._audio = SpiceClientGLib.Audio.get(self._spice_session, None)
 
     def _agent_connected_cb(self, src, val):

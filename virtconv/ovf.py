@@ -151,7 +151,7 @@ def _import_file(doc, ctx, conn, input_file):
         ret = ctx.xpathEval(path)
         result = None
         if ret is not None:
-            if type(ret) == list:
+            if isinstance(ret, list):
                 if len(ret) >= 1:
                     result = ret[0].content
             else:
@@ -269,10 +269,9 @@ def _import_file(doc, ctx, conn, input_file):
 
         if not bool_val(env_node.prop("required")):
             continue
-        raise StandardError(_("OVF section '%s' is listed as "
-                              "required, but parser doesn't know "
-                              "how to handle it.") %
-                              env_node.name)
+        raise Exception(_("OVF section '%s' is listed as "
+                          "required, but parser doesn't know "
+                          "how to handle it.") % env_node.name)
 
     disk_buses = {}
     for node in ctx.xpathEval(vhbase % DEVICE_IDE_BUS):

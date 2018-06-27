@@ -9,9 +9,9 @@
 #   Lesser General Public License for more details.
 #
 #   You should have received a copy of the GNU Lesser General Public
-#   License along with this library; if not, write to the 
-#      Free Software Foundation, Inc., 
-#      59 Temple Place, Suite 330, 
+#   License along with this library; if not, write to the
+#      Free Software Foundation, Inc.,
+#      59 Temple Place, Suite 330,
 #      Boston, MA  02111-1307  USA
 
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
@@ -27,7 +27,6 @@
 import sys
 import time
 import math
-import thread
 import fcntl
 import struct
 import termios
@@ -80,7 +79,7 @@ class TerminalLine:
             a number of different elements (default=2). """
         if self._llen < fixed:
             return 0
-        return (self._llen - fixed) / elements
+        return (self._llen - fixed) // elements
 
     def add(self, element, full_len=None):
         """ If there is room left in the line, above min_len, add element.
@@ -113,7 +112,7 @@ class BaseMeter:
         self.last_amount_read = 0
         self.last_update_time = None
         self.re = RateEstimator()
-        
+
     def start(self, filename=None, url=None, basename=None,
               size=None, now=None, text=None):
         self.filename = filename
@@ -131,7 +130,7 @@ class BaseMeter:
         self.last_amount_read = 0
         self.last_update_time = now
         self._do_start(now)
-        
+
     def _do_start(self, now=None):
         pass
 
@@ -158,7 +157,7 @@ class BaseMeter:
 
     def _do_end(self, amount_read, now=None):
         pass
-        
+
 #  This is kind of a hack, but progress is gotten from grabber which doesn't
 # know about the total size to download. So we do this so we can get the data
 # out of band here. This will be "fixed" one way or anther soon.
@@ -173,7 +172,7 @@ def text_meter_total_size(size, downloaded=0):
 #
 #       update: No size (minimal: 17 chars)
 #       -----------------------------------
-# <text>                          <rate> | <current size> <elapsed time> 
+# <text>                          <rate> | <current size> <elapsed time>
 #  8-48                          1    8  3             6 1            9 5
 #
 # Order: 1. <text>+<current size> (17)
@@ -208,7 +207,7 @@ def text_meter_total_size(size, downloaded=0):
 #
 #       end
 #       ---
-# <text>                                 | <current size> <elapsed time> 
+# <text>                                 | <current size> <elapsed time>
 #  8-56                                  3             6 1            9 5
 #
 # Order: 1. <text>                ( 8)
@@ -250,7 +249,7 @@ class TextMeter(BaseMeter):
         sofar_size = None
         if _text_meter_total_size:
             sofar_size = _text_meter_sofar_size + amount_read
-            sofar_pc   = (sofar_size * 100) / _text_meter_total_size
+            sofar_pc   = (sofar_size * 100) // _text_meter_total_size
 
         # Include text + ui_rate in minimal
         tl = TerminalLine(8, 8+1+8)
@@ -341,7 +340,7 @@ class RateEstimator:
         self.last_update_time = now
         self.last_amount_read = 0
         self.ave_rate = None
-        
+
     def update(self, amount_read, now=None):
         if now is None: now = time.time()
         # libcurl calls the progress callback when fetching headers
@@ -365,7 +364,7 @@ class RateEstimator:
                 time_diff, read_diff, self.ave_rate, self.timescale)
         self.last_amount_read = amount_read
         #print 'results', time_diff, read_diff, self.ave_rate
-        
+
     #####################################################################
     # result methods
     def average_rate(self):
@@ -386,7 +385,7 @@ class RateEstimator:
         (can be None for unknown transfer size)"""
         if self.total is None: return None
         elif self.total == 0: return 1.0
-        else: return float(self.last_amount_read)/self.total
+        else: return float(self.last_amount_read) / self.total
 
     #########################################################################
     # support methods
@@ -401,14 +400,14 @@ class RateEstimator:
         epsilon = time_diff / timescale
         if epsilon > 1: epsilon = 1.0
         return self._rolling_ave(time_diff, read_diff, last_ave, epsilon)
-    
+
     def _rolling_ave(self, time_diff, read_diff, last_ave, epsilon):
         """perform a "rolling average" iteration
         a rolling average "folds" new data into an existing average with
         some weight, epsilon.  epsilon must be between 0.0 and 1.0 (inclusive)
         a value of 0.0 means only the old value (initial value) counts,
         and a value of 1.0 means only the newest value is considered."""
-        
+
         try:
             recent_rate = read_diff / time_diff
         except ZeroDivisionError:
@@ -433,11 +432,11 @@ class RateEstimator:
         """
 
         if rt < 0: return 0.0
-        shift = int(math.log(rt/start_time)/math.log(2))
+        shift = int(math.log(rt / start_time) / math.log(2))
         rt = int(rt)
         if shift <= 0: return rt
         return float(int(rt) >> shift << shift)
-        
+
 
 def format_time(seconds, use_hours=0):
     if seconds is None or seconds < 0:
@@ -447,15 +446,15 @@ def format_time(seconds, use_hours=0):
         return 'Infinite'
     else:
         seconds = int(seconds)
-        minutes = seconds / 60
+        minutes = seconds // 60
         seconds = seconds % 60
         if use_hours:
-            hours = minutes / 60
+            hours = minutes // 60
             minutes = minutes % 60
             return '%02i:%02i:%02i' % (hours, minutes, seconds)
         else:
             return '%02i:%02i' % (minutes, seconds)
-            
+
 def format_number(number, SI=0, space=' '):
     """Turn numbers into human-readable metric-like numbers"""
     symbols = ['',  # (none)
@@ -467,14 +466,14 @@ def format_number(number, SI=0, space=' '):
                'E', # exa
                'Z', # zetta
                'Y'] # yotta
-    
+
     if SI: step = 1000.0
     else: step = 1024.0
 
     thresh = 999
     depth = 0
     max_depth = len(symbols) - 1
-    
+
     # we want numbers between 0 and thresh, but don't exceed the length
     # of our list.  In that event, the formatting will be screwed up,
     # but it'll still show the right number.
@@ -482,15 +481,15 @@ def format_number(number, SI=0, space=' '):
         depth  = depth + 1
         number = number / step
 
-    if type(number) == type(1) or type(number) == type(long(1)):
+    if isinstance(number, int) or isinstance(number, long):
         # it's an int or a long, which means it didn't get divided,
         # which means it's already short enough
-        format = '%i%s%s'
+        fmt = '%i%s%s'
     elif number < 9.95:
         # must use 9.95 for proper sizing.  For example, 9.99 will be
         # rounded to 10.0 with the .1f format string (which is too long)
-        format = '%.1f%s%s'
+        fmt = '%.1f%s%s'
     else:
-        format = '%.0f%s%s'
-        
-    return(format % (float(number or 0), space, symbols[depth]))
+        fmt = '%.0f%s%s'
+
+    return(fmt % (float(number or 0), space, symbols[depth]))
