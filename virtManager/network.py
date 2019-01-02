@@ -1,24 +1,11 @@
-#
 # Copyright (C) 2006, 2013-2014 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
-import ipaddr
+import ipaddress
+import logging
 
 from virtinst import Network
 
@@ -27,20 +14,28 @@ from .libvirtobject import vmmLibvirtObject
 
 def _make_addr_str(addrStr, prefix, netmaskStr):
     if prefix:
-        return str(ipaddr.IPNetwork(str(addrStr) + "/" +
-                                      str(prefix)).masked())
+        return str(
+            ipaddress.ip_network(
+                str("{}/{}").format(addrStr, prefix), strict=False
+            )
+        )
     elif netmaskStr:
-        netmask = ipaddr.IPAddress(netmaskStr)
-        network = ipaddr.IPAddress(addrStr)
-        return str(ipaddr.IPNetwork(str(network) + "/" +
-                                    str(netmask)).masked())
+        netmask = ipaddress.ip_address(str((netmaskStr)))
+        network = ipaddress.ip_address(str((addrStr)))
+        return str(
+            ipaddress.ip_network(
+                str("{}/{}").format(network, netmask), strict=False
+            )
+        )
     else:
-        return str(ipaddr.IPNetwork(str(addrStr)))
+        return str(ipaddress.ip_network(str(addrStr), strict=False))
 
 
 class vmmNetwork(vmmLibvirtObject):
     def __init__(self, conn, backend, key):
         vmmLibvirtObject.__init__(self, conn, backend, key, Network)
+
+        self._leases = None
 
 
     ##########################
@@ -100,6 +95,18 @@ class vmmNetwork(vmmLibvirtObject):
     def set_autostart(self, value):
         self._backend.setAutostart(value)
 
+    def refresh_dhcp_leases(self):
+        try:
+            self._leases = self._backend.DHCPLeases()
+        except Exception as e:
+            logging.debug("Error getting %s DHCP leases: %s", self, str(e))
+            self._leases = []
+
+    def get_dhcp_leases(self):
+        if self._leases is None:
+            self.refresh_dhcp_leases()
+        return self._leases
+
     def set_qos(self, **kwargs):
         xmlobj = self._make_xmlobj_to_define()
         q = xmlobj.bandwidth
@@ -138,7 +145,7 @@ class vmmNetwork(vmmLibvirtObject):
             return [None, None]
 
         routeAddr = _make_addr_str(route.address, route.prefix, route.netmask)
-        routeVia = str(ipaddr.IPAddress(str(route.gateway)))
+        routeVia = str(ipaddress.ip_address(str(route.gateway)))
 
         if not routeAddr or not routeVia:
             return [None, None]
@@ -172,8 +179,8 @@ class vmmNetwork(vmmLibvirtObject):
 
         dhcp = [None, None]
         if dhcpstart and dhcpend:
-            dhcp = [str(ipaddr.IPAddress(dhcpstart)),
-                    str(ipaddr.IPAddress(dhcpend))]
+            dhcp = [str(ipaddress.ip_address(str(dhcpstart))),
+                    str(ipaddress.ip_address(str(dhcpend)))]
         return [ret, dhcp]
 
     def get_ipv4_network(self):

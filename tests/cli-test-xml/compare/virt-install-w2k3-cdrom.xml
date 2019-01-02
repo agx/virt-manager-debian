@@ -1,6 +1,11 @@
 <domain type="test">
   <name>foobar</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
+  <metadata>
+    <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
+      <libosinfo:os id="http://microsoft.com/win/2k3"/>
+    </libosinfo:libosinfo>
+  </metadata>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
   <vcpu>4</vcpu>
@@ -40,6 +45,7 @@
     <controller type="usb" index="0" model="none"/>
     <interface type="user">
       <mac address="00:11:22:33:44:55"/>
+      <model type="e1000"/>
     </interface>
     <console type="pty"/>
   </devices>
@@ -47,6 +53,11 @@
 <domain type="test">
   <name>foobar</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
+  <metadata>
+    <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
+      <libosinfo:os id="http://microsoft.com/win/2k3"/>
+    </libosinfo:libosinfo>
+  </metadata>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
   <vcpu>4</vcpu>
@@ -84,6 +95,7 @@
     <controller type="usb" index="0" model="none"/>
     <interface type="user">
       <mac address="00:11:22:33:44:55"/>
+      <model type="e1000"/>
     </interface>
     <console type="pty"/>
   </devices>

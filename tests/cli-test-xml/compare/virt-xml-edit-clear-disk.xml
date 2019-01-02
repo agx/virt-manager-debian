@@ -4,6 +4,7 @@
 -    <disk type="block" device="floppy">
 -      <source dev="/dev/null"/>
 +    <disk device="floppy">
++      <source file="/foo/bar"/>
        <target dev="fda" bus="fdc"/>
 -      <boot order="5"/>
 -      <address type="drive" controller="0" bus="0" target="0" unit="0"/>
@@ -12,4 +13,4 @@
        <source file="/tmp/foobar"/>
 
 Domain 'test-for-virtxml' defined successfully.
-Changes will take effect after the next domain shutdown.
+Changes will take effect after the domain is fully powered off.

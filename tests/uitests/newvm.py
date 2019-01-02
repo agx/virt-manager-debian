@@ -1,3 +1,6 @@
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
+
 import time
 
 import tests
@@ -25,6 +28,8 @@ class NewVM(uiutils.UITestCase):
         newvm.find_fuzzy(None,
             "text", "existing storage").text = "/dev/default-pool/testvol1.img"
         newvm.find_fuzzy("Forward", "button").click()
+        newvm.find("oslist-entry").text = "generic"
+        newvm.find("oslist-popover").find_fuzzy("generic").click()
         newvm.find_fuzzy("Forward", "button").click()
         newvm.find_fuzzy("Forward", "button").click()
         newvm.find_fuzzy("Finish", "button").click()
@@ -33,6 +38,43 @@ class NewVM(uiutils.UITestCase):
     ##############
     # Test cases #
     ##############
+
+    def testNewVMMultiConnection(self):
+        """
+        Test the wizard's multiple connection handling
+        """
+        # Add an extra connection for test:///default
+        self.app.root.find("File", "menu").click()
+        self.app.root.find("Add Connection...", "menu item").click()
+        win = self.app.root.find_fuzzy("Add Connection", "dialog")
+        win.find_fuzzy("Hypervisor", "combo box").click()
+        win.find_fuzzy("Custom URI", "menu item").click()
+        win.find("uri-entry", "text").text = "test:///default"
+        win.find("Connect", "push button").click()
+
+        # Open the new VM wizard, select a connection
+        newvm = self._open_create_wizard()
+        combo = newvm.find("create-conn")
+        combo.click()
+        combo.find_fuzzy("testdriver.xml").click()
+        newvm.find_fuzzy("Forward", "button").click()
+
+        # Verify media-combo contents for testdriver.xml
+        cdrom = newvm.find("media-combo")
+        entry = newvm.find("media-entry")
+        cdrom.click_combo_entry()
+        cdrom.find_fuzzy(r"\(/dev/sr1\)")
+        entry.click()
+
+        # Back up, select test:///default, verify media-combo is now empty
+        back = newvm.find_fuzzy("Back", "button")
+        back.click()
+        uiutils.check_in_loop(lambda: not back.sensitive)
+        combo.click()
+        combo.find_fuzzy("test default").click()
+        newvm.find_fuzzy("Forward", "button").click()
+        cdrom.click_combo_entry()
+        self.assertTrue("/dev/sr1" not in cdrom.fmt_nodes())
 
     def testNewVMPXEDefault(self):
         """
@@ -44,6 +86,28 @@ class NewVM(uiutils.UITestCase):
         # Create default PXE VM
         newvm.find_fuzzy("PXE", "radio").click()
         newvm.find_fuzzy("Forward", "button").click()
+        osentry = newvm.find("oslist-entry")
+        uiutils.check_in_loop(lambda: not osentry.text)
+
+        # Make sure we throw an error if no OS selected
+        newvm.find_fuzzy("Forward", "button").click()
+        alert = self.app.root.find("vmm dialog", "alert")
+        alert.find("You must select", "label")
+        alert.find("OK", "push button").click()
+
+        # Test activating the osentry to grab the popover selection
+        osentry.click()
+        osentry.typeText("generic")
+        newvm.find("oslist-popover")
+        osentry.click()
+        self.pressKey("Enter")
+        uiutils.check_in_loop(lambda: osentry.text == "Generic default")
+
+        # Verify back+forward still keeps Generic selected
+        newvm.find_fuzzy("Back", "button").click()
+        newvm.find_fuzzy("Forward", "button").click()
+        uiutils.check_in_loop(lambda: "Generic" in osentry.text)
+
         newvm.find_fuzzy("Forward", "button").click()
         newvm.find_fuzzy("Forward", "button").click()
         newvm.find_fuzzy("Forward", "button").click()
@@ -73,31 +137,29 @@ class NewVM(uiutils.UITestCase):
         newvm.find_fuzzy("Local install media", "radio").click()
         newvm.find_fuzzy("Forward", "button").click()
 
+        # check prepopulated cdrom media
+        combo = newvm.find("media-combo")
+        combo.click_combo_entry()
+        combo.find(r"No media detected \(/dev/sr1\)")
+        combo.find(r"Fedora12_media \(/dev/sr0\)").click()
+
         # Select a fake iso
-        newvm.find_fuzzy("Use ISO", "radio").click()
         newvm.find_fuzzy("install-iso-browse", "button").click()
         browser = self.app.root.find_fuzzy("Choose Storage", "frame")
         browser.find_fuzzy("default-pool", "table cell").click()
         browser.find_fuzzy("iso-vol", "table cell").click()
         browser.find_fuzzy("Choose Volume", "button").click()
 
-        label = newvm.find_fuzzy("os-version-label", "label")
+        osentry = newvm.find("oslist-entry")
         uiutils.check_in_loop(lambda: browser.showing is False)
-        uiutils.check_in_loop(lambda: label.text == "Unknown")
+        uiutils.check_in_loop(lambda: osentry.text == "None detected")
 
         # Change distro to win8
         newvm.find_fuzzy("Automatically detect", "check").click()
-        version = newvm.find_fuzzy("install-os-version-entry", "text")
-        self.assertEqual(version.text, "Generic")
-
-        ostype = newvm.find_fuzzy("install-os-type", "combo")
-        ostype.click()
-        ostype.find_fuzzy("Show all", "menu item").click()
-        newvm.find_fuzzy("install-os-type", "combo").click()
-        newvm.find_fuzzy("Windows", "menu item").click()
-        newvm.find_fuzzy("install-os-version-entry",
-            "text").typeText("Microsoft Windows 8")
-        newvm.find_fuzzy("install-os-version-entry", "text").click()
+        osentry.text = "windows 8"
+        popover = newvm.find("oslist-popover")
+        popover.find_fuzzy("include-eol").click()
+        popover.find_fuzzy(r"\(win8\)").click()
         newvm.find_fuzzy("Forward", "button").click()
 
         # Verify that CPU values are non-default
@@ -110,8 +172,17 @@ class NewVM(uiutils.UITestCase):
         newvm.find_fuzzy("Customize", "check").click()
         newvm.find_fuzzy("Finish", "button").click()
 
-        # Change to 'copy host CPU'
+        # Verify CDROM media is inserted
         vmwindow = self.app.root.find_fuzzy("win8 on", "frame")
+        vmwindow.find_fuzzy("IDE CDROM", "table cell").click()
+        self.assertTrue("iso-vol" in vmwindow.find("media-entry").text)
+
+        # Change boot autostart
+        vmwindow.find_fuzzy("Boot", "table cell").click()
+        vmwindow.find_fuzzy("Start virtual machine", "check").click()
+        vmwindow.find_fuzzy("config-apply").click()
+
+        # Change to 'copy host CPU'
         vmwindow.find_fuzzy("CPUs", "table cell").click()
         vmwindow.find_fuzzy("Copy host", "check").click()
         vmwindow.find_fuzzy("config-apply").click()
@@ -136,21 +207,45 @@ class NewVM(uiutils.UITestCase):
         New VM with URL and distro detection, plus having fun with
         the storage browser and network selection.
         """
-        self.app.uri = tests.utils.uri_kvm
+        self.app.uri = tests.utils.URIs.kvm
         newvm = self._open_create_wizard()
 
         newvm.find_fuzzy("Network Install", "radio").click()
         newvm.find_fuzzy("Forward", "button").click()
+        osentry = newvm.find("oslist-entry")
+        uiutils.check_in_loop(lambda: osentry.text.startswith("Waiting"))
 
-        newvm.find("URL", "text").text = (
-            "http://vault.centos.org/5.5/os/x86_64/")
+        url = "https://archives.fedoraproject.org/pub/archive/fedora/linux/releases/10/Fedora/x86_64/os/"
+        oslabel = "Fedora 10"
+        newvm.find("install-url-entry").text = url
 
-        version = newvm.find("install-os-version-label")
-        uiutils.check_in_loop(lambda: "Detecting" in version.text)
-        uiutils.check_in_loop(
-            lambda: version.text == "Red Hat Enterprise Linux 5.5",
-            timeout=10)
+        uiutils.check_in_loop(lambda: osentry.text == oslabel, timeout=10)
 
+        # Move forward, then back, ensure OS stays selected
+        newvm.find_fuzzy("Forward", "button").click()
+        newvm.find_fuzzy("Back", "button").click()
+        uiutils.check_in_loop(lambda: osentry.text == oslabel)
+
+        # Disable autodetect, make sure OS still selected
+        newvm.find_fuzzy("Automatically detect", "check").click()
+        uiutils.check_in_loop(lambda: osentry.text == oslabel)
+        newvm.find_fuzzy("Forward", "button").click()
+        newvm.find_fuzzy("Back", "button").click()
+
+        # Ensure the EOL field was selected
+        osentry.click()
+        self.pressKey("Down")
+        popover = newvm.find("oslist-popover")
+        uiutils.check_in_loop(lambda: popover.showing)
+        self.assertTrue(newvm.find("include-eol", "check").isChecked)
+
+        # Re-enable autodetect, check for detecting text
+        newvm.find_fuzzy("Automatically detect", "check").click()
+        uiutils.check_in_loop(lambda: not popover.showing)
+        uiutils.check_in_loop(lambda: "Detecting" in osentry.text)
+        uiutils.check_in_loop(lambda: osentry.text == oslabel, timeout=10)
+
+        # Progress the install
         newvm.find_fuzzy("Forward", "button").click()
         newvm.find_fuzzy("Forward", "button").click()
         newvm.find_fuzzy("Forward", "button").click()
@@ -160,7 +255,7 @@ class NewVM(uiutils.UITestCase):
             "Creating Virtual Machine", "frame")
         uiutils.check_in_loop(lambda: not progress.showing, timeout=120)
 
-        self.app.root.find_fuzzy("rhel5.5 on", "frame")
+        self.app.root.find_fuzzy("fedora10 on", "frame")
         self.assertFalse(newvm.showing)
 
 
@@ -168,7 +263,7 @@ class NewVM(uiutils.UITestCase):
         """
         New PPC64 VM to test architecture selection
         """
-        self.app.uri = tests.utils.uri_kvm
+        self.app.uri = tests.utils.URIs.kvm
         newvm = self._open_create_wizard()
 
         newvm.find_fuzzy("Architecture options", "toggle").click()
@@ -186,20 +281,19 @@ class NewVM(uiutils.UITestCase):
         """
         New arm VM that requires kernel/initrd/dtb
         """
-        self.app.uri = tests.utils.uri_kvm_armv7l
+        self.app.uri = tests.utils.URIs.kvm_armv7l_nodomcaps
         newvm = self._open_create_wizard()
 
-        newvm.find_fuzzy("Architecture options", "toggle").click()
+        newvm.find_fuzzy("Architecture options", "toggle").click_expander()
         newvm.find_fuzzy("Virt Type", "combo").click()
         KVM = newvm.find_fuzzy("KVM", "menu item")
         TCG = newvm.find_fuzzy("TCG", "menu item")
         self.assertTrue(KVM.focused)
         self.assertTrue(TCG.showing)
-        newvm.find_fuzzy("Virt Type", "combo").click()
 
         # Validate some initial defaults
-        self.assertFalse(
-            newvm.find_fuzzy("PXE", "radio").sensitive)
+        newvm.find_fuzzy("Virt Type", "combo").click()
+        self.assertFalse(newvm.find_fuzzy("PXE", "radio").sensitive)
         newvm.find_fuzzy("vexpress-a15", "menu item")
         newvm.find("virt", "menu item")
         newvm.find_fuzzy("Forward", "button").click()
@@ -215,6 +309,8 @@ class NewVM(uiutils.UITestCase):
             "text", "DTB").text = "/tmp/dtb"
         newvm.find_fuzzy(None,
             "text", "Kernel args").text = "console=ttyS0"
+        newvm.find("oslist-entry").text = "generic"
+        newvm.find("oslist-popover").find_fuzzy("generic").click()
         newvm.find_fuzzy("Forward", "button").click()
 
         # Disk collision box pops up, hit ok
@@ -233,7 +329,7 @@ class NewVM(uiutils.UITestCase):
         """
         Simple LXC app install
         """
-        self.app.uri = tests.utils.uri_lxc
+        self.app.uri = tests.utils.URIs.lxc
 
         newvm = self._open_create_wizard()
         newvm.find_fuzzy("Application", "radio").click()
@@ -255,7 +351,7 @@ class NewVM(uiutils.UITestCase):
         """
         Simple LXC tree install
         """
-        self.app.uri = tests.utils.uri_lxc
+        self.app.uri = tests.utils.URIs.lxc
 
         newvm = self._open_create_wizard()
         newvm.find_fuzzy("Operating system", "radio").click()
@@ -277,7 +373,7 @@ class NewVM(uiutils.UITestCase):
         """
         Virtuozzo container install
         """
-        self.app.uri = tests.utils.uri_vz
+        self.app.uri = tests.utils.URIs.vz
 
         newvm = self._open_create_wizard()
         newvm.find_fuzzy("Container", "radio").click()
@@ -298,7 +394,7 @@ class NewVM(uiutils.UITestCase):
         """
         Test the create wizard with a fake xen PV install
         """
-        self.app.uri = tests.utils.uri_xen
+        self.app.uri = tests.utils.URIs.xen
         newvm = self._open_create_wizard()
 
         newvm.find_fuzzy("Architecture options", "toggle").click()

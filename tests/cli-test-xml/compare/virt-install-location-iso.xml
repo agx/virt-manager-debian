@@ -5,7 +5,7 @@
   <currentMemory>65536</currentMemory>
   <vcpu>1</vcpu>
   <os>
-    <type arch="x86_64">hvm</type>
+    <type arch="x86_64" machine="pc">hvm</type>
     <kernel>/tmp/virtinst-vmlinuz.</kernel>
     <initrd>/tmp/virtinst-initrd.img.</initrd>
   </os>
@@ -14,9 +14,7 @@
     <apic/>
     <vmport state="off"/>
   </features>
-  <cpu mode="custom" match="exact">
-    <model>Opteron_G4</model>
-  </cpu>
+  <cpu mode="host-model"/>
   <clock offset="utc">
     <timer name="rtc" tickpolicy="catchup"/>
     <timer name="pit" tickpolicy="delay"/>
@@ -29,10 +27,15 @@
   </pm>
   <devices>
     <emulator>/usr/bin/qemu-kvm</emulator>
+    <disk type="file" device="disk">
+      <driver name="qemu" type="qcow2"/>
+      <source file="/dev/default-pool/testvol1.img"/>
+      <target dev="hda" bus="ide"/>
+    </disk>
     <disk type="file" device="cdrom">
       <driver name="qemu"/>
-      <source file="/tmp/__virtinst_cli_exist1.img"/>
-      <target dev="hda" bus="ide"/>
+      <source file="/tmp/fake-fedora17-tree.iso"/>
+      <target dev="hdb" bus="ide"/>
       <readonly/>
     </disk>
     <controller type="usb" index="0" model="ich9-ehci1"/>
@@ -45,13 +48,11 @@
     <controller type="usb" index="0" model="ich9-uhci3">
       <master startport="4"/>
     </controller>
+    <console type="pty"/>
+    <input type="tablet" bus="usb"/>
     <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
       <image compression="off"/>
     </graphics>
-    <console type="pty"/>
-    <channel type="spicevmc">
-      <target type="virtio" name="com.redhat.spice.0"/>
-    </channel>
     <sound model="ich6"/>
     <video>
       <model type="qxl"/>
@@ -67,7 +68,7 @@
   <currentMemory>65536</currentMemory>
   <vcpu>1</vcpu>
   <os>
-    <type arch="x86_64">hvm</type>
+    <type arch="x86_64" machine="pc">hvm</type>
     <boot dev="hd"/>
   </os>
   <features>
@@ -75,9 +76,7 @@
     <apic/>
     <vmport state="off"/>
   </features>
-  <cpu mode="custom" match="exact">
-    <model>Opteron_G4</model>
-  </cpu>
+  <cpu mode="host-model"/>
   <clock offset="utc">
     <timer name="rtc" tickpolicy="catchup"/>
     <timer name="pit" tickpolicy="delay"/>
@@ -89,8 +88,13 @@
   </pm>
   <devices>
     <emulator>/usr/bin/qemu-kvm</emulator>
-    <disk type="file" device="cdrom">
+    <disk type="file" device="disk">
+      <driver name="qemu" type="qcow2"/>
+      <source file="/dev/default-pool/testvol1.img"/>
       <target dev="hda" bus="ide"/>
+    </disk>
+    <disk type="file" device="cdrom">
+      <target dev="hdb" bus="ide"/>
       <readonly/>
     </disk>
     <controller type="usb" index="0" model="ich9-ehci1"/>
@@ -103,13 +107,11 @@
     <controller type="usb" index="0" model="ich9-uhci3">
       <master startport="4"/>
     </controller>
+    <console type="pty"/>
+    <input type="tablet" bus="usb"/>
     <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
       <image compression="off"/>
     </graphics>
-    <console type="pty"/>
-    <channel type="spicevmc">
-      <target type="virtio" name="com.redhat.spice.0"/>
-    </channel>
     <sound model="ich6"/>
     <video>
       <model type="qxl"/>

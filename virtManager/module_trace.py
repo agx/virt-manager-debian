@@ -1,22 +1,8 @@
-#
 # Copyright (C) 2011, 2013 Red Hat, Inc.
 # Copyright (C) 2011 Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 # This module provides a simple way to trace any activity on a specific
 # python class or module. The trace output is logged using the regular
@@ -29,8 +15,9 @@ import time
 import traceback
 
 from types import FunctionType
-from types import ClassType
-from types import MethodType
+
+
+CHECK_MAINLOOP = False
 
 
 def generate_wrapper(origfunc, name):
@@ -50,7 +37,8 @@ def generate_wrapper(origfunc, name):
             name.endswith(".connect") or
             name.startswith("libvirtError"))
 
-        if not is_non_network_libvirt_call and is_main_thread:
+        if (not is_non_network_libvirt_call and
+            (is_main_thread or not CHECK_MAINLOOP)):
             tb = ""
             if is_main_thread:
                 tb = "\n%s" % "".join(traceback.format_stack())
@@ -83,16 +71,18 @@ def wrap_class(classobj):
 
     for name in dir(classobj):
         obj = getattr(classobj, name)
-        if isinstance(obj, MethodType):
+        if isinstance(obj, FunctionType):
             wrap_method(classobj, obj)
 
 
-def wrap_module(module, regex=None):
+def wrap_module(module, mainloop, regex):
+    global CHECK_MAINLOOP
+    CHECK_MAINLOOP = mainloop
     for name in dir(module):
         if regex and not re.match(regex, name):
             continue
         obj = getattr(module, name)
         if isinstance(obj, FunctionType):
             wrap_func(module, obj)
-        if isinstance(obj, (ClassType, type)):
+        if isinstance(obj, type):
             wrap_class(obj)

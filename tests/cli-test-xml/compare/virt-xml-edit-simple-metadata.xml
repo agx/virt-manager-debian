@@ -8,9 +8,13 @@
 +  <description>hey this is my
 +new
 +very,very=new desc'</description>
+   <metadata>
+     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
+-      <libosinfo:os id="http://fedoraproject.org/fedora/27"/>
++      <libosinfo:os id="http://fedoraproject.org/fedora/13"/>
+     </libosinfo:libosinfo>
+   </metadata>
    <memory unit="KiB">409600</memory>
-   <currentMemory unit="KiB">204800</currentMemory>
-   <blkiotune>
 @@
      </panic>
    </devices>
@@ -19,4 +23,4 @@
  </domain>
 
 Domain 'foo-my-new-name' defined successfully.
-Changes will take effect after the next domain shutdown.
+Changes will take effect after the domain is fully powered off.

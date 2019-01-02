@@ -1,22 +1,8 @@
-#
 # Copyright (C) 2009, 2012-2014 Red Hat, Inc.
 # Copyright (C) 2009 Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import os
 import stat
@@ -45,10 +31,19 @@ STORAGE_ROW_TOOLTIP = 7
 
 
 class vmmDeleteDialog(vmmGObjectUI):
+    @classmethod
+    def show_instance(cls, parentobj, vm):
+        try:
+            if not cls._instance:
+                cls._instance = vmmDeleteDialog()
+            cls._instance.show(parentobj.topwin, vm)
+        except Exception as e:
+            parentobj.err.show_err(
+                    _("Error launching delete dialog: %s") % str(e))
+
     def __init__(self):
         vmmGObjectUI.__init__(self, "delete.ui", "vmm-delete")
         self.vm = None
-        self.conn = None
 
         self.builder.connect_signals({
             "on_vmm_delete_delete_event": self.close,
@@ -57,6 +52,7 @@ class vmmDeleteDialog(vmmGObjectUI):
             "on_delete_remove_storage_toggled": self.toggle_remove_storage,
         })
         self.bind_escape_key_close()
+        self._cleanup_on_app_close()
 
         self._init_state()
 
@@ -66,11 +62,9 @@ class vmmDeleteDialog(vmmGObjectUI):
 
         prepare_storage_list(self.widget("delete-storage-list"))
 
-    def show(self, vm, parent):
+    def show(self, parent, vm):
         logging.debug("Showing delete wizard")
-        self.vm = vm
-        self.conn = vm.conn
-
+        self._set_vm(vm)
         self.reset_state()
         self.topwin.set_transient_for(parent)
         self.topwin.present()
@@ -78,13 +72,23 @@ class vmmDeleteDialog(vmmGObjectUI):
     def close(self, ignore1=None, ignore2=None):
         logging.debug("Closing delete wizard")
         self.topwin.hide()
-        self.vm = None
-        self.conn = None
+        self._set_vm(None)
         return 1
 
     def _cleanup(self):
-        self.vm = None
-        self.conn = None
+        pass
+
+    def _vm_removed(self, _conn, connkey):
+        if self.vm.get_connkey() == connkey:
+            self.close()
+
+    def _set_vm(self, newvm):
+        oldvm = self.vm
+        if oldvm:
+            oldvm.conn.disconnect_by_obj(self)
+        if newvm:
+            newvm.conn.connect("vm-removed", self._vm_removed)
+        self.vm = newvm
 
     def reset_state(self):
         # Set VM name in title'
@@ -105,7 +109,7 @@ class vmmDeleteDialog(vmmGObjectUI):
         self.widget("delete-remove-storage").toggled()
 
         populate_storage_list(self.widget("delete-storage-list"),
-                              self.vm, self.conn)
+                              self.vm, self.vm.conn)
 
     def toggle_remove_storage(self, src):
         dodel = src.get_active()
@@ -130,7 +134,6 @@ class vmmDeleteDialog(vmmGObjectUI):
         if error is not None:
             self.err.show_err(error, details=details)
 
-        self.conn.schedule_priority_tick(pollvm=True)
         self.close()
 
     def finish(self, src_ignore):
@@ -154,22 +157,23 @@ class vmmDeleteDialog(vmmGObjectUI):
         if devs:
             text = title + _(" and selected storage (this may take a while)")
 
-        progWin = vmmAsyncJob(self._async_delete, [devs],
+        progWin = vmmAsyncJob(self._async_delete, [self.vm, devs],
                               self._finish_cb, [],
                               title, text, self.topwin)
         progWin.run()
+        self._set_vm(None)
 
-    def _async_delete(self, asyncjob, paths):
+    def _async_delete(self, asyncjob, vm, paths):
         storage_errors = []
         details = ""
-        undefine = self.vm.is_persistent()
+        undefine = vm.is_persistent()
 
         try:
-            if self.vm.is_active():
-                logging.debug("Forcing VM '%s' power off.", self.vm.get_name())
-                self.vm.destroy()
+            if vm.is_active():
+                logging.debug("Forcing VM '%s' power off.", vm.get_name())
+                vm.destroy()
 
-            conn = self.conn.get_backend()
+            conn = vm.conn.get_backend()
             meter = asyncjob.get_meter()
 
             for path in paths:
@@ -183,12 +187,12 @@ class vmmDeleteDialog(vmmGObjectUI):
                 meter.end(0)
 
             if undefine:
-                logging.debug("Removing VM '%s'", self.vm.get_name())
-                self.vm.delete()
+                logging.debug("Removing VM '%s'", vm.get_name())
+                vm.delete()
 
         except Exception as e:
             error = (_("Error deleting virtual machine '%s': %s") %
-                      (self.vm.get_name(), str(e)))
+                      (vm.get_name(), str(e)))
             details = "".join(traceback.format_exc())
 
 
@@ -213,6 +217,7 @@ class vmmDeleteDialog(vmmGObjectUI):
 
         if error:
             asyncjob.set_error(error, details)
+        vm.conn.schedule_priority_tick(pollvm=True)
 
     def _async_delete_path(self, conn, path, ignore):
         vol = None
@@ -234,7 +239,7 @@ def populate_storage_list(storage_list, vm, conn):
 
     diskdata = [(d.target, d.path, d.read_only, d.shareable,
                  d.device in ["cdrom", "floppy"]) for
-                d in vm.get_disk_devices()]
+                d in vm.xmlobj.devices.disk]
 
     diskdata.append(("kernel", vm.get_xmlobj().os.kernel, True, False, True))
     diskdata.append(("initrd", vm.get_xmlobj().os.initrd, True, False, True))
@@ -383,7 +388,7 @@ def do_we_default(conn, vm_name, vol, path, ro, shared, is_media):
         info = append_str(info, _("Storage is a media device."))
 
     try:
-        names = virtinst.VirtualDisk.path_in_use_by(conn.get_backend(), path)
+        names = virtinst.DeviceDisk.path_in_use_by(conn.get_backend(), path)
 
         if len(names) > 1:
             namestr = ""

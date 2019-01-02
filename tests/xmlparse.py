@@ -1,19 +1,7 @@
 # Copyright (C) 2013, 2014 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import glob
 import traceback
@@ -23,9 +11,6 @@ import virtinst
 
 from tests import utils
 
-conn = utils.open_testdriver()
-kvmconn = utils.open_kvm()
-
 
 def sanitize_file_xml(xml):
     # s/"/'/g from generated XML, matches what libxml dumps out
@@ -34,17 +19,29 @@ def sanitize_file_xml(xml):
 
 
 class XMLParseTest(unittest.TestCase):
+    _kvmconn = None
+
+    @property
+    def conn(self):
+        return utils.URIs.open_testdefault_cached()
+
+    @property
+    def kvmconn(self):
+        if not self._kvmconn:
+            self._kvmconn = utils.URIs.open_kvm()
+        return self._kvmconn
+
     def _roundtrip_compare(self, filename):
         expectXML = sanitize_file_xml(open(filename).read())
-        guest = virtinst.Guest(conn, parsexml=expectXML)
-        actualXML = guest.get_xml_config()
+        guest = virtinst.Guest(self.conn, parsexml=expectXML)
+        actualXML = guest.get_xml()
         utils.diff_compare(actualXML, expect_out=expectXML)
 
     def _alter_compare(self, actualXML, outfile, support_check=None):
         utils.diff_compare(actualXML, outfile)
-        if (support_check and not conn.check_support(support_check)):
+        if (support_check and not self.conn.check_support(support_check)):
             return
-        utils.test_create(conn, actualXML)
+        utils.test_create(self.conn, actualXML)
 
     def testRoundTrip(self):
         """
@@ -87,7 +84,7 @@ class XMLParseTest(unittest.TestCase):
     def _get_test_content(self, basename, kvm=False):
         infile = "tests/xmlparse-xml/%s-in.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        guest = virtinst.Guest(kvm and kvmconn or conn,
+        guest = virtinst.Guest(kvm and self.kvmconn or self.conn,
                                parsexml=open(infile).read())
         return guest, outfile
 
@@ -118,13 +115,22 @@ class XMLParseTest(unittest.TestCase):
         check("on_crash", "destroy", "restart")
         check("on_lockfailure", "poweroff", "restart")
 
+        check = self._make_checker(guest._metadata.libosinfo)  # pylint: disable=protected-access
+        check("os_id", "http://fedoraproject.org/fedora/17")
+        guest.set_os_full_id("http://fedoraproject.org/fedora/10")
+        check("os_id", "http://fedoraproject.org/fedora/10")
+        self.assertEqual(guest.osinfo.name, "fedora10")
+        guest.set_os_name("generic")
+        check("os_id", None, "frib")
+        self.assertEqual(guest.osinfo.name, "generic")
+
         check = self._make_checker(guest.clock)
         check("offset", "utc", "localtime")
-        guest.clock.remove_timer(guest.clock.timers[0])
+        guest.clock.remove_child(guest.clock.timers[0])
         check = self._make_checker(guest.clock.timers[0])
         check("name", "pit", "rtc")
         check("tickpolicy", "delay", "merge")
-        timer = guest.clock.add_timer()
+        timer = guest.clock.timers.add_new()
         check = self._make_checker(timer)
         check("name", None, "hpet")
         check("present", None, False)
@@ -163,6 +169,7 @@ class XMLParseTest(unittest.TestCase):
         check("hyperv_spinlocks", True, True)
         check("hyperv_spinlocks_retries", 12287, 54321)
         check("vmport", False, True)
+        check("vmcoreinfo", False, True)
         check("kvm_hidden", None, True)
         check("pvspinlock", None, True)
         check("gic_version", None, False)
@@ -180,8 +187,8 @@ class XMLParseTest(unittest.TestCase):
         check("name", "x2apic")
         check("policy", "force", "disable")
         rmfeat = guest.cpu.features[3]
-        guest.cpu.remove_feature(rmfeat)
-        self.assertEqual(rmfeat.get_xml_config(),
+        guest.cpu.remove_child(rmfeat)
+        self.assertEqual(rmfeat.get_xml(),
                           """<feature name="foo" policy="bar"/>\n""")
         guest.cpu.add_feature("addfeature")
 
@@ -211,19 +218,17 @@ class XMLParseTest(unittest.TestCase):
         check = self._make_checker(guest.resource)
         check("partition", None, "/virtualmachines/production")
 
-        check = self._make_checker(guest.get_devices("memballoon")[0])
+        check = self._make_checker(guest.devices.memballoon[0])
         check("model", "virtio", "none")
 
         check = self._make_checker(guest.memoryBacking)
         check("hugepages", False, True)
         check("page_size", None, 1)
         check("page_unit", None, "G")
-        check("page_nodeset", None, "1,5-8")
         check("nosharepages", False, True)
         check("locked", False, True)
 
-        self._alter_compare(guest.get_xml_config(), outfile,
-            support_check=conn.SUPPORT_CONN_VMPORT)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testSeclabel(self):
         guest, outfile = self._get_test_content("change-seclabel")
@@ -238,7 +243,7 @@ class XMLParseTest(unittest.TestCase):
 
         guest.remove_child(guest.seclabels[1])
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterMinimalGuest(self):
         guest, outfile = self._get_test_content("change-minimal-guest")
@@ -247,19 +252,19 @@ class XMLParseTest(unittest.TestCase):
         check("acpi", False, True)
         check("pae", False)
         self.assertTrue(
-            guest.features.get_xml_config().startswith("<features"))
+            guest.features.get_xml().startswith("<features"))
 
         check = self._make_checker(guest.clock)
         check("offset", None, "utc")
-        self.assertTrue(guest.clock.get_xml_config().startswith("<clock"))
+        self.assertTrue(guest.clock.get_xml().startswith("<clock"))
 
-        seclabel = virtinst.Seclabel(guest.conn)
+        seclabel = virtinst.DomainSeclabel(guest.conn)
         guest.add_child(seclabel)
         seclabel.model = "testSecurity"
         seclabel.type = "static"
         seclabel.label = "frob"
         self.assertTrue(
-            guest.seclabels[0].get_xml_config().startswith("<seclabel"))
+            guest.seclabels[0].get_xml().startswith("<seclabel"))
 
         check = self._make_checker(guest.cpu)
         check("model", None, "foobar")
@@ -267,11 +272,15 @@ class XMLParseTest(unittest.TestCase):
         check("cores", None, 4)
         guest.cpu.add_feature("x2apic", "forbid")
         guest.cpu.set_topology_defaults(guest.vcpus)
-        self.assertTrue(guest.cpu.get_xml_config().startswith("<cpu"))
+        self.assertTrue(guest.cpu.get_xml().startswith("<cpu"))
+        self.assertEqual(guest.cpu.get_xml_id(), "./cpu")
+        self.assertEqual(guest.cpu.get_xml_idx(), 0)
+        self.assertEqual(guest.get_xml_id(), ".")
+        self.assertEqual(guest.get_xml_idx(), 0)
 
-        self.assertTrue(guest.os.get_xml_config().startswith("<os"))
+        self.assertTrue(guest.os.get_xml().startswith("<os"))
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterBootMulti(self):
         guest, outfile = self._get_test_content("change-boot-multi")
@@ -284,7 +293,7 @@ class XMLParseTest(unittest.TestCase):
         check("dtb", None, "/baz.dtb")
         check("kernel_args", None, "ks=foo.ks")
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterBootKernel(self):
         guest, outfile = self._get_test_content("change-boot-kernel")
@@ -297,7 +306,7 @@ class XMLParseTest(unittest.TestCase):
         check("initrd", "/boot/initrd", None)
         check("kernel_args", "location", None)
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterBootUEFI(self):
         guest, outfile = self._get_test_content("change-boot-uefi")
@@ -315,7 +324,7 @@ class XMLParseTest(unittest.TestCase):
         check("initrd", "/boot/initrd", None)
         check("kernel_args", "location", None)
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterCpuMode(self):
         guest, outfile = self._get_test_content("change-cpumode")
@@ -326,16 +335,16 @@ class XMLParseTest(unittest.TestCase):
         # mode will be "custom"
         check("model", None, "qemu64")
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterDisk(self):
         """
-        Test changing VirtualDisk() parameters after parsing
+        Test changing DeviceDisk() parameters after parsing
         """
         guest, outfile = self._get_test_content("change-disk")
 
         def _get_disk(target):
-            for disk in guest.get_devices("disk"):
+            for disk in guest.devices.disk:
                 if disk.target == target:
                     return disk
 
@@ -349,7 +358,7 @@ class XMLParseTest(unittest.TestCase):
         check("bus", "ide", "usb")
         check("removable", None, False, True)
 
-        disk = guest.get_devices("disk")[1]
+        disk = guest.devices.disk[1]
         check = self._make_checker(disk.seclabels[1])
         check("model", "dac")
         check("relabel", None, True)
@@ -387,6 +396,7 @@ class XMLParseTest(unittest.TestCase):
         check("driver_io", None, "threads")
         check("driver_io", "threads", "native")
         check("driver_discard", None, "unmap")
+        check("driver_detect_zeroes", None, "unmap")
         check("iotune_ris", 1, 0)
         check("iotune_rbs", 2, 0)
         check("iotune_wis", 3, 0)
@@ -416,27 +426,27 @@ class XMLParseTest(unittest.TestCase):
         check("source_host_socket", "/var/run/nbdsock")
         check("path", "nbd+unix:///var/run/nbdsock")
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testSingleDisk(self):
         xml = ("""<disk type="file" device="disk"><source file="/a.img"/>\n"""
                """<target dev="hda" bus="ide"/></disk>\n""")
-        d = virtinst.VirtualDisk(conn, parsexml=xml)
+        d = virtinst.DeviceDisk(self.conn, parsexml=xml)
         self._set_and_check(d, "target", "hda", "hdb")
-        self.assertEqual(xml.replace("hda", "hdb"), d.get_xml_config())
+        self.assertEqual(xml.replace("hda", "hdb"), d.get_xml())
 
     def testAlterChars(self):
         guest, outfile = self._get_test_content("change-chars")
 
-        serial1     = guest.get_devices("serial")[0]
-        serial2     = guest.get_devices("serial")[1]
-        parallel1   = guest.get_devices("parallel")[0]
-        parallel2   = guest.get_devices("parallel")[1]
-        console1    = guest.get_devices("console")[0]
-        console2    = guest.get_devices("console")[1]
-        channel1    = guest.get_devices("channel")[0]
-        channel2    = guest.get_devices("channel")[1]
-        channel3    = guest.get_devices("channel")[2]
+        serial1     = guest.devices.serial[0]
+        serial2     = guest.devices.serial[1]
+        parallel1   = guest.devices.parallel[0]
+        parallel2   = guest.devices.parallel[1]
+        console1    = guest.devices.console[0]
+        console2    = guest.devices.console[1]
+        channel1    = guest.devices.channel[0]
+        channel2    = guest.devices.channel[1]
+        channel3    = guest.devices.channel[2]
 
         check = self._make_checker(serial1)
         check("type", "null", "udp")
@@ -471,6 +481,7 @@ class XMLParseTest(unittest.TestCase):
         check("source_path", "/tmp/foo.img", None)
         check("source_path", None, "/root/foo")
         check("target_type", "virtio")
+        check("target_state", None, "connected")
 
         check = self._make_checker(channel1)
         check("type", "pty")
@@ -488,16 +499,18 @@ class XMLParseTest(unittest.TestCase):
         check("source_channel", "org.spice-space.webdav.0", "test.1")
         check("target_type", "virtio")
         check("target_name", "org.spice-space.webdav.0", "test.2")
+        self.assertEqual(channel3.get_xml_id(), "./devices/channel[3]")
+        self.assertEqual(channel3.get_xml_idx(), 2)
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterControllers(self):
         guest, outfile = self._get_test_content("change-controllers")
 
-        dev1 = guest.get_devices("controller")[0]
-        dev2 = guest.get_devices("controller")[1]
-        dev3 = guest.get_devices("controller")[2]
-        dev4 = guest.get_devices("controller")[3]
+        dev1 = guest.devices.controller[0]
+        dev2 = guest.devices.controller[1]
+        dev3 = guest.devices.controller[2]
+        dev4 = guest.devices.controller[3]
 
         check = self._make_checker(dev1)
         check("type", "ide")
@@ -519,16 +532,16 @@ class XMLParseTest(unittest.TestCase):
         check("model", "ich9-ehci1", "ich9-uhci1")
         check("master_startport", 4, 2)
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterNics(self):
         guest, outfile = self._get_test_content("change-nics")
 
-        dev1 = guest.get_devices("interface")[0]
-        dev2 = guest.get_devices("interface")[1]
-        dev3 = guest.get_devices("interface")[2]
-        dev4 = guest.get_devices("interface")[3]
-        dev5 = guest.get_devices("interface")[4]
+        dev1 = guest.devices.interface[0]
+        dev2 = guest.devices.interface[1]
+        dev3 = guest.devices.interface[2]
+        dev4 = guest.devices.interface[3]
+        dev5 = guest.devices.interface[4]
 
         check = self._make_checker(dev1)
         check("type", "user")
@@ -571,13 +584,13 @@ class XMLParseTest(unittest.TestCase):
         check("instanceid", "09b11c53-8b5c-4eeb-8f00-d84eaa0aaa3b",
                             "09b11c53-8b5c-4eeb-8f00-d84eaa0aaa4f")
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterInputs(self):
         guest, outfile = self._get_test_content("change-inputs")
 
-        dev1 = guest.get_devices("input")[0]
-        dev2 = guest.get_devices("input")[1]
+        dev1 = guest.devices.input[0]
+        dev2 = guest.devices.input[1]
 
         check = self._make_checker(dev1)
         check("type", "mouse", "tablet")
@@ -588,17 +601,17 @@ class XMLParseTest(unittest.TestCase):
         check("bus", "usb", "xen")
         check("bus", "xen", "usb")
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterGraphics(self):
         guest, outfile = self._get_test_content("change-graphics")
 
-        dev1 = guest.get_devices("graphics")[0]
-        dev2 = guest.get_devices("graphics")[1]
-        dev3 = guest.get_devices("graphics")[2]
-        dev4 = guest.get_devices("graphics")[3]
-        dev5 = guest.get_devices("graphics")[4]
-        dev6 = guest.get_devices("graphics")[5]
+        dev1 = guest.devices.graphics[0]
+        dev2 = guest.devices.graphics[1]
+        dev3 = guest.devices.graphics[2]
+        dev4 = guest.devices.graphics[3]
+        dev5 = guest.devices.graphics[4]
+        dev6 = guest.devices.graphics[5]
 
         check = self._make_checker(dev1)
         check("type", "vnc")
@@ -653,14 +666,14 @@ class XMLParseTest(unittest.TestCase):
         check("gl", None, True)
         check("rendernode", None, "/dev/dri/foo")
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterVideos(self):
         guest, outfile = self._get_test_content("change-videos")
 
-        dev1 = guest.get_devices("video")[0]
-        dev2 = guest.get_devices("video")[1]
-        dev3 = guest.get_devices("video")[2]
+        dev1 = guest.devices.video[0]
+        dev2 = guest.devices.video[1]
+        dev3 = guest.devices.video[2]
 
         check = self._make_checker(dev1)
         check("model", "vmvga", "vga")
@@ -678,18 +691,21 @@ class XMLParseTest(unittest.TestCase):
         check("vgamem", None, 8192)
         check("accel3d", None, True)
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterHostdevs(self):
         infile  = "tests/xmlparse-xml/change-hostdevs-in.xml"
         outfile = "tests/xmlparse-xml/change-hostdevs-out.xml"
-        guest = virtinst.Guest(conn,
+        guest = virtinst.Guest(self.conn,
                                parsexml=open(infile).read())
 
-        dev1 = guest.get_devices("hostdev")[0]
-        dev2 = guest.get_devices("hostdev")[1]
-        dev3 = guest.get_devices("hostdev")[2]
-        dev4 = guest.get_devices("hostdev")[3]
+        dev1 = guest.devices.hostdev[0]
+        dev2 = guest.devices.hostdev[1]
+        dev3 = guest.devices.hostdev[2]
+        dev4 = guest.devices.hostdev[3]
+        dev5 = guest.devices.hostdev[4]
+        dev6 = guest.devices.hostdev[5]
+        dev7 = guest.devices.hostdev[6]
 
         check = self._make_checker(dev1)
         check("type", "usb", "foo", "usb")
@@ -724,28 +740,40 @@ class XMLParseTest(unittest.TestCase):
         check("scsi_bus", 0, 1)
         check("scsi_target", 0, 2)
         check("scsi_unit", 0, 3)
-        self._alter_compare(guest.get_xml_config(), outfile)
+
+        check = self._make_checker(dev5)
+        check("type", "net")
+        check("net_interface", "wlan0", "eth0")
+
+        check = self._make_checker(dev6)
+        check("type", "misc")
+        check("misc_char", "/dev/net/tun", "/dev/null")
+
+        check = self._make_checker(dev7)
+        check("type", "storage")
+        check("storage_block", "/dev/sdf", "/dev/fd0")
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterWatchdogs(self):
         guest, outfile = self._get_test_content("change-watchdogs")
 
-        dev1 = guest.get_devices("watchdog")[0]
+        dev1 = guest.devices.watchdog[0]
         check = self._make_checker(dev1)
         check("model", "ib700", "i6300esb")
         check("action", "none", "poweroff")
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterFilesystems(self):
         guest, outfile = self._get_test_content("change-filesystems")
 
-        dev1 = guest.get_devices("filesystem")[0]
-        dev2 = guest.get_devices("filesystem")[1]
-        dev3 = guest.get_devices("filesystem")[2]
-        dev4 = guest.get_devices("filesystem")[3]
-        dev5 = guest.get_devices("filesystem")[4]
-        dev6 = guest.get_devices("filesystem")[5]
-        dev7 = guest.get_devices("filesystem")[6]
+        dev1 = guest.devices.filesystem[0]
+        dev2 = guest.devices.filesystem[1]
+        dev3 = guest.devices.filesystem[2]
+        dev4 = guest.devices.filesystem[3]
+        dev5 = guest.devices.filesystem[4]
+        dev6 = guest.devices.filesystem[5]
+        dev7 = guest.devices.filesystem[6]
 
         check = self._make_checker(dev1)
         check("type", None, "mount")
@@ -793,17 +821,17 @@ class XMLParseTest(unittest.TestCase):
         check("source", "/foo/bar.img", "/foo/bar.raw")
         check("readonly", False, True)
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterSounds(self):
         infile  = "tests/xmlparse-xml/change-sounds-in.xml"
         outfile = "tests/xmlparse-xml/change-sounds-out.xml"
-        guest = virtinst.Guest(conn,
+        guest = virtinst.Guest(self.conn,
                                parsexml=open(infile).read())
 
-        dev1 = guest.get_devices("sound")[0]
-        dev2 = guest.get_devices("sound")[1]
-        dev3 = guest.get_devices("sound")[2]
+        dev1 = guest.devices.sound[0]
+        dev2 = guest.devices.sound[1]
+        dev3 = guest.devices.sound[2]
 
         check = self._make_checker(dev1)
         check("model", "sb16", "ac97")
@@ -814,21 +842,23 @@ class XMLParseTest(unittest.TestCase):
         check = self._make_checker(dev3)
         check("model", "ac97", "sb16")
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterAddr(self):
         guest, outfile = self._get_test_content("change-addr")
 
-        dev1 = guest.get_devices("disk")[0]
-        dev2 = guest.get_devices("controller")[0]
-        dev3 = guest.get_devices("channel")[0]
-        dev4 = guest.get_devices("disk")[1]
+        dev1 = guest.devices.disk[0]
+        dev2 = guest.devices.controller[0]
+        dev3 = guest.devices.channel[0]
+        dev4 = guest.devices.disk[1]
+        dev5 = guest.devices.memory[0]
 
         check = self._make_checker(dev1.address)
         check("type", "drive", "pci")
         check("type", "pci", "drive")
         check("controller", 3, 1)
         check("bus", 5, 4)
+        check("target", None, 7)
         check("unit", 33, 32)
         check = self._make_checker(dev1.alias)
         check("name", "foo2", None)
@@ -854,13 +884,21 @@ class XMLParseTest(unittest.TestCase):
 
         dev4.address.clear()
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        check = self._make_checker(dev5.address)
+        check("type", "dimm")
+        check("slot", 0, 2)
+        check("base", None, "0x1000")
+        # Need to remove this since the testdriver doesn't support
+        # memory devices?
+        guest.remove_device(dev5)
+
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterSmartCard(self):
         guest, outfile = self._get_test_content("change-smartcard")
 
-        dev1 = guest.get_devices("smartcard")[0]
-        dev2 = guest.get_devices("smartcard")[1]
+        dev1 = guest.devices.smartcard[0]
+        dev2 = guest.devices.smartcard[1]
 
         check = self._make_checker(dev1)
         check("type", None, "tcp")
@@ -869,13 +907,13 @@ class XMLParseTest(unittest.TestCase):
         check("mode", "passthrough", "host")
         check("type", "spicevmc", None)
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterRedirdev(self):
         guest, outfile = self._get_test_content("change-redirdev")
 
-        dev1 = guest.get_devices("redirdev")[0]
-        dev2 = guest.get_devices("redirdev")[1]
+        dev1 = guest.devices.redirdev[0]
+        dev2 = guest.devices.redirdev[1]
 
         check = self._make_checker(dev1)
         check("bus", "usb", "baz", "usb")
@@ -885,24 +923,24 @@ class XMLParseTest(unittest.TestCase):
         check = self._make_checker(dev2)
         check("type", "tcp", "spicevmc")
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterTPM(self):
         guest, outfile = self._get_test_content("change-tpm")
 
-        dev1 = guest.get_devices("tpm")[0]
+        dev1 = guest.devices.tpm[0]
 
         check = self._make_checker(dev1)
         check("type", "passthrough", "foo", "passthrough")
-        check("model", "tpm-tis", "tpm-tis")
+        check("model", "tpm-tis", "tpm-crb", "tpm-tis")
         check("device_path", "/dev/tpm0", "frob")
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterRNG_EGD(self):
         guest, outfile = self._get_test_content("change-rng-egd")
 
-        dev1 = guest.get_devices("rng")[0]
+        dev1 = guest.devices.rng[0]
 
         check = self._make_checker(dev1)
         check("type", "egd")
@@ -916,56 +954,84 @@ class XMLParseTest(unittest.TestCase):
         check("rate_bytes", "1234", "4321")
         check("rate_period", "2000", "2001")
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAlterRNG_Random(self):
         guest, outfile = self._get_test_content("change-rng-random")
 
-        dev1 = guest.get_devices("rng")[0]
+        dev1 = guest.devices.rng[0]
 
         check = self._make_checker(dev1)
         check("type", "random", "random")
         check("model", "virtio", "virtio")
         check("device", "/dev/random", "/dev/hwrng")
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testConsoleCompat(self):
         guest, outfile = self._get_test_content("console-compat")
 
-        dev1 = guest.get_devices("console")[0]
+        dev1 = guest.devices.console[0]
         check = self._make_checker(dev1)
         check("source_path", "/dev/pts/4")
         check("_tty", "/dev/pts/4", "foo", "/dev/pts/4")
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testPanicDevice(self):
         guest, outfile = self._get_test_content("change-panic-device")
 
-        dev1 = guest.get_devices("panic")[0]
+        dev1 = guest.devices.panic[0]
 
         check = self._make_checker(dev1)
         check("type", "isa", None, "isa")
         check("iobase", "0x505", None, "0x506")
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
+
+    def testQEMUXMLNS(self):
+        basename = "change-xmlns-qemu"
+        infile = "tests/xmlparse-xml/%s-in.xml" % basename
+        outfile = "tests/xmlparse-xml/%s-out.xml" % basename
+        guest = virtinst.Guest(self.kvmconn, parsexml=open(infile).read())
+
+        check = self._make_checker(guest.xmlns_qemu.args[0])
+        check("value", "-somearg", "-somenewarg")
+        check = self._make_checker(guest.xmlns_qemu.args[1])
+        check("value", "bar,baz=wib wob", "testval")
+        guest.xmlns_qemu.args.add_new().value = "additional-arg"
+        arg0 = guest.xmlns_qemu.args[0]
+        guest.xmlns_qemu.remove_child(guest.xmlns_qemu.args[0])
+        self.assertEqual(arg0.get_xml(),
+                "<qemu:arg xmlns:qemu=\"http://libvirt.org/schemas/domain/qemu/1.0\" value=\"-somenewarg\"/>\n")
+
+        check = self._make_checker(guest.xmlns_qemu.envs[0])
+        check("name", "SOMEENV")
+        check("value", "foo=bar baz,foo")
+        env = guest.xmlns_qemu.envs.add_new()
+        env.name = "DISPLAY"
+        env.value = "1:2"
+
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testAddRemoveDevices(self):
         guest, outfile = self._get_test_content("add-devices")
 
         # Basic removal of existing device
-        rmdev = guest.get_devices("disk")[2]
+        rmdev = guest.devices.disk[2]
         guest.remove_device(rmdev)
 
         # Basic device add
-        guest.add_device(virtinst.VirtualWatchdog(conn))
+        d = virtinst.DeviceWatchdog(self.conn)
+        d.set_defaults(guest)
+        guest.add_device(d)
 
         # Test adding device with child properties (address value)
-        adddev = virtinst.VirtualNetworkInterface(conn=conn)
+        adddev = virtinst.DeviceInterface(self.conn)
         adddev.type = "network"
         adddev.source = "default"
         adddev.macaddr = "1A:2A:3A:4A:5A:6A"
         adddev.address.set_addrstr("spapr-vio")
+        adddev.set_defaults(guest)
 
         # Test adding and removing the same device
         guest.add_device(adddev)
@@ -973,47 +1039,47 @@ class XMLParseTest(unittest.TestCase):
         guest.add_device(adddev)
 
         # Test adding device built from parsed XML
-        guest.add_device(virtinst.VirtualAudio(conn,
+        guest.add_device(virtinst.DeviceSound(self.conn,
             parsexml="""<sound model='pcspk'/>"""))
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testChangeKVMMedia(self):
         guest, outfile = self._get_test_content("change-media", kvm=True)
 
-        disk = guest.get_devices("disk")[0]
+        disk = guest.devices.disk[0]
         check = self._make_checker(disk)
         check("path", None, "/dev/default-pool/default-vol")
         disk.sync_path_props()
 
-        disk = guest.get_devices("disk")[1]
+        disk = guest.devices.disk[1]
         check = self._make_checker(disk)
         check("path", None, "/dev/default-pool/default-vol")
         check("path", "/dev/default-pool/default-vol", "/dev/disk-pool/diskvol1")
         disk.sync_path_props()
 
-        disk = guest.get_devices("disk")[2]
+        disk = guest.devices.disk[2]
         check = self._make_checker(disk)
         check("path", None, "/dev/disk-pool/diskvol1")
         disk.sync_path_props()
 
-        disk = guest.get_devices("disk")[3]
+        disk = guest.devices.disk[3]
         check = self._make_checker(disk)
         check("path", None, "/dev/default-pool/default-vol")
         disk.sync_path_props()
 
-        disk = guest.get_devices("disk")[4]
+        disk = guest.devices.disk[4]
         check = self._make_checker(disk)
         check("path", None, "/dev/disk-pool/diskvol1")
         disk.sync_path_props()
 
-        self._alter_compare(guest.get_xml_config(), outfile)
+        self._alter_compare(guest.get_xml(), outfile)
 
     def testChangeSnapshot(self):
         basename = "change-snapshot"
         infile = "tests/xmlparse-xml/%s-in.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        snap = virtinst.DomainSnapshot(conn, parsexml=open(infile).read())
+        snap = virtinst.DomainSnapshot(self.conn, parsexml=open(infile).read())
 
         check = self._make_checker(snap)
         check("name", "offline-root-child1", "name-foo")
@@ -1027,7 +1093,7 @@ class XMLParseTest(unittest.TestCase):
         check("name", "hda", "hdb")
         check("snapshot", "internal", "no")
 
-        utils.diff_compare(snap.get_xml_config(), outfile)
+        utils.diff_compare(snap.get_xml(), outfile)
 
 
     ###################
@@ -1038,7 +1104,7 @@ class XMLParseTest(unittest.TestCase):
         basename = "test-bridge-ip"
         infile = "tests/interface-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/interface-%s-out.xml" % basename
-        iface = virtinst.Interface(conn, parsexml=open(infile).read())
+        iface = virtinst.Interface(self.conn, parsexml=open(infile).read())
 
         self.assertEqual(len(iface.protocols), 2)
         self.assertEqual(len(iface.interfaces), 3)
@@ -1071,14 +1137,14 @@ class XMLParseTest(unittest.TestCase):
         check("name", "bond-brbond")
         self.assertEqual(len(child_iface.interfaces), 2)
 
-        utils.diff_compare(iface.get_xml_config(), outfile)
-        utils.test_create(conn, iface.get_xml_config(), "interfaceDefineXML")
+        utils.diff_compare(iface.get_xml(), outfile)
+        utils.test_create(self.conn, iface.get_xml(), "interfaceDefineXML")
 
     def testInterfaceBondArp(self):
         basename = "test-bond-arp"
         infile = "tests/interface-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/interface-%s-out.xml" % basename
-        iface = virtinst.Interface(conn, parsexml=open(infile).read())
+        iface = virtinst.Interface(self.conn, parsexml=open(infile).read())
 
         check = self._make_checker(iface)
         check("start_mode", "onboot", "hotplug")
@@ -1090,14 +1156,14 @@ class XMLParseTest(unittest.TestCase):
         check("arp_target", "192.168.100.200", "1.2.3.4")
         check("arp_validate_mode", "backup", "active")
 
-        utils.diff_compare(iface.get_xml_config(), outfile)
-        utils.test_create(conn, iface.get_xml_config(), "interfaceDefineXML")
+        utils.diff_compare(iface.get_xml(), outfile)
+        utils.test_create(self.conn, iface.get_xml(), "interfaceDefineXML")
 
     def testInterfaceBondMii(self):
         basename = "test-bond-mii"
         infile = "tests/interface-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/interface-%s-out.xml" % basename
-        iface = virtinst.Interface(conn, parsexml=open(infile).read())
+        iface = virtinst.Interface(self.conn, parsexml=open(infile).read())
 
         check = self._make_checker(iface)
         check("mii_frequency", 123, 111)
@@ -1105,21 +1171,21 @@ class XMLParseTest(unittest.TestCase):
         check("mii_updelay", 12, 33)
         check("mii_carrier_mode", "netif", "ioctl")
 
-        utils.diff_compare(iface.get_xml_config(), outfile)
-        utils.test_create(conn, iface.get_xml_config(), "interfaceDefineXML")
+        utils.diff_compare(iface.get_xml(), outfile)
+        utils.test_create(self.conn, iface.get_xml(), "interfaceDefineXML")
 
     def testInterfaceVLAN(self):
         basename = "test-vlan"
         infile = "tests/interface-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/interface-%s-out.xml" % basename
-        iface = virtinst.Interface(conn, parsexml=open(infile).read())
+        iface = virtinst.Interface(self.conn, parsexml=open(infile).read())
 
         check = self._make_checker(iface)
         check("tag", 123, 456)
         check("parent_interface", "eth2", "foonew")
 
-        utils.diff_compare(iface.get_xml_config(), outfile)
-        utils.test_create(conn, iface.get_xml_config(), "interfaceDefineXML")
+        utils.diff_compare(iface.get_xml(), outfile)
+        utils.test_create(self.conn, iface.get_xml(), "interfaceDefineXML")
 
 
     #################
@@ -1130,7 +1196,7 @@ class XMLParseTest(unittest.TestCase):
         basename = "pool-fs"
         infile = "tests/xmlparse-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        pool = virtinst.StoragePool(conn, parsexml=open(infile).read())
+        pool = virtinst.StoragePool(self.conn, parsexml=open(infile).read())
 
         check = self._make_checker(pool)
         check("type", "fs", "dir")
@@ -1146,46 +1212,42 @@ class XMLParseTest(unittest.TestCase):
         check("target_path", "/some/target/path", "/mnt/my/foo")
         check("source_name", None, "fooname")
 
-        utils.diff_compare(pool.get_xml_config(), outfile)
-        utils.test_create(conn, pool.get_xml_config(), "storagePoolDefineXML")
+        utils.diff_compare(pool.get_xml(), outfile)
+        utils.test_create(self.conn, pool.get_xml(), "storagePoolDefineXML")
 
     def testISCSIPool(self):
         basename = "pool-iscsi"
         infile = "tests/storage-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        pool = virtinst.StoragePool(conn, parsexml=open(infile).read())
+        pool = virtinst.StoragePool(self.conn, parsexml=open(infile).read())
 
         check = self._make_checker(pool)
         check("iqn", "foo.bar.baz.iqn", "my.iqn")
         check = self._make_checker(pool.hosts[0])
         check("name", "some.random.hostname", "my.host")
 
-        utils.diff_compare(pool.get_xml_config(), outfile)
-        utils.test_create(conn, pool.get_xml_config(), "storagePoolDefineXML")
+        utils.diff_compare(pool.get_xml(), outfile)
+        utils.test_create(self.conn, pool.get_xml(), "storagePoolDefineXML")
 
     def testGlusterPool(self):
-        if not conn.check_support(conn.SUPPORT_CONN_POOL_GLUSTERFS):
-            raise unittest.SkipTest("Gluster pools not supported with this "
-                "libvirt version.")
-
         basename = "pool-gluster"
         infile = "tests/storage-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        pool = virtinst.StoragePool(conn, parsexml=open(infile).read())
+        pool = virtinst.StoragePool(self.conn, parsexml=open(infile).read())
 
         check = self._make_checker(pool)
         check("source_path", "/some/source/path", "/foo")
         check = self._make_checker(pool.hosts[0])
         check("name", "some.random.hostname", "my.host")
 
-        utils.diff_compare(pool.get_xml_config(), outfile)
-        utils.test_create(conn, pool.get_xml_config(), "storagePoolDefineXML")
+        utils.diff_compare(pool.get_xml(), outfile)
+        utils.test_create(self.conn, pool.get_xml(), "storagePoolDefineXML")
 
     def testRBDPool(self):
         basename = "pool-rbd"
         infile = "tests/xmlparse-xml/%s.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        pool = virtinst.StoragePool(conn, parsexml=open(infile).read())
+        pool = virtinst.StoragePool(self.conn, parsexml=open(infile).read())
 
         check = self._make_checker(pool.hosts[0])
         check("name", "ceph-mon-1.example.com")
@@ -1196,16 +1258,18 @@ class XMLParseTest(unittest.TestCase):
         check = self._make_checker(pool.hosts[2])
         check("name", "ceph-mon-3.example.com")
         check("port", 6789, 1000)
-        pool.add_host("frobber", "5555")
+        hostobj = pool.hosts.add_new()
+        hostobj.name = "frobber"
+        hostobj.port = "5555"
 
-        utils.diff_compare(pool.get_xml_config(), outfile)
-        utils.test_create(conn, pool.get_xml_config(), "storagePoolDefineXML")
+        utils.diff_compare(pool.get_xml(), outfile)
+        utils.test_create(self.conn, pool.get_xml(), "storagePoolDefineXML")
 
     def testVol(self):
         basename = "pool-dir-vol"
         infile = "tests/xmlparse-xml/%s-in.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        vol = virtinst.StorageVolume(conn, parsexml=open(infile).read())
+        vol = virtinst.StorageVolume(self.conn, parsexml=open(infile).read())
 
         check = self._make_checker(vol)
         check("type", None, "file")
@@ -1223,7 +1287,7 @@ class XMLParseTest(unittest.TestCase):
         check("group", "10736", "10000")
         check("label", None, "foo.label")
 
-        utils.diff_compare(vol.get_xml_config(), outfile)
+        utils.diff_compare(vol.get_xml(), outfile)
 
 
     ###################
@@ -1234,7 +1298,7 @@ class XMLParseTest(unittest.TestCase):
         basename = "network-multi"
         infile = "tests/xmlparse-xml/%s-in.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        net = virtinst.Network(conn, parsexml=open(infile).read())
+        net = virtinst.Network(self.conn, parsexml=open(infile).read())
 
         check = self._make_checker(net)
         check("name", "ipv6_multirange", "new-foo")
@@ -1287,7 +1351,7 @@ class XMLParseTest(unittest.TestCase):
         check("family", "ipv6", "ipv6")
         check("prefix", 64, 63)
 
-        r = net.add_route()
+        r = net.routes.add_new()
         r.family = "ipv4"
         r.address = "192.168.8.0"
         r.prefix = "24"
@@ -1295,14 +1359,14 @@ class XMLParseTest(unittest.TestCase):
         check = self._make_checker(r)
         check("netmask", None, "foo", None)
 
-        utils.diff_compare(net.get_xml_config(), outfile)
-        utils.test_create(conn, net.get_xml_config(), "networkDefineXML")
+        utils.diff_compare(net.get_xml(), outfile)
+        utils.test_create(self.conn, net.get_xml(), "networkDefineXML")
 
     def testNetOpen(self):
         basename = "network-open"
         infile = "tests/xmlparse-xml/%s-in.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        net = virtinst.Network(conn, parsexml=open(infile).read())
+        net = virtinst.Network(self.conn, parsexml=open(infile).read())
 
         check = self._make_checker(net)
         check("name", "open", "new-foo")
@@ -1321,14 +1385,14 @@ class XMLParseTest(unittest.TestCase):
         check("start", "192.168.100.128", "192.168.101.128")
         check("end", "192.168.100.254", "192.168.101.254")
 
-        utils.diff_compare(net.get_xml_config(), outfile)
-        utils.test_create(conn, net.get_xml_config(), "networkDefineXML")
+        utils.diff_compare(net.get_xml(), outfile)
+        utils.test_create(self.conn, net.get_xml(), "networkDefineXML")
 
     def testNetVfPool(self):
         basename = "network-vf-pool"
         infile = "tests/xmlparse-xml/%s-in.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        net = virtinst.Network(conn, parsexml=open(infile).read())
+        net = virtinst.Network(self.conn, parsexml=open(infile).read())
 
         check = self._make_checker(net)
         check("name", "passthrough", "new-foo")
@@ -1347,8 +1411,8 @@ class XMLParseTest(unittest.TestCase):
         check("slot", 0x10)
         check("function", 0x0)
 
-        utils.diff_compare(net.get_xml_config(), outfile)
-        utils.test_create(conn, net.get_xml_config(), "networkDefineXML")
+        utils.diff_compare(net.get_xml(), outfile)
+        utils.test_create(self.conn, net.get_xml(), "networkDefineXML")
 
 
     ##############
@@ -1360,12 +1424,16 @@ class XMLParseTest(unittest.TestCase):
         basename = "clear-cpu-unknown-vals"
         infile = "tests/xmlparse-xml/%s-in.xml" % basename
         outfile = "tests/xmlparse-xml/%s-out.xml" % basename
-        guest = virtinst.Guest(kvmconn, parsexml=open(infile).read())
+        guest = virtinst.Guest(self.kvmconn, parsexml=open(infile).read())
 
-        guest.cpu.copy_host_cpu()
+        guest.cpu.copy_host_cpu(guest)
         guest.cpu.clear()
-        utils.diff_compare(guest.get_xml_config(), outfile)
+        utils.diff_compare(guest.get_xml(), outfile)
 
+    def testDomainRoundtrip(self):
+        # Make sure our XML engine doesn't mangle non-libvirt XML bits
+        infile = "tests/xmlparse-xml/domain-roundtrip.xml"
+        outfile = "tests/xmlparse-xml/domain-roundtrip.xml"
+        guest = virtinst.Guest(self.conn, parsexml=open(infile).read())
 
-if __name__ == "__main__":
-    unittest.main()
+        utils.diff_compare(guest.get_xml(), outfile)

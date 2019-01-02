@@ -1,26 +1,11 @@
-#
 # Copyright (C) 2008, 2013, 2014 Red Hat, Inc.
 # Copyright (C) 2008 Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 
-from gi.repository import GObject
 from gi.repository import Gtk
 from gi.repository import Gdk
 
@@ -33,7 +18,7 @@ from .asyncjob import vmmAsyncJob
 
 class vmmCreateVolume(vmmGObjectUI):
     __gsignals__ = {
-        "vol-created": (GObject.SignalFlags.RUN_FIRST, None, [str, str]),
+        "vol-created": (vmmGObjectUI.RUN_FIRST, None, [str, str]),
     }
 
     def __init__(self, conn, parent_pool):
@@ -65,7 +50,7 @@ class vmmCreateVolume(vmmGObjectUI):
 
     def show(self, parent):
         try:
-            parent_xml = self.parent_pool.xmlobj.get_xml_config()
+            parent_xml = self.parent_pool.xmlobj.get_xml()
         except Exception:
             logging.debug("Error getting parent_pool xml", exc_info=True)
             parent_xml = None
@@ -131,6 +116,8 @@ class vmmCreateVolume(vmmGObjectUI):
         format_model = Gtk.ListStore(str, str)
         format_list.set_model(format_model)
         uiutil.init_combo_text_column(format_list, 1)
+        for fmt in ["raw", "qcow2"]:
+            format_model.append([fmt, fmt])
 
 
     def _make_stub_vol(self):
@@ -174,17 +161,10 @@ class vmmCreateVolume(vmmGObjectUI):
         self.widget("vol-name").grab_focus()
         self.vol_name_changed(self.widget("vol-name"))
 
-        self.populate_vol_format()
-        hasformat = bool(len(self.vol.list_formats()))
+        hasformat = self.vol.supports_property("format")
         uiutil.set_grid_row_visible(self.widget("vol-format"), hasformat)
-        if hasformat:
-            # Select the default storage format
-            self.widget("vol-format").set_active(0)
-            default = self.conn.get_default_storage_format()
-            for row in self.widget("vol-format").get_model():
-                if row[0] == default:
-                    self.widget("vol-format").set_active_iter(row.iter)
-                    break
+        uiutil.set_list_selection(self.widget("vol-format"),
+            self.conn.get_default_storage_format())
 
         default_alloc = 0
         default_cap = 20
@@ -208,29 +188,10 @@ class vmmCreateVolume(vmmGObjectUI):
         self.widget("vol-parent-space").set_text(
                         self.parent_pool.get_pretty_available())
 
-
     def get_config_format(self):
+        if not self.widget("vol-format").is_visible():
+            return None
         return uiutil.get_list_selection(self.widget("vol-format"))
-
-    def populate_vol_format(self):
-        stable_whitelist = ["raw", "qcow2", "qed"]
-        model = self.widget("vol-format").get_model()
-        model.clear()
-
-        formats = self.vol.list_formats()
-        if self.vol.list_create_formats() is not None:
-            formats = self.vol.list_create_formats()
-
-        if (self.vol.file_type == self.vol.TYPE_FILE and
-            self.conn.stable_defaults()):
-            newfmts = []
-            for f in stable_whitelist:
-                if f in formats:
-                    newfmts.append(f)
-            formats = newfmts
-
-        for f in formats:
-            model.append([f, f])
 
     def vol_name_changed(self, src):
         text = src.get_text()

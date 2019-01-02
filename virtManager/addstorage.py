@@ -1,26 +1,11 @@
-#
 # Copyright (C) 2014 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 import os
 
-from gi.repository import GObject
 from gi.repository import Gtk
 
 import virtinst
@@ -30,8 +15,8 @@ from .baseclass import vmmGObjectUI
 
 class vmmAddStorage(vmmGObjectUI):
     __gsignals__ = {
-        "browse-clicked": (GObject.SignalFlags.RUN_FIRST, None, [object]),
-        "storage-toggled": (GObject.SignalFlags.RUN_FIRST, None, [object])
+        "browse-clicked": (vmmGObjectUI.RUN_FIRST, None, [object]),
+        "storage-toggled": (vmmGObjectUI.RUN_FIRST, None, [object])
     }
 
     def __init__(self, conn, builder, topwin):
@@ -130,9 +115,10 @@ class vmmAddStorage(vmmGObjectUI):
     @staticmethod
     def check_path_search(src, conn, path):
         skip_paths = src.config.get_perms_fix_ignore()
-        user, broken_paths = virtinst.VirtualDisk.check_path_search(
+        searchdata = virtinst.DeviceDisk.check_path_search(
             conn.get_backend(), path)
 
+        broken_paths = searchdata.fixlist[:]
         for p in broken_paths[:]:
             if p in skip_paths:
                 broken_paths.remove(p)
@@ -154,8 +140,8 @@ class vmmAddStorage(vmmGObjectUI):
             return
 
         logging.debug("Attempting to correct permission issues.")
-        errors = virtinst.VirtualDisk.fix_path_search_for_user(
-            conn.get_backend(), path, user)
+        errors = virtinst.DeviceDisk.fix_path_search(
+                conn.get_backend(), searchdata)
         if not errors:
             return
 
@@ -174,7 +160,7 @@ class vmmAddStorage(vmmGObjectUI):
                              _("Don't ask about these directories again."))
 
         if chkres:
-            src.config.add_perms_fix_ignore(errors.keys())
+            src.config.add_perms_fix_ignore(list(errors.keys()))
 
     def reset_state(self):
         self._update_host_space()
@@ -258,7 +244,7 @@ class vmmAddStorage(vmmGObjectUI):
         if not path and device in ["disk", "lun"]:
             return self.err.val_err(_("A storage path must be specified."))
 
-        disk = virtinst.VirtualDisk(self.conn.get_backend())
+        disk = virtinst.DeviceDisk(self.conn.get_backend())
         disk.path = path or None
         disk.device = device
 
@@ -267,13 +253,13 @@ class vmmAddStorage(vmmGObjectUI):
             size = uiutil.spin_get_helper(self.widget("storage-size"))
             sparse = False
 
-            vol_install = virtinst.VirtualDisk.build_vol_install(
+            vol_install = virtinst.DeviceDisk.build_vol_install(
                 disk.conn, os.path.basename(disk.path), pool,
                 size, sparse)
             disk.set_vol_install(vol_install)
 
             fmt = self.conn.get_default_storage_format()
-            if fmt in disk.get_vol_install().list_formats():
+            if disk.get_vol_install().supports_property("format"):
                 logging.debug("Using default prefs format=%s for path=%s",
                     fmt, disk.path)
                 disk.get_vol_install().format = fmt

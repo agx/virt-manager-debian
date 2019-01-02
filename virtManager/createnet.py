@@ -1,30 +1,15 @@
-#
 # Copyright (C) 2006-2007, 2013 Red Hat, Inc.
 # Copyright (C) 2006 Hugh O. Brock <hbrock@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
+import ipaddress
 import logging
 
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import Pango
-
-import ipaddr
 
 from virtinst import Network
 
@@ -49,7 +34,7 @@ def _make_ipaddr(addrstr):
     if addrstr is None:
         return None
     try:
-        return ipaddr.IPNetwork(addrstr)
+        return ipaddress.ip_network(str(addrstr), strict=False)
     except Exception:
         return None
 
@@ -299,8 +284,8 @@ class vmmCreateNetwork(vmmGObjectUI):
 
     def validate_name(self):
         try:
-            net = self._build_xmlstub()
-            net.name = self.widget("net-name").get_text()
+            name = self.widget("net-name").get_text()
+            Network.validate_name(self.conn.get_backend(), name)
         except Exception as e:
             return self.err.val_err(_("Invalid network name"), str(e))
 
@@ -318,7 +303,7 @@ class vmmCreateNetwork(vmmGObjectUI):
             return self.err.val_err(_("Invalid Network Address"),
                     _("The network must be an IPv4 address"))
 
-        if ip.numhosts < 8:
+        if ip.num_addresses < 8:
             return self.err.val_err(_("Invalid Network Address"),
                     _("The network must address at least 8 addresses."))
 
@@ -624,17 +609,19 @@ class vmmCreateNetwork(vmmGObjectUI):
             src.modify_bg(Gtk.StateType.NORMAL, _red)
             return
 
-        valid_ip = (ip.numhosts >= 8 and ip.is_private)
-        gateway = (ip.prefixlen != 32 and str(ip.network + 1) or "")
+        valid_ip = (ip.num_addresses >= 8 and ip.is_private)
+        gateway = (ip.prefixlen != 32 and str(ip.network_address + 1) or "")
         info = (ip.is_private and _("Private") or _("Other/Public"))
-        start = int(ip.numhosts // 2)
-        end = int(ip.numhosts - 2)
+        start = int(ip.num_addresses // 2)
+        end = int(ip.num_addresses - 2)
 
         src.modify_bg(Gtk.StateType.NORMAL, valid_ip and _green or _red)
         self.widget("net-info-gateway").set_text(gateway)
         self.widget("net-info-type").set_text(info)
-        self.widget("net-dhcpv4-start").set_text(str(ip.network + start))
-        self.widget("net-dhcpv4-end").set_text(str(ip.network + end))
+        self.widget("net-dhcpv4-start").set_text(
+            str(ip.network_address + start)
+        )
+        self.widget("net-dhcpv4-end").set_text(str(ip.network_address + end))
 
     def change_routev4_network(self, src):
         ntwk = self.get_config_routev4_network()
@@ -675,8 +662,8 @@ class vmmCreateNetwork(vmmGObjectUI):
             src.modify_bg(Gtk.StateType.NORMAL, _red)
             return
 
-        valid_ip = (ip.numhosts == 64 and ip.is_private)
-        gateway = (ip.prefixlen != 64 and str(ip.network + 1) or "")
+        valid_ip = (ip.num_addresses == 64 and ip.is_private)
+        gateway = (ip.prefixlen != 64 and str(ip.network_address + 1) or "")
         start = 256
         end = 512 - 1
         if ip.is_private:
@@ -691,8 +678,10 @@ class vmmCreateNetwork(vmmGObjectUI):
         src.modify_bg(Gtk.StateType.NORMAL, valid_ip and _green or _red)
         self.widget("net-info-gateway-ip6").set_text(gateway)
         self.widget("net-info-type-ip6").set_text(info)
-        self.widget("net-dhcpv6-start").set_text(str(ip.network + start))
-        self.widget("net-dhcpv6-end").set_text(str(ip.network + end))
+        self.widget("net-dhcpv6-start").set_text(
+            str(ip.network_address + start)
+        )
+        self.widget("net-dhcpv6-end").set_text(str(ip.network_address + end))
 
     def change_routev6_network(self, src):
         ntwk = self.get_config_routev6_network()
@@ -731,11 +720,9 @@ class vmmCreateNetwork(vmmGObjectUI):
     # XML build and install #
     #########################
 
-    def _build_xmlstub(self):
-        return Network(self.conn.get_backend())
 
     def _build_xmlobj(self):
-        net = self._build_xmlstub()
+        net = Network(self.conn.get_backend())
 
         net.name = self.widget("net-name").get_text()
         net.domain_name = self.widget("net-domain-name").get_text() or None
@@ -753,7 +740,7 @@ class vmmCreateNetwork(vmmGObjectUI):
 
         if net.forward.mode == "hostdev":
             net.forward.managed = "yes"
-            pfobj = net.forward.add_pf()
+            pfobj = net.forward.pfs.add_new()
             pfobj.dev = net.forward.dev
             net.forward.dev = None
             net.domain_name = None
@@ -762,44 +749,50 @@ class vmmCreateNetwork(vmmGObjectUI):
 
         if self.get_config_ipv4_enable():
             ip = self.get_config_ip4()
-            ipobj = net.add_ip()
-            ipobj.address = str(ip.network + 1)
+            ipobj = net.ips.add_new()
+            ipobj.address = str(ip.network_address + 1)
             ipobj.netmask = str(ip.netmask)
 
             if self.get_config_dhcpv4_enable():
-                dhcpobj = ipobj.add_range()
-                dhcpobj.start = str(self.get_config_dhcpv4_start().network)
-                dhcpobj.end = str(self.get_config_dhcpv4_end().network)
+                dhcpobj = ipobj.ranges.add_new()
+                dhcpobj.start = str(
+                    self.get_config_dhcpv4_start().network_address
+                )
+                dhcpobj.end = str(self.get_config_dhcpv4_end().network_address)
 
         if self.get_config_ipv6_enable():
             ip = self.get_config_ip6()
-            ipobj = net.add_ip()
+            ipobj = net.ips.add_new()
             ipobj.family = "ipv6"
-            ipobj.address = str(ip.network + 1)
+            ipobj.address = str(ip.network_address + 1)
             ipobj.prefix = str(ip.prefixlen)
 
             if self.get_config_dhcpv6_enable():
-                dhcpobj = ipobj.add_range()
-                dhcpobj.start = str(self.get_config_dhcpv6_start().network)
-                dhcpobj.end = str(self.get_config_dhcpv6_end().network)
+                dhcpobj = ipobj.ranges.add_new()
+                dhcpobj.start = str(
+                    self.get_config_dhcpv6_start().network_address
+                )
+                dhcpobj.end = str(
+                    self.get_config_dhcpv6_end().network_address
+                )
 
         netaddr = _make_ipaddr(self.get_config_routev4_network())
         gwaddr = _make_ipaddr(self.get_config_routev4_gateway())
         if netaddr and gwaddr:
-            route = net.add_route()
+            route = net.routes.add_new()
             route.family = "ipv4"
-            route.address = netaddr.network
+            route.address = netaddr.network_address
             route.prefix = netaddr.prefixlen
-            route.gateway = gwaddr.network
+            route.gateway = gwaddr.network_address
 
         netaddr = _make_ipaddr(self.get_config_routev6_network())
         gwaddr = _make_ipaddr(self.get_config_routev6_gateway())
         if netaddr and gwaddr:
-            route = net.add_route()
+            route = net.routes.add_new()
             route.family = "ipv6"
-            route.address = netaddr.network
+            route.address = netaddr.network_address
             route.prefix = netaddr.prefixlen
-            route.gateway = gwaddr.network
+            route.gateway = gwaddr.network_address
 
         return net
 

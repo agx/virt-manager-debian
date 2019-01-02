@@ -1,34 +1,18 @@
-#
 # Copyright (C) 2010, 2013 Red Hat, Inc.
 # Copyright (C) 2010 Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
-
-from gi.repository import GObject
 
 from .baseclass import vmmGObject
 
 
 class vmmLibvirtObject(vmmGObject):
     __gsignals__ = {
-        "state-changed": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "initialized": (GObject.SignalFlags.RUN_FIRST, None, [bool]),
+        "state-changed": (vmmGObject.RUN_FIRST, None, []),
+        "initialized": (vmmGObject.RUN_FIRST, None, [bool]),
     }
 
     _STATUS_ACTIVE = 1
@@ -102,7 +86,7 @@ class vmmLibvirtObject(vmmGObject):
                 self.__class__.__name__, name, hex(id(self)))
 
     def _cleanup(self):
-        pass
+        self._backend = None
 
     def _get_conn(self):
         return self._conn
@@ -112,6 +96,17 @@ class vmmLibvirtObject(vmmGObject):
         return self._backend
     def get_connkey(self):
         return self._key
+
+    def is_domain(self):
+        return self.class_name() == "domain"
+    def is_network(self):
+        return self.class_name() == "network"
+    def is_pool(self):
+        return self.class_name() == "pool"
+    def is_nodedev(self):
+        return self.class_name() == "nodedev"
+    def is_interface(self):
+        return self.class_name() == "interface"
 
     def change_name_backend(self, newbackend):
         # Used for changing the backing object after a rename
@@ -128,9 +123,9 @@ class vmmLibvirtObject(vmmGObject):
 
         logging.debug("Changing %s name from %s to %s",
                       self, oldname, newname)
-        origxml = xmlobj.get_xml_config()
+        origxml = xmlobj.get_xml()
         xmlobj.name = newname
-        newxml = xmlobj.get_xml_config()
+        newxml = xmlobj.get_xml()
 
         try:
             self._key = newname
@@ -309,7 +304,7 @@ class vmmLibvirtObject(vmmGObject):
         """
         origxml = None
         if self._xmlobj:
-            origxml = self._xmlobj.get_xml_config()
+            origxml = self._xmlobj.get_xml()
 
         self._invalidate_xml()
         active_xml = self._XMLDesc(self._active_xml_flags)
@@ -387,9 +382,9 @@ class vmmLibvirtObject(vmmGObject):
             we detect the actual XML change and log it correctly.
         """
         if not origxml:
-            origxml = self._make_xmlobj_to_define().get_xml_config()
+            origxml = self._make_xmlobj_to_define().get_xml()
 
-        newxml = xmlobj.get_xml_config()
+        newxml = xmlobj.get_xml()
         self.log_redefine_xml_diff(self, origxml, newxml)
 
         if origxml != newxml:

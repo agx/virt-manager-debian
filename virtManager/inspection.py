@@ -1,68 +1,90 @@
-#
 # Copyright (C) 2011, 2013 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
-from Queue import Queue
-from threading import Thread
+import functools
 import logging
-
-from guestfs import GuestFS  # pylint: disable=import-error
+import queue
+import threading
 
 from .baseclass import vmmGObject
+from .connmanager import vmmConnectionManager
 from .domain import vmmInspectionData
 
 
+def _inspection_error(_errstr):
+    data = vmmInspectionData()
+    data.errorstr = _errstr
+    return data
+
+
 class vmmInspection(vmmGObject):
-    # Can't find a way to make Thread release our reference
-    _leak_check = False
+    _libguestfs_installed = None
+
+    @classmethod
+    def get_instance(cls):
+        if not cls._instance:
+            if not cls.libguestfs_installed():
+                return None
+            cls._instance = vmmInspection()
+        return cls._instance
+
+    @classmethod
+    def libguestfs_installed(cls):
+        if cls._libguestfs_installed is None:
+            try:
+                import guestfs as ignore  # pylint: disable=import-error
+                logging.debug("python guestfs is installed")
+                cls._libguestfs_installed = True
+            except ImportError:
+                logging.debug("python guestfs is not installed")
+                cls._libguestfs_installed = False
+            except Exception:
+                logging.debug("error importing guestfs",
+                        exc_info=True)
+                cls._libguestfs_installed = False
+        return cls._libguestfs_installed
 
     def __init__(self):
         vmmGObject.__init__(self)
+        self._cleanup_on_app_close()
 
-        self._thread = Thread(name="inspection thread", target=self._run)
-        self._thread.daemon = True
-        self._wait = 5 * 1000  # 5 seconds
+        self._thread = None
 
-        self._q = Queue()
+        self._q = queue.Queue()
         self._conns = {}
-        self._vmseen = {}
         self._cached_data = {}
+
+        val = self.config.get_libguestfs_inspect_vms()
+        logging.debug("libguestfs gsetting enabled=%s", str(val))
+        if not val:
+            return
+
+        connmanager = vmmConnectionManager.get_instance()
+        connmanager.connect("conn-added", self._conn_added)
+        connmanager.connect("conn-removed", self._conn_removed)
+        for conn in connmanager.conns.values():
+            self._conn_added(connmanager, conn)
+
+        self._start()
 
     def _cleanup(self):
-        self._thread = None
-        self._q = Queue()
+        self._stop()
+        self._q = queue.Queue()
         self._conns = {}
-        self._vmseen = {}
         self._cached_data = {}
 
-    # Called by the main thread whenever a connection is added or
-    # removed.  We tell the inspection thread, so it can track
-    # connections.
-    def conn_added(self, engine_ignore, conn):
+    def _conn_added(self, _src, conn):
         obj = ("conn_added", conn)
         self._q.put(obj)
 
-    def conn_removed(self, engine_ignore, uri):
+    def _conn_removed(self, _src, uri):
         obj = ("conn_removed", uri)
         self._q.put(obj)
 
     # Called by the main thread whenever a VM is added to vmlist.
-    def vm_added(self, conn, connkey):
+    def _vm_added(self, conn, connkey):
         if connkey.startswith("guestfs-"):
             logging.debug("ignore libvirt/guestfs temporary VM %s",
                           connkey)
@@ -72,115 +94,129 @@ class vmmInspection(vmmGObject):
         self._q.put(obj)
 
     def vm_refresh(self, vm):
+        logging.debug("Refresh requested for vm=%s", vm.get_name())
         obj = ("vm_refresh", vm.conn.get_uri(), vm.get_name(), vm.get_uuid())
         self._q.put(obj)
 
-    def start(self):
-        # Wait a few seconds before we do anything.  This prevents
-        # inspection from being a burden for initial virt-manager
-        # interactivity (although it shouldn't affect interactivity at
-        # all).
-        def cb():
-            self._thread.start()
-            return 0
+    def _start(self):
+        self._thread = threading.Thread(
+                name="inspection thread", target=self._run)
+        self._thread.daemon = True
+        self._thread.start()
 
-        logging.debug("waiting")
-        self.timeout_add(self._wait, cb)
+    def _stop(self):
+        if self._thread is None:
+            return
+
+        self._q.put(None)
+        self._thread = None
 
     def _run(self):
         # Process everything on the queue.  If the queue is empty when
         # called, block.
         while True:
             obj = self._q.get()
+            if obj is None:
+                logging.debug("libguestfs queue obj=None, exiting thread")
+                return
             self._process_queue_item(obj)
             self._q.task_done()
 
     def _process_queue_item(self, obj):
-        if obj[0] == "conn_added":
+        cmd = obj[0]
+        if cmd == "conn_added":
             conn = obj[1]
             uri = conn.get_uri()
-            if conn and not (conn.is_remote()) and not (uri in self._conns):
-                self._conns[uri] = conn
-                conn.connect("vm-added", self.vm_added)
-                # No need to push the VMs of the newly added
-                # connection manually into the queue, as the above
-                # connect() will emit vm-added signals for all of
-                # its VMs.
-        elif obj[0] == "conn_removed":
+            if uri in self._conns:
+                return
+
+            self._conns[uri] = conn
+            conn.connect("vm-added", self._vm_added)
+            for vm in conn.list_vms():
+                self._vm_added(conn, vm.get_connkey())
+
+        elif cmd == "conn_removed":
             uri = obj[1]
-            del self._conns[uri]
-        elif obj[0] == "vm_added" or obj[0] == "vm_refresh":
+            self._conns.pop(uri)
+
+        elif cmd == "vm_added" or cmd == "vm_refresh":
             uri = obj[1]
-            if not (uri in self._conns):
+            if uri not in self._conns:
                 # This connection disappeared in the meanwhile.
                 return
+
             conn = self._conns[uri]
-            if not conn.is_active():
-                return
-            connkey = obj[2]
-            vm = conn.get_vm(connkey)
+            vm = conn.get_vm(obj[2])
             if not vm:
                 # The VM was removed in the meanwhile.
                 return
-            if obj[0] == "vm_refresh":
+
+            if cmd == "vm_refresh":
                 vmuuid = obj[3]
                 # When refreshing the inspection data of a VM,
                 # all we need is to remove it from the "seen" cache,
                 # as the data itself will be replaced once the new
                 # results are available.
-                del self._vmseen[vmuuid]
+                self._cached_data.pop(vmuuid, None)
+
             self._process_vm(conn, vm)
 
-    # Try processing a single VM, keeping into account whether it was
-    # visited already, and whether there are cached data for it.
     def _process_vm(self, conn, vm):
-        def set_inspection_error(vm):
-            data = vmmInspectionData()
-            data.error = True
-            self._set_vm_inspection_data(vm, data)
+        # Try processing a single VM, keeping into account whether it was
+        # visited already, and whether there are cached data for it.
+        def _set_vm_inspection_data(_data):
+            vm.inspection = _data
+            vm.inspection_data_updated()
+            self._cached_data[vm.get_uuid()] = _data
 
+        prettyvm = conn.get_uri() + ":" + vm.get_name()
         vmuuid = vm.get_uuid()
-        prettyvm = vmuuid
+        if vmuuid in self._cached_data:
+            data = self._cached_data.get(vmuuid)
+            if vm.inspection != data:
+                logging.debug("Found cached data for %s", prettyvm)
+                _set_vm_inspection_data(data)
+            return
+
         try:
-            prettyvm = conn.get_uri() + ":" + vm.get_name()
-
-            if vmuuid in self._vmseen:
-                data = self._cached_data.get(vmuuid)
-                if not data:
-                    return
-
-                if vm.inspection != data:
-                    logging.debug("Found cached data for %s", prettyvm)
-                    self._set_vm_inspection_data(vm, data)
-                return
-
-            # Whether success or failure, we've "seen" this VM now.
-            self._vmseen[vmuuid] = True
-            try:
-                data = self._inspect_vm(conn, vm)
-                if data:
-                    self._set_vm_inspection_data(vm, data)
-                else:
-                    set_inspection_error(vm)
-            except Exception:
-                set_inspection_error(vm)
-                raise
-        except Exception:
+            data = self._inspect_vm(conn, vm)
+        except Exception as e:
+            data = _inspection_error(_("Error inspection VM: %s") % str(e))
             logging.exception("%s: exception while processing", prettyvm)
 
+        _set_vm_inspection_data(data)
+
     def _inspect_vm(self, conn, vm):
-        g = GuestFS(close_on_exit=False)
+        if self._thread is None:
+            return
+
+        if conn.is_remote():
+            return _inspection_error(
+                    _("Cannot inspect VM on remote connection"))
+        if conn.is_test():
+            return _inspection_error("Cannot inspect VM on test connection")
+
+        import guestfs  # pylint: disable=import-error
+
+        g = guestfs.GuestFS(close_on_exit=False)
         prettyvm = conn.get_uri() + ":" + vm.get_name()
+        try:
+            g.add_libvirt_dom(vm.get_backend(), readonly=1)
+            g.launch()
+        except Exception as e:
+            logging.debug("%s: Error launching libguestfs appliance: %s",
+                    prettyvm, str(e))
+            return _inspection_error(
+                    _("Error launching libguestfs appliance: %s") % str(e))
 
-        g.add_libvirt_dom(vm.get_backend(), readonly=1)
-
-        g.launch()
+        logging.debug("%s: inspection appliance connected", prettyvm)
 
         # Inspect the operating system.
         roots = g.inspect_os()
         if len(roots) == 0:
             logging.debug("%s: no operating systems found", prettyvm)
-            return None
+            return _inspection_error(
+                    _("Inspection found no operating systems."))
 
         # Arbitrarily pick the first root device.
         root = roots[0]
@@ -212,8 +248,8 @@ class vmmInspection(vmmGObject):
                     return 0
                 else:
                     return -1
-            mps.sort(compare)
 
+            mps.sort(key=functools.cmp_to_key(compare))
             for mp_dev in mps:
                 try:
                     g.mount_ro(mp_dev[1], mp_dev[0])
@@ -263,12 +299,6 @@ class vmmInspection(vmmGObject):
         data.product_name = str(product_name)
         data.product_variant = str(product_variant)
         data.icon = icon
-        data.applications = list(apps)
-        data.error = False
+        data.applications = list(apps or [])
 
         return data
-
-    def _set_vm_inspection_data(self, vm, data):
-        vm.inspection = data
-        vm.inspection_data_updated()
-        self._cached_data[vm.get_uuid()] = data

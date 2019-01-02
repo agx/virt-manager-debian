@@ -2,20 +2,8 @@
 # Copyright 2006, 2013 Red Hat, Inc.
 # Jeremy Katz <katzj@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 #
 
 import logging
@@ -34,6 +22,18 @@ def listify(l):
         return [l]
     else:
         return l
+
+
+def xml_indent(xmlstr, level):
+    """
+    Indent the passed str the specified number of spaces
+    """
+    xml = ""
+    if not xmlstr:
+        return xml
+    if not level:
+        return xmlstr
+    return "\n".join((" " * level + l) for l in xmlstr.splitlines())
 
 
 def vm_uuid_collision(conn, uuid):
@@ -58,26 +58,6 @@ def libvirt_collision(collision_cb, val):
         except libvirt.libvirtError:
             pass
     return check
-
-
-def validate_uuid(val):
-    if not isinstance(val, str):
-        raise ValueError(_("UUID must be a string."))
-
-    form = re.match("[a-fA-F0-9]{8}[-]([a-fA-F0-9]{4}[-]){3}[a-fA-F0-9]{12}$",
-                    val)
-    if form is None:
-        form = re.match("[a-fA-F0-9]{32}$", val)
-        if form is None:
-            raise ValueError(
-                  _("UUID must be a 32-digit hexadecimal number. It may take "
-                    "the form xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx or may "
-                    "omit hyphens altogether."))
-
-        else:   # UUID had no dashes, so add them in
-            val = (val[0:8] + "-" + val[8:12] + "-" + val[12:16] +
-                   "-" + val[16:20] + "-" + val[20:32])
-    return val
 
 
 def validate_name(name_type, val):
@@ -123,16 +103,16 @@ def generate_name(base, collision_cb, suffix="", lib_collision=True,
 
     output = "foobar-2.img"
 
-    @param base: The base string to use for the name (e.g. "my-orig-vm-clone")
-    @param collision_cb: A callback function to check for collision,
+    :param base: The base string to use for the name (e.g. "my-orig-vm-clone")
+    :param collision_cb: A callback function to check for collision,
         receives the generated name as its only arg
-    @param lib_collision: If true, the collision_cb is not a boolean function,
+    :param lib_collision: If true, the collision_cb is not a boolean function,
         and instead throws a libvirt error on failure
-    @param start_num: The number to start at for generating non colliding names
-    @param sep: The seperator to use between the basename and the
+    :param start_num: The number to start at for generating non colliding names
+    :param sep: The separator to use between the basename and the
         generated number (default is "-")
-    @param force_num: Force the generated name to always end with a number
-    @param collidelist: An extra list of names to check for collision
+    :param force_num: Force the generated name to always end with a number
+    :param collidelist: An extra list of names to check for collision
     """
     collidelist = collidelist or []
 
@@ -144,7 +124,7 @@ def generate_name(base, collision_cb, suffix="", lib_collision=True,
         else:
             return collision_cb(tryname)
 
-    numrange = range(start_num, start_num + 100000)
+    numrange = list(range(start_num, start_num + 100000))
     if not force_num:
         numrange = [None] + numrange
 
@@ -203,8 +183,8 @@ def is_error_nosupport(err):
     Check if passed exception indicates that the called libvirt command isn't
     supported
 
-    @param err: Exception raised from command call
-    @returns: True if command isn't supported, False if we can't determine
+    :param err: Exception raised from command call
+    :returns: True if command isn't supported, False if we can't determine
     """
     if not isinstance(err, libvirt.libvirtError):
         return False

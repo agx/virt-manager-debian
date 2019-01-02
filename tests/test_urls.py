@@ -1,22 +1,11 @@
 # Copyright (C) 2013 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 import os
+import re
 import sys
 import time
 import traceback
@@ -25,31 +14,36 @@ import unittest
 from tests import utils
 
 from virtinst import Guest
+from virtinst import OSDB
+from virtinst import urldetect
 from virtinst import urlfetcher
 from virtinst import util
-from virtinst.urlfetcher import ALTLinuxDistro
-from virtinst.urlfetcher import CentOSDistro
-from virtinst.urlfetcher import DebianDistro
-from virtinst.urlfetcher import FedoraDistro
-from virtinst.urlfetcher import GenericDistro
-from virtinst.urlfetcher import MandrivaDistro
-from virtinst.urlfetcher import RHELDistro
-from virtinst.urlfetcher import SLDistro
-from virtinst.urlfetcher import SuseDistro
-from virtinst.urlfetcher import UbuntuDistro
+from virtinst.urldetect import ALTLinuxDistro
+from virtinst.urldetect import CentOSDistro
+from virtinst.urldetect import DebianDistro
+from virtinst.urldetect import FedoraDistro
+from virtinst.urldetect import GenericTreeinfoDistro
+from virtinst.urldetect import MandrivaDistro
+from virtinst.urldetect import RHELDistro
+from virtinst.urldetect import SuseDistro
+from virtinst.urldetect import UbuntuDistro
 
 
-class _DistroURL(object):
+class _URLTestData(object):
+    """
+    Class that tracks all data needed for a single URL test case.
+    Data is stored in test_urls.ini
+    """
     def __init__(self, name, url, detectdistro,
-            testxen, testbootiso, testshortcircuit):
+            testxen, testshortcircuit, kernelarg):
         self.name = name
         self.url = url
         self.detectdistro = detectdistro
         self.arch = self._find_arch()
         self.distroclass = self._distroclass_for_name(self.name)
+        self.kernelarg = kernelarg
 
         self.testxen = testxen
-        self.testbootiso = testbootiso
 
         # If True, pass in the expected distro value to getDistroStore
         # so it can short circuit the lookup checks. Speeds up the tests
@@ -57,7 +51,7 @@ class _DistroURL(object):
         self.testshortcircuit = testshortcircuit
 
     def _distroclass_for_name(self, name):
-        # Map the test case name to the expected urlfetcher distro
+        # Map the test case name to the expected urldetect distro
         # class we should be detecting
         if "fedora" in name:
             return FedoraDistro
@@ -69,8 +63,6 @@ class _DistroURL(object):
             return SuseDistro
         if "debian" in name:
             return DebianDistro
-        if name.startswith("sl-"):
-            return SLDistro
         if "ubuntu" in name:
             return UbuntuDistro
         if "mageia" in name:
@@ -78,7 +70,7 @@ class _DistroURL(object):
         if "altlinux" in name:
             return ALTLinuxDistro
         if "generic" in name:
-            return GenericDistro
+            return GenericTreeinfoDistro
         raise RuntimeError("name=%s didn't map to any distro class. Extend "
             "_distroclass_for_name" % name)
 
@@ -100,13 +92,13 @@ class _DistroURL(object):
             return "x86_64"
         return "x86_64"
 
-testconn = utils.open_testdefault()
+testconn = utils.URIs.open_testdefault_cached()
 hvmguest = Guest(testconn)
 hvmguest.os.os_type = "hvm"
 xenguest = Guest(testconn)
 xenguest.os.os_type = "xen"
 
-meter = util.make_meter(quiet=not utils.get_debug())
+meter = util.make_meter(quiet=not utils.clistate.debug)
 
 
 def _storeForDistro(fetcher, guest):
@@ -116,9 +108,9 @@ def _storeForDistro(fetcher, guest):
     """
     for ignore in range(0, 10):
         try:
-            return urlfetcher.getDistroStore(guest, fetcher)
+            return urldetect.getDistroStore(guest, fetcher)
         except Exception as e:
-            if str(e).count("502"):
+            if "502" in str(e):
                 logging.debug("Caught proxy error: %s", str(e))
                 time.sleep(.5)
                 continue
@@ -126,26 +118,51 @@ def _storeForDistro(fetcher, guest):
     raise  # pylint: disable=misplaced-bare-raise
 
 
-def _testURL(fetcher, distroobj):
+def _sanitize_osdict_name(detectdistro):
     """
-    Test that our URL detection logic works for grabbing kernel, xen
-    kernel, and boot.iso
+    Try to handle working with out of date osinfo-db data. Like if
+    checking distro FedoraXX but osinfo-db latest Fedora is
+    FedoraXX-1, convert to use that
     """
-    distname = distroobj.name
-    arch = distroobj.arch
+    if not detectdistro:
+        return detectdistro
+
+    if detectdistro == "testsuite-fedora-rawhide":
+        # Special value we use in the test suite to always return the latest
+        # fedora when checking rawhide URL
+        return OSDB.latest_fedora_version()
+
+    if re.match("fedora[0-9]+", detectdistro):
+        if not OSDB.lookup_os(detectdistro):
+            ret = OSDB.latest_fedora_version()
+            print("\nConverting detectdistro=%s to latest value=%s" %
+                    (detectdistro, ret))
+            return ret
+
+    return detectdistro
+
+
+def _testURL(fetcher, testdata):
+    """
+    Test that our URL detection logic works for grabbing kernels
+    """
+    distname = testdata.name
+    arch = testdata.arch
+    detectdistro = _sanitize_osdict_name(testdata.detectdistro)
+
     hvmguest.os.arch = arch
     xenguest.os.arch = arch
-    if distroobj.testshortcircuit:
-        hvmguest.os_variant = distroobj.detectdistro
-        xenguest.os_variant = distroobj.detectdistro
+    if testdata.testshortcircuit:
+        hvmguest.set_os_name(detectdistro)
+        xenguest.set_os_name(detectdistro)
     else:
-        hvmguest.os_variant = None
-        xenguest.os_variant = None
+        hvmguest.set_os_name("generic")
+        xenguest.set_os_name("generic")
 
     try:
         hvmstore = _storeForDistro(fetcher, hvmguest)
         xenstore = None
-        if distroobj.testxen:
+        if testdata.testxen:
             xenstore = _storeForDistro(fetcher, xenguest)
     except Exception:
         raise AssertionError("\nFailed to detect URLDistro class:\n"
@@ -154,28 +171,28 @@ def _testURL(fetcher, distroobj):
             (distname, fetcher.location, "".join(traceback.format_exc())))
 
     for s in [hvmstore, xenstore]:
-        if (s and distroobj.distroclass and
-            not isinstance(s, distroobj.distroclass)):
+        if (s and testdata.distroclass and
+            not isinstance(s, testdata.distroclass)):
             raise AssertionError("Unexpected URLDistro class:\n"
                 "found  = %s\n"
-                "expect = %s\n"
-                "name   = %s\n"
-                "url    = %s" %
-                (s.__class__, distroobj.distroclass, distname,
+                "expect = %s\n\n"
+                "testname = %s\n"
+                "url      = %s" %
+                (s.__class__, testdata.distroclass, distname,
                  fetcher.location))
 
         # Make sure the stores are reporting correct distro name/variant
-        if (s and distroobj.detectdistro and
-            distroobj.detectdistro != s.get_osdict_info()):
+        if (s and detectdistro and
+            detectdistro != s.get_osdict_info()):
             raise AssertionError(
                 "Detected OS did not match expected values:\n"
-                "found  = %s\n"
-                "expect = %s\n"
-                "name   = %s\n"
-                "url    = %s\n"
-                "store  = %s" %
-                (s.os_variant, distroobj.detectdistro,
-                 distname, fetcher.location, distroobj.distroclass))
+                "found   = %s\n"
+                "expect  = %s\n\n"
+                "testname = %s\n"
+                "url      = %s\n"
+                "store    = %s" %
+                (s.get_osdict_info(), detectdistro,
+                 distname, fetcher.location, testdata.distroclass))
 
     # Do this only after the distro detection, since we actually need
     # to fetch files for that part
@@ -184,82 +201,94 @@ def _testURL(fetcher, distroobj):
         return fetcher.hasFile(filename)
     fetcher.acquireFile = fakeAcquireFile
 
-    # Fetch boot iso
-    if distroobj.testbootiso:
-        boot = hvmstore.acquireBootDisk(hvmguest)
-        logging.debug("acquireBootDisk: %s", str(boot))
-
-        if boot is not True:
-            raise AssertionError("%s-%s: bootiso fetching failed" %
-                                 (distname, arch))
-
     # Fetch regular kernel
-    kern = hvmstore.acquireKernel(hvmguest)
-    logging.debug("acquireKernel (hvm): %s", str(kern))
-
-    if kern[0] is not True or kern[1] is not True:
+    kernel, initrd, kernelargs = hvmstore.acquireKernel()
+    if kernel is not True or initrd is not True:
         AssertionError("%s-%s: hvm kernel fetching failed" %
                        (distname, arch))
 
+    if testdata.kernelarg == "None":
+        if bool(kernelargs):
+            raise AssertionError("kernelargs='%s' but testdata.kernelarg='%s'"
+                    % (kernelargs, testdata.kernelarg))
+    elif testdata.kernelarg:
+        if not kernelargs.startswith(testdata.kernelarg):
+            raise AssertionError("kernelargs='%s' but testdata.kernelarg='%s'"
+                    % (kernelargs, testdata.kernelarg))
+
     # Fetch xen kernel
     if xenstore:
-        kern = xenstore.acquireKernel(xenguest)
-        logging.debug("acquireKernel (xen): %s", str(kern))
-
-        if kern[0] is not True or kern[1] is not True:
+        kernel, initrd, kernelargs = xenstore.acquireKernel()
+        if kernel is not True or initrd is not True:
             raise AssertionError("%s-%s: xen kernel fetching" %
                                  (distname, arch))
 
 
-def _testURLWrapper(distroobj):
-    os.environ.pop("VIRTINST_TEST_SUITE", None)
-
-    logging.debug("Testing for media arch=%s distroclass=%s",
-                  distroobj.arch, distroobj.distroclass)
-
-    sys.stdout.write("\nTesting %-25s " % distroobj.name)
-    sys.stdout.flush()
-
-    fetcher = urlfetcher.fetcherForURI(distroobj.url, "/tmp", meter)
+def _fetchWrapper(url, cb):
+    fetcher = urlfetcher.fetcherForURI(url, "/tmp", meter)
     try:
         fetcher.prepareLocation()
-        return _testURL(fetcher, distroobj)
+        return cb(fetcher)
     finally:
         fetcher.cleanupLocation()
 
 
+def _testURLWrapper(testdata):
+    os.environ.pop("VIRTINST_TEST_SUITE", None)
+
+    logging.debug("Testing for media arch=%s distroclass=%s",
+                  testdata.arch, testdata.distroclass)
+
+    sys.stdout.write("\nTesting %-25s " % testdata.name)
+    sys.stdout.flush()
+
+    def cb(fetcher):
+        return _testURL(fetcher, testdata)
+    return _fetchWrapper(testdata.url, cb)
+
+
 # Register tests to be picked up by unittest
 class URLTests(unittest.TestCase):
-    pass
+    def test001BadURL(self):
+        badurl = "http://aksdkakskdfa-idontexist.com/foo/tree"
+        def cb(fetcher):
+            return _storeForDistro(fetcher, hvmguest)
+
+        try:
+            _fetchWrapper(badurl, cb)
+            raise AssertionError("Expected URL failure")
+        except ValueError as e:
+            self.assertTrue("maybe you mistyped" in str(e))
+
 
 
 def _make_tests():
-    import ConfigParser
-    cfg = ConfigParser.ConfigParser()
+    import configparser
+    cfg = configparser.ConfigParser()
     cfg.read("tests/test_urls.ini")
 
-    manualpath = "tests/test_urls_manual.ini"
-    cfg.read(manualpath)
-    if not os.path.exists(manualpath):
+    manualpath = "~/.config/virt-manager/test_urls_manual.ini"
+    cfg.read(os.path.expanduser(manualpath))
+    if not os.path.exists(os.path.expanduser(manualpath)):
         print("NOTE: Pass in manual data with %s" % manualpath)
 
     urls = {}
     for name in cfg.sections():
         vals = dict(cfg.items(name))
-        d = _DistroURL(name, vals["url"],
-                       vals.get("distro", None),
-                       vals.get("testxen", "0") == "1",
-                       vals.get("testbootiso", "0") == "1",
-                       vals.get("testshortcircuit", "0") == "1")
+        d = _URLTestData(name, vals["url"],
+                vals.get("distro", None),
+                vals.get("testxen", "0") == "1",
+                vals.get("testshortcircuit", "0") == "1",
+                vals.get("kernelarg", None))
         urls[d.name] = d
 
-    keys = urls.keys()
+    keys = list(urls.keys())
     keys.sort()
     for key in keys:
-        distroobj = urls[key]
+        testdata = urls[key]
         def _make_wrapper(d):
             return lambda _self: _testURLWrapper(d)
         setattr(URLTests, "testURL%s" % key.replace("-", "_"),
-                _make_wrapper(distroobj))
+                _make_wrapper(testdata))
 
 _make_tests()

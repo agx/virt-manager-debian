@@ -1,3 +1,9 @@
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
+
+import os
+import tempfile
+
 import tests
 from tests.uitests import utils as uiutils
 
@@ -40,7 +46,7 @@ class AddHardware(uiutils.UITestCase):
         # Default SCSI
         tab = self._select_hw(addhw, "Controller", "controller-tab")
         typ = tab.find("Type:", "combo box")
-        typ.click()
+        typ.click_combo_entry()
         tab.find("SCSI", "menu item").click()
         finish.click()
         uiutils.check_in_loop(lambda: details.active)
@@ -48,7 +54,7 @@ class AddHardware(uiutils.UITestCase):
         # Virtio SCSI
         addhw = self._open_addhw_window(details)
         tab = self._select_hw(addhw, "Controller", "controller-tab")
-        typ.click()
+        typ.click_combo_entry()
         tab.find("SCSI", "menu item").click()
         tab.find("Model:", "combo box").click_combo_entry()
         tab.find("VirtIO SCSI", "menu item").click()
@@ -58,7 +64,7 @@ class AddHardware(uiutils.UITestCase):
         # USB 2
         addhw = self._open_addhw_window(details)
         tab = self._select_hw(addhw, "Controller", "controller-tab")
-        typ.click()
+        typ.click_combo_entry()
         tab.find("USB", "menu item").click()
         tab.find("Model:", "combo box").click_combo_entry()
         tab.find("USB 2", "menu item").click()
@@ -68,12 +74,85 @@ class AddHardware(uiutils.UITestCase):
         # USB 3
         addhw = self._open_addhw_window(details)
         tab = self._select_hw(addhw, "Controller", "controller-tab")
-        typ.click()
-        tab.find("USB", "menu item").click()
+        typ.click_combo_entry()
+        tab.find("^USB$", "menu item").click()
         tab.find("Model:", "combo box").click_combo_entry()
         tab.find("USB 3", "menu item").click()
         # Can't add more than 1 USB controller, so finish isn't sensitive
         self.assertFalse(finish.sensitive)
+
+    def testAddCephDisk(self):
+        """
+        Add a disk with a ceph volume, ensure it maps correctly
+        """
+        details = self._open_details_window()
+        addhw = self._open_addhw_window(details)
+        finish = addhw.find("Finish", "push button")
+
+        # Select ceph volume for disk
+        tab = self._select_hw(addhw, "Storage", "storage-tab")
+        tab.find_fuzzy("Select or create", "radio").click()
+        tab.find("storage-browse", "push button").click()
+        browse = self.app.root.find("Choose Storage Volume", "frame")
+        browse.find_fuzzy("rbd-ceph", "table cell").bring_on_screen().click()
+        browse.find_fuzzy("some-rbd-vol", "table cell").click()
+        browse.find("Choose Volume", "push button").click()
+        finish.click()
+        uiutils.check_in_loop(lambda: details.active)
+
+        # Check disk details, make sure it correctly selected volume
+        details.find("IDE Disk 2", "table cell").click()
+        tab = details.find("disk-tab")
+        uiutils.check_in_loop(lambda: tab.showing)
+        disk_path = tab.find("disk-source-path")
+        self.assertTrue("rbd://" in disk_path.text)
+
+    def _testQemuSearchCheck(self, filename):
+        """
+        Use fake KVM URI, create a tmpdir with bad perms, make sure
+        UI offers to fix it, and initiate the fix
+        """
+        self.app.uri = tests.utils.URIs.kvm
+        details = self._open_details_window()
+        addhw = self._open_addhw_window(details)
+        finish = addhw.find("Finish", "push button")
+
+        # Launch addhw, storage, file chooser
+        tab = self._select_hw(addhw, "Storage", "storage-tab")
+        tab.find_fuzzy("Select or create", "radio").click()
+        tab.find("storage-browse", "push button").click()
+        browse = self.app.root.find("Choose Storage Volume", "frame")
+        browse.find("Browse Local", "push button").click()
+        chooser = self.app.root.find(
+                "Locate existing storage", "file chooser")
+
+        # Enter the filename and select it
+        chooser.find("Name", "text").text = filename
+        obutton = chooser.find("Open", "push button")
+        uiutils.check_in_loop(lambda: obutton.sensitive)
+        obutton.click()
+        uiutils.check_in_loop(lambda: not chooser.showing)
+        uiutils.check_in_loop(lambda: addhw.active)
+        finish.click()
+
+        # Verify permission dialog pops up, ask to change
+        alert = self.app.root.find("vmm dialog", "alert")
+        alert.find("The emulator may not have search permissions")
+        alert.find("Yes", "push button").click()
+
+        # Verify no errors
+        uiutils.check_in_loop(lambda: not addhw.showing)
+        uiutils.check_in_loop(lambda: details.active)
+
+    def testQemuSearchCheck(self):
+        os.environ.pop("VIRTINST_TEST_SUITE")
+        try:
+            with tempfile.TemporaryDirectory() as tmpdir:
+                with tempfile.NamedTemporaryFile(dir=tmpdir) as tmpfile:
+                    os.chmod(tmpdir, 0o700)
+                    self._testQemuSearchCheck(tmpfile.name)
+        finally:
+            os.environ["VIRTINST_TEST_SUITE"] = "1"
 
     def testAddDisks(self):
         """
@@ -130,7 +209,11 @@ class AddHardware(uiutils.UITestCase):
         browse.find("Browse Local", "push button").click()
         chooser = self.app.root.find(
                 "Locate existing storage", "file chooser")
-        fname = "virt-manager.spec.in"
+
+        # use filename that is near the beginning of the file list when sorted,
+        # as the row in the file dialog may become scrolled out of the view and
+        # cause the test to fail
+        fname = "COPYING"
         chooser.find(fname, "table cell").click()
         chooser.find("Open", "push button").click()
         uiutils.check_in_loop(lambda: not chooser.showing)
@@ -212,23 +295,26 @@ class AddHardware(uiutils.UITestCase):
         src.click()
         self.pressKey("End")
         tab.find_fuzzy("Specify shared device", "menu item").click()
+        tab.find("Bridge name:", "text").text = "zbr0"
         finish.click()
 
-        # Check validation error
+        # Check MAC validation error
         alert = self.app.root.find("vmm dialog", "alert")
-        alert.find_fuzzy("Error adding device", "label")
+        alert.find_fuzzy("00:11:22:33:44:55", "label")
         alert.find("Close", "push button").click()
 
-        # Enter bridge name
-        tab.find("Bridge name:", "text").text = "zbr0"
+        # Fix MAC
+        tab.find("mac-address-enable", "check box").click()
+        tab.find("MAC Address Field", "text").text = "00:11:0A:11:00:11"
         finish.click()
         uiutils.check_in_loop(lambda: details.active)
 
         # Network with portops
         self._open_addhw_window(details)
         tab = self._select_hw(addhw, "Network", "network-tab")
-        tab.find("mac-address-enable", "check box").click()
+        tab.find("MAC Address Field", "text").text = "00:11:0B:11:00:11"
         src.click()
+        self.sleep(1)
         self.pressKey("Home")
         tab.find_fuzzy("plainbridge-portgroups", "menu item").click()
         c = tab.find_fuzzy("Portgroup:", "combo box")
@@ -241,7 +327,7 @@ class AddHardware(uiutils.UITestCase):
         # Network with vport stuff
         self._open_addhw_window(details)
         tab = self._select_hw(addhw, "Network", "network-tab")
-        tab.find("mac-address-enable", "check box").click()
+        tab.find("MAC Address Field", "text").text = "00:11:0C:11:00:11"
         src.click()
         tab.find_fuzzy("OpenVSwitch", "menu item").click()
         t = tab.find("Virtual port", "toggle button")
@@ -289,8 +375,9 @@ class AddHardware(uiutils.UITestCase):
         # Catch a port error
         alert = self.app.root.find("vmm dialog", "alert")
         alert.find_fuzzy("Port must be above 5900", "label")
-        alert.find("OK", "push button").click()
+        alert.find("Close", "push button").click()
         tab.find("graphics-port", "spin button").text = "5920"
+        finish.click()
         uiutils.check_in_loop(lambda: details.active)
 
         # Spice regular example
@@ -376,7 +463,7 @@ class AddHardware(uiutils.UITestCase):
         tab = self._select_hw(addhw, "Console", "char-tab")
         tab.find("Device Type:", "combo box").click()
         tab.find_fuzzy("Pseudo TTY", "menu item").click()
-        tab.find("Type:", "combo box").click()
+        tab.find("Type:", "combo box").click_combo_entry()
         tab.find_fuzzy("Hypervisor default", "menu item").click()
         finish.click()
         uiutils.check_in_loop(lambda: details.active)
@@ -390,20 +477,10 @@ class AddHardware(uiutils.UITestCase):
         finish.click()
         uiutils.check_in_loop(lambda: details.active)
 
-        # Add udp serial
-        self._open_addhw_window(details)
-        tab = self._select_hw(addhw, "Serial", "char-tab")
-        tab.find("Device Type:", "combo box").click()
-        tab.find_fuzzy("UDP", "menu item").click()
-        finish.click()
-        uiutils.check_in_loop(lambda: details.active)
-
-        # Add parallel+device
         self._open_addhw_window(details)
         tab = self._select_hw(addhw, "Parallel", "char-tab")
         tab.find("Device Type:", "combo box").click()
-        tab.find_fuzzy("Physical host character", "menu item").click()
-        tab.find("Path:", "text").text = "/dev/parallel0"
+        tab.find_fuzzy("Unix", "menu item").click()
         finish.click()
         uiutils.check_in_loop(lambda: details.active)
 
@@ -420,7 +497,7 @@ class AddHardware(uiutils.UITestCase):
         """
         Adding LXC specific filesystems
         """
-        self.app.uri = tests.utils.uri_lxc
+        self.app.uri = tests.utils.URIs.lxc
 
         details = self._open_details_window()
         addhw = self._open_addhw_window(details)
@@ -432,7 +509,7 @@ class AddHardware(uiutils.UITestCase):
         tab.find("File", "menu item").click()
         tab.find("Driver:", "combo box").click()
         tab.find("Nbd", "menu item").click()
-        tab.find("Format:", "combo box").click()
+        tab.find("Format:", "combo box").click_combo_entry()
         tab.find("qcow2", "menu item").click()
         tab.find("Browse...", "push button").click()
 
@@ -476,16 +553,16 @@ class AddHardware(uiutils.UITestCase):
         # Add sound
         self._open_addhw_window(details)
         tab = self._select_hw(addhw, "Sound", "sound-tab")
-        tab.find("Model:", "combo box").click()
-        tab.find("ich6", "menu item").click()
+        tab.find("Model:", "combo box").click_combo_entry()
+        tab.find("HDA", "menu item").click()
         finish.click()
         uiutils.check_in_loop(lambda: details.active)
 
         # Add video
         self._open_addhw_window(details)
         tab = self._select_hw(addhw, "Video", "video-tab")
-        tab.find("Model:", "combo box").click()
-        tab.find("QXL", "menu item").click()
+        tab.find("Model:", "combo box").click_combo_entry()
+        tab.find("Virtio", "menu item").click()
         finish.click()
         uiutils.check_in_loop(lambda: details.active)
 
@@ -493,7 +570,7 @@ class AddHardware(uiutils.UITestCase):
         self._open_addhw_window(details)
         tab = self._select_hw(addhw, "Watchdog", "watchdog-tab")
         tab.find("Model:", "combo box").click()
-        tab.find("i6300esb", "menu item").click()
+        tab.find("I6300", "menu item").click()
         tab.find("Action:", "combo box").click()
         tab.find("Pause the guest", "menu item").click()
         finish.click()
@@ -518,6 +595,10 @@ class AddHardware(uiutils.UITestCase):
         # Add TPM
         self._open_addhw_window(details)
         tab = self._select_hw(addhw, "TPM", "tpm-tab")
+        tab.find("Model:", "combo").click()
+        tab.find("TIS", "menu item").click()
+        tab.find("Backend:", "combo").click()
+        tab.find("Passthrough", "menu item").click()
         tab.find("Device Path:", "text").text = "/tmp/foo"
         finish.click()
         uiutils.check_in_loop(lambda: details.active)
@@ -525,7 +606,7 @@ class AddHardware(uiutils.UITestCase):
         # Add RNG
         self._open_addhw_window(details)
         tab = self._select_hw(addhw, "RNG", "rng-tab")
-        tab.find("Device:", "text").text = "/dev/random"
+        tab.find("Host Device:", "text").text = "/dev/random"
         finish.click()
         uiutils.check_in_loop(lambda: details.active)
 

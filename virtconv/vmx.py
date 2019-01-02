@@ -3,20 +3,8 @@
 # Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
 # Use is subject to license terms.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 #
 
 import collections
@@ -148,7 +136,7 @@ def parse_netdev_entry(conn, ifaces, fullkey, value):
             net = checkiface
             break
     if not net:
-        net = virtinst.VirtualNetworkInterface(conn)
+        net = virtinst.DeviceInterface(conn)
         setattr(net, "vmx_inst", inst)
         net.set_default_source()
         ifaces.append(net)
@@ -166,10 +154,9 @@ def parse_netdev_entry(conn, ifaces, fullkey, value):
     return net, inst
 
 
-def parse_disk_entry(conn, disks, fullkey, value):
+def parse_disk_entry(conn, disks, fullkey, value, topdir):
     """
-    Parse a particular key/value for a disk.  FIXME: this should be a
-    lot smarter.
+    Parse a particular key/value for a disk.
     """
     # skip bus values, e.g. 'scsi0.present = "TRUE"'
     if re.match(r"^(scsi|ide)[0-9]+[^:]", fullkey):
@@ -196,7 +183,7 @@ def parse_disk_entry(conn, disks, fullkey, value):
             disk = checkdisk
             break
     if not disk:
-        disk = virtinst.VirtualDisk(conn)
+        disk = virtinst.DeviceDisk(conn)
         disk.bus = bus
         setattr(disk, "vmx_inst", inst)
         disks.append(disk)
@@ -213,7 +200,7 @@ def parse_disk_entry(conn, disks, fullkey, value):
         if lvalue.endswith(".vmdk"):
             fmt = "vmdk"
             # See if the filename is actually a VMDK descriptor file
-            newpath = parse_vmdk(disk.path)
+            newpath = parse_vmdk(os.path.join(topdir, disk.path))
             if newpath:
                 logging.debug("VMDK file parsed path %s->%s",
                     disk.path, newpath)
@@ -252,6 +239,7 @@ class vmx_parser(parser_class):
 
     @staticmethod
     def export_libvirt(conn, input_file):
+        topdir = os.path.dirname(os.path.abspath(input_file))
         infile = open(input_file, "r")
         contents = infile.readlines()
         infile.close()
@@ -280,7 +268,7 @@ class vmx_parser(parser_class):
 
         disks = []
         for key, value in _find_keys(["scsi", "ide"]):
-            parse_disk_entry(conn, disks, key, value)
+            parse_disk_entry(conn, disks, key, value, topdir)
 
         ifaces = []
         for key, value in _find_keys("ethernet"):
@@ -296,9 +284,7 @@ class vmx_parser(parser_class):
                 not os.path.exists(disk.path)):
                 disk.path = None
 
-        guest = conn.caps.lookup_virtinst_guest()
-        guest.installer = virtinst.ImportInstaller(conn)
-
+        guest = virtinst.Guest(conn)
         guest.name = name.replace(" ", "_")
         guest.description = desc or None
         if vcpus:

@@ -2,20 +2,8 @@
 # Copyright 2009, 2013 Red Hat, Inc.
 # Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 import os
@@ -39,7 +27,7 @@ def _compare_int(nodedev_val, hostdev_val):
 
 
 class DevNode(XMLBuilder):
-    _XML_ROOT_NAME = "devnode"
+    XML_NAME = "devnode"
 
     node_type = XMLProperty("./@type")
     path = XMLProperty(".")
@@ -64,14 +52,14 @@ class NodeDevice(XMLBuilder):
         found, we will attempt to parse the name as would be passed to
         devAddressToNodeDev
 
-        @param conn: libvirt.virConnect instance to perform the lookup on
-        @param idstring: libvirt node device name to lookup, or address
+        :param conn: libvirt.virConnect instance to perform the lookup on
+        :param idstring: libvirt node device name to lookup, or address
             of the form:
             - bus.addr (ex. 001.003 for a usb device)
             - vendor:product (ex. 0x1234:0x5678 for a usb device
             - (domain:)bus:slot.func (ex. 00:10.0 for a pci device)
 
-        @rtype: L{NodeDevice} instance
+        :returns: NodeDevice instance
         """
         if not conn.check_support(conn.SUPPORT_CONN_NODEDEV):
             raise ValueError(_("Connection does not support host device "
@@ -103,7 +91,7 @@ class NodeDevice(XMLBuilder):
 
         XMLBuilder.__init__(self, *args, **kwargs)
 
-    _XML_ROOT_NAME = "device"
+    XML_NAME = "device"
 
     # Libvirt can generate bogus 'system' XML:
     # https://bugzilla.redhat.com/show_bug.cgi?id=1184131
@@ -128,8 +116,7 @@ class NodeDevice(XMLBuilder):
         Use device information to attempt to print a human readable device
         name.
 
-        @returns: Device description string
-        @rtype C{str}
+        :returns: Device description string
         """
         return self.name
 
@@ -212,6 +199,10 @@ class USBDevice(NodeDevice):
     product_id = XMLProperty("./capability/product/@id")
     vendor_name = XMLProperty("./capability/vendor")
     vendor_id = XMLProperty("./capability/vendor/@id")
+
+    def is_linux_root_hub(self):
+        return (self.vendor_id == "0x1d6b" and
+                self.product_id in ["0x0001", "0x0002", "0x0003"])
 
     def pretty_name(self):
         # Hypervisor may return a rather sparse structure, missing
@@ -340,16 +331,16 @@ class DRMDevice(NodeDevice):
 
 
 def _AddressStringToHostdev(conn, addrstr):
-    from .devicehostdev import VirtualHostDevice
-    hostdev = VirtualHostDevice(conn)
+    from .devices import DeviceHostdev
+    hostdev = DeviceHostdev(conn)
 
     try:
         # Determine addrstr type
-        if addrstr.count(":") in [1, 2] and addrstr.count("."):
+        if addrstr.count(":") in [1, 2] and "." in addrstr:
             addrstr, func = addrstr.split(".", 1)
             addrstr, slot = addrstr.rsplit(":", 1)
             domain = "0"
-            if addrstr.count(":"):
+            if ":" in addrstr:
                 domain, bus = addrstr.split(":", 1)
             else:
                 bus = addrstr
@@ -360,14 +351,14 @@ def _AddressStringToHostdev(conn, addrstr):
             hostdev.slot = "0x%.2X" % int(slot, 16)
             hostdev.bus = "0x%.2X" % int(bus, 16)
 
-        elif addrstr.count(":"):
+        elif ":" in addrstr:
             vendor, product = addrstr.split(":")
 
             hostdev.type = "usb"
             hostdev.vendor = "0x%.4X" % int(vendor, 16)
             hostdev.product = "0x%.4X" % int(product, 16)
 
-        elif addrstr.count("."):
+        elif "." in addrstr:
             bus, device = addrstr.split(".", 1)
 
             hostdev.type = "usb"

@@ -1,22 +1,9 @@
-#
 # Copyright (C) 2006, 2012-2015 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
+
 import os
 import logging
 
@@ -24,25 +11,21 @@ from gi.repository import Gio
 from gi.repository import GLib
 from gi.repository import Gtk
 
-from virtinst import CPU
+from virtinst import DomainCpu
+
+from .inspection import vmmInspection
 from .keyring import vmmKeyring, vmmSecret
 
-RUNNING_CONFIG = None
 
-
-class SettingsWrapper(object):
+class _SettingsWrapper(object):
     """
     Wrapper class to simplify interacting with gsettings APIs.
     Basically it allows simple get/set of gconf style paths, and
     we internally convert it to the settings nested hierarchy. Makes
     client code much smaller.
     """
-    def __init__(self, settings_id, schemadir, test_first_run):
+    def __init__(self, settings_id):
         self._root = settings_id
-
-        os.environ["GSETTINGS_SCHEMA_DIR"] = schemadir
-        if test_first_run:
-            os.environ["GSETTINGS_BACKEND"] = "memory"
         self._settings = Gio.Settings.new(self._root)
 
         self._settingsmap = {"": self._settings}
@@ -165,61 +148,42 @@ class vmmConfig(object):
     CONSOLE_SCALE_FULLSCREEN = 1
     CONSOLE_SCALE_ALWAYS = 2
 
-    def __init__(self, appname, CLIConfig, test_first_run):
-        self.appname = appname
+    _instance = None
+
+    @classmethod
+    def get_instance(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = vmmConfig(*args, **kwargs)
+        return cls._instance
+
+    @classmethod
+    def is_initialized(cls):
+        return bool(cls._instance)
+
+    def __init__(self, CLIConfig, test_first_run):
+        self.appname = "virt-manager"
         self.appversion = CLIConfig.version
         self.conf_dir = "/org/virt-manager/%s/" % self.appname
         self.ui_dir = CLIConfig.ui_dir
         self.test_first_run = bool(test_first_run)
+        self.test_leak_debug = False
 
-        self.conf = SettingsWrapper("org.virt-manager.virt-manager",
-                CLIConfig.gsettings_dir, self.test_first_run)
+        self.conf = _SettingsWrapper("org.virt-manager.virt-manager")
 
         # We don't create it straight away, since we don't want
         # to block the app pending user authorization to access
         # the keyring
         self.keyring = None
 
-        self.default_qemu_user = CLIConfig.default_qemu_user
-        self.preferred_distros = CLIConfig.preferred_distros
-        self.hv_packages = CLIConfig.hv_packages
-        self.libvirt_packages = CLIConfig.libvirt_packages
-        self.askpass_package = CLIConfig.askpass_package
         self.default_graphics_from_config = CLIConfig.default_graphics
         self.default_hvs = CLIConfig.default_hvs
-        self.cli_usbredir = None
-
-        if self.test_first_run:
-            # Populate some package defaults to simplify git testing
-            if not self.libvirt_packages:
-                self.libvirt_packages = ["libvirt-daemon",
-                                         "libvirt-daemon-config-network"]
-            if not self.hv_packages:
-                self.hv_packages = ["qemu-kvm"]
 
         self.default_storage_format_from_config = "qcow2"
-        self.cpu_default_from_config = CPU.SPECIAL_MODE_HOST_MODEL_ONLY
         self.default_console_resizeguest = 0
         self.default_add_spice_usbredir = "yes"
 
         self._objects = []
 
-        self.support_inspection = self.check_inspection()
-
-        self._spice_error = None
-
-        global RUNNING_CONFIG
-        RUNNING_CONFIG = self
-
-
-    def check_inspection(self):
-        try:
-            # Check we can open the Python guestfs module.
-            from guestfs import GuestFS  # pylint: disable=import-error
-            g = GuestFS(close_on_exit=False)
-            return bool(getattr(g, "add_libvirt_dom", None))
-        except Exception:
-            return False
 
     # General app wide helpers (gsettings agnostic)
 
@@ -233,6 +197,11 @@ class vmmConfig(object):
     def embeddable_graphics(self):
         ret = ["vnc", "spice"]
         return ret
+
+    def inspection_supported(self):
+        if not vmmInspection.libguestfs_installed():
+            return False
+        return self.get_libguestfs_inspect_vms()
 
     def remove_notifier(self, h):
         self.conf.notify_remove(h)
@@ -371,7 +340,6 @@ class vmmConfig(object):
     def get_confirm_delstorage(self):
         return self.conf.get("/confirm/delete-storage")
 
-
     def set_confirm_forcepoweroff(self, val):
         self.conf.set("/confirm/forcepoweroff", val)
     def set_confirm_poweroff(self, val):
@@ -395,6 +363,14 @@ class vmmConfig(object):
         return self.conf.get("/system-tray")
     def set_view_system_tray(self, val):
         self.conf.set("/system-tray", val)
+
+    # Libguestfs VM inspection
+    def on_libguestfs_inspect_vms_changed(self, cb):
+        return self.conf.notify_add("/enable-libguestfs-vm-inspection", cb)
+    def get_libguestfs_inspect_vms(self):
+        return self.conf.get("/enable-libguestfs-vm-inspection")
+    def set_libguestfs_inspect_vms(self, val):
+        self.conf.set("/enable-libguestfs-vm-inspection", val)
 
 
     # Stats history and interval length
@@ -467,11 +443,9 @@ class vmmConfig(object):
     def set_console_resizeguest(self, pref):
         self.conf.set("/console/resize-guest", pref)
 
-    def get_auto_redirection(self):
-        if self.cli_usbredir is not None:
-            return self.cli_usbredir
-        return self.conf.get("/console/auto-redirect")
-    def set_auto_redirection(self, state):
+    def get_auto_usbredir(self):
+        return bool(self.conf.get("/console/auto-redirect"))
+    def set_auto_usbredir(self, state):
         self.conf.set("/console/auto-redirect", state)
 
     # Show VM details toolbar
@@ -531,24 +505,11 @@ class vmmConfig(object):
     def set_storage_format(self, typ):
         self.conf.set("/new-vm/storage-format", typ.lower())
 
-    def get_default_cpu_setting(self, raw=False, for_cpu=False):
+    def get_default_cpu_setting(self):
         ret = self.conf.get("/new-vm/cpu-default")
-        whitelist = [CPU.SPECIAL_MODE_HOST_MODEL_ONLY,
-                     CPU.SPECIAL_MODE_HOST_MODEL,
-                     CPU.SPECIAL_MODE_HV_DEFAULT]
 
-        if ret not in whitelist:
-            ret = "default"
-        if ret == "default" and not raw:
-            ret = self.cpu_default_from_config
-            if ret not in whitelist:
-                ret = whitelist[0]
-
-        if for_cpu and ret == CPU.SPECIAL_MODE_HOST_MODEL:
-            # host-model has known issues, so use our 'copy cpu'
-            # behavior until host-model does what we need
-            ret = CPU.SPECIAL_MODE_HOST_COPY
-
+        if ret not in DomainCpu.SPECIAL_MODES:
+            ret = DomainCpu.SPECIAL_MODE_APP_DEFAULT
         return ret
     def set_default_cpu_setting(self, val):
         self.conf.set("/new-vm/cpu-default", val.lower())
@@ -570,17 +531,20 @@ class vmmConfig(object):
 
     def add_container_url(self, url):
         self._url_add_helper("/urls/containers", url)
+    def get_container_urls(self):
+        return self.conf.get("/urls/containers") or []
+
     def add_media_url(self, url):
         self._url_add_helper("/urls/urls", url)
+    def get_media_urls(self):
+        return self.conf.get("/urls/urls") or []
+
     def add_iso_path(self, path):
         self._url_add_helper("/urls/isos", path)
-
-    def get_container_urls(self):
-        return self.conf.get("/urls/containers")
-    def get_media_urls(self):
-        return self.conf.get("/urls/urls")
     def get_iso_paths(self):
-        return self.conf.get("/urls/isos")
+        return self.conf.get("/urls/isos") or []
+    def on_iso_paths_changed(self, cb):
+        return self.conf.notify_add("/urls/isos", cb)
 
 
     # Whether to ask about fixing path permissions
@@ -596,21 +560,16 @@ class vmmConfig(object):
 
 
     # Manager view connection list
-    def add_conn(self, uri):
-        uris = self.conf.get("/connections/uris")
-        if uris is None:
-            uris = []
-
-        if uris.count(uri) == 0:
+    def get_conn_uris(self):
+        return self.conf.get("/connections/uris") or []
+    def add_conn_uri(self, uri):
+        uris = self.get_conn_uris()
+        if uri not in uris:
             uris.insert(len(uris) - 1, uri)
             self.conf.set("/connections/uris", uris)
-    def remove_conn(self, uri):
-        uris = self.conf.get("/connections/uris")
-
-        if uris is None:
-            return
-
-        if uris.count(uri) != 0:
+    def remove_conn_uri(self, uri):
+        uris = self.get_conn_uris()
+        if uri in uris:
             uris.remove(uri)
             self.conf.set("/connections/uris", uris)
 
@@ -618,9 +577,6 @@ class vmmConfig(object):
             uris = self.conf.get("/connections/autoconnect")
             uris.remove(uri)
             self.conf.set("/connections/autoconnect", uris)
-
-    def get_conn_uris(self):
-        return self.conf.get("/connections/uris")
 
     # Manager default window size
     def get_manager_window_size(self):

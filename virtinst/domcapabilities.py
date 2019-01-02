@@ -3,20 +3,8 @@
 #
 # Copyright 2014 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 import re
@@ -24,8 +12,12 @@ import re
 from .xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
 
 
+########################################
+# Genering <enum> and <value> handling #
+########################################
+
 class _Value(XMLBuilder):
-    _XML_ROOT_NAME = "value"
+    XML_NAME = "value"
     value = XMLProperty(".")
 
 
@@ -37,7 +29,7 @@ class _HasValues(XMLBuilder):
 
 
 class _Enum(_HasValues):
-    _XML_ROOT_NAME = "enum"
+    XML_NAME = "enum"
     name = XMLProperty("./@name")
 
 
@@ -54,27 +46,92 @@ class _CapsBlock(_HasValues):
 
 
 def _make_capsblock(xml_root_name):
+    """
+    Build a class object representing a list of <enum> in the XML. For
+    example, domcapabilities may have a block like:
+
+    <graphics supported='yes'>
+      <enum name='type'>
+        <value>sdl</value>
+        <value>vnc</value>
+        <value>spice</value>
+      </enum>
+    </graphics>
+
+    To build a class that tracks that whole <graphics> block, call this
+    like _make_capsblock("graphics")
+    """
     class TmpClass(_CapsBlock):
         pass
-    setattr(TmpClass, "_XML_ROOT_NAME", xml_root_name)
+    setattr(TmpClass, "XML_NAME", xml_root_name)
     return TmpClass
 
 
+#############################
+# Misc toplevel XML classes #
+#############################
+
 class _OS(_CapsBlock):
-    _XML_ROOT_NAME = "os"
+    XML_NAME = "os"
     loader = XMLChildProperty(_make_capsblock("loader"), is_single=True)
 
 
 class _Devices(_CapsBlock):
-    _XML_ROOT_NAME = "devices"
+    XML_NAME = "devices"
     hostdev = XMLChildProperty(_make_capsblock("hostdev"), is_single=True)
     disk = XMLChildProperty(_make_capsblock("disk"), is_single=True)
 
 
 class _Features(_CapsBlock):
-    _XML_ROOT_NAME = "features"
+    XML_NAME = "features"
     gic = XMLChildProperty(_make_capsblock("gic"), is_single=True)
 
+
+###############
+# CPU classes #
+###############
+
+class _CPUModel(XMLBuilder):
+    XML_NAME = "model"
+    model = XMLProperty(".")
+    usable = XMLProperty("./@usable", is_yesno=True)
+    fallback = XMLProperty("./@fallback")
+
+
+class _CPUFeature(XMLBuilder):
+    XML_NAME = "feature"
+    name = XMLProperty("./@name")
+    policy = XMLProperty("./@policy")
+
+
+class _CPUMode(XMLBuilder):
+    XML_NAME = "mode"
+    name = XMLProperty("./@name")
+    supported = XMLProperty("./@supported", is_yesno=True)
+    vendor = XMLProperty("./vendor")
+
+    models = XMLChildProperty(_CPUModel)
+    def get_model(self, name):
+        for model in self.models:
+            if model.model == name:
+                return model
+
+    features = XMLChildProperty(_CPUFeature)
+
+
+class _CPU(XMLBuilder):
+    XML_NAME = "cpu"
+    modes = XMLChildProperty(_CPUMode)
+
+    def get_mode(self, name):
+        for mode in self.modes:
+            if mode.name == name:
+                return mode
+
+
+#################################
+# DomainCapabilities main class #
+#################################
 
 class DomainCapabilities(XMLBuilder):
     @staticmethod
@@ -103,16 +160,22 @@ class DomainCapabilities(XMLBuilder):
     # only use this info to do things automagically for the user, it shouldn't
     # validate anything the user explicitly enters.
     _uefi_arch_patterns = {
+        "i686": [
+            r".*ovmf-ia32.*",  # fedora, gerd's firmware repo
+        ],
         "x86_64": [
-            ".*OVMF_CODE\.fd",  # RHEL
-            ".*ovmf-x64/OVMF.*\.fd",  # gerd's firmware repo
-            ".*ovmf-x86_64-.*",  # SUSE
-            ".*ovmf.*", ".*OVMF.*",  # generic attempt at a catchall
+            r".*OVMF_CODE\.fd",  # RHEL
+            r".*ovmf-x64/OVMF.*\.fd",  # gerd's firmware repo
+            r".*ovmf-x86_64-.*",  # SUSE
+            r".*ovmf.*", ".*OVMF.*",  # generic attempt at a catchall
         ],
         "aarch64": [
-            ".*AAVMF_CODE\.fd",  # RHEL
-            ".*aarch64/QEMU_EFI.*",  # gerd's firmware repo
-            ".*aarch64.*",  # generic attempt at a catchall
+            r".*AAVMF_CODE\.fd",  # RHEL
+            r".*aarch64/QEMU_EFI.*",  # gerd's firmware repo
+            r".*aarch64.*",  # generic attempt at a catchall
+        ],
+        "armv7l": [
+            r".*arm/QEMU_EFI.*",  # fedora, gerd's firmware repo
         ],
     }
 
@@ -151,7 +214,7 @@ class DomainCapabilities(XMLBuilder):
         """
         Return True if we know how to setup UEFI for the passed arch
         """
-        return self.arch in self._uefi_arch_patterns.keys()
+        return self.arch in list(self._uefi_arch_patterns.keys())
 
     def supports_uefi_xml(self):
         """
@@ -160,10 +223,23 @@ class DomainCapabilities(XMLBuilder):
         return ("readonly" in self.os.loader.enum_names() and
                 "yes" in self.os.loader.get_enum("readonly").get_values())
 
+    def supports_safe_host_model(self):
+        """
+        Return True if domcaps reports support for cpu mode=host-model.
+        host-model infact predates this support, however it wasn't
+        general purpose safe prior to domcaps advertisement
+        """
+        return [(m.name == "host-model" and m.supported)
+                for m in self.cpu.modes]
 
-    _XML_ROOT_NAME = "domainCapabilities"
+
+    XML_NAME = "domainCapabilities"
     os = XMLChildProperty(_OS, is_single=True)
+    cpu = XMLChildProperty(_CPU, is_single=True)
     devices = XMLChildProperty(_Devices, is_single=True)
+    features = XMLChildProperty(_Features, is_single=True)
 
     arch = XMLProperty("./arch")
-    features = XMLChildProperty(_Features, is_single=True)
+    domain = XMLProperty("./domain")
+    machine = XMLProperty("./machine")
+    path = XMLProperty("./path")

@@ -2,26 +2,14 @@
 # Copyright 2006-2009, 2013, 2014 Red Hat, Inc.
 # Daniel P. Berrange <berrange@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 import os
 
 from . import util
-from .devicedisk import VirtualDisk
+from .devices import DeviceDisk
 from .storage import StoragePool, StorageVolume
 
 
@@ -73,14 +61,14 @@ def _upload_file(conn, meter, destpool, src):
     if name != basename:
         logging.debug("Generated non-colliding volume name %s", name)
 
-    vol_install = VirtualDisk.build_vol_install(conn, name, destpool,
+    vol_install = DeviceDisk.build_vol_install(conn, name, destpool,
                     (float(size) / 1024.0 / 1024.0 / 1024.0), True)
 
-    disk = VirtualDisk(conn)
+    disk = DeviceDisk(conn)
     disk.set_vol_install(vol_install)
     disk.validate()
 
-    disk.setup(meter=meter)
+    disk.build_storage(meter)
     vol = disk.get_vol_object()
     if not vol:
         raise RuntimeError(_("Failed to lookup scratch media volume"))
@@ -93,7 +81,7 @@ def _upload_file(conn, meter, destpool, src):
         vol.upload(stream, offset, length, flags)
 
         # Open source file
-        fileobj = open(src, "r")
+        fileobj = open(src, "rb")
 
         # Start transfer
         total = 0
@@ -114,8 +102,7 @@ def _upload_file(conn, meter, destpool, src):
         stream.finish()
         meter.end(size)
     except Exception:
-        if vol:
-            vol.delete(0)
+        vol.delete(0)
         raise
 
     return vol

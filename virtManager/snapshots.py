@@ -1,22 +1,8 @@
-#
 # Copyright (C) 2013-2014 Red Hat, Inc.
 # Copyright (C) 2013 Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import datetime
 import glob
@@ -106,6 +92,7 @@ class vmmSnapshotPage(vmmGObjectUI):
 
         self._snapshot_new.destroy()
         self._snapshot_new = None
+        self._snapmenu = None
 
     def _init_ui(self):
         # pylint: disable=redefined-variable-type
@@ -394,7 +381,7 @@ class vmmSnapshotPage(vmmGObjectUI):
             flags = 0
             mime = self.vm.get_backend().screenshot(stream, screen, flags)
 
-            ret = io.StringIO()
+            ret = io.BytesIO()
             def _write_cb(_stream, data, userdata):
                 ignore = stream
                 ignore = userdata
@@ -413,7 +400,7 @@ class vmmSnapshotPage(vmmGObjectUI):
         if not self.vm.is_active():
             logging.debug("Skipping screenshot since VM is not active")
             return
-        if not self.vm.get_graphics_devices():
+        if not self.vm.xmlobj.devices.graphics:
             logging.debug("Skipping screenshot since VM has no graphics")
             return
 
@@ -479,7 +466,7 @@ class vmmSnapshotPage(vmmGObjectUI):
             newsnap.name = name
             newsnap.description = desc or None
             newsnap.validate()
-            newsnap.get_xml_config()
+            newsnap.get_xml()
             return newsnap
         except Exception as e:
             return self.err.val_err(_("Error validating snapshot: %s") % e)
@@ -507,7 +494,7 @@ class vmmSnapshotPage(vmmGObjectUI):
             basesn = os.path.join(cachedir, "snap-screenshot-%s" % name)
 
             # Remove any pre-existing screenshots so we don't show stale data
-            for ext in mimemap.values():
+            for ext in list(mimemap.values()):
                 p = basesn + "." + ext
                 if os.path.exists(basesn + "." + ext):
                     os.unlink(p)
@@ -526,7 +513,7 @@ class vmmSnapshotPage(vmmGObjectUI):
         if not snap:
             return
 
-        xml = snap.get_xml_config()
+        xml = snap.get_xml()
         name = snap.name
         mime, sndata = self._get_screenshot_data_for_save()
         self._snapshot_new_close()
@@ -550,9 +537,9 @@ class vmmSnapshotPage(vmmGObjectUI):
         desc = desc_widget.get_buffer().get_property("text") or ""
 
         xmlobj = snap.get_xmlobj()
-        origxml = xmlobj.get_xml_config()
+        origxml = xmlobj.get_xml()
         xmlobj.description = desc
-        newxml = xmlobj.get_xml_config()
+        newxml = xmlobj.get_xml()
 
         self.vm.log_redefine_xml_diff(snap, origxml, newxml)
         if newxml == origxml:

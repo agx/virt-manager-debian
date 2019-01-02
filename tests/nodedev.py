@@ -2,30 +2,17 @@
 #
 # Copyright (C) 2013 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import os.path
 import unittest
 
+from virtinst import Guest
 from virtinst import NodeDevice
-from virtinst import VirtualHostDevice
+from virtinst import DeviceHostdev
 
 from tests import utils
-
-conn = utils.open_testdriver()
 
 unknown_xml = """
 <device>
@@ -61,15 +48,18 @@ funky_chars_xml = """
 
 
 class TestNodeDev(unittest.TestCase):
+    @property
+    def conn(self):
+        return utils.URIs.open_testdriver_cached()
 
     def _nodeDevFromName(self, devname):
-        node = conn.nodeDeviceLookupByName(devname)
+        node = self.conn.nodeDeviceLookupByName(devname)
         xml = node.XMLDesc(0)
-        return NodeDevice.parse(conn, xml)
+        return NodeDevice.parse(self.conn, xml)
 
     def _testCompare(self, devname, vals, devxml=None):
         def _compare(dev, vals, root=""):
-            for attr in vals.keys():
+            for attr in list(vals.keys()):
                 expect = vals[attr]
                 actual = getattr(dev, attr)
                 if isinstance(expect, list):
@@ -82,7 +72,7 @@ class TestNodeDev(unittest.TestCase):
                     self.assertEqual(vals[attr], getattr(dev, attr))
 
         if devxml:
-            dev = NodeDevice.parse(conn, devxml)
+            dev = NodeDevice.parse(self.conn, devxml)
         else:
             dev = self._nodeDevFromName(devname)
 
@@ -94,9 +84,10 @@ class TestNodeDev(unittest.TestCase):
         if not nodedev:
             nodedev = self._nodeDevFromName(nodename)
 
-        dev = VirtualHostDevice(conn)
+        dev = DeviceHostdev(self.conn)
         dev.set_from_nodedev(nodedev)
-        utils.diff_compare(dev.get_xml_config() + "\n", devfile)
+        dev.set_defaults(Guest(self.conn))
+        utils.diff_compare(dev.get_xml() + "\n", devfile)
 
     def testSystemDevice(self):
         devname = "computer"
@@ -248,7 +239,7 @@ class TestNodeDev(unittest.TestCase):
                 "device_type": NodeDevice.CAPABILITY_TYPE_DRM,
                 "drm_type": "render"}
         dev = self._testCompare(devname, vals)
-        self.assertEqual(dev.drm_pretty_name(conn),
+        self.assertEqual(dev.drm_pretty_name(self.conn),
                          "0000:00:02:0 Intel Corporation HD Graphics 530 (render)")
 
     def testUnknownDevice(self):
@@ -292,6 +283,3 @@ class TestNodeDev(unittest.TestCase):
         # pass to a guest.
         self.assertRaises(ValueError,
                           self._testNode2DeviceCompare, nodename, devfile)
-
-if __name__ == "__main__":
-    unittest.main()

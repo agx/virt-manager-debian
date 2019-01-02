@@ -1,27 +1,13 @@
 # Copyright (C) 2013 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
-from __future__ import print_function
-
-import glob
 import io
 import os
 import unittest
 
+from virtinst import Installer
 from virtconv import VirtConverter
 
 from tests import utils
@@ -31,24 +17,26 @@ out_dir = base_dir + "libvirt_output"
 
 
 class TestVirtConv(unittest.TestCase):
-    def _convert_helper(self, infile, outfile, in_type, disk_format):
-        outbuf = io.BytesIO()
+    def _convert_helper(self, in_path, out_path, in_type, disk_format):
+        outbuf = io.StringIO()
+
         def print_cb(msg):
             print(msg, file=outbuf)
 
-        conn = utils.open_kvm()
-        converter = VirtConverter(conn, infile, print_cb=print_cb)
+        conn = utils.URIs.open_kvm()
+        converter = VirtConverter(conn, in_path, print_cb=print_cb)
 
         if converter.parser.name != in_type:
             raise AssertionError("find_parser_by_file for '%s' returned "
                                  "wrong parser type.\n"
                                  "Expected: %s\n"
                                  "Received: %s\n" %
-                                 (infile, in_type, converter.parser.name))
+                                 (in_path, in_type, converter.parser.name))
 
         converter.convert_disks(disk_format, dry=True)
         guest = converter.get_guest()
-        ignore, out_xml = guest.start_install(return_xml=True)
+        installer = Installer(guest.conn)
+        ignore, out_xml = installer.start_install(guest, return_xml=True)
         out_expect = out_xml
         if outbuf.getvalue():
             out_expect += ("\n\n" + outbuf.getvalue().replace(base_dir, ""))
@@ -56,41 +44,37 @@ class TestVirtConv(unittest.TestCase):
         if not conn.check_support(conn.SUPPORT_CONN_VMPORT):
             self.skipTest("Not comparing XML because vmport isn't supported")
 
-        utils.diff_compare(out_expect, outfile)
+        utils.diff_compare(out_expect, out_path)
         utils.test_create(conn, out_xml)
 
-    def _compare_single_file(self, in_path, in_type, disk_format=None):
-        cwd = os.getcwd()
+    def _compare(self, in_path, disk_format=None):
+        in_type = "ovf"
+        if "vmx" in in_path:
+            in_type = "vmx"
+
+        in_path = os.path.join(base_dir, in_path)
         base = in_type + "2libvirt"
         in_base = os.path.basename(in_path).rsplit(".", 1)[0]
         out_path = "%s/%s_%s.%s" % (out_dir, base, in_base, "libvirt")
         if disk_format:
             out_path += ".disk_%s" % disk_format
 
-        try:
-            os.chdir(os.path.dirname(in_path))
-            self._convert_helper(in_path, out_path, in_type, disk_format)
-        finally:
-            os.chdir(cwd)
+        self._convert_helper(in_path, out_path, in_type, disk_format)
 
-    def _compare_files(self, in_type):
-        in_dir = base_dir + in_type + "_input"
-
-        if not os.path.exists(in_dir):
-            raise RuntimeError("Directory does not exist: %s" % in_dir)
-
-        for in_path in glob.glob(os.path.join(in_dir, "*")):
-            self._compare_single_file(in_path, in_type)
 
     def testOVF2Libvirt(self):
-        self._compare_files("ovf")
+        self._compare("ovf_input/test1.ovf")
+        self._compare("ovf_input/test2.ovf")
+        self._compare("ovf_input/test_gzip.ovf")
+        self._compare("ovf_input/ovf_directory")
+
     def testVMX2Libvirt(self):
-        self._compare_files("vmx")
+        self._compare("vmx_input/test1.vmx")
+        self._compare("vmx_input/test-nodisks.vmx")
+        self._compare("vmx_input/test-vmx-zip.zip")
+        self._compare("vmx_input/vmx-dir")
 
     def testDiskConvert(self):
-        self._compare_single_file(
-            base_dir + "ovf_input/test1.ovf", "ovf", disk_format="qcow2")
-        self._compare_single_file(
-            base_dir + "vmx_input/test1.vmx", "vmx", disk_format="raw")
-        self._compare_single_file(
-            base_dir + "ovf_input/test_gzip.ovf", "ovf", disk_format="raw")
+        self._compare("ovf_input/test1.ovf", disk_format="qcow2")
+        self._compare("vmx_input/test1.vmx", disk_format="raw")
+        self._compare("ovf_input/test_gzip.ovf", disk_format="raw")

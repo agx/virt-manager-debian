@@ -3,23 +3,9 @@
 # Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
 # Use is subject to license terms.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 #
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
-
-from __future__ import print_function
 
 from distutils.spawn import find_executable
 import logging
@@ -225,14 +211,8 @@ class VirtConverter(object):
         logging.debug("converter not input_file=%s parser=%s",
             self._input_file, self.parser)
 
-        cwd = os.getcwd()
-        try:
-            os.chdir(self._top_dir)
-            self._guest = self.parser.export_libvirt(self.conn,
-                self._input_file)
-            self._guest.add_default_devices()
-        finally:
-            os.chdir(cwd)
+        self._guest = self.parser.export_libvirt(self.conn,
+            self._input_file)
 
     def __del__(self):
         for f in self._force_clean:
@@ -311,7 +291,7 @@ class VirtConverter(object):
             destdir = StoragePool.get_default_dir(self.conn, build=not dry)
 
         guest = self.get_guest()
-        for disk in guest.get_devices("disk"):
+        for disk in guest.devices.disk:
             if disk.device != "disk":
                 continue
 

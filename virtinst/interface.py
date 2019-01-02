@@ -2,28 +2,16 @@
 # Copyright 2009, 2013 Red Hat, Inc.
 # Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 """
 Classes for building and installing libvirt interface xml
 """
 
+import ipaddress
 import logging
 
 import libvirt
-import ipaddr
 
 from . import util
 from .xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
@@ -31,17 +19,9 @@ from .xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
 
 class _IPAddress(XMLBuilder):
     _XML_PROP_ORDER = ["address", "prefix"]
-    _XML_ROOT_NAME = "ip"
+    XML_NAME = "ip"
 
-    ######################
-    # Validation helpers #
-    ######################
-
-    def _validate_ipaddr(self, addr):
-        ipaddr.IPAddress(addr)
-        return addr
-
-    address = XMLProperty("./@address", validate_cb=_validate_ipaddr)
+    address = XMLProperty("./@address")
     prefix = XMLProperty("./@prefix", is_int=True)
 
 
@@ -51,15 +31,14 @@ class InterfaceProtocol(XMLBuilder):
     INTERFACE_PROTOCOL_FAMILIES = [INTERFACE_PROTOCOL_FAMILY_IPV4,
                                     INTERFACE_PROTOCOL_FAMILY_IPV6]
 
-    _XML_ROOT_NAME = "protocol"
+    XML_NAME = "protocol"
     _XML_PROP_ORDER = ["autoconf", "dhcp", "dhcp_peerdns", "ips", "gateway"]
 
     family = XMLProperty("./@family")
-    dhcp = XMLProperty("./dhcp", is_bool=True, doc=_("Whether to enable DHCP"))
+    dhcp = XMLProperty("./dhcp", is_bool=True)
     dhcp_peerdns = XMLProperty("./dhcp/@peerdns", is_yesno=True)
-    gateway = XMLProperty("./route/@gateway", doc=_("Network gateway address"))
-    autoconf = XMLProperty("./autoconf", is_bool=True,
-        doc=_("Whether to enable IPv6 autoconfiguration"))
+    gateway = XMLProperty("./route/@gateway")
+    autoconf = XMLProperty("./autoconf", is_bool=True)
 
 
     #####################
@@ -67,14 +46,25 @@ class InterfaceProtocol(XMLBuilder):
     #####################
 
     def add_ip(self, addr, prefix=None):
-        ip = _IPAddress(self.conn)
+        ip = self.ips.add_new()
         ip.address = addr
         ip.prefix = prefix
-        self.add_child(ip)
     def remove_ip(self, ip):
         self.remove_child(ip)
         ip.clear()
     ips = XMLChildProperty(_IPAddress)
+
+
+class _BondConfig(XMLBuilder):
+    XML_NAME = "bond"
+
+
+class _BridgeConfig(XMLBuilder):
+    XML_NAME = "bridge"
+
+
+class _VLANConfig(XMLBuilder):
+    XML_NAME = "vlan"
 
 
 class Interface(XMLBuilder):
@@ -123,24 +113,63 @@ class Interface(XMLBuilder):
         return util.generate_name(prefix, conn.interfaceLookupByName, sep="",
                                   force_num=True)
 
-    _XML_ROOT_NAME = "interface"
+    XML_NAME = "interface"
     _XML_PROP_ORDER = ["type", "name", "start_mode", "macaddr", "mtu",
                        "stp", "delay", "bond_mode", "arp_interval",
                        "arp_target", "arp_validate_mode", "mii_frequency",
                        "mii_downdelay", "mii_updelay", "mii_carrier_mode",
                        "tag", "parent_interface",
-                       "protocols", "interfaces"]
+                       "protocols", "_bond", "_bridge", "_vlan"]
 
-    ##################
-    # Child handling #
-    ##################
+    ######################
+    # Interface handling #
+    ######################
+
+    # The recursive nature of nested interfaces complicates things here,
+    # which is why this is strange. See bottom of the file for more
+    # weirdness
+
+    _bond = XMLChildProperty(_BondConfig, is_single=True)
+    _bridge = XMLChildProperty(_BridgeConfig, is_single=True)
+    _vlan = XMLChildProperty(_VLANConfig, is_single=True)
 
     def add_interface(self, obj):
-        self.add_child(obj)
+        getattr(self, "_" + self.type).add_child(obj)
     def remove_interface(self, obj):
-        self.remove_child(obj)
-    # 'interfaces' property is added outside this class, since it needs
-    # to reference the completed Interface class
+        getattr(self, "_" + self.type).remove_child(obj)
+
+    @property
+    def interfaces(self):
+        if self.type != "ethernet":
+            return getattr(self, "_" + self.type).interfaces
+        return []
+
+
+    ######################
+    # Validation helpers #
+    ######################
+
+    @staticmethod
+    def validate_name(conn, name):
+        try:
+            conn.interfaceLookupByName(name)
+        except libvirt.libvirtError:
+            return
+
+        raise ValueError(_("Name '%s' already in use by another interface.") %
+                           name)
+
+
+    ##################
+    # General params #
+    ##################
+
+    type = XMLProperty("./@type")
+    mtu = XMLProperty("./mtu/@size", is_int=True)
+    start_mode = XMLProperty("./start/@mode")
+
+    name = XMLProperty("./@name")
+    macaddr = XMLProperty("./mac/@address")
 
     def add_protocol(self, obj):
         self.add_child(obj)
@@ -149,89 +178,36 @@ class Interface(XMLBuilder):
     protocols = XMLChildProperty(InterfaceProtocol)
 
 
-    ######################
-    # Validation helpers #
-    ######################
-
-    def _validate_name(self, name):
-        if name == self.name:
-            return
-        try:
-            self.conn.interfaceLookupByName(name)
-        except libvirt.libvirtError:
-            return
-
-        raise ValueError(_("Name '%s' already in use by another interface.") %
-                           name)
-
-    def _validate_mac(self, val):
-        util.validate_macaddr(val)
-        return val
-
-
-    ##################
-    # General params #
-    ##################
-
-    type = XMLProperty("./@type")
-    mtu = XMLProperty("./mtu/@size", is_int=True,
-                      doc=_("Maximum transmit size in bytes"))
-    start_mode = XMLProperty("./start/@mode",
-                             doc=_("When the interface will be auto-started."))
-
-    name = XMLProperty("./@name", validate_cb=_validate_name,
-                       doc=_("Name for the interface object."))
-
-    macaddr = XMLProperty("./mac/@address", validate_cb=_validate_mac,
-                          doc=_("Interface MAC address"))
-
-
     #################
     # Bridge params #
     #################
 
-    stp = XMLProperty("./bridge/@stp", is_onoff=True,
-                      doc=_("Whether STP is enabled on the bridge"))
-    delay = XMLProperty("./bridge/@delay",
-                        doc=_("Delay in seconds before forwarding begins when "
-                              "joining a network."))
+    stp = XMLProperty("./bridge/@stp", is_onoff=True)
+    delay = XMLProperty("./bridge/@delay")
+
 
     ###############
     # Bond params #
     ###############
 
-    bond_mode = XMLProperty("./bond/@mode",
-                            doc=_("Mode of operation of the bonding device"))
+    bond_mode = XMLProperty("./bond/@mode")
 
-    arp_interval = XMLProperty("./bond/arpmon/@interval", is_int=True,
-                               doc=_("ARP monitoring interval in "
-                                     "milliseconds"))
-    arp_target = XMLProperty("./bond/arpmon/@target",
-                             doc=_("IP target used in ARP monitoring packets"))
-    arp_validate_mode = XMLProperty("./bond/arpmon/@validate",
-                                    doc=_("ARP monitor validation mode"))
+    arp_interval = XMLProperty("./bond/arpmon/@interval", is_int=True)
+    arp_target = XMLProperty("./bond/arpmon/@target")
+    arp_validate_mode = XMLProperty("./bond/arpmon/@validate")
 
-    mii_carrier_mode = XMLProperty("./bond/miimon/@carrier",
-                                   doc=_("MII monitoring method."))
-    mii_frequency = XMLProperty("./bond/miimon/@freq", is_int=True,
-                                doc=_("MII monitoring interval in "
-                                      "milliseconds"))
-    mii_updelay = XMLProperty("./bond/miimon/@updelay", is_int=True,
-                              doc=_("Time in milliseconds to wait before "
-                                    "enabling a slave after link recovery "))
-    mii_downdelay = XMLProperty("./bond/miimon/@downdelay", is_int=True,
-                                doc=_("Time in milliseconds to wait before "
-                                      "disabling a slave after link failure"))
+    mii_carrier_mode = XMLProperty("./bond/miimon/@carrier")
+    mii_frequency = XMLProperty("./bond/miimon/@freq", is_int=True)
+    mii_updelay = XMLProperty("./bond/miimon/@updelay", is_int=True)
+    mii_downdelay = XMLProperty("./bond/miimon/@downdelay", is_int=True)
 
 
     ###############
     # VLAN params #
     ###############
 
-    tag = XMLProperty("./vlan/@tag", is_int=True,
-                      doc=_("VLAN device tag number"))
-    parent_interface = XMLProperty("./vlan/interface/@name",
-                                   doc=_("Parent interface to create VLAN on"))
+    tag = XMLProperty("./vlan/@tag", is_int=True)
+    parent_interface = XMLProperty("./vlan/interface/@name")
 
 
     ##################
@@ -239,6 +215,14 @@ class Interface(XMLBuilder):
     ##################
 
     def validate(self):
+        self.validate_name(self.conn, self.name)
+        if self.macaddr:
+            util.validate_macaddr(self.macaddr)
+
+        for protocol in self.protocols:
+            for ip in protocol.ips:
+                ipaddress.ip_address(ip.address)
+
         if (self.type == self.INTERFACE_TYPE_VLAN and
             (self.tag is None or self.parent_interface is None)):
             raise ValueError(_("VLAN Tag and parent interface are required."))
@@ -248,7 +232,7 @@ class Interface(XMLBuilder):
         Install network interface xml.
         """
         ignore = meter
-        xml = self.get_xml_config()
+        xml = self.get_xml()
         logging.debug("Creating interface '%s' with xml:\n%s",
                       self.name, xml)
 
@@ -269,11 +253,15 @@ class Interface(XMLBuilder):
             try:
                 iface.undefine()
             except Exception as e:
-                logging.debug("Error cleaning up interface after failure: " +
-                              "%s" % str(e))
+                logging.debug("Error cleaning up interface after failure: %s",
+                              str(e))
             raise RuntimeError(errmsg)
 
         return iface
 
-Interface.interfaces = XMLChildProperty(Interface,
-                                        relative_xpath="./%(type)s")
+
+# Interface can recursively have child interfaces which we can't define
+# inline in the class config, hence this hackery
+_BondConfig.interfaces = XMLChildProperty(Interface)
+_BridgeConfig.interfaces = XMLChildProperty(Interface)
+_VLANConfig.interfaces = XMLChildProperty(Interface)

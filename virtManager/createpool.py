@@ -1,27 +1,12 @@
-#
 # Copyright (C) 2008, 2013, 2014 Red Hat, Inc.
 # Copyright (C) 2008 Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 
 from gi.repository import Gdk
-from gi.repository import GObject
 from gi.repository import Gtk
 
 from virtinst import StoragePool
@@ -36,7 +21,7 @@ PAGE_FORMAT = 1
 
 class vmmCreatePool(vmmGObjectUI):
     __gsignals__ = {
-        "pool-created": (GObject.SignalFlags.RUN_FIRST, None, [str]),
+        "pool-created": (vmmGObjectUI.RUN_FIRST, None, [str]),
     }
 
     def __init__(self, conn):
@@ -95,6 +80,8 @@ class vmmCreatePool(vmmGObjectUI):
         format_model = Gtk.ListStore(str, str)
         format_list.set_model(format_model)
         uiutil.init_combo_text_column(format_list, 1)
+        for f in ["auto"]:
+            format_model.append([f, f])
 
         # Target path combo box entry
         target_list = self.widget("pool-target-path")
@@ -129,7 +116,7 @@ class vmmCreatePool(vmmGObjectUI):
         self.widget("pool-iqn-chk").set_active(False)
         self.widget("pool-iqn-chk").toggled()
         self.widget("pool-iqn").set_text("")
-        self.widget("pool-format").set_active(-1)
+        self.widget("pool-format").set_active(0)
         self.widget("pool-build").set_sensitive(True)
         self.widget("pool-build").set_active(False)
         self.widget("pool-details-grid").set_visible(False)
@@ -150,12 +137,6 @@ class vmmCreatePool(vmmGObjectUI):
         for typ in types:
             model.append([typ, "%s: %s" %
                          (typ, StoragePool.get_pool_type_desc(typ))])
-
-    def populate_pool_format(self, formats):
-        model = self.widget("pool-format").get_model()
-        model.clear()
-        for f in formats:
-            model.append([f, f])
 
     def populate_pool_sources(self):
         source_list = self.widget("pool-source-path")
@@ -261,7 +242,7 @@ class vmmCreatePool(vmmGObjectUI):
         tgt = self._pool.supports_property("target_path")
         tgt_b = tgt and not self.conn.is_remote()
         host = self._pool.supports_property("hosts")
-        fmt = self._pool.supports_property("formats")
+        fmt = self._pool.supports_property("format")
         iqn = self._pool.supports_property("iqn")
         builddef, buildsens = self.get_build_default()
 
@@ -292,19 +273,15 @@ class vmmCreatePool(vmmGObjectUI):
 
         if tgt:
             self.widget("pool-target-path").get_child().set_text(
-                self._pool.target_path)
+                self._pool.default_target_path())
 
         self.widget("pool-target-button").set_sensitive(tgt_b)
         self.widget("pool-source-button").set_sensitive(src_b)
         self.widget("pool-build").set_active(builddef)
 
         if src_name:
-            self.widget("pool-source-name").set_text(self._pool.source_name)
-
-        self.widget("pool-format").set_active(-1)
-        if fmt:
-            self.populate_pool_format(self._pool.list_formats("formats"))
-            self.widget("pool-format").set_active(0)
+            self.widget("pool-source-name").set_text(
+                    self._pool.default_source_name())
 
         self.populate_pool_sources()
 
@@ -494,7 +471,10 @@ class vmmCreatePool(vmmGObjectUI):
                 self._pool = usepool
             else:
                 self._pool = self._make_stub_pool()
-            self._pool.name = self.get_config_name()
+
+            name = self.get_config_name()
+            self._pool.validate_name(self._pool.conn, name)
+            self._pool.name = name
         except ValueError as e:
             return self.err.val_err(_("Pool Parameter Error"), e)
 
@@ -514,10 +494,11 @@ class vmmCreatePool(vmmGObjectUI):
         try:
             self._pool.target_path = target
             if host:
-                self._pool.add_host(host)
+                hostobj = self._pool.hosts.add_new()
+                hostobj.name = host
             if source:
                 self._pool.source_path = source
-            if fmt:
+            if fmt and self._pool.supports_property("format"):
                 self._pool.format = fmt
             if iqn:
                 self._pool.iqn = iqn

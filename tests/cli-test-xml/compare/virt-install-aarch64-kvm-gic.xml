@@ -1,6 +1,11 @@
 <domain type="kvm">
   <name>foobar</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
+  <metadata>
+    <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
+      <libosinfo:os id="http://fedoraproject.org/fedora/22"/>
+    </libosinfo:libosinfo>
+  </metadata>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
   <vcpu>1</vcpu>
@@ -24,7 +29,7 @@
     <controller type="scsi" index="0" model="virtio-scsi">
       <address type="pci"/>
     </controller>
-    <controller type="usb" index="0" model="qemu-xhci" ports="8"/>
+    <controller type="usb" index="0" model="qemu-xhci" ports="15"/>
     <interface type="network">
       <source network="default"/>
       <mac address="00:11:22:33:44:55"/>
