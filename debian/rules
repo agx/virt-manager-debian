@@ -1,21 +1,21 @@
 #!/usr/bin/make -f
 
 %:
-	dh $@ --with python2 --buildsystem=python_distutils
+	dh $@ --with python3 --buildsystem=pybuild
 
 override_dh_python2:
-	dh_python2 -O--buildsystem=python_distutils
-	dh_python2 -p virtinst usr/share/virt-manager
+	dh_python3 -O--buildsystem=python_distutils
+	dh_python3 -p virtinst usr/share/virt-manager
 
 override_dh_auto_test:
 ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
-	python setup.py test
+	python3 setup.py test
 else
 	@echo "Checks disabled via DEB_BUILD_OPTIONS"
 endif
 
 override_dh_auto_install:
-	python setup.py --no-update-icon-cache --no-compile-schemas install --force --root=debian/tmp --no-compile -O0
+	python3 setup.py --no-update-icon-cache --no-compile-schemas install --force --root=debian/tmp --no-compile -O0
 	dh_install debian/10_virt-manager.gschema.override \
 		   /usr/share/glib-2.0/schemas/
 
