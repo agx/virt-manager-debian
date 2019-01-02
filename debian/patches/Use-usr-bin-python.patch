@@ -1,85 +1,79 @@
 From: =?utf-8?q?Guido_G=C3=BCnther?= <agx@sigxcpu.org>
 Date: Sat, 24 Dec 2016 01:18:30 +0100
-Subject: Use /usr/bin/python
+Subject: Use /usr/bin/python3
 
 so we don't have to worry about picking up the wrong version
 ---
- setup.py             | 2 +-
- tests/test_inject.py | 2 +-
- virt-clone           | 2 +-
- virt-convert         | 2 +-
- virt-install         | 2 +-
- virt-manager         | 2 +-
- virt-xml             | 2 +-
- 7 files changed, 7 insertions(+), 7 deletions(-)
+ setup.py     | 3 +--
+ virt-clone   | 2 +-
+ virt-convert | 2 +-
+ virt-install | 2 +-
+ virt-manager | 2 +-
+ virt-xml     | 2 +-
+ 6 files changed, 6 insertions(+), 7 deletions(-)
 
 diff --git a/setup.py b/setup.py
-index 1ae6a22..95b7e13 100755
+index 2e1215c..17c497f 100755
 --- a/setup.py
 +++ b/setup.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python2
-+#!/usr/bin/python
- # Copyright (C) 2013, 2014 Red Hat, Inc.
+@@ -1,9 +1,8 @@
+-#!/usr/bin/env python3
++#!/usr/bin/python3
+ #
+ # This work is licensed under the GNU GPLv2 or later.
+ # See the COPYING file in the top-level directory.
  
+-
  import glob
-diff --git a/tests/test_inject.py b/tests/test_inject.py
-index 94ab114..11d91df 100755
---- a/tests/test_inject.py
-+++ b/tests/test_inject.py
-@@ -1,4 +1,4 @@
--#!/usr/bin/env python2
-+#!/usr/bin/python
- # Copyright (C) 2013, 2014 Red Hat, Inc.
- 
- from __future__ import print_function
+ import fnmatch
+ import os
 diff --git a/virt-clone b/virt-clone
-index 12f0d06..f1a8976 100755
+index d1eedee..7ef6727 100755
 --- a/virt-clone
 +++ b/virt-clone
 @@ -1,4 +1,4 @@
--#!/usr/bin/env python2
-+#!/usr/bin/python
+-#!/usr/bin/env python3
++#!/usr/bin python3
  #
  # Copyright(c) FUJITSU Limited 2007.
  #
 diff --git a/virt-convert b/virt-convert
-index c42f2ef..81c25dc 100755
+index 1b7b796..6f44902 100755
 --- a/virt-convert
 +++ b/virt-convert
 @@ -1,4 +1,4 @@
--#!/usr/bin/env python2
-+#!/usr/bin/python
+-#!/usr/bin/env python3
++#!/usr/bin/python3
  #
  # Copyright 2008, 2013, 2014  Red Hat, Inc.
  # Joey Boggs <jboggs@redhat.com>
 diff --git a/virt-install b/virt-install
-index 4163d0f..bc32b0d 100755
+index a7f247f..e09553e 100755
 --- a/virt-install
 +++ b/virt-install
 @@ -1,4 +1,4 @@
--#!/usr/bin/env python2
-+#!/usr/bin/python
+-#!/usr/bin/env python3
++#!/usr/bin/python3
  #
  # Copyright 2005-2014 Red Hat, Inc.
  #
 diff --git a/virt-manager b/virt-manager
-index 4ba10fa..f5616de 100755
+index 15d5109..b608ff7 100755
 --- a/virt-manager
 +++ b/virt-manager
 @@ -1,4 +1,4 @@
--#!/usr/bin/env python2
-+#!/usr/bin/python
+-#!/usr/bin/env python3
++#!/usr/bin/python3
  #
  # Copyright (C) 2006, 2014 Red Hat, Inc.
  # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 diff --git a/virt-xml b/virt-xml
-index b7d78fe..199f3c6 100755
+index 9bdde95..b8fddac 100755
 --- a/virt-xml
 +++ b/virt-xml
 @@ -1,4 +1,4 @@
--#!/usr/bin/env python2
-+#!/usr/bin/python
+-#!/usr/bin/env python3
++#!/usr/bin/python3
  #
  # Copyright 2013-2014 Red Hat, Inc.
  # Cole Robinson <crobinso@redhat.com>
