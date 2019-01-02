@@ -1,43 +1,47 @@
-#
 # Copyright (C) 2006, 2012-2013 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 
 from gi.repository import Gtk
 from gi.repository import Gdk
 
+from virtinst import DomainCpu
+
 from . import uiutil
 from .baseclass import vmmGObjectUI
+from .inspection import vmmInspection
 
 
 class vmmPreferences(vmmGObjectUI):
+    @classmethod
+    def show_instance(cls, parentobj):
+        try:
+            if not cls._instance:
+                cls._instance = vmmPreferences()
+            cls._instance.show(parentobj.topwin)
+        except Exception as e:
+            parentobj.err.show_err(
+                    _("Error launching preferences: %s") % str(e))
+
     def __init__(self):
         vmmGObjectUI.__init__(self, "preferences.ui", "vmm-preferences")
+        self._cleanup_on_app_close()
 
         self._init_ui()
 
+        self._orig_libguestfs_val = None
+
         self.refresh_view_system_tray()
+        self.refresh_libguestfs()
         self.refresh_update_interval()
         self.refresh_console_accels()
         self.refresh_console_scaling()
         self.refresh_console_resizeguest()
+        self.refresh_console_autoredir()
         self.refresh_new_vm_sound()
         self.refresh_graphics_type()
         self.refresh_add_spice_usbredir()
@@ -61,10 +65,12 @@ class vmmPreferences(vmmGObjectUI):
             "on_prefs_close_clicked": self.close,
 
             "on_prefs_system_tray_toggled": self.change_view_system_tray,
+            "on_prefs_libguestfs_toggled": self.change_libguestfs,
             "on_prefs_stats_update_interval_changed": self.change_update_interval,
             "on_prefs_console_accels_toggled": self.change_console_accels,
             "on_prefs_console_scaling_changed": self.change_console_scaling,
             "on_prefs_console_resizeguest_changed": self.change_console_resizeguest,
+            "on_prefs_console_autoredir_changed": self.change_console_autoredir,
             "on_prefs_new_vm_sound_toggled": self.change_new_vm_sound,
             "on_prefs_graphics_type_changed": self.change_graphics_type,
             "on_prefs_add_spice_usbredir_changed": self.change_add_spice_usbredir,
@@ -126,6 +132,18 @@ class vmmPreferences(vmmGObjectUI):
         combo.set_model(model)
         uiutil.init_combo_text_column(combo, 1)
 
+        combo = self.widget("prefs-console-autoredir")
+        # [gsettings value, string]
+        model = Gtk.ListStore(bool, str)
+        vals = {
+            False: _("Manual redirect only"),
+            True: _("Auto redirect on USB attach"),
+        }
+        for key, val in vals.items():
+            model.append([key, val])
+        combo.set_model(model)
+        uiutil.init_combo_text_column(combo, 1)
+
         combo = self.widget("prefs-graphics-type")
         # [gsettings value, string]
         model = Gtk.ListStore(str, str)
@@ -160,14 +178,21 @@ class vmmPreferences(vmmGObjectUI):
         combo = self.widget("prefs-cpu-default")
         # [gsettings value, string]
         model = Gtk.ListStore(str, str)
-        for row in [["default", _("System default (%s)") %
-                    self.config.cpu_default_from_config],
-                    ["hv-default", _("Hypervisor default")],
-                    ["host-model-only", _("Nearest host CPU model")],
-                    ["host-model", _("Copy host CPU definition")]]:
+        for row in [
+            [DomainCpu.SPECIAL_MODE_APP_DEFAULT, _("Application default")],
+            [DomainCpu.SPECIAL_MODE_HV_DEFAULT, _("Hypervisor default")],
+            [DomainCpu.SPECIAL_MODE_HOST_MODEL_ONLY,
+                _("Nearest host CPU model")],
+            [DomainCpu.SPECIAL_MODE_HOST_MODEL,
+                _("Copy host CPU definition")]]:
             model.append(row)
         combo.set_model(model)
         uiutil.init_combo_text_column(combo, 1)
+
+        if not vmmInspection.libguestfs_installed():
+            self.widget("prefs-libguestfs").set_sensitive(False)
+            self.widget("prefs-libguestfs").set_tooltip_text(
+                    _("python libguestfs support is not installed"))
 
 
     #########################
@@ -177,6 +202,12 @@ class vmmPreferences(vmmGObjectUI):
     def refresh_view_system_tray(self):
         val = self.config.get_view_system_tray()
         self.widget("prefs-system-tray").set_active(bool(val))
+
+    def refresh_libguestfs(self):
+        val = self.config.get_libguestfs_inspect_vms()
+        if self._orig_libguestfs_val is None:
+            self._orig_libguestfs_val = val
+        self.widget("prefs-libguestfs").set_active(bool(val))
 
     def refresh_update_interval(self):
         self.widget("prefs-stats-update-interval").set_value(
@@ -192,6 +223,10 @@ class vmmPreferences(vmmGObjectUI):
     def refresh_console_resizeguest(self):
         combo = self.widget("prefs-console-resizeguest")
         val = self.config.get_console_resizeguest()
+        uiutil.set_list_selection(combo, val)
+    def refresh_console_autoredir(self):
+        combo = self.widget("prefs-console-autoredir")
+        val = self.config.get_auto_usbredir()
         uiutil.set_list_selection(combo, val)
 
     def refresh_new_vm_sound(self):
@@ -211,7 +246,7 @@ class vmmPreferences(vmmGObjectUI):
         uiutil.set_list_selection(combo, val)
     def refresh_cpu_default(self):
         combo = self.widget("prefs-cpu-default")
-        val = self.config.get_default_cpu_setting(raw=True)
+        val = self.config.get_default_cpu_setting()
         uiutil.set_list_selection(combo, val)
 
     def refresh_cpu_poll(self):
@@ -329,6 +364,14 @@ class vmmPreferences(vmmGObjectUI):
 
     def change_view_system_tray(self, src):
         self.config.set_view_system_tray(src.get_active())
+    def change_libguestfs(self, src):
+        val = src.get_active()
+        self.config.set_libguestfs_inspect_vms(val)
+
+        vis = (val != self._orig_libguestfs_val and
+               self.widget("prefs-libguestfs").get_sensitive())
+        uiutil.set_grid_row_visible(
+                self.widget("prefs-libguestfs-warn-box"), vis)
 
     def change_update_interval(self, src):
         self.config.set_stats_update_interval(src.get_value_as_int())
@@ -340,6 +383,9 @@ class vmmPreferences(vmmGObjectUI):
     def change_console_resizeguest(self, box):
         val = uiutil.get_list_selection(box)
         self.config.set_console_resizeguest(val)
+    def change_console_autoredir(self, box):
+        val = uiutil.get_list_selection(box)
+        self.config.set_auto_usbredir(val)
 
     def change_new_vm_sound(self, src):
         self.config.set_new_vm_sound(src.get_active())

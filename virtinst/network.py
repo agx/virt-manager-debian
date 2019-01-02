@@ -2,20 +2,8 @@
 # Copyright 2013 Red Hat, Inc.
 # Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 """
 Classes for building and installing libvirt <network> XML
 """
@@ -29,20 +17,20 @@ from .xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
 
 
 class _NetworkDHCPRange(XMLBuilder):
-    _XML_ROOT_NAME = "range"
+    XML_NAME = "range"
     start = XMLProperty("./@start")
     end = XMLProperty("./@end")
 
 
 class _NetworkDHCPHost(XMLBuilder):
-    _XML_ROOT_NAME = "host"
+    XML_NAME = "host"
     macaddr = XMLProperty("./@mac")
     name = XMLProperty("./@name")
     ip = XMLProperty("./@ip")
 
 
 class _NetworkIP(XMLBuilder):
-    _XML_ROOT_NAME = "ip"
+    XML_NAME = "ip"
 
     family = XMLProperty("./@family")
     address = XMLProperty("./@address")
@@ -56,14 +44,9 @@ class _NetworkIP(XMLBuilder):
     ranges = XMLChildProperty(_NetworkDHCPRange, relative_xpath="./dhcp")
     hosts = XMLChildProperty(_NetworkDHCPHost, relative_xpath="./dhcp")
 
-    def add_range(self):
-        r = _NetworkDHCPRange(self.conn)
-        self.add_child(r)
-        return r
-
 
 class _NetworkRoute(XMLBuilder):
-    _XML_ROOT_NAME = "route"
+    XML_NAME = "route"
 
     family = XMLProperty("./@family")
     address = XMLProperty("./@address")
@@ -73,12 +56,12 @@ class _NetworkRoute(XMLBuilder):
 
 
 class _NetworkForwardPf(XMLBuilder):
-    _XML_ROOT_NAME = "pf"
+    XML_NAME = "pf"
     dev = XMLProperty("./@dev")
 
 
 class _NetworkForwardAddress(XMLBuilder):
-    _XML_ROOT_NAME = "address"
+    XML_NAME = "address"
     type = XMLProperty("./@type")
     domain = XMLProperty("./@domain", is_int=True)
     bus = XMLProperty("./@bus", is_int=True)
@@ -87,7 +70,7 @@ class _NetworkForwardAddress(XMLBuilder):
 
 
 class _NetworkForward(XMLBuilder):
-    _XML_ROOT_NAME = "forward"
+    XML_NAME = "forward"
 
     mode = XMLProperty("./@mode")
     dev = XMLProperty("./@dev")
@@ -95,17 +78,12 @@ class _NetworkForward(XMLBuilder):
     pf = XMLChildProperty(_NetworkForwardPf)
     vfs = XMLChildProperty(_NetworkForwardAddress)
 
-    def add_pf(self):
-        r = _NetworkForwardPf(self.conn)
-        self.add_child(r)
-        return r
-
     def pretty_desc(self):
         return Network.pretty_forward_desc(self.mode, self.dev)
 
 
 class _NetworkBandwidth(XMLBuilder):
-    _XML_ROOT_NAME = "bandwidth"
+    XML_NAME = "bandwidth"
 
     inbound_average = XMLProperty("./inbound/@average")
     inbound_peak = XMLProperty("./inbound/@peak")
@@ -157,7 +135,7 @@ class _NetworkBandwidth(XMLBuilder):
 
 
 class _NetworkPortgroup(XMLBuilder):
-    _XML_ROOT_NAME = "portgroup"
+    XML_NAME = "portgroup"
 
     name = XMLProperty("./@name")
     default = XMLProperty("./@default", is_yesno=True)
@@ -209,11 +187,12 @@ class Network(XMLBuilder):
     # Validation helpers #
     ######################
 
-    def _validate_name(self, name):
+    @staticmethod
+    def validate_name(conn, name):
         util.validate_name(_("Network"), name)
 
         try:
-            self.conn.networkLookupByName(name)
+            conn.networkLookupByName(name)
         except libvirt.libvirtError:
             return
         raise ValueError(_("Name '%s' already in use by another network." %
@@ -224,13 +203,13 @@ class Network(XMLBuilder):
     # XML properties #
     ##################
 
-    _XML_ROOT_NAME = "network"
+    XML_NAME = "network"
     _XML_PROP_ORDER = ["ipv6", "name", "uuid", "forward", "virtualport_type",
                        "bridge", "stp", "delay", "domain_name",
                        "macaddr", "ips", "routes", "bandwidth"]
 
     ipv6 = XMLProperty("./@ipv6", is_yesno=True)
-    name = XMLProperty("./name", validate_cb=_validate_name)
+    name = XMLProperty("./name")
     uuid = XMLProperty("./uuid")
 
     virtualport_type = XMLProperty("./virtualport/@type")
@@ -250,22 +229,13 @@ class Network(XMLBuilder):
     routes = XMLChildProperty(_NetworkRoute)
     bandwidth = XMLChildProperty(_NetworkBandwidth, is_single=True)
 
-    def add_ip(self):
-        ip = _NetworkIP(self.conn)
-        self.add_child(ip)
-        return ip
-    def add_route(self):
-        route = _NetworkRoute(self.conn)
-        self.add_child(route)
-        return route
-
 
     ##################
     # build routines #
     ##################
 
     def install(self, start=True, autostart=True):
-        xml = self.get_xml_config()
+        xml = self.get_xml()
         logging.debug("Creating virtual network '%s' with xml:\n%s",
                       self.name, xml)
 

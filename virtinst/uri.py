@@ -1,25 +1,13 @@
 #
 # Copyright 2014 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 #
 
 import logging
 import re
-import urllib
+import urllib.parse
 
 from .cli import parse_optstr_tuples
 
@@ -47,10 +35,11 @@ class URI(object):
     """
     def __init__(self, uri):
         self.uri = uri
-        unquoted_uri = urllib.unquote(uri)
 
-        (self.scheme, self.username, self.hostname,
-         self.path, self.query, self.fragment) = self._split(unquoted_uri)
+        split_uri = self._split(uri)
+        self.scheme = split_uri[0]
+        (self.username, self.hostname, self.path, self.query,
+         self.fragment) = map(urllib.parse.unquote, split_uri[1:])
 
         self.transport = ''
         if "+" in self.scheme:

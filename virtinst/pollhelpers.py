@@ -1,20 +1,8 @@
 #
 # Copyright (C) 2013 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 #
 
 import logging
@@ -50,7 +38,7 @@ def _new_poll_helper(origmap, typename, listfunc, buildfunc):
             current[connkey] = origmap[connkey]
             del(origmap[connkey])
 
-    return (origmap.values(), new.values(), current.values())
+    return (list(origmap.values()), list(new.values()), list(current.values()))
 
 
 def _old_poll_helper(origmap, typename,
@@ -108,7 +96,7 @@ def _old_poll_helper(origmap, typename,
         except Exception:
             logging.exception("Couldn't fetch %s '%s'", typename, name)
 
-    return (origmap.values(), new.values(), current.values())
+    return (list(origmap.values()), list(new.values()), list(current.values()))
 
 
 def fetch_nets(backend, origmap, build_func):
@@ -209,7 +197,7 @@ def _old_fetch_vms(backend, origmap, build_func):
     new = {}
 
     # Build list of previous vms with proper id/name mappings
-    for vm in origmap.values():
+    for vm in list(origmap.values()):
         if vm.is_active():
             oldActiveIDs[vm.get_id()] = vm
         else:
@@ -272,7 +260,7 @@ def _old_fetch_vms(backend, origmap, build_func):
             except Exception:
                 logging.exception("Couldn't fetch domain '%s'", name)
 
-    return (origmap.values(), new.values(), current.values())
+    return (list(origmap.values()), list(new.values()), list(current.values()))
 
 
 def fetch_vms(backend, origmap, build_func):

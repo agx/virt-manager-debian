@@ -2,6 +2,11 @@
   <name>foobar</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <description>foobar &amp; baz</description>
+  <metadata>
+    <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
+      <libosinfo:os id="http://fedoraproject.org/fedora/unknown"/>
+    </libosinfo:libosinfo>
+  </metadata>
   <memory>1048576</memory>
   <currentMemory>1048576</currentMemory>
   <memoryBacking>
@@ -15,15 +20,30 @@
     <partition>/virtualmachines/production</partition>
   </resource>
   <os>
-    <type arch="x86_64">hvm</type>
+    <type arch="x86_64" machine="q35">hvm</type>
     <loader readonly="yes" type="pflash">/usr/share/OVMF/OVMF_CODE.fd</loader>
     <boot dev="hd"/>
+    <smbios mode="emulate"/>
   </os>
   <features>
     <acpi/>
     <vmport state="off"/>
   </features>
-  <cpu mode="host-model"/>
+  <cpu mode="custom" match="exact">
+    <model fallback="forbid">Broadwell</model>
+    <vendor>Intel</vendor>
+    <feature policy="require" name="vme"/>
+    <feature policy="require" name="ss"/>
+    <feature policy="require" name="f16c"/>
+    <feature policy="require" name="rdrand"/>
+    <feature policy="require" name="hypervisor"/>
+    <feature policy="require" name="arat"/>
+    <feature policy="require" name="tsc_adjust"/>
+    <feature policy="require" name="xsaveopt"/>
+    <feature policy="require" name="pdpe1gb"/>
+    <feature policy="require" name="abm"/>
+    <feature policy="require" name="invtsc"/>
+  </cpu>
   <clock offset="localtime">
     <timer name="rtc" tickpolicy="catchup"/>
     <timer name="pit" tickpolicy="delay"/>
@@ -47,6 +67,11 @@
       <master startport="4"/>
     </controller>
     <input type="tablet" bus="usb"/>
+    <tpm model="tpm-tis">
+      <backend type="passthrough">
+        <device path="/dev/tpm0"/>
+      </backend>
+    </tpm>
     <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
       <image compression="off"/>
     </graphics>
@@ -55,15 +80,9 @@
     </video>
     <watchdog model="i6300esb" action="reset"/>
     <memballoon model="none"/>
-    <tpm model="tpm-tis">
-      <backend type="passthrough">
-        <device path="/dev/tpm0"/>
-      </backend>
-    </tpm>
     <rng model="virtio">
       <backend model="random">/dev/random</backend>
     </rng>
-    <panic model="isa"/>
   </devices>
   <seclabel type="dynamic" model="selinux"/>
   <seclabel type="none" model="dac"/>

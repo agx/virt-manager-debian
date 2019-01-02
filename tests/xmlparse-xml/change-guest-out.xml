@@ -1,5 +1,10 @@
 <domain type="test" id="1234">
   <name>change_name</name>
+  <metadata>
+    <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
+      <libosinfo:os id="frib"/>
+    </libosinfo:libosinfo>
+  </metadata>
   <currentMemory>1024000</currentMemory>
   <memory>2048000</memory>
   <uuid>11111111-2222-3333-4444-555555555555</uuid>
@@ -14,13 +19,15 @@
     <initarg>bar baz</initarg>
     <initarg>frib</initarg>
   </os>
-  <features><apic eoi="on"/>
+  <features>
+    <apic eoi="on"/>
     <hyperv>
       <spinlocks state="on" retries="54321"/>
       <relaxed state="on"/>
     </hyperv>
     <vmport state="on"/>
     <viridian/>
+    <vmcoreinfo/>
     <kvm>
       <hidden state="on"/>
     </kvm>
@@ -98,7 +105,7 @@
   </memtune>
   <memoryBacking>
     <hugepages>
-      <page size="1" unit="G" nodeset="1,5-8"/>
+      <page size="1" unit="G"/>
     </hugepages>
     <nosharepages/>
     <locked/>

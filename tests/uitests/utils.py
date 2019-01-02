@@ -1,4 +1,5 @@
-from __future__ import print_function
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 import os
@@ -9,6 +10,8 @@ import subprocess
 import sys
 import unittest
 
+from gi.repository import Gio
+from gi.repository import Gdk
 import pyatspi
 import dogtail.tree
 
@@ -20,7 +23,7 @@ class UITestCase(unittest.TestCase):
     Common testcase bits shared for ui tests
     """
     def setUp(self):
-        self.app = VMMDogtailApp(tests.utils.uri_test)
+        self.app = VMMDogtailApp(tests.utils.URIs.test_full)
     def tearDown(self):
         self.app.stop()
 
@@ -67,11 +70,16 @@ class UITestCase(unittest.TestCase):
         win.find_fuzzy(tab, "page tab").click()
         return win
 
-    def _open_details_window(self, vmname=None, shutdown=False):
+    def _open_details_window(self, vmname=None, shutdown=False,
+            double=False):
         if vmname is None:
             vmname = self._default_vmname
-        self.app.root.find_fuzzy(vmname, "table cell").click(button=3)
-        self.app.root.find("Open", "menu item").click()
+
+        if double:
+            self.app.root.find_fuzzy(vmname, "table cell").doubleClick()
+        else:
+            self.app.root.find_fuzzy(vmname, "table cell").click(button=3)
+            self.app.root.find("Open", "menu item").click()
 
         win = self.app.root.find("%s on" % vmname, "frame")
         win.find("Details", "radio button").click()
@@ -176,7 +184,9 @@ class _FuzzyPredicate(dogtail.predicate.Predicate):
                 return
             return True
         except Exception as e:
-            print("got predicate exception: %s" % e)
+            logging.debug(
+                    "got predicate exception name=%s role=%s labeller=%s: %s",
+                    self._name, self._roleName, self._labeller_text, e)
 
 
 def check_in_loop(func, timeout=2):
@@ -214,15 +224,34 @@ class VMMDogtailNode(dogtail.tree.Node):
 
     @property
     def onscreen(self):
-        return self.position[0] > 0 and self.position[1] > 0
+        # We need to check that full widget is on screen because we use this
+        # function to check whether we can click a widget. We may click
+        # anywhere within the widget and clicks outside the screen bounds are
+        # silently ignored.
+        screen = Gdk.Screen.get_default()
+        return (self.position[0] > 0 and
+                self.position[0] + self.size[0] < screen.get_width() and
+                self.position[1] > 0 and
+                self.position[1] + self.size[1] < screen.get_height())
+
+    def click_secondary_icon(self):
+        """
+        Helper for clicking the secondary icon of a text entry
+        """
+        button = 1
+        clickX = self.position[0] + self.size[0] - 10
+        clickY = self.position[1] + (self.size[1] / 2)
+        dogtail.rawinput.click(clickX, clickY, button)
 
     def click_combo_entry(self):
         """
         Helper for clicking the arrow of a combo entry, to expose the menu.
-        Clicks middle of Y axis, but 1 pixel in from the right side
+        Clicks middle of Y axis, but 1/10th of the height from the right side.
+        Using a small, hardcoded offset may not work on some themes (e.g. when
+        running virt-manager on KDE)
         """
         button = 1
-        clickX = self.position[0] + self.size[0] - 1
+        clickX = self.position[0] + self.size[0] - self.size[1] / 4
         clickY = self.position[1] + self.size[1] / 2
         dogtail.rawinput.click(clickX, clickY, button)
 
@@ -235,6 +264,36 @@ class VMMDogtailNode(dogtail.tree.Node):
         clickX = self.position[0] + 10
         clickY = self.position[1] + 5
         dogtail.rawinput.click(clickX, clickY, button)
+
+    def click(self, *args, **kwargs):
+        """
+        click wrapper, give up to a second for widget to appear on
+        screen, helps reduce some test flakiness
+        """
+        # pylint: disable=arguments-differ
+        loops = 10
+        for idx in range(10):
+            try:
+                dogtail.tree.Node.click(self, *args, **kwargs)
+                return
+            except ValueError as e:
+                if "mouse event at negative coordinates" in str(e):
+                    if idx + 1 == loops:
+                        raise
+                    time.sleep(.1)
+
+    def bring_on_screen(self, key_name="Down", max_tries=100):
+        """
+        Attempts to bring the item to screen by repeatedly clicking the given
+        key. Raises exception if max_tries attempts are exceeded.
+        """
+        cur_try = 0
+        while not self.onscreen:
+            dogtail.rawinput.pressKey(key_name)
+            cur_try += 1
+            if cur_try > max_tries:
+                raise RuntimeError("Could not bring widget on screen")
+        return self
 
 
     #########################
@@ -289,18 +348,23 @@ class VMMDogtailNode(dogtail.tree.Node):
             msg += " labeller.text='%s'" % self.labeller.text
         return msg
 
+    def fmt_nodes(self):
+        strs = []
+        def _walk(node):
+            try:
+                strs.append(node.node_string())
+            except Exception as e:
+                strs.append("got exception: %s" % e)
+
+        self.findChildren(_walk, isLambda=True)
+        return "\n".join(strs)
+
     def print_nodes(self):
         """
         Helper to print the entire node tree for the passed root. Useful
         if to figure out the roleName for the object you are looking for
         """
-        def _walk(node):
-            try:
-                print(node.node_string())
-            except Exception as e:
-                print("got exception: %s" % e)
-
-        self.findChildren(_walk, isLambda=True)
+        print(self.fmt_nodes())
 
 
 # This is the same hack dogtail uses to extend the Accessible class.
@@ -333,13 +397,23 @@ class VMMDogtailApp(object):
             self.open()
         return self._topwin
 
+    def error_if_already_running(self):
+        # Ensure virt-manager isn't already running
+        dbus = Gio.DBusProxy.new_sync(
+                Gio.bus_get_sync(Gio.BusType.SESSION, None), 0, None,
+                "org.freedesktop.DBus", "/org/freedesktop/DBus",
+                "org.freedesktop.DBus", None)
+        if "org.virt-manager.virt-manager" in dbus.ListNames():
+            raise RuntimeError("virt-manager is already running. "
+                    "Close it before running this test suite.")
+
     def is_running(self):
         return bool(self._proc and self._proc.poll() is None)
 
-    def open(self, extra_opts=None):
+    def open(self, extra_opts=None, check_already_running=True, use_uri=True):
         extra_opts = extra_opts or []
 
-        if tests.utils.get_debug():
+        if tests.utils.clistate.debug:
             stdout = sys.stdout
             stderr = sys.stderr
             extra_opts.append("--debug")
@@ -349,11 +423,16 @@ class VMMDogtailApp(object):
 
         cmd = [sys.executable]
         if tests.utils.clistate.use_coverage:
-            cmd += ["-m", "coverage", "run", "--append"]
+            cmd += ["-m", "coverage", "run", "--append",
+                    "--omit", "/usr/*"]
         cmd += [os.path.join(os.getcwd(), "virt-manager"),
-                "--test-first-run", "--no-fork", "--connect", self.uri]
+                "--test-first-run", "--no-fork"]
+        if use_uri:
+            cmd += ["--connect", self.uri]
         cmd += extra_opts
 
+        if check_already_running:
+            self.error_if_already_running()
         self._proc = subprocess.Popen(cmd, stdout=stdout, stderr=stderr)
         self._root = dogtail.tree.root.application("virt-manager")
         self._topwin = self._root.find(None, "(frame|dialog|alert)")

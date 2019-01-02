@@ -1,22 +1,10 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 #
 # Copyright 2013-2014 Red Hat, Inc.
 # Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import difflib
 import logging
@@ -68,13 +56,6 @@ def get_diff(origxml, newxml):
     return ret
 
 
-def _make_guest(conn, xml):
-    # We do this to minimize the diff, sanitizing XML quotes to what libxml
-    # generates
-    return virtinst.Guest(conn,
-        parsexml=virtinst.Guest(conn, parsexml=xml).get_xml_config())
-
-
 def get_domain_and_guest(conn, domstr):
     try:
         int(domstr)
@@ -97,11 +78,11 @@ def get_domain_and_guest(conn, domstr):
 
     state = domain.info()[0]
     active_xmlobj = None
-    inactive_xmlobj = _make_guest(conn, domain.XMLDesc(0))
+    inactive_xmlobj = virtinst.Guest(conn, parsexml=domain.XMLDesc(0))
     if state != libvirt.VIR_DOMAIN_SHUTOFF:
         active_xmlobj = inactive_xmlobj
-        inactive_xmlobj = _make_guest(conn,
-            domain.XMLDesc(libvirt.VIR_DOMAIN_XML_INACTIVE))
+        inactive_xmlobj = virtinst.Guest(conn,
+                parsexml=domain.XMLDesc(libvirt.VIR_DOMAIN_XML_INACTIVE))
 
     return (domain, inactive_xmlobj, active_xmlobj)
 
@@ -111,7 +92,7 @@ def get_domain_and_guest(conn, domstr):
 ################
 
 def _find_objects_to_edit(guest, action_name, editval, parserclass):
-    objlist = guest.list_children_for_class(parserclass.objclass)
+    objlist = util.listify(parserclass.lookup_prop(guest))
     idx = None
 
     if editval is None:
@@ -186,7 +167,7 @@ def check_xmlopt_collision(options):
 
 
 def action_edit(guest, options, parserclass):
-    if parserclass.objclass:
+    if parserclass.propname:
         inst = _find_objects_to_edit(guest, "edit", options.edit, parserclass)
     else:
         inst = guest
@@ -199,15 +180,17 @@ def action_edit(guest, options, parserclass):
 
 
 def action_add_device(guest, options, parserclass):
-    if (not parserclass.objclass or
-        guest.child_class_is_singleton(parserclass.objclass)):
+    if not parserclass.prop_is_list(guest):
         fail(_("Cannot use --add-device with --%s") % parserclass.cli_arg_name)
-    return cli.parse_option_strings(options, guest, None)
+    devs = cli.parse_option_strings(options, guest, None)
+    devs = util.listify(devs)
+    for dev in devs:
+        dev.set_defaults(guest)
+    return devs
 
 
 def action_remove_device(guest, options, parserclass):
-    if (not parserclass.objclass or
-        guest.child_class_is_singleton(parserclass.objclass)):
+    if not parserclass.prop_is_list(guest):
         fail(_("Cannot use --remove-device with --%s") %
              parserclass.cli_arg_name)
 
@@ -221,33 +204,33 @@ def action_remove_device(guest, options, parserclass):
 
 
 def action_build_xml(conn, options, parserclass):
-    guest = virtinst.Guest(conn)
-    ret_inst = None
-    inst = None
-
-    if parserclass.objclass:
-        inst = parserclass.objclass(conn)
-    elif parserclass.clear_attr:
-        ret_inst = getattr(guest, parserclass.clear_attr)
-    else:
+    if not parserclass.propname:
         fail(_("--build-xml not supported for --%s") %
              parserclass.cli_arg_name)
 
-    ret = cli.parse_option_strings(options, guest, inst)
-    if ret_inst:
-        return ret_inst
-    return ret
+    guest = virtinst.Guest(conn)
+    inst = parserclass.lookup_prop(guest)
+    if parserclass.prop_is_list(guest):
+        inst = inst.new()
+    else:
+        inst = inst.__class__(conn)
+
+    devs = cli.parse_option_strings(options, guest, inst)
+    devs = util.listify(devs)
+    for dev in devs:
+        dev.set_defaults(guest)
+    return devs
 
 
 def setup_device(dev):
-    if getattr(dev, "virtual_device_type", None) != "disk":
+    if getattr(dev, "DEVICE_TYPE", None) != "disk":
         return
     if getattr(dev, "virt_xml_setup", None) is True:
         return
 
     logging.debug("Doing setup for disk=%s", dev)
 
-    dev.setup(cli.get_meter())
+    dev.build_storage(cli.get_meter())
     dev.virt_xml_setup = True
 
 
@@ -261,14 +244,14 @@ def define_changes(conn, inactive_xmlobj, devs, action, confirm):
         for dev in devs:
             setup_device(dev)
 
-    conn.defineXML(inactive_xmlobj.get_xml_config())
+    conn.defineXML(inactive_xmlobj.get_xml())
     print_stdout(_("Domain '%s' defined successfully.") % inactive_xmlobj.name)
     return True
 
 
 def update_changes(domain, devs, action, confirm):
     for dev in devs:
-        xml = dev.get_xml_config()
+        xml = dev.get_xml()
 
         if confirm:
             if action == "hotplug":
@@ -302,7 +285,7 @@ def update_changes(domain, devs, action, confirm):
 
 
 def prepare_changes(xmlobj, options, parserclass):
-    origxml = xmlobj.get_xml_config()
+    origxml = xmlobj.get_xml()
 
     if options.edit != -1:
         devs = action_edit(xmlobj, options, parserclass)
@@ -316,7 +299,7 @@ def prepare_changes(xmlobj, options, parserclass):
         devs = action_remove_device(xmlobj, options, parserclass)
         action = "hotunplug"
 
-    newxml = xmlobj.get_xml_config()
+    newxml = xmlobj.get_xml()
     diff = get_diff(origxml, newxml)
 
     if options.print_diff:
@@ -440,12 +423,12 @@ def main(conn=None):
         domain, inactive_xmlobj, active_xmlobj = get_domain_and_guest(
             conn, options.domain)
     elif not options.build_xml:
-        inactive_xmlobj = _make_guest(conn, options.stdinxml)
+        inactive_xmlobj = virtinst.Guest(conn, options.stdinxml)
 
     check_action_collision(options)
     parserclass = check_xmlopt_collision(options)
 
-    if options.update and not parserclass.objclass:
+    if options.update and not parserclass.propname:
         fail(_("Don't know how to --update for --%s") %
              (parserclass.cli_arg_name))
 
@@ -453,19 +436,23 @@ def main(conn=None):
         devs = action_build_xml(conn, options, parserclass)
         for dev in devs:
             # pylint: disable=no-member
-            print_stdout(dev.get_xml_config())
+            print_stdout(dev.get_xml())
         return 0
 
-    if options.update and active_xmlobj:
-        devs, action = prepare_changes(active_xmlobj, options, parserclass)
-        update_changes(domain, devs, action, options.confirm)
+    if options.update:
+        if active_xmlobj:
+            devs, action = prepare_changes(active_xmlobj, options, parserclass)
+            update_changes(domain, devs, action, options.confirm)
+        else:
+            logging.warning(
+                _("The VM is not running, --update is inapplicable."))
     if options.define:
         devs, action = prepare_changes(inactive_xmlobj, options, parserclass)
         applied = define_changes(conn, inactive_xmlobj,
                                  devs, action, options.confirm)
         if not options.update and active_xmlobj and applied:
             print_stdout(
-                _("Changes will take effect after the next domain shutdown."))
+                _("Changes will take effect after the domain is fully powered off."))
     if not options.update and not options.define:
         prepare_changes(inactive_xmlobj, options, parserclass)
 

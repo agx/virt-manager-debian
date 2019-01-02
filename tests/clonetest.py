@@ -1,19 +1,7 @@
 # Copyright (C) 2013, 2015 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import unittest
 import os
@@ -53,15 +41,15 @@ class TestClone(unittest.TestCase):
         for f in local_files:
             os.unlink(f)
 
-    def _clone_helper(self, filebase, disks=None, force_list=None,
-                      skip_list=None, compare=True, conn=None,
-                      clone_disks_file=None):
+    def _clone(self, filebase, disks=None, force_list=None,
+               skip_list=None, compare=True, conn=None,
+               clone_disks_file=None):
         """Helper for comparing clone input/output from 2 xml files"""
         infile = os.path.join(clonexml_dir, filebase + "-in.xml")
-        in_content = utils.read_file(infile)
+        in_content = open(infile).read()
 
         if not conn:
-            conn = utils.open_testdriver()
+            conn = utils.URIs.open_testdriver_cached()
         cloneobj = Cloner(conn)
         cloneobj.original_xml = in_content
         for force in force_list or []:
@@ -104,90 +92,78 @@ class TestClone(unittest.TestCase):
         utils.diff_compare(cloneobj.clone_xml, outfile)
         if clone_disks_file:
             xml_clone_disks = ""
-            for i in cloneobj.get_clone_disks():
-                xml_clone_disks += i.get_vol_install().get_xml_config()
+            for i in cloneobj.clone_disks:
+                xml_clone_disks += i.get_vol_install().get_xml()
             utils.diff_compare(xml_clone_disks, clone_disks_file)
 
     def _clone_define(self, filebase):
         """Take the valid output xml and attempt to define it on the
            connection to ensure we don't get any errors"""
         outfile = os.path.join(clonexml_dir, filebase + "-out.xml")
-        outxml = utils.read_file(outfile)
-        conn = utils.open_testdriver()
+        outxml = open(outfile).read()
+        conn = utils.URIs.open_testdriver_cached()
         utils.test_create(conn, outxml)
 
     def testRemoteNoStorage(self):
         """Test remote clone where VM has no storage that needs cloning"""
-        conn = utils.open_test_remote()
-        for base in ["nostorage", "noclone-storage"]:
-            self._clone_helper(base, disks=[], conn=conn)
+        conn = utils.URIs.open_test_remote()
+        self._clone("nostorage", conn=conn)
+        self._clone("noclone-storage", conn=conn)
 
     def testRemoteWithStorage(self):
         """
         Test remote clone with storage needing cloning. Should fail,
         since libvirt has no storage clone api.
         """
-        conn = utils.open_test_remote()
-        for base in ["general-cfg"]:
-            try:
-                self._clone_helper(base,
-                                   disks=["%s/1.img" % POOL1,
-                                          "%s/2.img" % POOL1],
-                                   conn=conn)
-
-                # We shouldn't succeed, so test fails
-                raise AssertionError("Remote clone with storage passed "
-                                     "when it shouldn't.")
-            except (ValueError, RuntimeError) as e:
-                # Exception expected
-                logging.debug("Received expected exception: %s", str(e))
+        conn = utils.URIs.open_test_remote()
+        disks = ["%s/1.img" % POOL1, "%s/2.img" % POOL1]
+        try:
+            self._clone("general-cfg", disks=disks, conn=conn)
+            # We shouldn't succeed, so test fails
+            raise AssertionError("Remote clone with storage passed "
+                                 "when it shouldn't.")
+        except (ValueError, RuntimeError) as e:
+            # Exception expected
+            logging.debug("Received expected exception: %s", str(e))
 
     def testCloneStorageManaged(self):
-        base = "managed-storage"
-        self._clone_helper(base, ["%s/new1.img" % POOL1,
-                                  "%s/new2.img" % DISKPOOL])
+        disks = ["%s/new1.img" % POOL1, "%s/new2.img" % DISKPOOL]
+        self._clone("managed-storage", disks=disks)
 
     def testCloneStorageCrossPool(self):
-        base = "cross-pool"
-        conn = utils.open_test_remote()
-        clone_disks_file = os.path.join(clonexml_dir, base + "-disks-out.xml")
-        self._clone_helper(base, ["%s/new1.img" % POOL2,
-                                  "%s/new2.img" % POOL1],
-                           clone_disks_file=clone_disks_file,
-                           conn=conn)
+        conn = utils.URIs.open_test_remote()
+        clone_disks_file = os.path.join(
+                clonexml_dir, "cross-pool-disks-out.xml")
+        disks = ["%s/new1.img" % POOL2, "%s/new2.img" % POOL1]
+        self._clone("cross-pool", disks=disks,
+                clone_disks_file=clone_disks_file, conn=conn)
 
     def testCloneStorageForce(self):
-        base = "force"
-        self._clone_helper(base,
-                           disks=["/dev/default-pool/1234.img",
-                                  None, "/clone2.img"],
-                           force_list=["hda", "fdb", "sdb"])
+        disks = ["/dev/default-pool/1234.img", None, "/clone2.img"]
+        self._clone("force", disks=disks, force_list=["hda", "fdb", "sdb"])
 
     def testCloneStorageSkip(self):
-        base = "skip"
-        self._clone_helper(base,
-                           disks=["/dev/default-pool/1234.img",
-                                  None, "/tmp/clone2.img"],
-                           skip_list=["hda", "fdb"])
+        disks = ["/dev/default-pool/1234.img", None, "/tmp/clone2.img"]
+        skip_list = ["hda", "fdb"]
+        self._clone("skip", disks=disks, skip_list=skip_list)
 
     def testCloneFullPool(self):
-        base = "fullpool"
         try:
-            self._clone_helper(base, disks=["/full-pool/test.img"],
-                               compare=False)
+            self._clone("fullpool",
+                    disks=["/full-pool/test.img"], compare=False)
         except Exception:
             return
 
         raise AssertionError("Expected exception, but none raised.")
 
     def testCloneNvramAuto(self):
-        base = "nvram-auto"
-        self._clone_helper(base)
+        self._clone("nvram-auto")
 
     def testCloneNvramNewpool(self):
-        base = "nvram-newpool"
-        self._clone_helper(base)
+        self._clone("nvram-newpool")
 
     def testCloneGraphicsPassword(self):
-        base = "graphics-password"
-        self._clone_helper(base)
+        self._clone("graphics-password")
+
+    def testCloneChannelSource(self):
+        self._clone("channel-source")

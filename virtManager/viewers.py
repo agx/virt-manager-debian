@@ -1,29 +1,15 @@
-#
 # Copyright (C) 2006-2008, 2015 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 # Copyright (C) 2010 Marc-Andre Lureau <marcandre.lureau@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 import socket
 
-from gi.repository import GObject
 from gi.repository import Gdk
+from gi.repository import GObject
 
 import gi
 gi.require_version('GtkVnc', '2.0')
@@ -49,19 +35,19 @@ class Viewer(vmmGObject):
     Base class for viewer abstraction
     """
     __gsignals__ = {
-        "add-display-widget": (GObject.SignalFlags.RUN_FIRST, None, [object]),
-        "size-allocate": (GObject.SignalFlags.RUN_FIRST, None, [object]),
-        "focus-in-event": (GObject.SignalFlags.RUN_FIRST, None, [object]),
-        "focus-out-event": (GObject.SignalFlags.RUN_FIRST, None, [object]),
-        "pointer-grab": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "pointer-ungrab": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "connected": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "disconnected": (GObject.SignalFlags.RUN_FIRST, None, [str, str]),
-        "auth-error": (GObject.SignalFlags.RUN_FIRST, None, [str, bool]),
-        "auth-rejected": (GObject.SignalFlags.RUN_FIRST, None, [str]),
-        "need-auth": (GObject.SignalFlags.RUN_FIRST, None, [bool, bool]),
-        "agent-connected": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "usb-redirect-error": (GObject.SignalFlags.RUN_FIRST, None, [str]),
+        "add-display-widget": (vmmGObject.RUN_FIRST, None, [object]),
+        "size-allocate": (vmmGObject.RUN_FIRST, None, [object]),
+        "focus-in-event": (vmmGObject.RUN_FIRST, None, [object]),
+        "focus-out-event": (vmmGObject.RUN_FIRST, None, [object]),
+        "pointer-grab": (vmmGObject.RUN_FIRST, None, []),
+        "pointer-ungrab": (vmmGObject.RUN_FIRST, None, []),
+        "connected": (vmmGObject.RUN_FIRST, None, []),
+        "disconnected": (vmmGObject.RUN_FIRST, None, [str, str]),
+        "auth-error": (vmmGObject.RUN_FIRST, None, [str, bool]),
+        "auth-rejected": (vmmGObject.RUN_FIRST, None, [str]),
+        "need-auth": (vmmGObject.RUN_FIRST, None, [bool, bool]),
+        "agent-connected": (vmmGObject.RUN_FIRST, None, []),
+        "usb-redirect-error": (vmmGObject.RUN_FIRST, None, [str]),
     }
 
     def __init__(self, vm, ginfo):
@@ -548,7 +534,7 @@ class SpiceViewer(Viewer):
             self._usbdev_manager.connect("device-error",
                                         self._usbdev_redirect_error)
 
-            autoredir = self.config.get_auto_redirection()
+            autoredir = self.config.get_auto_usbredir()
             if autoredir:
                 gtk_session.set_property("auto-usbredir", True)
         except Exception:

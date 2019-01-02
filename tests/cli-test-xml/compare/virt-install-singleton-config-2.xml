@@ -3,6 +3,11 @@
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <title>my-title</title>
   <description>my-description</description>
+  <metadata>
+    <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
+      <libosinfo:os id="http://fedoraproject.org/fedora/unknown"/>
+    </libosinfo:libosinfo>
+  </metadata>
   <memory>1048576</memory>
   <currentMemory>524288</currentMemory>
   <blkiotune>
@@ -24,6 +29,8 @@
     <hugepages>
       <page size="1" unit="G" nodeset="1,2-5"/>
     </hugepages>
+    <access mode="shared"/>
+    <source type="anonymous"/>
   </memoryBacking>
   <vcpu>4</vcpu>
   <numatune>
@@ -57,12 +64,14 @@
       <entry name="location">Chassis</entry>
     </baseBoard>
   </sysinfo>
+  <bootloader>/new/bootld</bootloader>
   <os>
-    <type arch="x86_64">hvm</type>
+    <type arch="x86_64" machine="q35">hvm</type>
     <loader>/foo/bar</loader>
     <boot dev="network"/>
     <smbios mode="sysinfo"/>
     <bootmenu enable="no"/>
+    <bios rebootTimeout="3"/>
   </os>
   <idmap>
     <uid start="0" target="1000" count="10"/>
@@ -78,6 +87,7 @@
       <synic state="on"/>
     </hyperv>
     <vmport state="off"/>
+    <vmcoreinfo/>
   </features>
   <cpu mode="custom" match="strict">
     <model>foobar</model>
@@ -91,6 +101,7 @@
     <feature policy="disable" name="distest"/>
     <feature policy="forbid" name="foo"/>
     <feature policy="forbid" name="bar"/>
+    <cache mode="emulate" level="3"/>
     <numa>
       <cell id="0" cpus="1,2,3" memory="1024">
         <distances>
@@ -105,7 +116,6 @@
         </distances>
       </cell>
     </numa>
-    <cache mode="emulate" level="3"/>
   </cpu>
   <clock offset="utc">
     <timer name="rtc" tickpolicy="merge"/>
@@ -119,8 +129,8 @@
     <suspend-to-disk enabled="no"/>
   </pm>
   <devices>
-    <emulator>/usr/bin/qemu-kvm</emulator>
-    <controller type="usb" index="0" model="nec-xhci"/>
+    <emulator>/new/emu</emulator>
+    <controller type="usb" index="0" model="qemu-xhci" ports="15"/>
     <controller type="virtio-scsi" index="0"/>
     <filesystem type="mount" accessmode="mapped">
       <source dir="/foo/source"/>
@@ -131,20 +141,31 @@
       <mac address="00:11:22:33:44:55"/>
       <model type="virtio"/>
     </interface>
-    <input type="tablet" bus="usb"/>
-    <graphics type="vnc" port="-1"/>
     <console type="pty"/>
     <channel type="unix">
       <source mode="bind"/>
       <target type="virtio" name="org.qemu.guest_agent.0"/>
     </channel>
-    <watchdog model="ib700" action="pause"/>
-    <memballoon model="virtio"/>
+    <input type="tablet" bus="usb"/>
     <tpm model="tpm-tis">
       <backend type="passthrough">
         <device path="/dev/tpm0"/>
       </backend>
     </tpm>
+    <tpm model="tpm-crb">
+      <backend type="passthrough">
+        <device path="/dev/tpm0"/>
+      </backend>
+    </tpm>
+    <tpm model="tpm-crb">
+      <backend type="emulator" version="2.0"/>
+    </tpm>
+    <graphics type="vnc" port="-1"/>
+    <video>
+      <model type="qxl"/>
+    </video>
+    <watchdog model="ib700" action="pause"/>
+    <memballoon model="virtio"/>
     <rng model="virtio">
       <backend model="egd" type="udp">
         <source mode="bind" host="127.0.0.1" service="8000"/>
@@ -168,6 +189,11 @@
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <title>my-title</title>
   <description>my-description</description>
+  <metadata>
+    <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
+      <libosinfo:os id="http://fedoraproject.org/fedora/unknown"/>
+    </libosinfo:libosinfo>
+  </metadata>
   <memory>1048576</memory>
   <currentMemory>524288</currentMemory>
   <blkiotune>
@@ -189,6 +215,8 @@
     <hugepages>
       <page size="1" unit="G" nodeset="1,2-5"/>
     </hugepages>
+    <access mode="shared"/>
+    <source type="anonymous"/>
   </memoryBacking>
   <vcpu>4</vcpu>
   <numatune>
@@ -222,8 +250,9 @@
       <entry name="location">Chassis</entry>
     </baseBoard>
   </sysinfo>
+  <bootloader>/new/bootld</bootloader>
   <os>
-    <type arch="x86_64">hvm</type>
+    <type arch="x86_64" machine="q35">hvm</type>
     <loader>/foo/bar</loader>
     <boot dev="cdrom"/>
     <boot dev="fd"/>
@@ -231,6 +260,7 @@
     <boot dev="network"/>
     <smbios mode="sysinfo"/>
     <bootmenu enable="no"/>
+    <bios rebootTimeout="3"/>
   </os>
   <idmap>
     <uid start="0" target="1000" count="10"/>
@@ -246,6 +276,7 @@
       <synic state="on"/>
     </hyperv>
     <vmport state="off"/>
+    <vmcoreinfo/>
   </features>
   <cpu mode="custom" match="strict">
     <model>foobar</model>
@@ -259,6 +290,7 @@
     <feature policy="disable" name="distest"/>
     <feature policy="forbid" name="foo"/>
     <feature policy="forbid" name="bar"/>
+    <cache mode="emulate" level="3"/>
     <numa>
       <cell id="0" cpus="1,2,3" memory="1024">
         <distances>
@@ -273,7 +305,6 @@
         </distances>
       </cell>
     </numa>
-    <cache mode="emulate" level="3"/>
   </cpu>
   <clock offset="utc">
     <timer name="rtc" tickpolicy="merge"/>
@@ -287,8 +318,8 @@
     <suspend-to-disk enabled="no"/>
   </pm>
   <devices>
-    <emulator>/usr/bin/qemu-kvm</emulator>
-    <controller type="usb" index="0" model="nec-xhci"/>
+    <emulator>/new/emu</emulator>
+    <controller type="usb" index="0" model="qemu-xhci" ports="15"/>
     <controller type="virtio-scsi" index="0"/>
     <filesystem type="mount" accessmode="mapped">
       <source dir="/foo/source"/>
@@ -299,20 +330,31 @@
       <mac address="00:11:22:33:44:55"/>
       <model type="virtio"/>
     </interface>
-    <input type="tablet" bus="usb"/>
-    <graphics type="vnc" port="-1"/>
     <console type="pty"/>
     <channel type="unix">
       <source mode="bind"/>
       <target type="virtio" name="org.qemu.guest_agent.0"/>
     </channel>
-    <watchdog model="ib700" action="pause"/>
-    <memballoon model="virtio"/>
+    <input type="tablet" bus="usb"/>
     <tpm model="tpm-tis">
       <backend type="passthrough">
         <device path="/dev/tpm0"/>
       </backend>
     </tpm>
+    <tpm model="tpm-crb">
+      <backend type="passthrough">
+        <device path="/dev/tpm0"/>
+      </backend>
+    </tpm>
+    <tpm model="tpm-crb">
+      <backend type="emulator" version="2.0"/>
+    </tpm>
+    <graphics type="vnc" port="-1"/>
+    <video>
+      <model type="qxl"/>
+    </video>
+    <watchdog model="ib700" action="pause"/>
+    <memballoon model="virtio"/>
     <rng model="virtio">
       <backend model="egd" type="udp">
         <source mode="bind" host="127.0.0.1" service="8000"/>

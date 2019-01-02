@@ -1,22 +1,8 @@
-#
 # Copyright (C) 2009, 2013, 2014 Red Hat, Inc.
 # Copyright (C) 2009 Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 
@@ -35,9 +21,6 @@ class vmmStorageBrowser(vmmGObjectUI):
 
         # Passed to browse_local
         self._browse_reason = None
-
-        # Whether we should abide stable defaults
-        self._stable_defaults = False
 
         self.storagelist = vmmStorageList(self.conn, self.builder, self.topwin,
             self._vol_sensitive_cb)
@@ -85,8 +68,6 @@ class vmmStorageBrowser(vmmGObjectUI):
         self._browse_reason = reason
     def set_vm_name(self, name):
         self.storagelist.set_name_hint(name)
-    def set_stable_defaults(self, val):
-        self._stable_defaults = val
 
     def _init_ui(self):
         self.storagelist.connect("browse-clicked", self._browse_clicked)
@@ -135,16 +116,13 @@ class vmmStorageBrowser(vmmGObjectUI):
 
     def _volume_chosen(self, src, volume):
         ignore = src
-        logging.debug("Chosen volume XML:\n%s", volume.xmlobj.get_xml_config())
+        logging.debug("Chosen volume XML:\n%s", volume.xmlobj.get_xml())
         self._finish(volume.get_target_path())
 
     def _vol_sensitive_cb(self, fmt):
         if ((self._browse_reason == self.config.CONFIG_DIR_FS) and
             fmt != 'dir'):
             return False
-        elif self._stable_defaults:
-            if fmt == "vmdk":
-                return False
         return True
 
 

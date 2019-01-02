@@ -1,5 +1,8 @@
-#!/usr/bin/env python2
-# Copyright (C) 2013, 2014 Red Hat, Inc.
+#!/usr/bin/env python3
+#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
+
 
 import glob
 import fnmatch
@@ -16,6 +19,10 @@ import distutils.command.sdist
 import distutils.dist
 import distutils.log
 import distutils.sysconfig
+
+if sys.version_info.major < 3:
+    print("virt-manager is python3 only. Run this as ./setup.py")
+    sys.exit(1)
 
 from virtcli import CLIConfig
 
@@ -306,20 +313,6 @@ class my_rpm(distutils.core.Command):
 class configure(distutils.core.Command):
     user_options = [
         ("prefix=", None, "installation prefix"),
-        ("qemu-user=", None,
-         "user libvirt uses to launch qemu processes (default=root)"),
-        ("libvirt-package-names=", None,
-         "list of libvirt distro packages virt-manager will check for on "
-         "first run. comma separated string (default=none)"),
-        ("kvm-package-names=", None,
-         "recommended kvm packages virt-manager will check for on first run "
-         "(default=none)"),
-        ("askpass-package-names=", None,
-         "name of your distro's askpass package(s) (default=none)"),
-        ("preferred-distros=", None,
-         "Distros to list first in the New VM wizard (default=none)"),
-        ("stable-defaults", None,
-         "Hide config bits that are not considered stable (default=no)"),
         ("default-graphics=", None,
          "Default graphics type (spice or vnc) (default=spice)"),
         ("default-hvs=", None,
@@ -334,12 +327,6 @@ class configure(distutils.core.Command):
 
     def initialize_options(self):
         self.prefix = sysprefix
-        self.qemu_user = None
-        self.libvirt_package_names = None
-        self.kvm_package_names = None
-        self.askpass_package_names = None
-        self.preferred_distros = None
-        self.stable_defaults = None
         self.default_graphics = None
         self.default_hvs = None
 
@@ -348,19 +335,6 @@ class configure(distutils.core.Command):
         template = ""
         template += "[config]\n"
         template += "prefix = %s\n" % self.prefix
-        if self.qemu_user is not None:
-            template += "default_qemu_user = %s\n" % self.qemu_user
-        if self.libvirt_package_names is not None:
-            template += "libvirt_packages = %s\n" % self.libvirt_package_names
-        if self.kvm_package_names is not None:
-            template += "hv_packages = %s\n" % self.kvm_package_names
-        if self.askpass_package_names is not None:
-            template += "askpass_packages = %s\n" % self.askpass_package_names
-        if self.preferred_distros is not None:
-            template += "preferred_distros = %s\n" % self.preferred_distros
-        if self.stable_defaults is not None:
-            template += ("stable_defaults = %s\n" %
-                         self.stable_defaults)
         if self.default_graphics is not None:
             template += "default_graphics = %s\n" % self.default_graphics
         if self.default_hvs is not None:
@@ -373,6 +347,7 @@ class configure(distutils.core.Command):
 class TestBaseCommand(distutils.core.Command):
     user_options = [
         ('debug', 'd', 'Show debug output'),
+        ('testverbose', None, 'Show verbose output'),
         ('coverage', 'c', 'Show coverage report'),
         ('regenerate-output', None, 'Regenerate test output'),
         ("only=", None,
@@ -383,6 +358,7 @@ class TestBaseCommand(distutils.core.Command):
 
     def initialize_options(self):
         self.debug = 0
+        self.testverbose = 0
         self.regenerate_output = 0
         self.coverage = 0
         self.only = None
@@ -393,8 +369,6 @@ class TestBaseCommand(distutils.core.Command):
         self._external_coverage = False
 
     def finalize_options(self):
-        if self.debug and "DEBUG_TESTS" not in os.environ:
-            os.environ["DEBUG_TESTS"] = "1"
         if self.only:
             # Can do --only many-devices to match on the cli testcase
             # for "virt-install-many-devices", despite the actual test
@@ -434,6 +408,9 @@ class TestBaseCommand(distutils.core.Command):
         testsmodule.utils.clistate.regenerate_output = bool(
                 self.regenerate_output)
         testsmodule.utils.clistate.use_coverage = bool(cov)
+        testsmodule.utils.clistate.debug = bool(self.debug)
+        testsmodule.setup_logging()
+        testsmodule.setup_cli_imports()
 
         # This makes the test runner report results before exiting from ctrl-c
         unittest.installHandler()
@@ -457,7 +434,7 @@ class TestBaseCommand(distutils.core.Command):
             print("")
 
         verbosity = 1
-        if self.debug or self._force_verbose:
+        if self.debug or self.testverbose or self._force_verbose:
             verbosity = 2
         t = unittest.TextTestRunner(verbosity=verbosity)
 
@@ -494,7 +471,7 @@ class TestCommand(TestBaseCommand):
         '''
         Finds all the tests modules in tests/, and runs them.
         '''
-        excludes = ["test_urls.py", "test_inject.py"]
+        excludes = ["dist.py", "test_urls.py", "test_inject.py"]
         testfiles = self._find_tests_in_dir("tests", excludes)
 
         # Put clitest at the end, since it takes the longest
@@ -552,6 +529,40 @@ class TestInitrdInject(TestBaseCommand):
         TestBaseCommand.run(self)
 
 
+class TestDist(TestBaseCommand):
+    description = "Tests to run before cutting a release"
+
+    def run(self):
+        self._testfiles = ["tests.dist"]
+        TestBaseCommand.run(self)
+
+
+class CheckSpell(distutils.core.Command):
+    user_options = []
+    description = "Check code for common misspellings"
+
+    def initialize_options(self):
+        pass
+
+    def finalize_options(self):
+        pass
+
+    def run(self):
+        try:
+            import codespell_lib
+        except ImportError:
+            raise ImportError('codespell is not installed')
+
+        files = ["setup.py", "virt-install", "virt-clone",
+                 "virt-convert", "virt-xml", "virt-manager",
+                 "virtcli", "virtinst", "virtconv", "virtManager",
+                 "tests"]
+        # pylint: disable=protected-access
+        codespell_lib._codespell.main(
+            '-I', 'tests/codespell_dict.txt',
+            '--skip', '*.pyc,*.zip,*.vmdk,*.iso,*.xml', *files)
+
+
 class CheckPylint(distutils.core.Command):
     user_options = [
         ("jobs=", "j", "use multiple processes to speed up Pylint"),
@@ -566,6 +577,9 @@ class CheckPylint(distutils.core.Command):
             self.jobs = int(self.jobs)
 
     def run(self):
+        import pylint.lint
+        import pycodestyle
+
         files = ["setup.py", "virt-install", "virt-clone",
                  "virt-convert", "virt-xml", "virt-manager",
                  "virtcli", "virtinst", "virtconv", "virtManager",
@@ -575,25 +589,26 @@ class CheckPylint(distutils.core.Command):
         exclude = ["virtinst/progress.py"]
 
         print("running pycodestyle")
-        cmd = "pycodestyle "
-        cmd += "--config tests/pycodestyle.cfg "
-        cmd += "--exclude %s " % ",".join(exclude)
-        cmd += " ".join(files)
-        os.system(cmd)
+        style_guide = pycodestyle.StyleGuide(
+            config_file='tests/pycodestyle.cfg',
+            paths=files
+        )
+        style_guide.options.exclude = pycodestyle.normalize_paths(
+            ','.join(exclude)
+        )
+        report = style_guide.check_files()
+        if style_guide.options.count:
+            sys.stderr.write(str(report.total_errors) + '\n')
 
         print("running pylint")
-        if os.path.exists("/usr/bin/pylint-2"):
-            cmd = "pylint-2 "
-        else:
-            cmd = "pylint "
+        pylint_opts = [
+            "--rcfile", "tests/pylint.cfg",
+            "--output-format=%s" % output_format,
+        ] + ["--ignore"] + [os.path.basename(p) for p in exclude]
         if self.jobs:
-            cmd += "--jobs=%d " % self.jobs
-        cmd += "--rcfile tests/pylint.cfg "
-        cmd += "--output-format=%s " % output_format
-        cmd += "--ignore %s " % ",".join(
-            [os.path.basename(p) for p in exclude])
-        cmd += " ".join(files)
-        os.system(cmd)
+            pylint_opts += ["--jobs=%d" % self.jobs]
+
+        pylint.lint.Run(files + pylint_opts)
 
 
 class VMMDistribution(distutils.dist.Distribution):
@@ -634,8 +649,6 @@ distutils.core.setup(
         ]),
         ("share/glib-2.0/schemas",
          ["data/org.virt-manager.virt-manager.gschema.xml"]),
-        ("share/GConf/gsettings",
-         ["data/org.virt-manager.virt-manager.convert"]),
         ("share/virt-manager/ui", glob.glob("ui/*.ui")),
 
         ("share/man/man1", [
@@ -651,6 +664,8 @@ distutils.core.setup(
         ("share/virt-manager/virtcli",
          glob.glob("virtcli/*.py") + glob.glob("virtcli/cli.cfg")),
         ("share/virt-manager/virtinst", glob.glob("virtinst/*.py")),
+        ("share/virt-manager/virtinst/devices", glob.glob("virtinst/devices/*.py")),
+        ("share/virt-manager/virtinst/domain", glob.glob("virtinst/domain/*.py")),
         ("share/virt-manager/virtconv", glob.glob("virtconv/*.py")),
     ],
 
@@ -666,11 +681,13 @@ distutils.core.setup(
         'configure': configure,
 
         'pylint': CheckPylint,
+        'codespell': CheckSpell,
         'rpm': my_rpm,
         'test': TestCommand,
         'test_ui': TestUI,
         'test_urls': TestURLFetch,
         'test_initrd_inject': TestInitrdInject,
+        'test_dist': TestDist,
     },
 
     distclass=VMMDistribution,

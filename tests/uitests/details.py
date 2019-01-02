@@ -1,3 +1,6 @@
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
+
 from tests.uitests import utils as uiutils
 
 
@@ -38,7 +41,7 @@ class Details(uiutils.UITestCase):
         Open the VM with all the crazy hardware and just verify that each
         HW panel shows itself without raising any error.
         """
-        win = self._open_details_window()
+        win = self._open_details_window(double=True)
         lst = win.find("hw-list", "table")
         self._walkUIList(win, lst, lambda: False)
 
@@ -80,10 +83,12 @@ class Details(uiutils.UITestCase):
 
         self._testRename(origname, "test-new-name")
 
-    def testDetailsEdits(self):
+    def testDetailsEditDomain1(self):
+        """
+        Test overview, memory, cpu pages
+        """
         win = self._open_details_window(vmname="test-many-devices")
         appl = win.find("config-apply", "push button")
-        hwlist = win.find("hw-list")
 
         # Overview description
         tab = self._select_hw(win, "Overview", "overview-tab")
@@ -138,6 +143,33 @@ class Details(uiutils.UITestCase):
         self.assertTrue(tab.find_fuzzy("Maximum", "spin").text == "32")
 
 
+    def testDetailsEditDomain2(self):
+        """
+        Test boot and OS pages
+        """
+        win = self._open_details_window(vmname="test-many-devices")
+        appl = win.find("config-apply", "push button")
+        self._stop_vm(win)
+
+
+        # OS edits
+        tab = self._select_hw(win, "OS information", "os-tab")
+        entry = tab.find("oslist-entry")
+        self.assertEqual(entry.text, "Fedora")
+        entry.click()
+        self.pressKey("Down")
+        popover = win.find("oslist-popover")
+        popover.find("include-eol").click()
+        entry.text = "fedora12"
+        popover.find_fuzzy("fedora12").bring_on_screen().click()
+        uiutils.check_in_loop(lambda: not popover.visible)
+        self.assertEqual(entry.text, "Fedora 12")
+        appl.click()
+        uiutils.check_in_loop(lambda: not appl.sensitive)
+        self.assertEqual(entry.text, "Fedora 12")
+
+
+        # Boot tweaks
         def check_bootorder(c):
             # Click the bootlist checkbox, which is hard to find in the tree
             import dogtail.rawinput
@@ -146,7 +178,6 @@ class Details(uiutils.UITestCase):
             button = 1
             dogtail.rawinput.click(x, y, button)
 
-        # Boot tweaks
         tab = self._select_hw(win, "Boot Options", "boot-tab")
         self._stop_vm(win)
         tab.find_fuzzy("Start virtual machine on host", "check box").click()
@@ -175,6 +206,16 @@ class Details(uiutils.UITestCase):
         uiutils.check_in_loop(lambda: not appl.sensitive)
 
 
+    def testDetailsEditDiskNet(self):
+        """
+        Test disk and network devices
+        """
+        win = self._open_details_window(vmname="test-many-devices")
+        appl = win.find("config-apply", "push button")
+        hwlist = win.find("hw-list")
+        self._stop_vm(win)
+
+
         # Disk options
         tab = self._select_hw(win, "IDE Disk 1", "disk-tab")
         tab.find("Shareable:", "check box").click()
@@ -198,10 +239,11 @@ class Details(uiutils.UITestCase):
 
         # Network values
         tab = self._select_hw(win, "NIC :54:32:10", "network-tab")
-        src = tab.find(None, "combo box", "Network source:")
-        tab.find("Device model:", "text").text = "rtl8139"
+        src = tab.find("Network source:", "combo box")
         src.click()
-        tab.find_fuzzy("macvtap", "menu item").click()
+        tab.find_fuzzy("macvtap", "menu item").bring_on_screen().click()
+        tab.find("Device model:", "combo box").click_combo_entry()
+        tab.find("rtl8139", "menu item").click()
         mode = tab.find_fuzzy("Source mode:", "combo box")
         mode.click_combo_entry()
         self.assertTrue(mode.find("Bridge", "menu item").selected)
@@ -211,7 +253,8 @@ class Details(uiutils.UITestCase):
 
         # Manual bridge
         src.click()
-        tab.find_fuzzy("Specify shared device", "menu item").click()
+        tab.find_fuzzy("Specify shared device",
+                       "menu item").bring_on_screen().click()
         appl.click()
         # Check validation error
         alert = self.app.root.find("vmm dialog", "alert")
@@ -224,7 +267,8 @@ class Details(uiutils.UITestCase):
         # Network with portops
         src.click()
         self.pressKey("Home")
-        tab.find_fuzzy("plainbridge-portgroups", "menu item").click()
+        tab.find_fuzzy("plainbridge-portgroups",
+                       "menu item").bring_on_screen().click()
         c = tab.find_fuzzy("Portgroup:", "combo box")
         c.click_combo_entry()
         self.assertTrue(c.find("engineering", "menu item").selected)
@@ -234,7 +278,8 @@ class Details(uiutils.UITestCase):
 
         # Network with vport stuff
         src.click()
-        tab.find_fuzzy("OpenVSwitch", "menu item").click()
+        tab.find_fuzzy("OpenVSwitch",
+                       "menu item").bring_on_screen().click()
         t = tab.find("Virtual port", "toggle button")
         t.click()
         t.find("Type:", "text").text = "802.1Qbg"
@@ -245,6 +290,15 @@ class Details(uiutils.UITestCase):
                 "09b11c53-8b5c-4eeb-8f00-d84eaa0aaa3b")
         appl.click()
         uiutils.check_in_loop(lambda: not appl.sensitive)
+
+
+    def testDetailsEditDevices(self):
+        """
+        Test all other devices
+        """
+        win = self._open_details_window(vmname="test-many-devices")
+        appl = win.find("config-apply", "push button")
+        self._stop_vm(win)
 
 
         # Graphics
@@ -336,10 +390,11 @@ class Details(uiutils.UITestCase):
 
     def testDetailsMiscEdits(self):
         """
-        Test misc editting behavior, like checking for unapplied
+        Test misc editing behavior, like checking for unapplied
         changes
         """
-        win = self._open_details_window(vmname="test-many-devices")
+        win = self._open_details_window(vmname="test-many-devices",
+                double=True)
         hwlist = win.find("hw-list")
 
         # Live device removal, see results after shutdown

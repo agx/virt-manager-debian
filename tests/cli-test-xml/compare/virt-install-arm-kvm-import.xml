@@ -1,11 +1,17 @@
 <domain type="kvm">
   <name>foobar</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
+  <metadata>
+    <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
+      <libosinfo:os id="http://fedoraproject.org/fedora/20"/>
+    </libosinfo:libosinfo>
+  </metadata>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
   <vcpu>1</vcpu>
   <os>
     <type arch="armv7l" machine="virt">hvm</type>
+    <loader readonly="yes" type="pflash">/usr/share/edk2/arm/QEMU_EFI-pflash.raw</loader>
     <boot dev="hd"/>
   </os>
   <cpu mode="host-passthrough"/>
@@ -17,7 +23,7 @@
       <source file="/dev/default-pool/testvol1.img"/>
       <target dev="sda" bus="scsi"/>
     </disk>
-    <controller type="usb" index="0" model="qemu-xhci" ports="8"/>
+    <controller type="usb" index="0" model="qemu-xhci" ports="15"/>
     <controller type="scsi" index="0" model="virtio-scsi"/>
     <interface type="bridge">
       <source bridge="eth0"/>

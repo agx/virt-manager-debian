@@ -1,20 +1,8 @@
 #
 # Copyright 2006-2013 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 #
 
 import logging
@@ -78,9 +66,9 @@ def _sysconfig_keyboard(f):
             re.search("KEYTABLE", s) is not None or
            (re.search("KEYBOARD", s) is not None and
             re.search("KEYBOARDTYPE", s) is None)):
-            if s.count('"'):
+            if '"' in s:
                 delim = '"'
-            elif s.count('='):
+            elif '=' in s:
                 delim = '='
             else:
                 continue
@@ -198,11 +186,8 @@ def sanitize_keymap(kt):
     # Try a more intelligent lookup: strip out all '-' and '_', sort
     # the keytable keys putting the longest first, then compare
     # by string prefix
-    def len_cmp(a, b):
-        return len(b) - len(a)
-
     clean_kt = kt.replace("-", "").replace("_", "")
-    sorted_keys = sorted(keytable.keys(), len_cmp)
+    sorted_keys = sorted(list(keytable.keys()), key=len)
 
     for key in sorted_keys:
         origkey = key

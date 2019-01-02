@@ -1,26 +1,11 @@
-#
 # Copyright (C) 2006-2007, 2013, 2014 Red Hat, Inc.
 # Copyright (C) 2006 Hugh O. Brock <hbrock@redhat.com>
 # Copyright (C) 2014 SUSE LINUX Products GmbH, Nuernberg, Germany.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 from gi.repository import Gtk
-from gi.repository import GObject
 
 import virtinst
 from . import uiutil
@@ -29,15 +14,15 @@ from .baseclass import vmmGObjectUI
 
 class vmmGraphicsDetails(vmmGObjectUI):
     __gsignals__ = {
-        "changed-password": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "changed-port": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "changed-tlsport": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "changed-type": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "changed-listen": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "changed-address": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "changed-keymap": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "changed-opengl": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "changed-rendernode": (GObject.SignalFlags.RUN_FIRST, None, []),
+        "changed-password": (vmmGObjectUI.RUN_FIRST, None, []),
+        "changed-port": (vmmGObjectUI.RUN_FIRST, None, []),
+        "changed-tlsport": (vmmGObjectUI.RUN_FIRST, None, []),
+        "changed-type": (vmmGObjectUI.RUN_FIRST, None, []),
+        "changed-listen": (vmmGObjectUI.RUN_FIRST, None, []),
+        "changed-address": (vmmGObjectUI.RUN_FIRST, None, []),
+        "changed-keymap": (vmmGObjectUI.RUN_FIRST, None, []),
+        "changed-opengl": (vmmGObjectUI.RUN_FIRST, None, []),
+        "changed-rendernode": (vmmGObjectUI.RUN_FIRST, None, []),
     }
 
     def __init__(self, vm, builder, topwin):
@@ -107,9 +92,9 @@ class vmmGraphicsDetails(vmmGObjectUI):
         uiutil.init_combo_text_column(combo, 1)
 
         model.append(["auto", _("Auto")])
-        model.append([virtinst.VirtualGraphics.KEYMAP_LOCAL,
+        model.append([virtinst.DeviceGraphics.KEYMAP_LOCAL,
                       _("Copy local keymap")])
-        for k in virtinst.VirtualGraphics.valid_keymaps():
+        for k in virtinst.DeviceGraphics.valid_keymaps():
             model.append([k, k])
 
         # Host GPU rendernode
@@ -269,7 +254,7 @@ class vmmGraphicsDetails(vmmGObjectUI):
 
             if opengl_warning:
                 pass
-            elif not [v for v in self.vm.xmlobj.get_devices("video") if
+            elif not [v for v in self.vm.xmlobj.devices.video if
                     (v.model == "virtio" and v.accel3d)]:
                 opengl_warning = _("Spice GL requires "
                     "virtio graphics configured with accel3d.")

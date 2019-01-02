@@ -1,22 +1,8 @@
-#
 # Copyright (C) 2009, 2013 Red Hat, Inc.
 # Copyright (C) 2009 Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 import os
@@ -26,7 +12,7 @@ from gi.repository import Gdk
 
 import virtinst
 from virtinst import Cloner
-from virtinst import VirtualNetworkInterface
+from virtinst import DeviceInterface
 
 from . import uiutil
 from .baseclass import vmmGObjectUI
@@ -56,10 +42,6 @@ NETWORK_INFO_LABEL = 0
 NETWORK_INFO_ORIG_MAC = 1
 NETWORK_INFO_NEW_MAC = 2
 
-# XXX: Some method to check all storage size
-# XXX: What to do for cleanup if clone fails?
-# XXX: Disable mouse scroll for combo boxes
-
 
 def can_we_clone(conn, vol, path):
     """Is the passed path even clone-able"""
@@ -69,13 +51,7 @@ def can_we_clone(conn, vol, path):
     if not path:
         msg = _("No storage to clone.")
 
-    elif vol:
-        # Managed storage
-        if not conn.check_support(conn.SUPPORT_POOL_CREATEVOLFROM,
-                                  vol.get_parent_pool().get_backend()):
-            if conn.is_remote() or not os.access(path, os.R_OK):
-                msg = _("Connection does not support managed storage cloning.")
-    else:
+    elif not vol:
         is_dev = path.startswith("/dev")
         if conn.is_remote():
             msg = _("Cannot clone unmanaged remote storage.")
@@ -107,8 +83,8 @@ def do_we_default(conn, vol, path, ro, shared, devtype):
         str1 += str2
         return str1
 
-    if (devtype == virtinst.VirtualDisk.DEVICE_CDROM or
-        devtype == virtinst.VirtualDisk.DEVICE_FLOPPY):
+    if (devtype == virtinst.DeviceDisk.DEVICE_CDROM or
+        devtype == virtinst.DeviceDisk.DEVICE_FLOPPY):
         info = append_str(info, _("Removable"))
 
     if ro:
@@ -132,11 +108,23 @@ def do_we_default(conn, vol, path, ro, shared, devtype):
 
 
 class vmmCloneVM(vmmGObjectUI):
-    def __init__(self, orig_vm):
-        vmmGObjectUI.__init__(self, "clone.ui", "vmm-clone")
-        self.orig_vm = orig_vm
+    @classmethod
+    def show_instance(cls, parentobj, vm):
+        try:
+            # Maintain one dialog per connection
+            uri = vm.conn.get_uri()
+            if cls._instances is None:
+                cls._instances = {}
+            if uri not in cls._instances:
+                cls._instances[uri] = vmmCloneVM()
+            cls._instances[uri].show(parentobj.topwin, vm)
+        except Exception as e:
+            parentobj.err.show_err(
+                    _("Error launching clone dialog: %s") % str(e))
 
-        self.conn = self.orig_vm.conn
+    def __init__(self):
+        vmmGObjectUI.__init__(self, "clone.ui", "vmm-clone")
+        self.vm = None
         self.clone_design = None
 
         self.storage_list = {}
@@ -172,11 +160,19 @@ class vmmCloneVM(vmmGObjectUI):
             "on_change_storage_browse_clicked": self.change_storage_browse,
         })
         self.bind_escape_key_close()
+        self._cleanup_on_app_close()
 
-        self.set_initial_state()
+        self._init_ui()
 
-    def show(self, parent):
+    @property
+    def conn(self):
+        if self.vm:
+            return self.vm.conn
+        return None
+
+    def show(self, parent, vm):
         logging.debug("Showing clone wizard")
+        self._set_vm(vm)
         self.reset_state()
         self.topwin.set_transient_for(parent)
         self.topwin.resize(1, 1)
@@ -188,7 +184,7 @@ class vmmCloneVM(vmmGObjectUI):
         self.change_storage_close()
         self.topwin.hide()
 
-        self.orig_vm = None
+        self._set_vm(None)
         self.clone_design = None
         self.storage_list = {}
         self.target_list = []
@@ -197,9 +193,19 @@ class vmmCloneVM(vmmGObjectUI):
 
         return 1
 
-    def _cleanup(self):
-        self.conn = None
+    def _vm_removed(self, _conn, connkey):
+        if self.vm.get_connkey() == connkey:
+            self.close()
 
+    def _set_vm(self, newvm):
+        oldvm = self.vm
+        if oldvm:
+            oldvm.conn.disconnect_by_obj(self)
+        if newvm:
+            newvm.conn.connect("vm-removed", self._vm_removed)
+        self.vm = newvm
+
+    def _cleanup(self):
         self.change_mac.destroy()
         self.change_mac = None
 
@@ -221,7 +227,7 @@ class vmmCloneVM(vmmGObjectUI):
 
     # First time setup
 
-    def set_initial_state(self):
+    def _init_ui(self):
         blue = Gdk.Color.parse("#0072A8")[1]
         self.widget("header").modify_bg(Gtk.StateType.NORMAL, blue)
 
@@ -259,7 +265,7 @@ class vmmCloneVM(vmmGObjectUI):
 
     def build_new_clone_design(self, new_name=None):
         design = Cloner(self.conn.get_backend())
-        design.original_guest = self.orig_vm.get_name()
+        design.original_guest = self.vm.get_name()
         if not new_name:
             new_name = design.generate_clone_name()
         design.clone_name = new_name
@@ -299,22 +305,22 @@ class vmmCloneVM(vmmGObjectUI):
             self.net_list[origmac] = net_row
             self.mac_list.append(origmac)
 
-        for net in self.orig_vm.get_network_devices():
+        for net in self.vm.xmlobj.devices.interface:
             mac = net.macaddr
             net_dev = net.source
             net_type = net.type
 
             # Generate a new MAC
-            newmac = VirtualNetworkInterface.generate_mac(
+            newmac = DeviceInterface.generate_mac(
                     self.conn.get_backend())
 
             # [ interface type, device name, origmac, newmac, label ]
-            if net_type == VirtualNetworkInterface.TYPE_USER:
+            if net_type == DeviceInterface.TYPE_USER:
                 label = _("Usermode")
 
-            elif net_type == VirtualNetworkInterface.TYPE_VIRTUAL:
+            elif net_type == DeviceInterface.TYPE_VIRTUAL:
                 net = None
-                for netobj in self.orig_vm.conn.list_nets():
+                for netobj in self.vm.conn.list_nets():
                     if netobj.get_name() == net_dev:
                         net = netobj
                         break
@@ -336,7 +342,7 @@ class vmmCloneVM(vmmGObjectUI):
 
             build_net_row(label, mac, newmac)
 
-        no_net = bool(len(self.net_list.keys()) == 0)
+        no_net = (not list(self.net_list.keys()))
         self.widget("clone-network-box").set_visible(not no_net)
         self.widget("clone-no-net").set_visible(no_net)
 
@@ -344,7 +350,7 @@ class vmmCloneVM(vmmGObjectUI):
         """
         Determine which storage is cloneable, and which isn't
         """
-        diskinfos = self.orig_vm.get_disk_devices()
+        diskinfos = self.vm.xmlobj.devices.disk
         cd = self.clone_design
 
         storage_list = {}
@@ -460,7 +466,7 @@ class vmmCloneVM(vmmGObjectUI):
         if cd.clone_name == newname:
             return
 
-        for row in self.storage_list.values():
+        for row in list(self.storage_list.values()):
             origpath = row[STORAGE_INFO_ORIG_PATH]
             if row[STORAGE_INFO_MANUAL_PATH]:
                 continue
@@ -470,7 +476,7 @@ class vmmCloneVM(vmmGObjectUI):
                 newpath = self.generate_clone_path_name(origpath, newname)
                 row[STORAGE_INFO_NEW_PATH] = newpath
             except Exception as e:
-                logging.debug("Generating new path from clone name failed: " +
+                logging.debug("Generating new path from clone name failed: %s",
                               str(e))
 
     def build_storage_entry(self, disk, storage_box):
@@ -485,7 +491,7 @@ class vmmCloneVM(vmmGObjectUI):
         failinfo = disk[STORAGE_INFO_FAILINFO]
         target = disk[STORAGE_INFO_TARGET]
 
-        orig_name = self.orig_vm.get_name()
+        orig_name = self.vm.get_name()
 
         disk_label = os.path.basename(origpath)
         info_label = None
@@ -499,9 +505,9 @@ class vmmCloneVM(vmmGObjectUI):
 
         # Build icon
         icon = Gtk.Image()
-        if devtype == virtinst.VirtualDisk.DEVICE_FLOPPY:
+        if devtype == virtinst.DeviceDisk.DEVICE_FLOPPY:
             iconname = "media-floppy"
-        elif devtype == virtinst.VirtualDisk.DEVICE_CDROM:
+        elif devtype == virtinst.DeviceDisk.DEVICE_CDROM:
             iconname = "media-optical"
         else:
             iconname = "drive-harddisk"
@@ -599,7 +605,7 @@ class vmmCloneVM(vmmGObjectUI):
         # If any storage cannot be cloned or shared, don't allow cloning
         clone = True
         tooltip = ""
-        for row in self.storage_list.values():
+        for row in list(self.storage_list.values()):
             can_clone = row[STORAGE_INFO_CAN_CLONE]
             can_share = row[STORAGE_INFO_CAN_SHARE]
             if not (can_clone or can_share):
@@ -643,7 +649,7 @@ class vmmCloneVM(vmmGObjectUI):
             src.set_active(STORAGE_COMBO_SHARE)
 
         # Show storage
-        row = self.storage_change_path(row)
+        self.storage_change_path(row)
 
     def change_storage_doclone_toggled(self, src):
         do_clone = src.get_active()
@@ -680,20 +686,13 @@ class vmmCloneVM(vmmGObjectUI):
 
         self.widget("vmm-change-storage").show_all()
 
-    def set_orig_vm(self, new_orig):
-        self.orig_vm = new_orig
-        self.conn = self.orig_vm.conn
-
     def change_mac_finish(self, ignore):
         orig = self.widget("change-mac-orig").get_text()
         new = self.widget("change-mac-new").get_text()
         row = self.net_list[orig]
 
         try:
-            ignore, msg = VirtualNetworkInterface.is_conflict_net(
-                                self.conn.get_backend(), new)
-            if msg:
-                raise RuntimeError(msg)
+            DeviceInterface.is_conflict_net(self.conn.get_backend(), new)
             row[NETWORK_INFO_NEW_MAC] = new
         except Exception as e:
             self.err.show_err(_("Error changing MAC address: %s") % str(e))
@@ -720,7 +719,7 @@ class vmmCloneVM(vmmGObjectUI):
 
         new_path = self.widget("change-storage-new").get_text()
 
-        if virtinst.VirtualDisk.path_definitely_exists(self.clone_design.conn,
+        if virtinst.DeviceDisk.path_definitely_exists(self.clone_design.conn,
                                                        new_path):
             res = self.err.yes_no(_("Cloning will overwrite the existing "
                                     "file"),
@@ -802,7 +801,7 @@ class vmmCloneVM(vmmGObjectUI):
         self.clone_design = cd
         return True
 
-    def _finish_cb(self, error, details):
+    def _finish_cb(self, error, details, conn):
         self.reset_finish_cursor()
 
         if error is not None:
@@ -811,8 +810,8 @@ class vmmCloneVM(vmmGObjectUI):
             self.err.show_err(error, details=details)
             return
 
+        conn.schedule_priority_tick(pollvm=True)
         self.close()
-        self.conn.schedule_priority_tick(pollvm=True)
 
     def finish(self, src_ignore):
         try:
@@ -830,13 +829,14 @@ class vmmCloneVM(vmmGObjectUI):
         if self.clone_design.clone_disks:
             text = title + _(" and selected storage (this may take a while)")
 
-        progWin = vmmAsyncJob(self._async_clone, [], self._finish_cb, [],
+        progWin = vmmAsyncJob(self._async_clone, [],
+                              self._finish_cb, [self.conn],
                               title, text, self.topwin)
         progWin.run()
 
     def _async_clone(self, asyncjob):
         try:
-            self.orig_vm.set_cloning(True)
+            self.vm.set_cloning(True)
             meter = asyncjob.get_meter()
 
             refresh_pools = []
@@ -863,7 +863,7 @@ class vmmCloneVM(vmmGObjectUI):
                         "VM clone.", poolname, exc_info=True)
 
         finally:
-            self.orig_vm.set_cloning(False)
+            self.vm.set_cloning(False)
 
     def change_storage_browse(self, ignore):
         def callback(src_ignore, txt):

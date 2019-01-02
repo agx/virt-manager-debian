@@ -1,22 +1,8 @@
-#   This library is free software; you can redistribute it and/or
-#   modify it under the terms of the GNU Lesser General Public
-#   License as published by the Free Software Foundation; either
-#   version 2.1 of the License, or (at your option) any later version.
-#
-#   This library is distributed in the hope that it will be useful,
-#   but WITHOUT ANY WARRANTY; without even the implied warranty of
-#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
-#   Lesser General Public License for more details.
-#
-#   You should have received a copy of the GNU Lesser General Public
-#   License along with this library; if not, write to the
-#      Free Software Foundation, Inc.,
-#      59 Temple Place, Suite 330,
-#      Boston, MA  02111-1307  USA
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 # This file is part of urlgrabber, a high-level cross-protocol url-grabber
 # Copyright 2002-2004 Michael D. Stenner, Ryan Tomayko
-
 
 # This code is all straight from python-urlgrabber, which we historically
 # used the system installed version of. But since the project is in
@@ -31,7 +17,7 @@ import fcntl
 import struct
 import termios
 
-# Code from http://mail.python.org/pipermail/python-list/2000-May/033365.html
+# Code from https://mail.python.org/pipermail/python-list/2000-May/033365.html
 def terminal_width(fd=1):
     """ Get the real terminal width """
     try:
@@ -253,10 +239,8 @@ class TextMeter(BaseMeter):
 
         # Include text + ui_rate in minimal
         tl = TerminalLine(8, 8+1+8)
-        if tl._llen > 80:
-            use_hours = True # For big screens, make it more readable.
-        else:
-            use_hours = False
+        # For big screens, make it more readable.
+        use_hours = bool(tl._llen > 80)
         ui_size = tl.add(' | %5sB' % fread)
         if self.size is None:
             ui_time = tl.add('  %s' % format_time(etime, use_hours))
@@ -301,10 +285,8 @@ class TextMeter(BaseMeter):
             text = self.basename
 
         tl = TerminalLine(8)
-        if tl._llen > 80:
-            use_hours = True # For big screens, make it more readable.
-        else:
-            use_hours = False
+        # For big screens, make it more readable.
+        use_hours = bool(tl._llen > 80)
         ui_size = tl.add(' | %5sB' % total_size)
         ui_time = tl.add('  %s' % format_time(self.re.elapsed_time(), use_hours))
         ui_end, not_done = _term_add_end(tl, self.size, amount_read)
@@ -345,7 +327,7 @@ class RateEstimator:
         if now is None: now = time.time()
         # libcurl calls the progress callback when fetching headers
         # too, thus amount_read = 0 .. hdr_size .. 0 .. content_size.
-        # Ocassionally we miss the 2nd zero and report avg speed < 0.
+        # Occasionally we miss the 2nd zero and report avg speed < 0.
         # Handle read_diff < 0 here. BZ 1001767.
         if amount_read == 0 or amount_read < self.last_amount_read:
             # if we just started this file, all bets are off
@@ -473,6 +455,7 @@ def format_number(number, SI=0, space=' '):
     thresh = 999
     depth = 0
     max_depth = len(symbols) - 1
+    number = number or 0
 
     # we want numbers between 0 and thresh, but don't exceed the length
     # of our list.  In that event, the formatting will be screwed up,
@@ -481,7 +464,7 @@ def format_number(number, SI=0, space=' '):
         depth  = depth + 1
         number = number / step
 
-    if isinstance(number, int) or isinstance(number, long):
+    if isinstance(number, int):
         # it's an int or a long, which means it didn't get divided,
         # which means it's already short enough
         fmt = '%i%s%s'

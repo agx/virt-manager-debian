@@ -2,19 +2,23 @@
 
 The following commands will be useful for anyone writing patches:
 ```sh
-python setup.py test      # Run local unit test suite
-python setup.py pylint    # Run a pylint script against the codebase
+./setup.py test      # Run local unit test suite
+./setup.py pylint    # Run a pylint script against the codebase
+./setup.py codespell # Run a codespell script against the codebase
 ```
 
-Any patches shouldn't change the output of 'test' or 'pylint'. The
-'pylint' requires `pylint` and `pycodestyle` to be installed.
+Any patches shouldn't change the output of 'test', 'pylint' or 'codespell'. The
+'pylint' requires [`pylint`](https://github.com/PyCQA/pylint) and
+[`pycodestyle`](https://github.com/pycqa/pycodestyle) to be installed. The
+'codespell' requires
+[`codespell`](https://github.com/codespell-project/codespell) to be installed.
 
 Our pylint script uses a blacklist rather than a whitelist approach,
 so it could throw some false positives or useless messages. If you think
 your patch exposes one of these, bring it up on the mailing list.
 
 'test*' have a `--debug` option if you are hitting problems.
-For more options, use `python setup.py test --help`.
+For more options, use `./setup.py test --help`.
 
 One useful way to manually test virt-manager's UI is using libvirt's
 unit test driver. From the source directory, Launch virt-manager like:
@@ -28,8 +32,8 @@ having to alter your host virt config.
 
 Also, there's a few standalone specialty tests:
 ```sh
-python setup.py test_urls            # Test fetching media from distro URLs
-python setup.py test_initrd_inject   # Test --initrd-inject
+./setup.py test_urls            # Test fetching media from distro URLs
+./setup.py test_initrd_inject   # Test --initrd-inject
 ```
 
 We use [glade-3](https://glade.gnome.org/) for building virt-manager's UI.
@@ -43,7 +47,7 @@ Patches should be developed against a git checkout and **not** a source
 release(see [git repository](https://github.com/virt-manager/virt-manager)).
 
 Patches should be sent to the
-[mailing list](http://www.redhat.com/mailman/listinfo/virt-tools-list).
+[mailing list](https://www.redhat.com/mailman/listinfo/virt-tools-list).
 
 Using git format-patch/send-email is preferred, but an attachment with
 format-patch output is fine too.
@@ -55,7 +59,7 @@ non-trivial should be sent to the mailing list.
 
 Translations are handled at `fedora.zanata.org`. Please register for a Fedora
 account and request access to a translation team, as described at
-[Translate on Zanata](http://fedoraproject.org/wiki/L10N/Translate_on_Zanata).
+[Translate on Zanata](https://fedoraproject.org/wiki/L10N/Translate_on_Zanata).
 
 And contribute to
 [virt-manager at Zanata](https://fedora.zanata.org/project/view/virt-manager/).

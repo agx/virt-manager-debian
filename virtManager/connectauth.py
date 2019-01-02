@@ -1,25 +1,13 @@
-#
 # Copyright (C) 2012-2013 Red Hat, Inc.
 # Copyright (C) 2012 Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
+import collections
 import logging
 import os
+import re
 import time
 
 from gi.repository import GLib
@@ -52,22 +40,21 @@ def do_we_have_session():
     return False
 
 
-def creds_dialog(conn, creds):
+def creds_dialog(creds, cbdata):
     """
     Thread safe wrapper for libvirt openAuth user/pass callback
     """
-
     retipc = []
 
-    def wrapper(fn, conn, creds):
+    def wrapper(fn, creds, cbdata):
         try:
-            ret = fn(conn, creds)
+            ret = fn(creds, cbdata)
         except Exception:
             logging.exception("Error from creds dialog")
             ret = -1
         retipc.append(ret)
 
-    GLib.idle_add(wrapper, _creds_dialog_main, conn, creds)
+    GLib.idle_add(wrapper, _creds_dialog_main, creds, cbdata)
 
     while not retipc:
         time.sleep(.1)
@@ -75,63 +62,66 @@ def creds_dialog(conn, creds):
     return retipc[0]
 
 
-def _creds_dialog_main(conn, creds):
+def _creds_dialog_main(creds, cbdata):
     """
     Libvirt openAuth callback for username/password credentials
     """
+    _conn = cbdata
     from gi.repository import Gtk
 
     dialog = Gtk.Dialog(_("Authentication required"), None, 0,
                         (Gtk.STOCK_CANCEL, Gtk.ResponseType.CANCEL,
                          Gtk.STOCK_OK, Gtk.ResponseType.OK))
-    label = []
-    entry = []
+    dialog.set_resizable(False)
+    labels = []
+    entrys = []
 
-    box = Gtk.Table(2, len(creds))
-    box.set_border_width(6)
-    box.set_row_spacings(6)
-    box.set_col_spacings(12)
+    dialog.set_border_width(6)
+    box = Gtk.Grid()
+    box.set_hexpand(False)
+    box.set_vexpand(False)
+    box.set_row_spacing(6)
+    box.set_column_spacing(6)
+    box.set_margin_bottom(12)
 
     def _on_ent_activate(ent):
-        idx = entry.index(ent)
-
-        if idx < len(entry) - 1:
-            entry[idx + 1].grab_focus()
+        idx = entrys.index(ent)
+        if idx < len(entrys) - 1:
+            entrys[idx + 1].grab_focus()
         else:
             dialog.response(Gtk.ResponseType.OK)
 
     row = 0
     for cred in creds:
-        if (cred[0] == libvirt.VIR_CRED_AUTHNAME or
-            cred[0] == libvirt.VIR_CRED_PASSPHRASE):
-            prompt = cred[1]
-            if not prompt.endswith(":"):
-                prompt += ":"
-
-            text_label = Gtk.Label(label=prompt)
-            text_label.set_alignment(0.0, 0.5)
-
-            label.append(text_label)
-        else:
+        # Libvirt virConnectCredential
+        credtype, prompt, _challenge, _defresult, _result = cred
+        noecho = credtype in [
+                libvirt.VIR_CRED_PASSPHRASE, libvirt.VIR_CRED_NOECHOPROMPT]
+        if not prompt:
+            logging.error("No prompt for auth credtype=%s", credtype)
             return -1
 
-        ent = Gtk.Entry()
-        if cred[0] == libvirt.VIR_CRED_PASSPHRASE:
-            ent.set_visibility(False)
-        elif conn.get_uri_username():
-            ent.set_text(conn.get_uri_username())
-        ent.connect("activate", _on_ent_activate)
-        entry.append(ent)
+        prompt += ": "
+        label = Gtk.Label()
+        label.set_hexpand(False)
+        label.set_halign(Gtk.Align.START)
+        label.set_line_wrap(True)
+        label.set_max_width_chars(40)
+        label.set_text(prompt)
+        labels.append(label)
 
-        box.attach(label[row], 0, 1, row, row + 1,
-            Gtk.AttachOptions.FILL, 0, 0, 0)
-        box.attach(entry[row], 1, 2, row, row + 1,
-            Gtk.AttachOptions.FILL, 0, 0, 0)
+        entry = Gtk.Entry()
+        if noecho:
+            entry.set_visibility(False)
+        entry.set_valign(Gtk.Align.START)
+        entry.connect("activate", _on_ent_activate)
+        entrys.append(entry)
+
+        box.attach(labels[row], row, row, 1, 1)
+        box.attach(entrys[row], row + 1, row, 1, 1)
         row = row + 1
 
-    vbox = dialog.get_child()
-    vbox.add(box)
-
+    dialog.get_child().add(box)
     dialog.show_all()
     res = dialog.run()
     dialog.hide()
@@ -139,7 +129,7 @@ def _creds_dialog_main(conn, creds):
     if res == Gtk.ResponseType.OK:
         row = 0
         for cred in creds:
-            cred[4] = entry[row].get_text()
+            cred[4] = entrys[row].get_text()
             row = row + 1
         ret = 0
     else:
@@ -149,19 +139,62 @@ def _creds_dialog_main(conn, creds):
     return ret
 
 
-def acquire_tgt():
+def connect_error(conn, errmsg, tb, warnconsole):
     """
-    Try to get kerberos ticket if openAuth seems to require it
+    Format connection error message
     """
-    logging.debug("In acquire tgt.")
-    try:
-        bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
-        ka = Gio.DBusProxy.new_sync(bus, 0, None,
-                                "org.gnome.KrbAuthDialog",
-                                "/org/gnome/KrbAuthDialog",
-                                "org.freedesktop.KrbAuthDialog", None)
-        ret = ka.acquireTgt("(s)", "")
-    except Exception as e:
-        logging.info("Cannot acquire tgt" + str(e))
-        ret = False
-    return ret
+    errmsg = errmsg.strip(" \n")
+    tb = tb.strip(" \n")
+    hint = ""
+    show_errmsg = True
+
+    if conn.is_remote():
+        logging.debug("connect_error: conn transport=%s",
+            conn.get_uri_transport())
+        if re.search(r"nc: .* -- 'U'", tb):
+            hint += _("The remote host requires a version of netcat/nc "
+                      "which supports the -U option.")
+            show_errmsg = False
+        elif (conn.get_uri_transport() == "ssh" and
+              re.search(r"askpass", tb)):
+
+            hint += _("Configure SSH key access for the remote host, "
+                      "or install an SSH askpass package locally.")
+            show_errmsg = False
+        else:
+            hint += _("Verify that the 'libvirtd' daemon is running "
+                      "on the remote host.")
+
+    elif conn.is_xen():
+        hint += _("Verify that:\n"
+                  " - A Xen host kernel was booted\n"
+                  " - The Xen service has been started")
+
+    else:
+        if warnconsole:
+            hint += _("Could not detect a local session: if you are "
+                      "running virt-manager over ssh -X or VNC, you "
+                      "may not be able to connect to libvirt as a "
+                      "regular user. Try running as root.")
+            show_errmsg = False
+        elif re.search(r"libvirt-sock", tb):
+            hint += _("Verify that the 'libvirtd' daemon is running.")
+            show_errmsg = False
+
+    msg = _("Unable to connect to libvirt %s." % conn.get_uri())
+    if show_errmsg:
+        msg += "\n\n%s" % errmsg
+    if hint:
+        msg += "\n\n%s" % hint
+
+    msg = msg.strip("\n")
+    details = msg
+    details += "\n\n"
+    details += "Libvirt URI is: %s\n\n" % conn.get_uri()
+    details += tb
+
+    title = _("Virtual Machine Manager Connection Failure")
+
+    ConnectError = collections.namedtuple("ConnectError",
+            ["msg", "details", "title"])
+    return ConnectError(msg, details, title)

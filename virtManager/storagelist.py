@@ -1,30 +1,15 @@
-#
 # Copyright (C) 2015 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 
 from gi.repository import Gdk
 from gi.repository import Gtk
-from gi.repository import GObject
 
 from virtinst import StoragePool
-from virtinst import VirtualDisk
+from virtinst import DeviceDisk
 
 from . import uiutil
 from .asyncjob import vmmAsyncJob
@@ -36,7 +21,7 @@ from .createvol import vmmCreateVolume
 EDIT_POOL_IDS = (
 EDIT_POOL_NAME,
 EDIT_POOL_AUTOSTART,
-) = range(2)
+) = list(range(2))
 
 VOL_NUM_COLUMNS = 7
 (VOL_COLUMN_KEY,
@@ -69,9 +54,9 @@ def _get_pool_size_percent(pool):
 
 class vmmStorageList(vmmGObjectUI):
     __gsignals__ = {
-        "browse-clicked": (GObject.SignalFlags.RUN_FIRST, None, []),
-        "volume-chosen": (GObject.SignalFlags.RUN_FIRST, None, [object]),
-        "cancel-clicked": (GObject.SignalFlags.RUN_FIRST, None, []),
+        "browse-clicked": (vmmGObjectUI.RUN_FIRST, None, []),
+        "volume-chosen": (vmmGObjectUI.RUN_FIRST, None, [object]),
+        "cancel-clicked": (vmmGObjectUI.RUN_FIRST, None, []),
     }
 
     def __init__(self, conn, builder, topwin, vol_sensitive_cb=None):
@@ -120,9 +105,7 @@ class vmmStorageList(vmmGObjectUI):
 
     def _cleanup(self):
         try:
-            self.conn.disconnect_by_func(self._conn_pool_count_changed)
-            self.conn.disconnect_by_func(self._conn_pool_count_changed)
-            self.conn.disconnect_by_func(self._conn_state_changed)
+            self.conn.disconnect_by_obj(self)
         except Exception:
             pass
         self.conn = None
@@ -384,11 +367,7 @@ class vmmStorageList(vmmGObjectUI):
             model.clear()
 
             for pool in self.conn.list_pools():
-                try:
-                    pool.disconnect_by_func(self._pool_changed)
-                    pool.disconnect_by_func(self._pool_changed)
-                except Exception:
-                    pass
+                pool.disconnect_by_obj(self)
                 pool.connect("state-changed", self._pool_changed)
                 pool.connect("refreshed", self._pool_changed)
 
@@ -437,7 +416,7 @@ class vmmStorageList(vmmGObjectUI):
             namestr = None
             try:
                 if path:
-                    names = VirtualDisk.path_in_use_by(vol.conn.get_backend(),
+                    names = DeviceDisk.path_in_use_by(vol.conn.get_backend(),
                                                        path)
                     namestr = ", ".join(names)
                     if not namestr:

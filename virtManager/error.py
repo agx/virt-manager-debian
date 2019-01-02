@@ -1,23 +1,10 @@
-# Error dialog with extensible "details" button.
-#
 # Copyright (C) 2007, 2013-2014 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
+import sys
 import traceback
 
 from gi.repository import Gtk
@@ -49,32 +36,27 @@ def _launch_dialog(dialog, primary_text, secondary_text, title,
 
 
 class vmmErrorDialog(vmmGObject):
-    def __init__(self, parent=None):
+    # singleton instance for non-UI classes
+    @classmethod
+    def get_instance(cls):
+        if not cls._instance:
+            cls._instance = vmmErrorDialog(None)
+        return cls._instance
+
+    def __init__(self, parent):
         vmmGObject.__init__(self)
         self._parent = parent
         self._simple = None
 
-        # Callback to lookup the parent window if none is specified.
-        # Used by engine.py for properly parenting windows
-        self._find_parent_cb = None
-
-        # Allows the error owner to easily override default modality
         self._modal_default = False
 
     def _cleanup(self):
-        self._find_parent_cb = None
+        pass
 
     def set_modal_default(self, val):
         self._modal_default = val
-    def set_find_parent_cb(self, cb):
-        self._find_parent_cb = cb
-    def set_parent(self, parent):
-        self._parent = parent
     def get_parent(self):
-        parent = self._parent
-        if parent is None and self._find_parent_cb:
-            parent = self._find_parent_cb()
-        return parent
+        return self._parent
 
     def show_err(self, summary, details=None, title="",
                  modal=None, debug=True,
@@ -86,16 +68,18 @@ class vmmErrorDialog(vmmGObject):
 
         if details is None:
             details = summary
-            tb = "".join(traceback.format_exc()).strip()
-            if tb != "None":
-                details += "\n\n" + tb
+            if sys.exc_info()[0] is not None:
+                details += "\n\n" + "".join(traceback.format_exc()).strip()
         else:
             details = str(details)
 
         if debug:
             debugmsg = "error dialog message:\nsummary=%s" % summary
             if details and details != summary:
-                debugmsg += "\ndetails=%s" % details
+                det = details
+                if details.startswith(summary):
+                    det = details[len(summary):].strip()
+                debugmsg += "\ndetails=%s" % det
             logging.debug(debugmsg)
 
         # Make sure we have consistent details for error dialogs

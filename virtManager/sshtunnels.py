@@ -1,30 +1,16 @@
-#
 # Copyright (C) 2014, 2015 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import functools
 import logging
 import os
-import Queue
+import queue
 import socket
 import signal
 import threading
-import ipaddr
+import ipaddress
 
 from .baseclass import vmmGObject
 
@@ -51,13 +37,13 @@ class ConnectionInfo(object):
 
     def _is_listen_localhost(self, host=None):
         try:
-            return ipaddr.IPNetwork(host or self.gaddr).is_loopback
+            return ipaddress.ip_network(str(host or self.gaddr)).is_loopback
         except Exception:
             return False
 
     def _is_listen_any(self):
         try:
-            return ipaddr.IPNetwork(self.gaddr).is_unspecified
+            return ipaddress.ip_network(str(self.gaddr)).is_unspecified
         except Exception:
             return False
 
@@ -125,7 +111,7 @@ class _TunnelScheduler(object):
     """
     def __init__(self):
         self._thread = None
-        self._queue = Queue.Queue()
+        self._queue = queue.Queue()
         self._lock = threading.Lock()
 
     def _handle_queue(self):
@@ -187,7 +173,7 @@ class _Tunnel(object):
             if not new:
                 break
 
-            errout += new
+            errout += new.decode()
 
         return errout
 

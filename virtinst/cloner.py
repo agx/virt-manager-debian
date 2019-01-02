@@ -4,20 +4,8 @@
 #
 # Cloning a virtual machine module.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 import re
@@ -27,10 +15,10 @@ import libvirt
 
 from . import util
 from .guest import Guest
-from .deviceinterface import VirtualNetworkInterface
-from .devicedisk import VirtualDisk
+from .devices import DeviceInterface
+from .devices import DeviceDisk
 from .storage import StorageVolume
-from .devicechar import VirtualChannelDevice
+from .devices import DeviceChannel
 
 
 class Cloner(object):
@@ -77,16 +65,19 @@ class Cloner(object):
         self.clone_uuid = util.generate_uuid(conn)
 
 
-    # Getter/Setter methods
+    ##############
+    # Properties #
+    ##############
 
+    # Original guest name
     def get_original_guest(self):
         return self._original_guest
     def set_original_guest(self, original_guest):
         if self._lookup_vm(original_guest):
             self._original_guest = original_guest
-    original_guest = property(get_original_guest, set_original_guest,
-                              doc="Original guest name.")
+    original_guest = property(get_original_guest, set_original_guest)
 
+    # XML of the original guest
     def set_original_xml(self, val):
         if not isinstance(val, str):
             raise ValueError(_("Original xml must be a string."))
@@ -95,9 +86,9 @@ class Cloner(object):
                                      parsexml=self._original_xml).name
     def get_original_xml(self):
         return self._original_xml
-    original_xml = property(get_original_xml, set_original_xml,
-                            doc="XML of the original guest.")
+    original_xml = property(get_original_xml, set_original_xml)
 
+    # Name to use for the new guest clone
     def get_clone_name(self):
         return self._clone_name
     def set_clone_name(self, name):
@@ -109,31 +100,31 @@ class Cloner(object):
             raise ValueError(_("Invalid name for new guest: %s") % e)
 
         self._clone_name = name
-    clone_name = property(get_clone_name, set_clone_name,
-                          doc="Name to use for the new guest clone.")
+    clone_name = property(get_clone_name, set_clone_name)
 
+    # UUID to use for the new guest clone
     def set_clone_uuid(self, uuid):
         self._clone_uuid = uuid
     def get_clone_uuid(self):
         return self._clone_uuid
-    clone_uuid = property(get_clone_uuid, set_clone_uuid,
-                          doc="UUID to use for the new guest clone")
+    clone_uuid = property(get_clone_uuid, set_clone_uuid)
 
+    # Paths to use for the new disk locations
     def set_clone_paths(self, paths):
         disklist = []
         for path in util.listify(paths):
             try:
-                device = VirtualDisk.DEVICE_DISK
+                device = DeviceDisk.DEVICE_DISK
                 if not path:
-                    device = VirtualDisk.DEVICE_CDROM
+                    device = DeviceDisk.DEVICE_CDROM
 
-                disk = VirtualDisk(self.conn)
+                disk = DeviceDisk(self.conn)
                 disk.path = path
                 disk.device = device
 
                 if (not self.preserve_dest_disks and
                     disk.wants_storage_creation()):
-                    vol_install = VirtualDisk.build_vol_install(
+                    vol_install = DeviceDisk.build_vol_install(
                         self.conn, os.path.basename(disk.path),
                         disk.get_parent_pool(), .000001, False)
                     disk.set_vol_install(vol_install)
@@ -147,64 +138,58 @@ class Cloner(object):
         self._clone_disks = disklist
     def get_clone_paths(self):
         return [d.path for d in self.clone_disks]
-    clone_paths = property(get_clone_paths, set_clone_paths,
-                             doc="Paths to use for the new disk locations.")
+    clone_paths = property(get_clone_paths, set_clone_paths)
 
-    def get_clone_disks(self):
+    # DeviceDisk instances for the new disk paths
+    @property
+    def clone_disks(self):
         return self._clone_disks
-    clone_disks = property(get_clone_disks,
-                           doc="VirtualDisk instances for the new"
-                               " disk paths")
 
+    # MAC address for the new guest clone
     def set_clone_macs(self, mac):
         maclist = util.listify(mac)
         for m in maclist:
-            msg = VirtualNetworkInterface.is_conflict_net(self.conn, m)[1]
-            if msg:
-                raise RuntimeError(msg)
-
+            DeviceInterface.is_conflict_net(self.conn, m)
         self._clone_macs = maclist
     def get_clone_macs(self):
         return self._clone_macs
-    clone_macs = property(get_clone_macs, set_clone_macs,
-                          doc="MAC address for the new guest clone.")
+    clone_macs = property(get_clone_macs, set_clone_macs)
 
-    def get_original_disks(self):
+    # DeviceDisk instances of the original disks being cloned
+    @property
+    def original_disks(self):
         return self._original_disks
-    original_disks = property(get_original_disks,
-                              doc="VirtualDisk instances of the "
-                                  "original disks being cloned.")
 
+    # Generated XML for the guest clone
     def get_clone_xml(self):
         return self._clone_xml
     def set_clone_xml(self, clone_xml):
         self._clone_xml = clone_xml
-    clone_xml = property(get_clone_xml, set_clone_xml,
-                         doc="Generated XML for the guest clone.")
+    clone_xml = property(get_clone_xml, set_clone_xml)
 
+    # Whether to attempt sparse allocation during cloning
     def get_clone_sparse(self):
         return self._clone_sparse
     def set_clone_sparse(self, flg):
         self._clone_sparse = flg
-    clone_sparse = property(get_clone_sparse, set_clone_sparse,
-                            doc="Whether to attempt sparse allocation during "
-                                "cloning.")
+    clone_sparse = property(get_clone_sparse, set_clone_sparse)
 
+    # If true, preserve ALL original disk devices
     def get_preserve(self):
         return self._preserve
     def set_preserve(self, flg):
         self._preserve = flg
-    preserve = property(get_preserve, set_preserve,
-                        doc="If true, preserve ALL original disk devices.")
+    preserve = property(get_preserve, set_preserve)
 
-    def get_preserve_dest_disks(self):
+    # If true, preserve ALL disk devices for the NEW guest.
+    # This means no storage cloning.
+    # This is a convenience access for not Cloner.preserve
+    @property
+    def preserve_dest_disks(self):
         return not self.preserve
-    preserve_dest_disks = property(get_preserve_dest_disks,
-                           doc="If true, preserve ALL disk devices for the "
-                               "NEW guest. This means no storage cloning. "
-                               "This is a convenience access for "
-                               "(not Cloner.preserve)")
 
+    # List of disk targets that we force cloning despite
+    # Cloner's recommendation
     def set_force_target(self, dev):
         if isinstance(dev, list):
             self._force_target = dev[:]
@@ -212,10 +197,10 @@ class Cloner(object):
             self._force_target.append(dev)
     def get_force_target(self):
         return self._force_target
-    force_target = property(get_force_target, set_force_target,
-                            doc="List of disk targets that we force cloning "
-                                "despite Cloner's recommendation.")
+    force_target = property(get_force_target, set_force_target)
 
+    # List of disk targets that we skip cloning despite Cloner's
+    # recommendation. This takes precedence over force_target.")
     def set_skip_target(self, dev):
         if isinstance(dev, list):
             self._skip_target = dev[:]
@@ -223,45 +208,45 @@ class Cloner(object):
             self._skip_target.append(dev)
     def get_skip_target(self):
         return self._skip_target
-    skip_target = property(get_skip_target, set_skip_target,
-                           doc="List of disk targets that we skip cloning "
-                               "despite Cloner's recommendation. This "
-                               "takes precedence over force_target.")
+    skip_target = property(get_skip_target, set_skip_target)
 
+    # List of policy rules for determining which vm disks to clone.
+    # See CLONE_POLICY_*
     def set_clone_policy(self, policy_list):
         if not isinstance(policy_list, list):
             raise ValueError(_("Cloning policy must be a list of rules."))
         self._clone_policy = policy_list
     def get_clone_policy(self):
         return self._clone_policy
-    clone_policy = property(get_clone_policy, set_clone_policy,
-                            doc="List of policy rules for determining which "
-                                "vm disks to clone. See CLONE_POLICY_*")
+    clone_policy = property(get_clone_policy, set_clone_policy)
 
+    # Allow cloning a running VM. If enabled, domain state is not
+    # checked before cloning.
     def get_clone_running(self):
         return self._clone_running
     def set_clone_running(self, val):
         self._clone_running = bool(val)
-    clone_running = property(get_clone_running, set_clone_running,
-                             doc="Allow cloning a running VM. If enabled, "
-                                 "domain state is not checked before "
-                                 "cloning.")
+    clone_running = property(get_clone_running, set_clone_running)
 
+    # If enabled, don't check for clone name collision, simply undefine
+    # any conflicting guest.
     def _get_replace(self):
         return self._replace
     def _set_replace(self, val):
         self._replace = bool(val)
-    replace = property(_get_replace, _set_replace,
-                       doc="If enabled, don't check for clone name collision, "
-                           "simply undefine any conflicting guest.")
+    replace = property(_get_replace, _set_replace)
+
+    # If true, use COW lightweight copy
     def _get_reflink(self):
         return self._reflink
     def _set_reflink(self, reflink):
         self._reflink = reflink
-    reflink = property(_get_reflink, _set_reflink,
-            doc="If true, use COW lightweight copy")
+    reflink = property(_get_reflink, _set_reflink)
 
-    # Functional methods
+
+    ######################
+    # Functional methods #
+    ######################
 
     def setup_original(self):
         """
@@ -281,7 +266,6 @@ class Cloner(object):
 
         self._guest = Guest(self.conn, parsexml=self.original_xml)
         self._guest.id = None
-        self._guest.replace = self.replace
 
         # Pull clonable storage info from the original xml
         self._original_disks = self._get_original_disks_info()
@@ -309,8 +293,6 @@ class Cloner(object):
             return
 
         if clone_disk.get_vol_object():
-            # XXX We could always do this with vol upload?
-
             # Special case: non remote cloning of a guest using
             # managed block devices: fall back to local cloning if
             # we have permissions to do so. This validation check
@@ -362,18 +344,18 @@ class Cloner(object):
             self.clone_nvram = os.path.join(nvram_dir,
                                             "%s_VARS.fd" % self._clone_name)
 
-        nvram = VirtualDisk(self.conn)
+        nvram = DeviceDisk(self.conn)
         nvram.path = self.clone_nvram
         if (not self.preserve_dest_disks and
             nvram.wants_storage_creation()):
 
-            old_nvram = VirtualDisk(self.conn)
+            old_nvram = DeviceDisk(self.conn)
             old_nvram.path = self._guest.os.nvram
             if not old_nvram.get_vol_object():
                 raise RuntimeError(_("Path does not exist: %s") %
                                      old_nvram.path)
 
-            nvram_install = VirtualDisk.build_vol_install(
+            nvram_install = DeviceDisk.build_vol_install(
                     self.conn, os.path.basename(nvram.path),
                     nvram.get_parent_pool(), nvram.get_size(), False)
             nvram_install.input_vol = old_nvram.get_vol_object()
@@ -405,27 +387,27 @@ class Cloner(object):
         self._guest.name = self._clone_name
         self._guest.uuid = self._clone_uuid
         self._clone_macs.reverse()
-        for dev in self._guest.get_devices("graphics"):
+        for dev in self._guest.devices.graphics:
             if dev.port and dev.port != -1:
                 logging.warning(_("Setting the graphics device port to autoport, "
                                "in order to avoid conflicting."))
                 dev.port = -1
 
         clone_macs = self._clone_macs[:]
-        for iface in self._guest.get_devices("interface"):
+        for iface in self._guest.devices.interface:
             iface.target_dev = None
 
             if clone_macs:
                 mac = clone_macs.pop()
             else:
-                mac = VirtualNetworkInterface.generate_mac(self.conn)
+                mac = DeviceInterface.generate_mac(self.conn)
             iface.macaddr = mac
 
         # Changing storage XML
         for i, orig_disk in enumerate(self._original_disks):
             clone_disk = self._clone_disks[i]
 
-            for disk in self._guest.get_devices("disk"):
+            for disk in self._guest.devices.disk:
                 if disk.target == orig_disk.target:
                     xmldisk = disk
 
@@ -440,15 +422,17 @@ class Cloner(object):
 
         # For guest agent channel, remove a path to generate a new one with
         # new guest name
-        for channel in self._guest.get_devices("channel"):
-            if channel.type == VirtualChannelDevice.TYPE_UNIX:
+        for channel in self._guest.devices.channel:
+            if (channel.type == DeviceChannel.TYPE_UNIX and
+                channel.target_name and channel.source_path and
+                channel.target_name in channel.source_path):
                 channel.source_path = None
 
         if self._guest.os.nvram:
             self._prepare_nvram()
 
         # Save altered clone xml
-        self._clone_xml = self._guest.get_xml_config()
+        self._clone_xml = self._guest.get_xml()
         logging.debug("Clone guest xml is\n%s", self._clone_xml)
 
     def start_duplicate(self, meter=None):
@@ -470,9 +454,9 @@ class Cloner(object):
 
             if self.preserve:
                 for dst_dev in self.clone_disks:
-                    dst_dev.setup(meter=meter)
+                    dst_dev.build_storage(meter)
                 if self._nvram_disk:
-                    self._nvram_disk.setup(meter=meter)
+                    self._nvram_disk.build_storage(meter)
         except Exception as e:
             logging.debug("Duplicate failed: %s", str(e))
             if dom:
@@ -493,7 +477,7 @@ class Cloner(object):
         # If the suffix is greater than 7 characters, assume it isn't
         # a file extension and is part of the disk name, at which point
         # just stick '-clone' on the end.
-        if origpath.count(".") and len(origpath.rsplit(".", 1)[1]) <= 7:
+        if "." in origpath and len(origpath.rsplit(".", 1)[1]) <= 7:
             path, suffix = origpath.rsplit(".", 1)
             suffix = "." + suffix
 
@@ -507,7 +491,7 @@ class Cloner(object):
         clonebase = os.path.join(dirname, clonebase)
         return util.generate_name(
                     clonebase,
-                    lambda p: VirtualDisk.path_definitely_exists(self.conn, p),
+                    lambda p: DeviceDisk.path_definitely_exists(self.conn, p),
                     suffix,
                     lib_collision=False)
 
@@ -536,13 +520,13 @@ class Cloner(object):
     ############################
 
     # Parse disk paths that need to be cloned from the original guest's xml
-    # Return a list of VirtualDisk instances pointing to the original
+    # Return a list of DeviceDisk instances pointing to the original
     # storage
     def _get_original_disks_info(self):
         clonelist = []
         retdisks = []
 
-        for disk in self._guest.get_devices("disk"):
+        for disk in self._guest.devices.disk:
             if self._do_we_clone_device(disk):
                 clonelist.append(disk)
                 continue
@@ -552,12 +536,12 @@ class Cloner(object):
             validate = not self.preserve_dest_disks
 
             try:
-                device = VirtualDisk.DEVICE_DISK
+                device = DeviceDisk.DEVICE_DISK
                 if not disk.path:
-                    # Tell VirtualDisk we are a cdrom to allow empty media
-                    device = VirtualDisk.DEVICE_CDROM
+                    # Tell DeviceDisk we are a cdrom to allow empty media
+                    device = DeviceDisk.DEVICE_CDROM
 
-                newd = VirtualDisk(self.conn)
+                newd = DeviceDisk(self.conn)
                 newd.path = disk.path
                 newd.device = device
                 newd.driver_name = disk.driver_name

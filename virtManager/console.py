@@ -1,23 +1,9 @@
-#
 # Copyright (C) 2006-2008, 2015 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 # Copyright (C) 2010 Marc-Andre Lureau <marcandre.lureau@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 
@@ -656,9 +642,15 @@ class vmmConsolePages(vmmGObjectUI):
             self.widget("console-pages").get_nth_page(i).set_visible(
                 i == newpage)
 
+        # Dispatch the next bit in idle_add, so the UI size can change
         self.idle_add(self._refresh_widget_states)
 
     def _refresh_widget_states(self):
+        if not self.vm:
+            # This is triggered via cleanup + idle_add, so vm might
+            # disappear and spam the logs
+            return
+
         pagenum = self.widget("console-pages").get_current_page()
         paused = self.vm.is_paused()
         is_viewer = bool(pagenum == _CONSOLE_PAGE_VIEWER and
@@ -689,7 +681,7 @@ class vmmConsolePages(vmmGObjectUI):
 
         ginfo = None
         try:
-            gdevs = self.vm.get_graphics_devices()
+            gdevs = self.vm.xmlobj.devices.graphics
             gdev = gdevs and gdevs[0] or None
             if gdev:
                 ginfo = ConnectionInfo(self.vm.conn, gdev)
@@ -872,7 +864,8 @@ class vmmConsolePages(vmmGObjectUI):
         """
         Find the default graphical or serial console for the VM
         """
-        if self.vm.get_graphics_devices() or not self.vm.get_serial_devs():
+        if (self.vm.xmlobj.devices.graphics or
+            not self.vm.get_serialcon_devices()):
             return
 
         # We iterate through the 'console' menu and activate the first
@@ -890,11 +883,11 @@ class vmmConsolePages(vmmGObjectUI):
     def _console_menu_toggled(self, src, dev):
         self.widget("details-pages").set_current_page(DETAILS_PAGE_CONSOLE)
 
-        if dev.virtual_device_type == "graphics":
+        if dev.DEVICE_TYPE == "graphics":
             self.widget("console-pages").set_current_page(_CONSOLE_PAGE_VIEWER)
             return
 
-        target_port = dev.vmmindex
+        target_port = dev.get_xml_idx()
         serial = None
         name = src.get_label()
         for s in self._serial_consoles:
@@ -919,7 +912,7 @@ class vmmConsolePages(vmmGObjectUI):
         self.widget("serial-pages").set_current_page(page_idx)
 
     def _build_serial_menu_items(self, menu_item_cb):
-        devs = self.vm.get_serial_devs()
+        devs = self.vm.get_serialcon_devices()
         if len(devs) == 0:
             menu_item_cb(_("No text console available"),
                          radio=False, sensitive=False)
@@ -933,10 +926,10 @@ class vmmConsolePages(vmmGObjectUI):
                 active_label = self._serial_consoles[serial_page].name
 
         for dev in devs:
-            if dev.virtual_device_type == "console":
-                label = _("Text Console %d") % (dev.vmmindex + 1)
+            if dev.DEVICE_TYPE == "console":
+                label = _("Text Console %d") % (dev.get_xml_idx() + 1)
             else:
-                label = _("Serial %d") % (dev.vmmindex + 1)
+                label = _("Serial %d") % (dev.get_xml_idx() + 1)
 
             tooltip = vmmSerialConsole.can_connect(self.vm, dev)
             sensitive = not bool(tooltip)
@@ -946,7 +939,7 @@ class vmmConsolePages(vmmGObjectUI):
                 tooltip=tooltip, cb=self._console_menu_toggled, cbdata=dev)
 
     def _build_graphical_menu_items(self, menu_item_cb):
-        devs = self.vm.get_graphics_devices()
+        devs = self.vm.xmlobj.devices.graphics
         if len(devs) == 0:
             menu_item_cb(_("No graphical console available"),
                          radio=False, sensitive=False)

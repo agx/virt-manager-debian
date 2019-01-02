@@ -1,19 +1,7 @@
 # Copyright (C) 2013 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import os
 import unittest
@@ -22,18 +10,18 @@ import logging
 from virtinst import Interface, InterfaceProtocol
 from tests import utils
 
-conn = utils.open_testdriver()
 datadir = "tests/interface-xml"
 
 
-def _m(_n):
-    xml = conn.interfaceLookupByName(_n).XMLDesc(0)
-    return Interface(conn, parsexml=xml)
 
 
 class TestInterfaces(unittest.TestCase):
+    @property
+    def conn(self):
+        return utils.URIs.open_testdriver_cached()
+
     def build_interface(self, interface_type, name):
-        iobj = Interface(conn)
+        iobj = Interface(self.conn)
         iobj.type = interface_type
         iobj.name = name
 
@@ -43,11 +31,14 @@ class TestInterfaces(unittest.TestCase):
         iface_obj.mtu = 1501
         iface_obj.macaddr = "AA:AA:AA:AA:AA:AA"
         iface_obj.start_mode = Interface.INTERFACE_START_MODE_ONBOOT
-        proto = InterfaceProtocol(conn)
+        proto = InterfaceProtocol(self.conn)
         proto.family = InterfaceProtocol.INTERFACE_PROTOCOL_FAMILY_IPV4
         iface_obj.add_protocol(proto)
 
     def add_child_interfaces(self, iface_obj):
+        def _m(_n):
+            xml = self.conn.interfaceLookupByName(_n).XMLDesc(0)
+            return Interface(self.conn, parsexml=xml)
         if iface_obj.type == Interface.INTERFACE_TYPE_BRIDGE:
             iface_obj.add_interface(_m("vlaneth1"))
             iface_obj.add_interface(_m("bond-brbond"))
@@ -60,7 +51,7 @@ class TestInterfaces(unittest.TestCase):
     def define_xml(self, obj, compare=True):
         obj.validate()
 
-        xml = obj.get_xml_config()
+        xml = obj.get_xml()
         logging.debug("Defining interface XML:\n%s", xml)
 
         if compare:
@@ -93,7 +84,7 @@ class TestInterfaces(unittest.TestCase):
         self.add_child_interfaces(obj)
 
         # IPv4 proto
-        iface_proto1 = InterfaceProtocol(conn)
+        iface_proto1 = InterfaceProtocol(self.conn)
         iface_proto1.family = InterfaceProtocol.INTERFACE_PROTOCOL_FAMILY_IPV4
         iface_proto1.add_ip("129.63.1.2")
         iface_proto1.add_ip("255.255.255.0")
@@ -102,7 +93,7 @@ class TestInterfaces(unittest.TestCase):
         iface_proto1.dhcp_peerdns = True
 
         # IPv6 proto
-        iface_proto2 = InterfaceProtocol(conn)
+        iface_proto2 = InterfaceProtocol(self.conn)
         iface_proto2.family = InterfaceProtocol.INTERFACE_PROTOCOL_FAMILY_IPV6
 
         iface_proto2.add_ip("fe99::215:58ff:fe6e:5", prefix="32")
@@ -204,11 +195,7 @@ class TestInterfaces(unittest.TestCase):
         protoxml = ("  <protocol family='ipv6'>\n"
                     "    <dhcp/>\n"
                     "  </protocol>\n")
-        proto = InterfaceProtocol(conn, parsexml=protoxml)
+        proto = InterfaceProtocol(self.conn, parsexml=protoxml)
         obj.add_protocol(proto)
 
         self.define_xml(obj)
-
-
-if __name__ == "__main__":
-    unittest.main()

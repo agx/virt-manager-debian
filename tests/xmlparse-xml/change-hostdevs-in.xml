@@ -43,5 +43,20 @@
         <address bus="0" target="0" unit="0"/>
       </source>
     </hostdev>
+    <hostdev mode="capabilities" type="net" managed="yes">
+      <source>
+        <interface>wlan0</interface>
+      </source>
+    </hostdev>
+    <hostdev mode="capabilities" type="misc" managed="yes">
+      <source>
+        <char>/dev/net/tun</char>
+      </source>
+    </hostdev>
+    <hostdev mode="capabilities" type="storage" managed="yes">
+      <source>
+        <block>/dev/sdf</block>
+      </source>
+    </hostdev>
   </devices>
 </domain>

@@ -1,25 +1,10 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 #
 # Copyright (C) 2006, 2014 Red Hat, Inc.
 # Copyright (C) 2006 Daniel P. Berrange <berrange@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
-
-from __future__ import print_function
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import argparse
 import logging
@@ -32,8 +17,8 @@ import gi
 gi.require_version('LibvirtGLib', '1.0')
 from gi.repository import LibvirtGLib
 
-from virtinst import util as util
-from virtinst import cli as virtinstcli
+from virtinst import util
+from virtinst import cli
 from virtcli import CLIConfig
 
 # This is massively heavy handed, but I can't figure out any way to shut
@@ -54,7 +39,7 @@ def _show_startup_error(msg, details):
     logging.debug("Error starting virt-manager: %s\n%s", msg, details,
                   exc_info=True)
     from virtManager.error import vmmErrorDialog
-    err = vmmErrorDialog()
+    err = vmmErrorDialog.get_instance()
     title = _("Error starting Virtual Machine Manager")
     err.show_err(title + ": " + msg,
                  details=details,
@@ -83,8 +68,9 @@ def _import_gtk(leftovers):
 
         # This will error if Gtk wasn't correctly initialized
         Gtk.init()
-
         globals()["Gtk"] = Gtk
+
+        # This ensures we can init gsettings correctly
         import virtManager.config
         ignore = virtManager.config
     except Exception as e:
@@ -136,8 +122,8 @@ def parse_commandline():
     parser.set_defaults(domain=None)
 
     # Trace every libvirt API call to debug output
-    parser.add_argument("--trace-libvirt",
-        help=argparse.SUPPRESS, action="store_true")
+    parser.add_argument("--trace-libvirt", choices=["all", "mainloop"],
+        help=argparse.SUPPRESS)
 
     # Don't load any connections on startup to test first run
     # PackageKit integration
@@ -149,6 +135,15 @@ def parse_commandline():
     # Force disable use of libvirt object events
     parser.add_argument("--test-no-events",
         help=argparse.SUPPRESS, action="store_true")
+    # Enabling this will tell us, at app exit time, which vmmGObjects were not
+    # garbage collected. This is caused by circular references to other objects,
+    # like a signal that wasn't disconnected. It's not a big deal, but if we
+    # have objects that can be created and destroyed a lot over the course of
+    # the app lifecycle, every non-garbage collected class is a memory leak.
+    # So it's nice to poke at this every now and then and try to track down
+    # what we need to add to class _cleanup handling.
+    parser.add_argument("--test-leak-debug",
+        help=argparse.SUPPRESS, action="store_true")
 
     parser.add_argument("-c", "--connect", dest="uri",
         help="Connect to hypervisor at URI", metavar="URI")
@@ -157,10 +152,6 @@ def parse_commandline():
         default=False)
     parser.add_argument("--no-fork", action="store_true",
         help="Don't fork into background on startup")
-    parser.add_argument("--no-conn-autostart", action="store_true",
-        dest="skip_autostart", help="Do not autostart connections")
-    parser.add_argument("--spice-disable-auto-usbredir", action="store_true",
-        dest="usbredir", help="Disable Auto USB redirection support")
 
     parser.add_argument("--show-domain-creator", action="store_true",
         help="Show 'New VM' wizard")
@@ -179,7 +170,7 @@ def parse_commandline():
 def main():
     (options, leftovers) = parse_commandline()
 
-    virtinstcli.setupLogging("virt-manager", options.debug, False, False)
+    cli.setupLogging("virt-manager", options.debug, False, False)
 
     import virtManager
     logging.debug("virt-manager version: %s", CLIConfig.version)
@@ -189,7 +180,14 @@ def main():
         logging.debug("Libvirt tracing requested")
         import virtManager.module_trace
         import libvirt
-        virtManager.module_trace.wrap_module(libvirt, regex=None)
+        virtManager.module_trace.wrap_module(libvirt,
+                mainloop=(options.trace_libvirt == "mainloop"),
+                regex=None)
+
+    # With F27 gnome+wayland we need to set these before GTK import
+    os.environ["GSETTINGS_SCHEMA_DIR"] = CLIConfig.gsettings_dir
+    if options.test_first_run:
+        os.environ["GSETTINGS_BACKEND"] = "memory"
 
     # Now we've got basic environment up & running we can fork
     do_drop_stdio = False
@@ -219,8 +217,9 @@ def main():
                   Gtk.get_minor_version(),
                   Gtk.get_micro_version())
 
-    config = virtManager.config.vmmConfig(
-        "virt-manager", CLIConfig, options.test_first_run)
+    config = virtManager.config.vmmConfig.get_instance(CLIConfig,
+            options.test_first_run)
+    config.test_leak_debug = options.test_leak_debug
 
     if not util.local_libvirt_version() >= 6000:
         # We need this version for threaded virConnect access
@@ -228,9 +227,6 @@ def main():
                 _("virt-manager requires libvirt 0.6.0 or later."), "")
         return
 
-
-    if options.usbredir and config.get_auto_redirection():
-        config.cli_usbredir = False
 
     # Add our icon dir to icon theme
     icon_theme = Gtk.IconTheme.get_default()
@@ -265,25 +261,26 @@ def main():
     if show_window and options.uri is None:
         raise RuntimeError("can't use --show-* options without --connect")
 
+    skip_autostart = False
     if show_window:
-        options.skip_autostart = True
+        skip_autostart = True
 
     # Hook libvirt events into glib main loop
     LibvirtGLib.init(None)
     LibvirtGLib.event_register()
 
-    engine = vmmEngine()
+    engine = vmmEngine.get_instance()
 
     # Actually exit when we receive ctrl-c
     from gi.repository import GLib
     def _sigint_handler(user_data):
         ignore = user_data
         logging.debug("Received KeyboardInterrupt. Exiting application.")
-        engine.exit_app(None)
+        engine.exit_app()
     GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGINT,
                          _sigint_handler, None)
 
-    engine.start(options.uri, show_window, domain, options.skip_autostart)
+    engine.start(options.uri, show_window, domain, skip_autostart)
 
 
 if __name__ == "__main__":
@@ -291,8 +288,6 @@ if __name__ == "__main__":
         main()
     except KeyboardInterrupt:
         logging.debug("Received KeyboardInterrupt. Exiting application.")
-    except SystemExit:
-        raise
     except Exception as run_e:
         if "Gtk" not in globals():
             raise

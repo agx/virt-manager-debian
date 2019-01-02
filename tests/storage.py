@@ -1,19 +1,7 @@
 # Copyright (C) 2013 Red Hat, Inc.
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 import os
@@ -40,7 +28,8 @@ def createPool(conn, ptype, poolname=None, fmt=None, target_path=None,
     pool_inst.type = ptype
 
     if pool_inst.supports_property("hosts"):
-        pool_inst.add_host("some.random.hostname")
+        hostobj = pool_inst.hosts.add_new()
+        hostobj.name = "some.random.hostname"
     if pool_inst.supports_property("source_path"):
         pool_inst.source_path = source_path or "/some/source/path"
     if pool_inst.supports_property("target_path"):
@@ -52,13 +41,18 @@ def createPool(conn, ptype, poolname=None, fmt=None, target_path=None,
     if iqn and pool_inst.supports_property("iqn"):
         pool_inst.iqn = iqn
 
-    pool_inst.validate()
     return poolCompare(pool_inst)
 
 
+def removePool(poolobj):
+    poolobj.destroy()
+    poolobj.undefine()
+
+
 def poolCompare(pool_inst):
+    pool_inst.validate()
     filename = os.path.join(basepath, pool_inst.name + ".xml")
-    out_expect = pool_inst.get_xml_config()
+    out_expect = pool_inst.get_xml()
 
     if not os.path.exists(filename):
         open(filename, "w").write(out_expect)
@@ -99,14 +93,14 @@ def createVol(conn, poolobj, volname=None, input_vol=None, clone_vol=None):
 
     vol_inst.validate()
     filename = os.path.join(basepath, vol_inst.name + ".xml")
-    utils.diff_compare(vol_inst.get_xml_config(), filename)
+    utils.diff_compare(vol_inst.get_xml(), filename)
     return vol_inst.install(meter=False)
 
 
 class TestStorage(unittest.TestCase):
-
-    def setUp(self):
-        self.conn = utils.open_testdefault()
+    @property
+    def conn(self):
+        return utils.URIs.open_testdefault_cached()
 
     def testDirPool(self):
         poolobj = createPool(self.conn,
@@ -116,6 +110,7 @@ class TestStorage(unittest.TestCase):
                   volname=invol.name() + "input", input_vol=invol)
         createVol(self.conn, poolobj,
                   volname=invol.name() + "clone", clone_vol=invol)
+        removePool(poolobj)
 
     def testFSPool(self):
         poolobj = createPool(self.conn,
@@ -125,6 +120,7 @@ class TestStorage(unittest.TestCase):
                   volname=invol.name() + "input", input_vol=invol)
         createVol(self.conn, poolobj,
                   volname=invol.name() + "clone", clone_vol=invol)
+        removePool(poolobj)
 
     def testNetFSPool(self):
         poolobj = createPool(self.conn,
@@ -134,6 +130,7 @@ class TestStorage(unittest.TestCase):
                   volname=invol.name() + "input", input_vol=invol)
         createVol(self.conn, poolobj,
                   volname=invol.name() + "clone", clone_vol=invol)
+        removePool(poolobj)
 
     def testLVPool(self):
         poolobj = createPool(self.conn,
@@ -145,23 +142,19 @@ class TestStorage(unittest.TestCase):
                   volname=invol.name() + "input", input_vol=invol)
         createVol(self.conn,
                   poolobj, volname=invol.name() + "clone", clone_vol=invol)
+        removePool(poolobj)
 
         # Test parsing source name for target path
-        createPool(self.conn, StoragePool.TYPE_LOGICAL,
+        poolobj = createPool(self.conn, StoragePool.TYPE_LOGICAL,
                    "pool-logical-target-srcname",
                    target_path="/dev/vgfoobar")
+        removePool(poolobj)
 
         # Test with source name
-        createPool(self.conn,
+        poolobj = createPool(self.conn,
                    StoragePool.TYPE_LOGICAL, "pool-logical-srcname",
                    source_name="vgname")
-
-        # Test creating with many devices
-        # XXX: Need to wire this up
-        # createPool(self.conn,
-        #            StoragePool.TYPE_LOGICAL, "pool-logical-manydev",
-        #            source_path=["/tmp/path1", "/tmp/path2", "/tmp/path3"],
-        #            target_path=None)
+        removePool(poolobj)
 
     def testDiskPool(self):
         poolobj = createPool(self.conn,
@@ -172,24 +165,26 @@ class TestStorage(unittest.TestCase):
                   volname=invol.name() + "input", input_vol=invol)
         createVol(self.conn, poolobj,
                   volname=invol.name() + "clone", clone_vol=invol)
+        removePool(poolobj)
 
     def testISCSIPool(self):
-        createPool(self.conn,
+        poolobj = createPool(self.conn,
                    StoragePool.TYPE_ISCSI, "pool-iscsi",
                    iqn="foo.bar.baz.iqn")
+        removePool(poolobj)
 
     def testSCSIPool(self):
-        createPool(self.conn, StoragePool.TYPE_SCSI, "pool-scsi")
+        poolobj = createPool(self.conn, StoragePool.TYPE_SCSI, "pool-scsi")
+        removePool(poolobj)
 
     def testMpathPool(self):
-        createPool(self.conn, StoragePool.TYPE_MPATH, "pool-mpath")
+        poolobj = createPool(self.conn, StoragePool.TYPE_MPATH, "pool-mpath")
+        removePool(poolobj)
 
     def testGlusterPool(self):
-        if not self.conn.check_support(self.conn.SUPPORT_CONN_POOL_GLUSTERFS):
-            raise unittest.SkipTest("Gluster pools not supported with this "
-                "libvirt version.")
-
-        createPool(self.conn, StoragePool.TYPE_GLUSTER, "pool-gluster")
+        poolobj = createPool(self.conn,
+                StoragePool.TYPE_GLUSTER, "pool-gluster")
+        removePool(poolobj)
 
 
     ##############################
@@ -199,7 +194,8 @@ class TestStorage(unittest.TestCase):
     def _enumerateCompare(self, name, pool_list):
         for pool in pool_list:
             pool.name = name + str(pool_list.index(pool))
-            poolCompare(pool)
+            poolobj = poolCompare(pool)
+            removePool(poolobj)
 
     def testEnumerateLogical(self):
         name = "pool-logical-list"
@@ -221,6 +217,3 @@ class TestStorage(unittest.TestCase):
                                                  StoragePool.TYPE_ISCSI,
                                                  host=host)
         self.assertTrue(len(lst) == 0)
-
-if __name__ == "__main__":
-    unittest.main()

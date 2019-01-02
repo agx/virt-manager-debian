@@ -1,22 +1,8 @@
-#
 # Copyright (C) 2009, 2013 Red Hat, Inc.
 # Copyright (C) 2009 Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
-#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import logging
 import traceback
@@ -28,8 +14,9 @@ from gi.repository import Pango
 from virtinst import util
 
 from . import uiutil
-from .baseclass import vmmGObjectUI
 from .asyncjob import vmmAsyncJob
+from .baseclass import vmmGObjectUI
+from .connmanager import vmmConnectionManager
 from .domain import vmmDomain
 
 
@@ -40,11 +27,19 @@ NUM_COLS = 3
 
 
 class vmmMigrateDialog(vmmGObjectUI):
-    def __init__(self, engine):
+    @classmethod
+    def show_instance(cls, parentobj, vm):
+        try:
+            if not cls._instance:
+                cls._instance = vmmMigrateDialog()
+            cls._instance.show(parentobj.topwin, vm)
+        except Exception as e:
+            parentobj.err.show_err(
+                    _("Error launching migrate dialog: %s") % str(e))
+
+    def __init__(self):
         vmmGObjectUI.__init__(self, "migrate.ui", "vmm-migrate")
         self.vm = None
-        self.conn = None
-        self._conns = {}
 
         self.builder.connect_signals({
             "on_vmm_migrate_delete_event": self._delete_event,
@@ -57,14 +52,21 @@ class vmmMigrateDialog(vmmGObjectUI):
             "on_migrate_mode_changed": self._mode_changed,
         })
         self.bind_escape_key_close()
+        self._cleanup_on_app_close()
 
-        self._init_state(engine)
+        self._init_state()
 
 
     def _cleanup(self):
         self.vm = None
-        self.conn = None
-        self._conns = None
+
+    @property
+    def _connobjs(self):
+        return vmmConnectionManager.get_instance().conns
+
+    @property
+    def conn(self):
+        return self.vm and self.vm.conn or None
 
 
     ##############
@@ -73,8 +75,7 @@ class vmmMigrateDialog(vmmGObjectUI):
 
     def show(self, parent, vm):
         logging.debug("Showing migrate wizard")
-        self.vm = vm
-        self.conn = vm.conn
+        self._set_vm(vm)
         self._reset_state()
         self.topwin.set_transient_for(parent)
         self.topwin.present()
@@ -82,14 +83,27 @@ class vmmMigrateDialog(vmmGObjectUI):
     def close(self, ignore1=None, ignore2=None):
         logging.debug("Closing migrate wizard")
         self.topwin.hide()
+        self._set_vm(None)
         return 1
+
+    def _vm_removed(self, _conn, connkey):
+        if self.vm.get_connkey() == connkey:
+            self.close()
+
+    def _set_vm(self, newvm):
+        oldvm = self.vm
+        if oldvm:
+            oldvm.conn.disconnect_by_obj(self)
+        if newvm:
+            newvm.conn.connect("vm-removed", self._vm_removed)
+        self.vm = newvm
 
 
     ################
     # Init helpers #
     ################
 
-    def _init_state(self, engine):
+    def _init_state(self):
         blue = Gdk.color_parse("#0072A8")
         self.widget("header").modify_bg(Gtk.StateType.NORMAL, blue)
 
@@ -129,9 +143,6 @@ class vmmMigrateDialog(vmmGObjectUI):
         combo.set_model(model)
         uiutil.init_combo_text_column(combo, 0)
 
-        # Hook up signals to get connection listing
-        engine.connect("conn-added", self._conn_added_cb)
-        engine.connect("conn-removed", self._conn_removed_cb)
         self.widget("migrate-dest").emit("changed")
 
         self.widget("migrate-mode").set_tooltip_text(
@@ -213,8 +224,8 @@ class vmmMigrateDialog(vmmGObjectUI):
         tunnel_warning = ""
         tunnel_uri = ""
 
-        if can_migrate and uri in self._conns:
-            destconn = self._conns[uri]
+        if can_migrate and uri in self._connobjs:
+            destconn = self._connobjs[uri]
 
             tunnel_uri = destconn.get_uri()
             if not destconn.is_remote():
@@ -269,14 +280,6 @@ class vmmMigrateDialog(vmmGObjectUI):
         self.widget("migrate-direct-box").set_visible(not is_tunnel)
         self.widget("migrate-tunnel-box").set_visible(is_tunnel)
 
-    def _conn_added_cb(self, engine, conn):
-        ignore = engine
-        self._conns[conn.get_uri()] = conn
-
-    def _conn_removed_cb(self, engine, uri):
-        ignore = engine
-        del(self._conns[uri])
-
 
     ###########################
     # destconn combo handling #
@@ -313,7 +316,7 @@ class vmmMigrateDialog(vmmGObjectUI):
         model.clear()
 
         rows = []
-        for conn in self._conns.values():
+        for conn in list(self._connobjs.values()):
             rows.append(self._build_dest_row(conn))
 
         if not any([row[COL_CAN_MIGRATE] for row in rows]):
@@ -361,15 +364,15 @@ class vmmMigrateDialog(vmmGObjectUI):
             error = _("Unable to migrate guest: %s") % error
             self.err.show_err(error, details=details)
         else:
-            self.conn.schedule_priority_tick(pollvm=True)
             destconn.schedule_priority_tick(pollvm=True)
+            self.conn.schedule_priority_tick(pollvm=True)
             self.close()
 
     def _finish(self):
         try:
             row = uiutil.get_list_selected_row(self.widget("migrate-dest"))
             destlabel = row[COL_LABEL]
-            destconn = self._conns.get(row[COL_URI])
+            destconn = self._connobjs.get(row[COL_URI])
 
             tunnel = self._is_tunnel_selected()
             unsafe = self.widget("migrate-unsafe").get_active()

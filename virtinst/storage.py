@@ -2,25 +2,12 @@
 # Copyright 2008, 2013, 2015 Red Hat, Inc.
 # Cole Robinson <crobinso@redhat.com>
 #
-# This program is free software; you can redistribute it and/or modify
-# it under the terms of the GNU General Public License as published by
-# the Free Software Foundation; either version 2 of the License, or
-# (at your option) any later version.
-#
-# This program is distributed in the hope that it will be useful,
-# but WITHOUT ANY WARRANTY; without even the implied warranty of
-# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-# GNU General Public License for more details.
-#
-# You should have received a copy of the GNU General Public License
-# along with this program; if not, write to the Free Software
-# Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston,
-# MA 02110-1301 USA.
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
 
 import os
-import threading
-import time
 import logging
+import threading
 
 import libvirt
 
@@ -35,7 +22,7 @@ _DEFAULT_MPATH_TARGET = "/dev/mapper"
 
 
 class _StoragePermissions(XMLBuilder):
-    _XML_ROOT_NAME = "permissions"
+    XML_NAME = "permissions"
     _XML_PROP_ORDER = ["mode", "owner", "group", "label"]
 
     mode = XMLProperty("./mode")
@@ -51,27 +38,11 @@ class _StorageObject(XMLBuilder):
     Meaningless to directly instantiate.
     """
 
-    ######################
-    # Validation helpers #
-    ######################
-
-    def _check_name_collision(self, name):
-        raise NotImplementedError()
-
-    def _validate_name(self, name):
-        if name == self.name:
-            return
-        util.validate_name(_("Storage object"), name)
-        self._check_name_collision(name)
-        return name
-
-
     ##############
     # Properties #
     ##############
 
-    name = XMLProperty("./name", validate_cb=_validate_name,
-                      doc=_("Name for the storage object."))
+    name = XMLProperty("./name")
     permissions = XMLChildProperty(_StoragePermissions,
                                    relative_xpath="./target",
                                    is_single=True)
@@ -84,9 +55,18 @@ def _get_default_pool_path(conn):
     return path
 
 
+class _EnumerateSource(XMLBuilder):
+    XML_NAME = "source"
+
+
+class _EnumerateSources(XMLBuilder):
+    XML_NAME = "sources"
+    sources = XMLChildProperty(_EnumerateSource)
+
+
 class _Host(XMLBuilder):
     _XML_PROP_ORDER = ["name", "port"]
-    _XML_ROOT_NAME = "host"
+    XML_NAME = "host"
 
     name = XMLProperty("./@name")
     port = XMLProperty("./@port", is_int=True)
@@ -130,7 +110,7 @@ class StoragePool(_StorageObject):
         """
         Return list of appropriate pool types
         """
-        return StoragePool._descs.keys()
+        return list(StoragePool._descs.keys())
 
     @staticmethod
     def get_pool_type_desc(pool_type):
@@ -145,14 +125,11 @@ class StoragePool(_StorageObject):
         Return a list of StoragePool instances built from libvirt's pool
         source enumeration (if supported).
 
-        @param conn: Libvirt connection
-        @param name: Name for the new pool
-        @param pool_type: Pool type string from I{Types}
-        @param host: Option host string to poll for sources
+        :param conn: Libvirt connection
+        :param name: Name for the new pool
+        :param pool_type: Pool type string from I{Types}
+        :param host: Option host string to poll for sources
         """
-        if not conn.check_support(conn.SUPPORT_CONN_FINDPOOLSOURCES):
-            return []
-
         if host:
             source_xml = "<source><host name='%s'/></source>" % host
         else:
@@ -165,20 +142,13 @@ class StoragePool(_StorageObject):
                 return []
             raise
 
-        class _EnumerateSource(XMLBuilder):
-            _XML_ROOT_NAME = "source"
-        class _EnumerateSources(XMLBuilder):
-            _XML_ROOT_NAME = "sources"
-            sources = XMLChildProperty(_EnumerateSource)
-
-
         ret = []
         sources = _EnumerateSources(conn, xml)
         for source in sources.sources:
-            source_xml = source.get_xml_config()
+            source_xml = source.get_xml()
 
             pool_xml = "<pool>\n%s\n</pool>" % (
-                XMLBuilder.xml_indent(source_xml, 2))
+                util.xml_indent(source_xml, 2))
             parseobj = StoragePool(conn, parsexml=pool_xml)
             parseobj.type = pool_type
 
@@ -186,8 +156,8 @@ class StoragePool(_StorageObject):
             obj.type = pool_type
             obj.source_path = parseobj.source_path
             for h in parseobj.hosts:
-                parseobj.remove_host(h)
-                obj.add_host_obj(h)
+                parseobj.remove_child(h)
+                obj.add_child(h)
             obj.source_name = parseobj.source_name
             obj.format = parseobj.format
 
@@ -233,18 +203,6 @@ class StoragePool(_StorageObject):
                 (path, str(e)))
 
     @staticmethod
-    def manage_path(conn, path):
-        """
-        If the passed path is managed, lookup its storage objects.
-        If the passed path isn't managed, attempt to manage it if
-        we can.
-
-        :returns: (vol, parent pool) tuple
-        """
-        from . import diskbackend
-        return diskbackend.manage_path(conn, path)
-
-    @staticmethod
     def get_default_dir(conn, build=False):
         """
         Return the default storage dir. If there's a 'default' pool,
@@ -277,7 +235,7 @@ class StoragePool(_StorageObject):
         return the first we find, active or inactive. This iterates over
         all pools and dumps their xml, so it is NOT quick.
 
-        @returns: virStoragePool object if found, None otherwise
+        :returns: virStoragePool object if found, None otherwise
         """
         if not conn.check_support(conn.SUPPORT_CONN_STORAGE):
             return None
@@ -308,17 +266,18 @@ class StoragePool(_StorageObject):
     # Validation helpers #
     ######################
 
-    def _check_name_collision(self, name):
-        pool = None
-        try:
-            pool = self.conn.storagePoolLookupByName(name)
-        except libvirt.libvirtError:
-            pass
-        if pool:
-            raise ValueError(_("Name '%s' already in use by another pool." %
-                                name))
+    @staticmethod
+    def validate_name(conn, name):
+        util.validate_name(_("Storage object"), name)
 
-    def _get_default_target_path(self):
+        try:
+            conn.storagePoolLookupByName(name)
+        except libvirt.libvirtError:
+            return
+        raise ValueError(_("Name '%s' already in use by another pool." %
+                            name))
+
+    def default_target_path(self):
         if not self.supports_property("target_path"):
             return None
         if (self.type == self.TYPE_DIR or
@@ -353,7 +312,7 @@ class StoragePool(_StorageObject):
         return setattr(self, self._type_to_source_prop(), val)
     source_path = property(_get_source, _set_source)
 
-    def _default_source_name(self):
+    def default_source_name(self):
         srcname = None
 
         if not self.supports_property("source_name"):
@@ -374,17 +333,12 @@ class StoragePool(_StorageObject):
 
         return srcname
 
-    def _default_format_cb(self):
-        if not self.supports_property("format"):
-            return None
-        return "auto"
-
 
     ##############
     # Properties #
     ##############
 
-    _XML_ROOT_NAME = "pool"
+    XML_NAME = "pool"
     _XML_PROP_ORDER = ["name", "type", "uuid",
                        "capacity", "allocation", "available",
                        "format", "hosts",
@@ -398,38 +352,23 @@ class StoragePool(_StorageObject):
     _source_adapter = XMLProperty("./source/adapter/@name")
     _source_device = XMLProperty("./source/device/@path")
 
-    type = XMLProperty("./@type",
-        doc=_("Storage device type the pool will represent."))
+    type = XMLProperty("./@type")
     uuid = XMLProperty("./uuid")
 
     capacity = XMLProperty("./capacity", is_int=True)
     allocation = XMLProperty("./allocation", is_int=True)
     available = XMLProperty("./available", is_int=True)
 
-    format = XMLProperty("./source/format/@type",
-                         default_cb=_default_format_cb)
-    iqn = XMLProperty("./source/initiator/iqn/@name",
-                      doc=_("iSCSI initiator qualified name"))
-    source_name = XMLProperty("./source/name",
-                              default_cb=_default_source_name,
-                              doc=_("Name of the Volume Group"))
+    format = XMLProperty("./source/format/@type")
+    iqn = XMLProperty("./source/initiator/iqn/@name")
+    source_name = XMLProperty("./source/name")
 
     auth_type = XMLProperty("./source/auth/@type")
     auth_username = XMLProperty("./source/auth/@username")
     auth_secret_uuid = XMLProperty("./source/auth/secret/@uuid")
 
-    target_path = XMLProperty("./target/path",
-                              default_cb=_get_default_target_path)
+    target_path = XMLProperty("./target/path")
 
-    def add_host_obj(self, obj):
-        self.add_child(obj)
-    def add_host(self, name, port=None):
-        obj = _Host(self.conn)
-        obj.name = name
-        obj.port = port
-        self.add_child(obj)
-    def remove_host(self, obj):
-        self.remove_child(obj)
     hosts = XMLChildProperty(_Host, relative_xpath="./source")
 
 
@@ -457,16 +396,6 @@ class StoragePool(_StorageObject):
             return self.type in users[propname]
         return hasattr(self, propname)
 
-    def list_formats(self):
-        if self.type == self.TYPE_FS:
-            return ["auto", "ext2", "ext3", "ext4", "ufs", "iso9660", "udf",
-                    "gfs", "gfs2", "vfat", "hfs+", "xfs"]
-        if self.type == self.TYPE_NETFS:
-            return ["auto", "nfs", "glusterfs"]
-        if self.type == self.TYPE_DISK:
-            return ["auto", "bsd", "dos", "dvh", "gpt", "mac", "pc98", "sun"]
-        return []
-
     def supports_volume_creation(self):
         return self.type in [
             StoragePool.TYPE_DIR, StoragePool.TYPE_FS,
@@ -489,12 +418,22 @@ class StoragePool(_StorageObject):
             return StorageVolume.TYPE_NETWORK
         return StorageVolume.TYPE_FILE
 
+
     ##################
     # Build routines #
     ##################
 
     def validate(self):
-        if self.supports_property("host") and not self.hosts:
+        self.validate_name(self.conn, self.name)
+
+        if not self.target_path:
+            self.target_path = self.default_target_path()
+        if not self.source_name:
+            self.source_name = self.default_source_name()
+        if not self.format and self.supports_property("format"):
+            self.format = "auto"
+
+        if self.supports_property("hosts") and not self.hosts:
             raise RuntimeError(_("Hostname is required"))
         if (self.supports_property("source_path") and
             self.type != self.TYPE_LOGICAL and
@@ -519,7 +458,7 @@ class StoragePool(_StorageObject):
             raise ValueError(_("Must explicitly specify disk format if "
                                "formatting disk device."))
 
-        xml = self.get_xml_config()
+        xml = self.get_xml()
         logging.debug("Creating storage pool '%s' with xml:\n%s",
                       self.name, xml)
 
@@ -554,8 +493,8 @@ class StoragePool(_StorageObject):
             try:
                 pool.undefine()
             except Exception as e:
-                logging.debug("Error cleaning up pool after failure: " +
-                              "%s" % str(e))
+                logging.debug("Error cleaning up pool after failure: %s",
+                              str(e))
             raise RuntimeError(errmsg)
 
         self.conn.cache_new_pool(pool)
@@ -568,9 +507,6 @@ class StorageVolume(_StorageObject):
     """
     Base class for building and installing libvirt storage volume xml
     """
-    ALL_FORMATS = ["raw", "bochs", "cloop", "dmg", "iso", "qcow",
-                   "qcow2", "qed", "vmdk", "vpc", "fat", "vhd", "vdi"]
-
     @staticmethod
     def get_file_extension_for_format(fmt):
         if not fmt:
@@ -605,9 +541,7 @@ class StorageVolume(_StorageObject):
         self._pool_xml = None
         self._reflink = False
 
-        # Indicate that the volume installation has finished. Used to
-        # definitively tell the storage progress thread to stop polling.
-        self._install_finished = True
+        self._install_finished = threading.Event()
 
 
     ######################
@@ -634,27 +568,14 @@ class StorageVolume(_StorageObject):
         if not isinstance(vol, libvirt.virStorageVol):
             raise ValueError(_("input_vol must be a virStorageVol"))
 
-        if not self.conn.check_support(
-                self.conn.SUPPORT_POOL_CREATEVOLFROM, self.pool):
-            raise ValueError(_("Creating storage from an existing volume is"
-                               " not supported by this libvirt version."))
-
         self._input_vol = vol
-    input_vol = property(_get_input_vol, _set_input_vol,
-                         doc=_("virStorageVolume pointer to clone/use as "
-                               "input."))
+    input_vol = property(_get_input_vol, _set_input_vol)
 
     def _get_reflink(self):
         return self._reflink
     def _set_reflink(self, reflink):
-        if (reflink and not
-            self.conn.check_support(self.conn.SUPPORT_POOL_REFLINK)):
-            raise ValueError(_("Creating storage by btrfs COW copy is"
-                " not supported by this libvirt version."))
-
         self._reflink = reflink
-    reflink = property(_get_reflink, _set_reflink,
-            doc="flags for VIR_STORAGE_VOL_CREATE_REFLINK")
+    reflink = property(_get_reflink, _set_reflink)
 
     def sync_input_vol(self, only_format=False):
         # Pull parameters from input vol into this class
@@ -673,20 +594,16 @@ class StorageVolume(_StorageObject):
     # XML validation helpers #
     ##########################
 
-    def _check_name_collision(self, name):
-        vol = None
-        try:
-            vol = self.pool.storageVolLookupByName(name)
-        except libvirt.libvirtError:
-            pass
-        if vol:
-            raise ValueError(_("Name '%s' already in use by another volume." %
-                                name))
+    @staticmethod
+    def validate_name(pool, name):
+        util.validate_name(_("Storage object"), name)
 
-    def _default_format(self):
-        if self.file_type == self.TYPE_FILE:
-            return "raw"
-        return None
+        try:
+            pool.storageVolLookupByName(name)
+        except libvirt.libvirtError:
+            return
+        raise ValueError(_("Name '%s' already in use by another volume." %
+                            name))
 
     def _get_vol_type(self):
         if self.type:
@@ -706,7 +623,7 @@ class StorageVolume(_StorageObject):
     # XML properties #
     ##################
 
-    _XML_ROOT_NAME = "volume"
+    XML_NAME = "volume"
     _XML_PROP_ORDER = ["name", "key", "capacity", "allocation", "format",
                        "target_path", "permissions"]
 
@@ -714,24 +631,19 @@ class StorageVolume(_StorageObject):
     key = XMLProperty("./key")
     capacity = XMLProperty("./capacity", is_int=True)
     allocation = XMLProperty("./allocation", is_int=True)
-    format = XMLProperty("./target/format/@type", default_cb=_default_format)
+    format = XMLProperty("./target/format/@type")
     target_path = XMLProperty("./target/path")
     backing_store = XMLProperty("./backingStore/path")
     backing_format = XMLProperty("./backingStore/format/@type")
-
-    def _lazy_refcounts_default_cb(self):
-        if self.format != "qcow2":
-            return False
-        return self.conn.check_support(
-            self.conn.SUPPORT_CONN_QCOW2_LAZY_REFCOUNTS)
-    lazy_refcounts = XMLProperty("./target/features/lazy_refcounts",
-        is_bool=True, default_cb=_lazy_refcounts_default_cb)
+    lazy_refcounts = XMLProperty(
+            "./target/features/lazy_refcounts", is_bool=True)
 
 
     def _detect_backing_store_format(self):
         logging.debug("Attempting to detect format for backing_store=%s",
                 self.backing_store)
-        vol, pool = StoragePool.manage_path(self.conn, self.backing_store)
+        from . import diskbackend
+        vol, pool = diskbackend.manage_path(self.conn, self.backing_store)
 
         if not vol:
             logging.debug("Didn't find any volume for backing_store")
@@ -742,7 +654,7 @@ class StorageVolume(_StorageObject):
         volxml = StorageVolume(self.conn, vol.XMLDesc(0))
         volxml.pool = pool
         logging.debug("Found backing store volume XML:\n%s",
-                volxml.get_xml_config())
+                volxml.get_xml())
 
         if volxml.supports_property("format"):
             logging.debug("Returning format=%s", volxml.format)
@@ -769,22 +681,20 @@ class StorageVolume(_StorageObject):
             return self._supports_format()
         return hasattr(self, propname)
 
-    def list_formats(self):
-        if self._supports_format():
-            return self.ALL_FORMATS
-        return []
-
-    def list_create_formats(self):
-        if self._supports_format():
-            return ["raw", "qcow", "qcow2", "qed", "vmdk", "vpc", "vdi"]
-        return None
-
 
     ##################
     # Build routines #
     ##################
 
     def validate(self):
+        self.validate_name(self.pool, self.name)
+
+        if not self.format and self.file_type == self.TYPE_FILE:
+            self.format = "raw"
+        if self._prop_is_unset("lazy_refcounts") and self.format == "qcow2":
+            self.lazy_refcounts = self.conn.check_support(
+                self.conn.SUPPORT_CONN_QCOW2_LAZY_REFCOUNTS)
+
         if self._pool_xml.type == StoragePool.TYPE_LOGICAL:
             if self.allocation != self.capacity:
                 logging.warning(_("Sparse logical volumes are not supported, "
@@ -804,7 +714,7 @@ class StorageVolume(_StorageObject):
         if self.backing_store and not self.backing_format:
             self.backing_format = self._detect_backing_store_format()
 
-        xml = self.get_xml_config()
+        xml = self.get_xml()
         logging.debug("Creating storage volume '%s' with xml:\n%s",
                       self.name, xml)
 
@@ -829,7 +739,7 @@ class StorageVolume(_StorageObject):
                 "VIR_STORAGE_VOL_CREATE_REFLINK", 1)
 
         try:
-            self._install_finished = False
+            self._install_finished.clear()
             t.start()
             meter.start(size=self.capacity,
                         text=_("Allocating '%s'") % self.name)
@@ -840,7 +750,7 @@ class StorageVolume(_StorageObject):
                 logging.debug("Using vol create flags=%s", createflags)
                 vol = self.pool.createXML(xml, createflags)
 
-            self._install_finished = True
+            self._install_finished.set()
             t.join()
             meter.end(self.capacity)
             logging.debug("Storage volume '%s' install complete.",
@@ -863,30 +773,27 @@ class StorageVolume(_StorageObject):
                 vol.info()
                 break
             except Exception:
-                if time:  # pylint: disable=using-constant-test
-                    # This 'if' check saves some noise from the test suite
-                    time.sleep(.2)
-                if self._install_finished:
+                if self._install_finished.wait(.2):
                     break
 
         if vol is None:
             logging.debug("Couldn't lookup storage volume in prog thread.")
             return
 
-        while not self._install_finished:
+        while True:
             ignore, ignore, alloc = vol.info()
             meter.update(alloc)
-            time.sleep(1)
+            if self._install_finished.wait(1):
+                break
 
 
     def is_size_conflict(self):
         """
         Report if requested size exceeds its pool's available amount
 
-        @returns: 2 element tuple:
+        :returns: 2 element tuple:
             1. True if collision is fatal, false otherwise
             2. String message if some collision was encountered.
-        @rtype: 2 element C{tuple}: (C{bool}, C{str})
         """
         if not self.pool:
             return (False, "")
