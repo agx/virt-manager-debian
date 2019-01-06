@@ -1,10 +1,18 @@
-virt-manager (1:2.0.0-1~1.gbp426b78) UNRELEASED; urgency=medium
+virt-manager (1:2.0.0-1) unstable; urgency=medium
 
-  ** SNAPSHOT build @426b787d2d5ab0f2494662e045dcde2e9124c241 **
+  * New upstream version 2.0.0 (Closes: #916904)
+  * Builds here without testsuit failures (Closes: #917673)
+  * Rediff patches.
+    Drop Xen related patches synce pygrub and hvmloader aren't hardcoded
+    anymore.
+  * Switch to python3
+  * Don't ship gconf conversion anymore.
+    We've done so for two releases.
+  * virtinst: We don't ship virt-image anymore (Closes: #883789)
+  * Depend on genisoimage.
+    Thanks to Christian Ehrhardt (Closes: #895594)
 
-  * New upstream version 2.0.0
-
- -- Guido Günther <agx@sigxcpu.org>  Wed, 02 Jan 2019 10:02:04 +0100
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 06 Jan 2019 15:55:43 +0100
 
 virt-manager (1:1.5.1-1) unstable; urgency=medium
 
