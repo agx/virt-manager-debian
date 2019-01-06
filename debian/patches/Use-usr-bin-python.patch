@@ -28,12 +28,12 @@ index 2e1215c..17c497f 100755
  import fnmatch
  import os
 diff --git a/virt-clone b/virt-clone
-index d1eedee..7ef6727 100755
+index d1eedee..823990d 100755
 --- a/virt-clone
 +++ b/virt-clone
 @@ -1,4 +1,4 @@
 -#!/usr/bin/env python3
-+#!/usr/bin python3
++#!/usr/bin/python3
  #
  # Copyright(c) FUJITSU Limited 2007.
  #
