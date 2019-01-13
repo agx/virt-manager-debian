@@ -8,10 +8,10 @@ override_dh_python2:
 	dh_python3 -p virtinst usr/share/virt-manager
 
 override_dh_auto_test:
-ifeq (,$(filter nocheck,$(DEB_BUILD_OPTIONS)))
+ifneq (,$(filter check,$(DEB_BUILD_OPTIONS)))
 	python3 setup.py test
 else
-	@echo "Checks disabled via DEB_BUILD_OPTIONS"
+	@echo "Checks disabled atm"
 endif
 
 override_dh_auto_install:
