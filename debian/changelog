@@ -1,3 +1,11 @@
+virt-manager (1:2.0.0-2) unstable; urgency=medium
+
+  * Disable internal test suite.
+    The tests pass in pbuilder but not on the buildds. Let's disable it until
+    one has time to investigate. (Closes: #918557)
+
+ -- Guido Günther <agx@sigxcpu.org>  Sun, 13 Jan 2019 13:40:12 +0100
+
 virt-manager (1:2.0.0-1) unstable; urgency=medium
 
   * New upstream version 2.0.0 (Closes: #916904)
