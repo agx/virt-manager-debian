@@ -1,3 +1,11 @@
+virt-manager (1:2.0.0-3) unstable; urgency=medium
+
+  * Mark autopkgtest scripts executable
+  * d/control: Depend on python3-distutils.
+    (Closes: #919527, #919713)
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 19 Jan 2019 13:30:01 +0100
+
 virt-manager (1:2.0.0-2) unstable; urgency=medium
 
   * Disable internal test suite.
