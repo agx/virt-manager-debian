@@ -1,7 +1,9 @@
 Tests: help.sh
+Restrictions: superficial
 Depends: virtinst,
 
 Tests: virt-manager.sh
+Restrictions: superficial
 Depends: virt-manager,
  xvfb,
  xauth,
