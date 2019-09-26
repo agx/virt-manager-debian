@@ -1,16 +1,15 @@
 #
 # Copyright 2009, 2013 Red Hat, Inc.
-# Cole Robinson <crobinso@redhat.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 #
 
-import logging
 import os
 import xml.etree.ElementTree
 
 import virtinst
+from virtinst import log
 
 from .formats import parser_class
 
@@ -185,7 +184,7 @@ def _import_file(conn, input_file):
         if any([p for p in parsed_sections if p in env_node.tag]):
             continue
 
-        logging.debug("Unhandled XML section '%s'",
+        log.debug("Unhandled XML section '%s'",
                       env_node.tag)
 
         if not _convert_bool_val(env_node.attrib.get("required")):
@@ -243,7 +242,7 @@ def _import_file(conn, input_file):
         guest.vcpus = int(vcpus)
 
     if mem:
-        guest.memory = _convert_alloc_val(alloc_mem, mem) * 1024
+        guest.currentMemory = _convert_alloc_val(alloc_mem, mem) * 1024
 
     for dev in ifaces + disks:
         guest.add_device(dev)
@@ -275,11 +274,11 @@ class ovf_parser(parser_class):
             root = xml.etree.ElementTree.parse(input_file).getroot()
             return root.tag == ("{%s}Envelope" % OVF_NAMESPACES["ovf"])
         except Exception:
-            logging.debug("Error parsing OVF XML", exc_info=True)
+            log.debug("Error parsing OVF XML", exc_info=True)
 
         return False
 
     @staticmethod
     def export_libvirt(conn, input_file):
-        logging.debug("Importing OVF XML:\n%s", open(input_file).read())
+        log.debug("Importing OVF XML:\n%s", open(input_file).read())
         return _import_file(conn, input_file)

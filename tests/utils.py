@@ -26,6 +26,13 @@ class _CLIState(object):
         self.regenerate_output = False
         self.use_coverage = False
         self.debug = False
+
+        self.url_only = False
+        self.url_iso_only = False
+        self.url_skip_libosinfo = False
+        self.url_force_libosinfo = False
+
+
 clistate = _CLIState()
 
 
@@ -56,6 +63,8 @@ class _URIs(object):
         self.test_full = _testtmpl % (os.getcwd() + "/tests/testdriver.xml")
         self.test_suite = _testtmpl % (os.getcwd() + "/tests/testsuite.xml")
         self.test_remote = self.test_full + ",remote"
+        self.test_defaultpool_collision = (_testtmpl % (os.getcwd() +
+            "/tests/cli-test-xml/testdriver-defaultpool-collision.xml"))
 
         self.xen = self.test_full + _caps("xen-rhel5.4.xml") + ",xen"
         self.lxc = self.test_full + _caps("lxc.xml") + ",lxc"
@@ -63,14 +72,18 @@ class _URIs(object):
 
         _uri_qemu = "%s,qemu" % self.test_full
         _uri_kvm = _uri_qemu + _domcaps("kvm-x86_64-domcaps.xml")
+        _uri_kvm_rhel7 = _uri_qemu + _domcaps("kvm-x86_64-rhel7-domcaps.xml")
         _uri_kvm_q35 = _uri_qemu + _domcaps("kvm-x86_64-domcaps-q35.xml")
+        _uri_kvm_amd_sev = _uri_qemu + _domcaps("kvm-x86_64-domcaps-amd-sev.xml")
         _uri_kvm_aarch64 = _uri_qemu + _domcaps("kvm-aarch64-domcaps.xml")
+        _uri_qemu_riscv64 = _uri_qemu + _domcaps("qemu-riscv64-domcaps.xml")
 
         self.kvm = _uri_kvm + _caps("kvm-x86_64.xml")
         self.kvm_remote = _uri_kvm + _caps("kvm-x86_64.xml") + ",remote"
         self.kvm_nodomcaps = _uri_qemu + _caps("kvm-x86_64.xml")
-        self.kvm_rhel = _uri_kvm + _caps("kvm-x86_64-rhel7.xml")
+        self.kvm_rhel = _uri_kvm_rhel7 + _caps("kvm-x86_64-rhel7.xml")
         self.kvm_q35 = _uri_kvm_q35 + _caps("kvm-x86_64.xml")
+        self.kvm_amd_sev = _uri_kvm_amd_sev + _caps("kvm-x86_64.xml")
         self.kvm_session = self.kvm + ",session"
 
         self.kvm_armv7l = _uri_kvm + _caps("kvm-armv7l.xml")
@@ -79,6 +92,7 @@ class _URIs(object):
         self.kvm_ppc64le = _uri_kvm + _caps("kvm-ppc64le.xml")
         self.kvm_s390x = _uri_kvm + _caps("kvm-s390x.xml")
         self.kvm_s390x_KVMIBM = _uri_kvm + _caps("kvm-s390x-KVMIBM.xml")
+        self.qemu_riscv64 = _uri_qemu_riscv64 + _caps("qemu-riscv64.xml")
 
 
 
@@ -91,7 +105,6 @@ class _URIs(object):
         generally every test uses a fresh virConnect, or undoes the
         persistent changes it makes.
         """
-        virtinst.util.register_libvirt_error_handler()
         is_testdriver_xml = "/testdriver.xml" in uri
 
         if not (is_testdriver_xml and self._testdriver_error):
@@ -159,17 +172,8 @@ class _URIs(object):
             self._testdriver_default = self.openconn(self.test_default)
         return self._testdriver_default
 
-    def _make_uri(self, base, connver=None, libver=None):
-        if connver:
-            base += ",connver=%s" % connver
-        if libver:
-            base += ",libver=%s" % libver
-        return base
-
-    def open_kvm(self, connver=None, libver=None):
-        return self.openconn(self._make_uri(self.kvm, connver, libver))
-    def open_kvm_rhel(self, connver=None):
-        return self.openconn(self._make_uri(self.kvm_rhel, connver))
+    def open_kvm(self):
+        return self.openconn(self.kvm)
     def open_test_remote(self):
         return self.openconn(self.test_remote)
 
@@ -214,3 +218,17 @@ def diff_compare(actual_out, filename=None, expect_out=None):
                                         tofile="Generated Output"))
     if diff:
         raise AssertionError("Conversion outputs did not match.\n%s" % diff)
+
+
+def run_without_testsuite_hacks(cb):
+    """
+    Decorator for unsetting the test suite env variable
+    """
+    def wrapper_cb(*args, **kwargs):
+        origval = os.environ.pop("VIRTINST_TEST_SUITE", None)
+        try:
+            return cb(*args, **kwargs)
+        finally:
+            if origval:
+                os.environ["VIRTINST_TEST_SUITE"] = origval
+    return wrapper_cb

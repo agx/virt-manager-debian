@@ -17,6 +17,8 @@ from .pm import DomainPm
 from .resource import DomainResource
 from .seclabel import DomainSeclabel
 from .sysinfo import DomainSysinfo
+from .vcpus import DomainVCPUs
 from .xmlnsqemu import DomainXMLNSQemu
+from .launch_security import DomainLaunchSecurity
 
 __all__ = [l for l in locals() if l.startswith("Domain")]

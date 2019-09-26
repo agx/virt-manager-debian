@@ -7,14 +7,13 @@
 # See the COPYING file in the top-level directory.
 #
 
-from distutils.spawn import find_executable
-import logging
 import os
 import re
 import shutil
 import subprocess
 import tempfile
 
+from virtinst import log
 from virtinst import StoragePool
 
 
@@ -75,15 +74,15 @@ def _run_cmd(cmd):
     """
     Return the exit status and output to stdout and stderr.
     """
-    logging.debug("Running command: %s", " ".join(cmd))
+    log.debug("Running command: %s", " ".join(cmd))
     proc = subprocess.Popen(cmd, stderr=subprocess.PIPE,
                             stdout=subprocess.PIPE,
                             close_fds=True)
     stdout, stderr = proc.communicate()
     ret = proc.wait()
 
-    logging.debug("stdout=%s", stdout)
-    logging.debug("stderr=%s", stderr)
+    log.debug("stdout=%s", stdout)
+    log.debug("stderr=%s", stderr)
 
     if ret == 0:
         return
@@ -143,7 +142,7 @@ def _find_input(input_file, parser, print_cb):
                 binname = "xz"
                 pkg = "xz"
                 cmd = ["tar", "Jxf", input_file, "-C", tempdir]
-            if not find_executable(binname):
+            if not shutil.which(binname):
                 raise RuntimeError(_("%s appears to be an archive, "
                     "but '%s' is not installed. "
                     "Please either install '%s', or extract the archive "
@@ -200,7 +199,7 @@ class VirtConverter(object):
             parser = _find_parser_by_name(input_name)
 
         input_file = os.path.abspath(input_file)
-        logging.debug("converter __init__ with input=%s parser=%s",
+        log.debug("converter __init__ with input=%s parser=%s",
             input_file, parser)
 
         (self._input_file,
@@ -208,7 +207,7 @@ class VirtConverter(object):
          self._force_clean) = _find_input(input_file, parser, self.print_cb)
         self._top_dir = os.path.dirname(os.path.abspath(self._input_file))
 
-        logging.debug("converter not input_file=%s parser=%s",
+        log.debug("converter not input_file=%s parser=%s",
             self._input_file, self.parser)
 
         self._guest = self.parser.export_libvirt(self.conn,
@@ -252,7 +251,7 @@ class VirtConverter(object):
             executable = "/usr/bin/qemu-img"
         else:
             for binname in binnames:
-                executable = find_executable(binname)
+                executable = shutil.which(binname)
                 if executable:
                     break
 
@@ -262,7 +261,7 @@ class VirtConverter(object):
         base = os.path.basename(absin)
         ext = os.path.splitext(base)[1]
         if (ext and ext[1:] == "gz"):
-            if not find_executable("gzip"):
+            if not shutil.which("gzip"):
                 raise RuntimeError("'gzip' is needed to decompress the file, "
                     "but not found.")
             decompress_cmd = ["gzip", "-d", absin]
@@ -288,7 +287,8 @@ class VirtConverter(object):
             disk_format = None
 
         if destdir is None:
-            destdir = StoragePool.get_default_dir(self.conn, build=not dry)
+            poolxml = StoragePool.build_default_pool(self.conn)
+            destdir = poolxml.target_path
 
         guest = self.get_guest()
         for disk in guest.devices.disk:
@@ -296,7 +296,7 @@ class VirtConverter(object):
                 continue
 
             if disk_format and disk.driver_type == disk_format:
-                logging.debug("path=%s is already in requested format=%s",
+                log.debug("path=%s is already in requested format=%s",
                     disk.path, disk_format)
                 disk_format = None
 

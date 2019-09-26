@@ -4,19 +4,30 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
+import os
 import weakref
 
 import libvirt
 
 from . import pollhelpers
 from . import support
-from . import util
 from . import Capabilities
 from .guest import Guest
+from .logger import log
 from .nodedev import NodeDevice
 from .storage import StoragePool, StorageVolume
 from .uri import URI, MagicURI
+
+
+def _real_local_libvirt_version():
+    """
+    Lookup the local libvirt library version, but cache the value since
+    it never changes.
+    """
+    key = "__virtinst_cached_getVersion"
+    if not hasattr(libvirt, key):
+        setattr(libvirt, key, libvirt.getVersion())
+    return getattr(libvirt, key)
 
 
 class VirtinstConnection(object):
@@ -26,6 +37,30 @@ class VirtinstConnection(object):
     - lookup for API feature support
     - simplified API wrappers that handle new and old ways of doing things
     """
+    @staticmethod
+    def libvirt_new_enough_for_virtmanager(version):
+        return _real_local_libvirt_version() >= version
+
+    @staticmethod
+    def get_app_cache_dir():
+        ret = ""
+        try:
+            # We don't want to depend on glib for virt-install
+            from gi.repository import GLib
+            ret = GLib.get_user_cache_dir()
+        except ImportError:
+            pass
+
+        if not ret:
+            ret = os.environ.get("XDG_CACHE_HOME")
+        if not ret:
+            ret = os.path.expanduser("~/.cache")
+        return os.path.join(ret, "virt-manager")
+
+    @staticmethod
+    def in_testsuite():
+        return "VIRTINST_TEST_SUITE" in os.environ
+
     def __init__(self, uri):
         _initial_uri = uri or ""
 
@@ -57,7 +92,6 @@ class VirtinstConnection(object):
         self._uriobj = URI(self._uri)
         self._caps = None
 
-        self._support_cache = {}
         self._fetch_cache = {}
 
         # These let virt-manager register a callback which provides its
@@ -67,6 +101,8 @@ class VirtinstConnection(object):
         self.cb_fetch_all_vols = None
         self.cb_fetch_all_nodedevs = None
         self.cb_cache_new_pool = None
+
+        self.support = support.SupportCache(weakref.proxy(self))
 
 
     ##############
@@ -162,7 +198,7 @@ class VirtinstConnection(object):
     def _fetch_all_domains_raw(self):
         ignore, ignore, ret = pollhelpers.fetch_vms(
             self, {}, lambda obj, ignore: obj)
-        return [Guest(weakref.ref(self), parsexml=obj.XMLDesc(0))
+        return [Guest(weakref.proxy(self), parsexml=obj.XMLDesc(0))
                 for obj in ret]
 
     def fetch_all_domains(self):
@@ -178,7 +214,7 @@ class VirtinstConnection(object):
         return self._fetch_cache[key][:]
 
     def _build_pool_raw(self, poolobj):
-        return StoragePool(weakref.ref(self),
+        return StoragePool(weakref.proxy(self),
                            parsexml=poolobj.XMLDesc(0))
 
     def _fetch_all_pools_raw(self):
@@ -210,9 +246,9 @@ class VirtinstConnection(object):
         for vol in vols:
             try:
                 xml = vol.XMLDesc(0)
-                ret.append(StorageVolume(weakref.ref(self), parsexml=xml))
+                ret.append(StorageVolume(weakref.proxy(self), parsexml=xml))
             except Exception as e:
-                logging.debug("Fetching volume XML failed: %s", e)
+                log.debug("Fetching volume XML failed: %s", e)
         return ret
 
     def _fetch_all_vols_raw(self):
@@ -261,7 +297,7 @@ class VirtinstConnection(object):
     def _fetch_all_nodedevs_raw(self):
         ignore, ignore, ret = pollhelpers.fetch_nodedevs(
             self, {}, lambda obj, ignore: obj)
-        return [NodeDevice.parse(weakref.ref(self), obj.XMLDesc(0))
+        return [NodeDevice(weakref.proxy(self), obj.XMLDesc(0))
                 for obj in ret]
 
     def fetch_all_nodedevs(self):
@@ -293,20 +329,20 @@ class VirtinstConnection(object):
         if self._fake_libvirt_version is not None:
             return self._fake_libvirt_version
         # This handles caching for us
-        return util.local_libvirt_version()
+        return _real_local_libvirt_version()
 
     def daemon_version(self):
         if self._fake_libvirt_version is not None:
             return self._fake_libvirt_version
         if not self.is_remote():
-            return self.local_libvirt_version()
+            return _real_local_libvirt_version()
 
         if self._daemon_version is None:
             self._daemon_version = 0
             try:
                 self._daemon_version = self._libvirtconn.getLibVersion()
             except Exception:
-                logging.debug("Error calling getLibVersion", exc_info=True)
+                log.debug("Error calling getLibVersion", exc_info=True)
         return self._daemon_version
 
     def conn_version(self):
@@ -318,7 +354,7 @@ class VirtinstConnection(object):
             try:
                 self._conn_version = self._libvirtconn.getVersion()
             except Exception:
-                logging.debug("Error calling getVersion", exc_info=True)
+                log.debug("Error calling getVersion", exc_info=True)
         return self._conn_version
 
 
@@ -378,30 +414,11 @@ class VirtinstConnection(object):
     # Support check helpers #
     #########################
 
-    for _supportname in [_supportname for _supportname in dir(support) if
-                         _supportname.startswith("SUPPORT_")]:
-        locals()[_supportname] = getattr(support, _supportname)
-
-
-    def check_support(self, features, data=None):
-        def _check_support(key):
-            if key not in self._support_cache:
-                self._support_cache[key] = support.check_support(
-                    self, key, data or self)
-            return self._support_cache[key]
-
-        for f in util.listify(features):
-            # 'and' condition over the feature list
-            if not _check_support(f):
-                return False
-        return True
-
-    def _check_version(self, version):
-        # Entry point for the test suite to do simple version checks,
-        # actual code should only use check_support
-        return support.check_version(self, version)
-
     def support_remote_url_install(self):
+        if self.in_testsuite():
+            return True
         if self._magic_uri:
             return False
-        return self.check_support(self.SUPPORT_CONN_STREAM)
+        if self.is_test():
+            return False
+        return self.support.conn_stream()

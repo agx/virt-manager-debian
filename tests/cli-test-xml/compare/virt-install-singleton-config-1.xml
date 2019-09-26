@@ -1,6 +1,7 @@
 <domain type="kvm">
-  <name>foobar</name>
-  <uuid>00000000-1111-2222-3333-444444444444</uuid>
+  <name>fedora</name>
+  <uuid>12345678-12F4-1234-1234-123456789AFA</uuid>
+  <genid/>
   <description>foobar &amp; baz</description>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
@@ -22,8 +23,11 @@
   <os>
     <type arch="x86_64" machine="q35">hvm</type>
     <loader readonly="yes" type="pflash">/usr/share/OVMF/OVMF_CODE.fd</loader>
+    <boot dev="network"/>
     <boot dev="hd"/>
-    <smbios mode="emulate"/>
+    <smbios mode="host"/>
+    <initarg>foo</initarg>
+    <initarg>bar=baz</initarg>
   </os>
   <features>
     <acpi/>
@@ -32,6 +36,7 @@
   <cpu mode="custom" match="exact">
     <model fallback="forbid">Broadwell</model>
     <vendor>Intel</vendor>
+    <topology sockets="2" cores="2" threads="2"/>
     <feature policy="require" name="vme"/>
     <feature policy="require" name="ss"/>
     <feature policy="require" name="f16c"/>
@@ -83,6 +88,9 @@
     <rng model="virtio">
       <backend model="random">/dev/random</backend>
     </rng>
+    <vsock model="virtio">
+      <cid auto="yes"/>
+    </vsock>
   </devices>
   <seclabel type="dynamic" model="selinux"/>
   <seclabel type="none" model="dac"/>

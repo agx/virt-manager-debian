@@ -6,7 +6,7 @@
 
 import libxml2
 
-from . import util
+from . import xmlutil
 
 # pylint: disable=protected-access
 
@@ -59,7 +59,13 @@ class _XPath(object):
     """
     def __init__(self, fullxpath):
         self.fullxpath = fullxpath
-        self.segments = [_XPathSegment(s) for s in self.fullxpath.split("/")]
+        self.segments = []
+        for s in self.fullxpath.split("/"):
+            if s == "..":
+                # Resolve and flatten .. in xpaths
+                self.segments = self.segments[:-1]
+                continue
+            self.segments.append(_XPathSegment(s))
 
         self.is_prop = self.segments[-1].is_prop
         self.propname = (self.is_prop and self.segments[-1].nodename or None)
@@ -103,9 +109,13 @@ class _XMLBase(object):
         raise NotImplementedError()
     def _node_remove_child(self, parentnode, childnode):
         raise NotImplementedError()
+    def _node_replace_child(self, xpath, newnode):
+        raise NotImplementedError()
     def _node_from_xml(self, xml):
         raise NotImplementedError()
     def _node_has_content(self, node):
+        raise NotImplementedError()
+    def _node_get_name(self, node):
         raise NotImplementedError()
     def node_clear(self, xpath):
         raise NotImplementedError()
@@ -152,6 +162,13 @@ class _XMLBase(object):
         parentnode = self._node_make_stub(xpath)
         self._node_add_child(xpath, parentnode, newnode)
 
+    def node_replace_xml(self, xpath, xml):
+        """
+        Replace the node at xpath with the passed in xml
+        """
+        newnode = self._node_from_xml(xml)
+        self._node_replace_child(xpath, newnode)
+
     def node_force_remove(self, fullxpath):
         """
         Remove the element referenced at the passed xpath, regardless
@@ -164,6 +181,14 @@ class _XMLBase(object):
         if parentnode is None or childnode is None:
             return
         self._node_remove_child(parentnode, childnode)
+
+    def validate_root_name(self, expected_root_name):
+        rootname = self._node_get_name(self._find("."))
+        if rootname == expected_root_name:
+            return
+        raise RuntimeError(
+            _("XML did not have expected root element name '%s', found '%s'") %
+            (expected_root_name, rootname))
 
     def _node_set_content(self, xpath, node, setval):
         xpathobj = _XPath(xpath)
@@ -199,8 +224,7 @@ class _XMLBase(object):
         xpathobj = _XPath(fullxpath)
         parentxpath = "."
         parentnode = self._find(parentxpath)
-        if parentnode is None:
-            raise RuntimeError("programming error: "
+        xmlutil.raise_programming_error(not parentnode,
                 "Did not find XML root node for xpath=%s" % fullxpath)
 
         for xpathseg in xpathobj.segments[1:]:
@@ -248,9 +272,20 @@ class _XMLBase(object):
             self._node_remove_child(parent, child)
 
 
+def node_is_text(n):
+    return bool(n and n.type == "text")
+
+
 class _Libxml2API(_XMLBase):
     def __init__(self, xml):
         _XMLBase.__init__(self)
+
+        # Use of gtksourceview in virt-manager changes this libxml
+        # global setting which messes up whitespace after parsing.
+        # We can probably get away with calling this less but it
+        # would take some investigation
+        libxml2.keepBlanksDefault(1)
+
         self._doc = libxml2.parseDoc(xml)
         self._ctx = self._doc.xpathNewContext()
         self._ctx.setContextNode(self._doc.children)
@@ -258,15 +293,15 @@ class _Libxml2API(_XMLBase):
             self._ctx.xpathRegisterNs(key, val)
 
     def __del__(self):
+        if not hasattr(self, "_doc"):
+            # Incase we error when parsing the doc
+            return
         self._doc.freeDoc()
         self._doc = None
         self._ctx.xpathFreeContext()
         self._ctx = None
 
     def _sanitize_xml(self, xml):
-        # Strip starting <?...> line
-        if xml.startswith("<?"):
-            ignore, xml = xml.split("\n", 1)
         if not xml.endswith("\n") and "\n" in xml:
             xml += "\n"
         return xml
@@ -291,7 +326,7 @@ class _Libxml2API(_XMLBase):
         return node.content
     def _node_set_text(self, node, setval):
         if setval is not None:
-            setval = util.xml_escape(setval)
+            setval = xmlutil.xml_escape(setval)
         node.setContent(setval)
 
     def _node_get_property(self, node, propname):
@@ -305,7 +340,7 @@ class _Libxml2API(_XMLBase):
                 prop.unlinkNode()
                 prop.freeNode()
         else:
-            node.setProp(propname, util.xml_escape(setval))
+            node.setProp(propname, xmlutil.xml_escape(setval))
 
     def _node_new(self, xpathseg, parentnode):
         newnode = libxml2.newNode(xpathseg.nodename)
@@ -315,7 +350,7 @@ class _Libxml2API(_XMLBase):
         def _find_parent_ns():
             parent = parentnode
             while parent:
-                for ns in util.listify(parent.nsDefs()):
+                for ns in xmlutil.listify(parent.nsDefs()):
                     if ns.name == xpathseg.nsname:
                         return ns
                 parent = parent.get_parent()
@@ -338,25 +373,25 @@ class _Libxml2API(_XMLBase):
     def _node_has_content(self, node):
         return node.type == "element" and (node.children or node.properties)
 
+    def _node_get_name(self, node):
+        return node.name
+
     def _node_remove_child(self, parentnode, childnode):
         node = childnode
 
         # Look for preceding whitespace and remove it
         white = node.get_prev()
-        if white and white.type == "text":
+        if node_is_text(white):
             white.unlinkNode()
             white.freeNode()
 
         node.unlinkNode()
         node.freeNode()
-        if all([n.type == "text" for n in parentnode.children]):
+        if all([node_is_text(n) for n in parentnode.children]):
             parentnode.setContent(None)
 
     def _node_add_child(self, parentxpath, parentnode, newnode):
         ignore = parentxpath
-        def node_is_text(n):
-            return bool(n and n.type == "text")
-
         if not node_is_text(parentnode.get_last()):
             prevsib = parentnode.get_prev()
             if node_is_text(prevsib):
@@ -369,6 +404,10 @@ class _Libxml2API(_XMLBase):
         parentnode.addChild(libxml2.newText("  "))
         parentnode.addChild(newnode)
         parentnode.addChild(libxml2.newText(endtext))
+
+    def _node_replace_child(self, xpath, newnode):
+        oldnode = self._find(xpath)
+        oldnode.replaceNode(newnode)
 
 
 XMLAPI = _Libxml2API

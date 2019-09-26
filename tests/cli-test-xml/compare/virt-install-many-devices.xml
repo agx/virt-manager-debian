@@ -1,5 +1,5 @@
 <domain type="kvm">
-  <name>foobar</name>
+  <name>fedora</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
@@ -9,6 +9,12 @@
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
   <vcpu placement="static">4</vcpu>
+  <vcpus>
+    <vcpu id="3" enabled="yes" order="3"/>
+    <vcpu id="2" enabled="yes"/>
+    <vcpu id="0" enabled="no"/>
+    <vcpu id="1" enabled="yes" hotpluggable="no"/>
+  </vcpus>
   <os>
     <type arch="x86_64" machine="q35">hvm</type>
   </os>
@@ -36,38 +42,42 @@
       <source file="/dev/default-pool/UPPER"/>
       <target dev="vda" bus="virtio"/>
       <serial>WD-WMAP9A966149</serial>
+      <wwn>123456789abcdefa</wwn>
       <shareable/>
       <boot order="2"/>
     </disk>
     <disk type="file" device="disk">
-      <driver name="qemu" type="qcow2" discard="unmap" detect_zeroes="yes" error_policy="enospace"/>
+      <driver name="qemu" type="qcow2" discard="unmap" detect_zeroes="unmap" error_policy="enospace"/>
       <source file="/dev/default-pool/new1.img"/>
       <target dev="vdb" bus="virtio"/>
+      <address type="drive" controller="0" target="2" unit="0"/>
       <readonly/>
     </disk>
     <disk type="file" device="cdrom">
-      <target dev="sda" bus="sata"/>
+      <target dev="sdaa" bus="sata"/>
       <driver copy_on_read="on"/>
       <iotune>
         <read_bytes_sec>1</read_bytes_sec>
         <write_bytes_sec>5</write_bytes_sec>
-        <total_bytes_sec>10</total_bytes_sec>
         <read_iops_sec>2</read_iops_sec>
         <write_iops_sec>6</write_iops_sec>
-        <total_iops_sec>20</total_iops_sec>
       </iotune>
       <geometry cyls="16383" heads="16" secs="63" trans="lba"/>
       <readonly/>
     </disk>
     <disk type="file" device="disk">
       <driver name="qemu" type="qcow2"/>
-      <source file="/var/lib/libvirt/images/foobar.qcow2"/>
+      <source file="/var/lib/libvirt/images/disk.qcow2"/>
       <target dev="vdc" bus="virtio"/>
     </disk>
-    <disk type="block" device="disk">
-      <driver name="qemu" type="raw" cache="none" io="native"/>
+    <disk type="block" device="lun" sgio="unfiltered" rawio="yes">
+      <driver name="qemu" type="raw"/>
       <source dev="/iscsi-pool/diskvol1"/>
-      <target dev="vdd" bus="virtio"/>
+      <target dev="sdab" bus="scsi"/>
+      <iotune>
+        <total_bytes_sec>10</total_bytes_sec>
+        <total_iops_sec>20</total_iops_sec>
+      </iotune>
     </disk>
     <disk type="file" device="disk">
       <driver name="qemu" type="raw"/>
@@ -77,34 +87,51 @@
         </seclabel>
         <seclabel model="selinux" relabel="no"/>
       </source>
-      <target dev="vde" bus="virtio"/>
+      <target dev="vdd" bus="virtio"/>
+      <iotune>
+        <read_bytes_sec>1</read_bytes_sec>
+        <write_bytes_sec>5</write_bytes_sec>
+        <read_iops_sec>2</read_iops_sec>
+        <write_iops_sec>6</write_iops_sec>
+      </iotune>
     </disk>
     <disk type="file" device="disk">
       <driver name="qemu" type="raw"/>
-      <source file="/dev/default-pool/iso-vol"/>
-      <target dev="vdf" bus="virtio"/>
+      <source file="/dev/default-pool/iso-vol" startupPolicy="optional"/>
+      <target dev="vde" bus="virtio"/>
+      <iotune>
+        <total_bytes_sec>10</total_bytes_sec>
+        <total_iops_sec>20</total_iops_sec>
+      </iotune>
     </disk>
     <disk type="volume" device="disk">
       <driver name="qemu" type="raw"/>
       <source volume="some-rbd-vol" pool="rbd-ceph"/>
-      <target dev="vdg" bus="virtio"/>
+      <target dev="vdf" bus="virtio"/>
     </disk>
     <disk type="network" device="disk">
-      <driver name="qemu" type="raw"/>
+      <driver name="qemu" type="raw" discard="unmap" detect_zeroes="unmap" io="native" error_policy="stop"/>
       <auth username="admin">
         <secret type="ceph" uuid="f65cc5a8-b77b-4254-9030-d50a528fb456"/>
       </auth>
-      <source protocol="rbd" name="rbd-sourcename/foobar">
+      <source protocol="rbd" name="rbd-sourcename/disk">
         <host name="ceph-mon-1.example.com" port="6789"/>
         <host name="ceph-mon-2.example.com" port="6789"/>
         <host name="ceph-mon-3.example.com" port="6789"/>
+      </source>
+      <target dev="vdg" bus="virtio"/>
+    </disk>
+    <disk type="network" device="disk">
+      <driver name="qemu"/>
+      <source protocol="http" name="/path/to/my/file">
+        <host name="example.com" port="8000"/>
       </source>
       <target dev="vdh" bus="virtio"/>
     </disk>
     <disk type="network" device="disk">
       <driver name="qemu"/>
       <source protocol="http" name="/path/to/my/file">
-        <host name="example.com" port="8000"/>
+        <host name="exampl2.com" port="8000"/>
       </source>
       <target dev="vdi" bus="virtio"/>
     </disk>
@@ -113,7 +140,14 @@
       <source protocol="nbd">
         <host transport="unix" socket="/tmp/socket"/>
       </source>
-      <target dev="sdb" bus="scsi"/>
+      <target dev="vdj" bus="virtio"/>
+    </disk>
+    <disk type="network" device="disk">
+      <driver name="qemu"/>
+      <source protocol="nbd">
+        <host transport="unix" socket="/tmp/socket"/>
+      </source>
+      <target dev="sdz" bus="scsi"/>
       <blockio logical_block_size="512" physical_block_size="512"/>
     </disk>
     <disk type="network" device="disk">
@@ -121,44 +155,45 @@
       <source protocol="gluster" name="test-volume/some/dir/test-gluster.qcow2">
         <host name="192.168.1.100"/>
       </source>
-      <target dev="vdj" bus="virtio"/>
+      <target dev="vdk" bus="virtio"/>
     </disk>
     <disk type="network" device="disk">
       <driver name="qemu"/>
-      <source protocol="qemu">
-        <host transport="nbd" socket="/var/foo/bar/socket"/>
+      <source protocol="nbd">
+        <host transport="unix" socket="/var/foo/bar/socket"/>
       </source>
-      <target dev="sdc" bus="usb" removable="on"/>
+      <target dev="sdac" bus="usb" removable="on"/>
+      <address type="usb" bus="0" port="2"/>
     </disk>
     <disk type="network" device="disk">
       <driver name="qemu"/>
       <source protocol="http" name="my/path">
         <host name="1:2:3:4:1:2:3:4" port="5522"/>
       </source>
-      <target dev="vdk" bus="virtio"/>
+      <target dev="vdl" bus="virtio"/>
     </disk>
     <disk type="network" device="disk">
       <driver name="qemu" type="raw"/>
-      <source protocol="gluster" name="test-volume/some/dir/test-gluster.raw" startupPolicy="optional">
+      <source protocol="gluster" name="test-volume/some/dir/test-gluster.raw">
         <host name="192.168.1.100"/>
       </source>
-      <target dev="vdl" bus="virtio"/>
+      <target dev="vdm" bus="virtio"/>
     </disk>
-    <disk type="dir" device="floppy">
+    <disk type="dir" device="floppy" snapshot="no">
       <driver name="qemu"/>
       <source dir="/var"/>
       <target dev="fda" bus="fdc"/>
-      <address type="ccw" cssid="0xfe" ssid="0" devno="01"/>
     </disk>
     <disk type="file" device="disk">
       <driver name="qemu" type="qcow2"/>
       <source file="/dev/default-pool/new2.img"/>
-      <target dev="vdm" bus="virtio"/>
+      <target dev="sdad" bus="usb" removable="on"/>
     </disk>
     <disk type="file" device="disk">
       <driver name="qemu" type="qcow2"/>
       <source file="/tmp/brand-new.img"/>
       <target dev="vdn" bus="virtio"/>
+      <boot order="10" loadparm="5"/>
     </disk>
     <disk type="block" device="lun">
       <driver name="qemu" type="raw"/>
@@ -167,7 +202,19 @@
           <source type="unix" path="/var/run/test/pr-helper0.sock" mode="client"/>
         </reservations>
       </source>
-      <target dev="sdd" bus="scsi"/>
+      <target dev="sdae" bus="scsi"/>
+    </disk>
+    <disk type="network" device="disk">
+      <driver name="qemu"/>
+      <source protocol="iscsi" name="iqn.2017-12.com.virttest:emulated-iscsi-noauth.target2-lun-1">
+        <host name="10.66.144.87"/>
+      </source>
+      <target dev="vdo" bus="virtio"/>
+    </disk>
+    <disk type="file" device="disk">
+      <driver name="qemu" type="raw"/>
+      <source file="/var/lib/libvirt/images/disk.img"/>
+      <target dev="vdp" bus="virtio"/>
     </disk>
     <controller type="usb" index="0" model="ich9-ehci1">
       <address type="pci" domain="0" bus="0" slot="4" function="7"/>
@@ -184,7 +231,13 @@
       <master startport="4"/>
       <address type="pci" domain="0" bus="0" slot="4" function="2"/>
     </controller>
+    <controller type="scsi" index="0" model="virtio-scsi">
+      <driver queues="4"/>
+    </controller>
+    <controller type="xenbus" index="0" maxGrantFrames="64"/>
     <filesystem type="mount" accessmode="mapped">
+      <driver ats="on" iommu="off"/>
+      <alias name="testfsalias"/>
       <source dir="/source"/>
       <target dir="/target"/>
     </filesystem>
@@ -204,19 +257,24 @@
       <link state="down"/>
     </interface>
     <interface type="bridge">
-      <source bridge="foobar"/>
+      <source bridge="foobar" portgroup="foo"/>
       <mac address="00:11:22:33:44:55"/>
       <model type="virtio"/>
+      <filterref filter="foobar"/>
+      <rom bar="off" file="/some/rom"/>
       <driver name="qemu" queues="3"/>
     </interface>
     <interface type="bridge">
       <source bridge="ovsbr"/>
       <mac address="00:11:22:33:44:55"/>
+      <target dev="mytargetname"/>
       <model type="virtio"/>
       <virtualport type="openvswitch">
         <parameters profileid="demo" interfaceid="09b11c53-8b5c-4eeb-8f00-d84eaa0aaa3b"/>
       </virtualport>
+      <filterref filter="filterbar"/>
       <link state="up"/>
+      <driver name="qemu" queues="3"/>
     </interface>
     <interface type="direct" trustGuestRxFilters="yes">
       <source dev="eth5" mode="vepa"/>
@@ -233,29 +291,60 @@
       <mac address="00:11:22:33:44:55"/>
       <model type="virtio"/>
       <address type="spapr-vio" reg="0x500"/>
+      <link state="down"/>
     </interface>
     <interface type="vhostuser">
       <source type="unix" path="/tmp/vhost1.sock" mode="server"/>
       <mac address="00:11:22:33:44:55"/>
       <model type="virtio"/>
+      <address type="pci" domain="0" bus="0" slot="16" function="0"/>
+    </interface>
+    <interface type="user">
+      <mac address="00:11:22:33:44:55"/>
+      <model type="virtio"/>
+      <address type="ccw" cssid="0xfe" ssid="0" devno="01"/>
+      <boot order="15" loadparm="SYSTEM1"/>
     </interface>
     <smartcard mode="passthrough" type="spicevmc"/>
-    <smartcard mode="passthrough" type="host"/>
+    <smartcard mode="host" type="tcp"/>
     <smartcard mode="passthrough" type="spicevmc"/>
+    <smartcard mode="passthrough" type="tcp">
+      <source mode="bind" host="1.2.3.4" service="5678"/>
+      <protocol type="telnet"/>
+    </smartcard>
+    <smartcard mode="host-certificates" type="spicevmc">
+      <database>/fake/path/to/database</database>
+      <certificate>/path/to/fake/cert0</certificate>
+      <certificate>/path/to/fake/cert1</certificate>
+      <certificate>/path/to/fake/cert2</certificate>
+    </smartcard>
     <serial type="tcp">
       <source mode="bind" host="127.0.0.1" service="2222"/>
       <protocol type="telnet"/>
       <log file="/tmp/foo.log" append="on"/>
+      <target>
+        <model name="pci-serial"/>
+      </target>
     </serial>
     <serial type="nmdm">
       <source master="/dev/foo1" slave="/dev/foo2"/>
+      <alias name="testalias7"/>
     </serial>
     <parallel type="udp">
       <source mode="bind" host="127.0.0.1" service="1234"/>
       <source mode="connect" host="0.0.0.0" service="1234"/>
     </parallel>
+    <parallel type="udp">
+      <source mode="bind" host="127.0.0.1" service="7777"/>
+      <source mode="connect" host="127.0.0.2" service="8888"/>
+    </parallel>
     <parallel type="unix">
-      <source mode="bind" path="/tmp/foo-socket"/>
+      <source mode="bind" path="/tmp/foo-socket">
+        <seclabel model="none" relabel="no"/>
+        <seclabel model="dac" relabel="yes">
+          <label>foobar</label>
+        </seclabel>
+      </source>
     </parallel>
     <console type="pty">
       <target type="virtio"/>
@@ -264,13 +353,23 @@
       <target type="guestfwd" address="127.0.0.1" port="10000"/>
     </channel>
     <channel type="pty">
+      <target type="guestfwd" address="127.0.0.1" port="1234"/>
+    </channel>
+    <channel type="pty">
       <target type="virtio" name="org.linux-kvm.port1"/>
+    </channel>
+    <channel type="pty">
+      <target type="virtio" name="org.linux-kvm.port2"/>
     </channel>
     <channel type="spicevmc">
       <target type="virtio" name="com.redhat.spice.0"/>
     </channel>
     <input type="keyboard" bus="usb"/>
     <input type="tablet" bus="usb"/>
+    <input type="mouse" bus="ps2"/>
+    <tpm model="tpm-crb">
+      <backend type="emulator" version="2.0"/>
+    </tpm>
     <graphics type="sdl" display=":3.4" xauth="/tmp/.Xauthority"/>
     <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
       <image compression="off"/>
@@ -280,15 +379,20 @@
       <image compression="off"/>
     </graphics>
     <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
-      <image compression="foo"/>
-      <streaming mode="bar"/>
+      <image compression="glz"/>
+      <streaming mode="filter"/>
       <clipboard copypaste="yes"/>
       <mouse mode="client"/>
       <filetransfer enable="yes"/>
+      <zlib compression="always"/>
     </graphics>
-    <graphics type="spice">
+    <graphics type="spice" tlsPort="6000" passwd="testpass" passwdValidTo="2010-04-09T15:51:01" defaultMode="insecure">
       <gl enable="yes" rendernode="/dev/dri/by-path/pci-0000:00:02.0-render"/>
-      <image compression="off"/>
+      <image compression="glz"/>
+      <streaming mode="filter"/>
+      <clipboard copypaste="yes"/>
+      <mouse mode="client"/>
+      <filetransfer enable="yes"/>
       <listen type="socket"/>
     </graphics>
     <graphics type="spice">
@@ -297,11 +401,11 @@
       <listen type="none"/>
     </graphics>
     <graphics type="spice">
-      <gl enable="yes" rendernode="/dev/dri/foo"/>
+      <gl enable="yes" rendernode="/dev/dri/foo2"/>
       <image compression="off"/>
       <listen type="none"/>
     </graphics>
-    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
+    <graphics type="spice" port="-1" tlsPort="-1" autoport="yes" connected="disconnect">
       <image compression="off"/>
       <listen type="address" address="1.2.3.4"/>
     </graphics>
@@ -322,6 +426,11 @@
     </sound>
     <video>
       <model type="cirrus"/>
+    </video>
+    <video>
+      <model type="qxl" vram="3" heads="4" vgamem="1" ram="2" vram64="65">
+        <acceleration accel3d="yes"/>
+      </model>
     </video>
     <video>
       <model type="qxl" vram="3" heads="4" vgamem="1" ram="2" vram64="65">
@@ -361,7 +470,9 @@
       <source>
         <address domain="0" bus="21" slot="0" function="3"/>
       </source>
-      <address type="isa" iobase="0x500" irq="5"/>
+      <address type="pci">
+        <zpci uid="0xffff" fid="0xffffffff"/>
+      </address>
     </hostdev>
     <hostdev mode="subsystem" type="usb" managed="yes">
       <source>
@@ -381,6 +492,7 @@
         <adapter name="scsi_host0"/>
         <address bus="0" target="0" unit="0"/>
       </source>
+      <rom bar="on"/>
     </hostdev>
     <hostdev mode="subsystem" type="usb" managed="yes">
       <source>
@@ -396,6 +508,21 @@
         <address bus="1" device="21"/>
       </source>
     </hostdev>
+    <hostdev mode="capabilities" type="net" managed="yes">
+      <source>
+        <interface>wlan0</interface>
+      </source>
+    </hostdev>
+    <hostdev mode="capabilities" type="storage" managed="yes">
+      <source>
+        <block>/dev/vdz</block>
+      </source>
+    </hostdev>
+    <hostdev mode="capabilities" type="misc" managed="yes">
+      <source>
+        <char>/dev/pty7</char>
+      </source>
+    </hostdev>
     <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="tcp">
       <source host="localhost" service="4000"/>
@@ -405,14 +532,20 @@
       <boot order="3"/>
     </redirdev>
     <redirdev bus="usb" type="spicevmc"/>
+    <redirdev bus="usb" type="unix">
+      <source path="/tmp/foo.socket"/>
+      <log file="/tmp/123.log"/>
+    </redirdev>
+    <memballoon model="virtio"/>
     <rng model="virtio">
-      <backend model="egd" type="tcp">
-        <source mode="connect" host="127.0.0.1" service="8000"/>
-      </backend>
+      <backend model="random">/dev/urandom</backend>
     </rng>
     <panic model="isa">
-      <address iobase="507" type="isa"/>
+      <address type="isa" iobase="507"/>
     </panic>
+    <vsock model="virtio">
+      <cid address="17"/>
+    </vsock>
   </devices>
   <qemu:commandline xmlns:qemu="http://libvirt.org/schemas/domain/qemu/1.0">
     <qemu:arg value="-display"/>
@@ -421,6 +554,8 @@
     <qemu:arg value="vfio-pci,addr=05.0,sysfsdev=/sys/class/mdev_bus/0000:00:02.0/f321853c-c584-4a6b-b99a-3eee22a3919c"/>
     <qemu:arg value="-set"/>
     <qemu:arg value="device.video0.driver=virtio-vga"/>
+    <qemu:arg value="-foo"/>
+    <qemu:arg value="bar"/>
     <qemu:env name="DISPLAY" value=":0.1"/>
   </qemu:commandline>
 </domain>

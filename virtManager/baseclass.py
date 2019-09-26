@@ -4,7 +4,6 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
 import os
 import sys
 import threading
@@ -16,6 +15,8 @@ from gi.repository import GLib
 from gi.repository import GObject
 from gi.repository import Gtk
 
+from virtinst import log
+
 from . import config
 
 
@@ -26,7 +27,7 @@ class vmmGObject(GObject.GObject):
     # Singleton reference, if applicable (vmmSystray, vmmInspection, ...)
     _instance = None
 
-    # windowlist mapping, if applicable (vmmDetails, vmmHost, ...)
+    # windowlist mapping, if applicable (vmmVMWindow, vmmHost, ...)
     _instances = None
 
     # This saves a bunch of imports and typing
@@ -93,7 +94,7 @@ class vmmGObject(GObject.GObject):
             for h in self._gobject_timeouts[:]:
                 self.remove_gobject_timeout(h)
         except Exception:
-            logging.exception("Error cleaning up %s", self)
+            log.exception("Error cleaning up %s", self)
 
         self.__cleaned_up = True
 
@@ -110,7 +111,7 @@ class vmmGObject(GObject.GObject):
             if config.vmmConfig.is_initialized() and self._leak_check:
                 self.config.remove_object(self.object_key)
         except Exception:
-            logging.exception("Error removing %s", self.object_key)
+            log.exception("Error removing %s", self.object_key)
 
     @property
     def config(self):
@@ -190,7 +191,7 @@ class vmmGObject(GObject.GObject):
     def _logtrace(self, msg=""):
         if msg:
             msg += " "
-        logging.debug("%s(%s %s)\n:%s",
+        log.debug("%s(%s %s)\n:%s",
                       msg, self.object_key, self._refcount(),
                        "".join(traceback.format_stack()))
 
@@ -258,13 +259,6 @@ class vmmGObject(GObject.GObject):
 
 
 class vmmGObjectUI(vmmGObject):
-    @staticmethod
-    def bind_escape_key_close_helper(topwin, close_cb):
-        def close_on_escape(src_ignore, event):
-            if Gdk.keyval_name(event.keyval) == "Escape":
-                close_cb()
-        topwin.connect("key-press-event", close_on_escape)
-
     def __init__(self, filename, windowname, builder=None, topwin=None):
         vmmGObject.__init__(self)
         self._external_topwin = bool(topwin)
@@ -311,7 +305,7 @@ class vmmGObjectUI(vmmGObject):
             self.topwin = None
             self._err = None
         except Exception:
-            logging.exception("Error cleaning up %s", self)
+            log.exception("Error cleaning up %s", self)
 
         self.__cleaned_up = True
 
@@ -321,8 +315,14 @@ class vmmGObjectUI(vmmGObject):
     def close(self, ignore1=None, ignore2=None):
         pass
 
+    def is_visible(self):
+        return bool(self.topwin and self.topwin.get_visible())
+
     def bind_escape_key_close(self):
-        self.bind_escape_key_close_helper(self.topwin, self.close)
+        def close_on_escape(src_ignore, event):
+            if Gdk.keyval_name(event.keyval) == "Escape":
+                self.close()
+        self.topwin.connect("key-press-event", close_on_escape)
 
     def _set_cursor(self, cursor_type):
         gdk_window = self.topwin.get_window()
@@ -336,7 +336,7 @@ class vmmGObjectUI(vmmGObject):
         except Exception:
             # If a cursor icon theme isn't installed this can cause errors
             # https://bugzilla.redhat.com/show_bug.cgi?id=1516588
-            logging.debug("Error setting cursor_type=%s",
+            log.debug("Error setting cursor_type=%s",
                     cursor_type, exc_info=True)
 
     def set_finish_cursor(self):

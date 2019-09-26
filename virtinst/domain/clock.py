@@ -1,6 +1,5 @@
 #
 # Copyright 2010, 2013 Red Hat, Inc.
-# Cole Robinson <crobinso@redhat.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
@@ -19,11 +18,9 @@ class _ClockTimer(XMLBuilder):
 class DomainClock(XMLBuilder):
     XML_NAME = "clock"
 
-    TIMER_NAMES = ["platform", "pit", "rtc", "hpet", "tsc", "kvmclock",
-        "hypervclock"]
-
     offset = XMLProperty("./@offset")
     timers = XMLChildProperty(_ClockTimer)
+
 
     ##################
     # Default config #
@@ -67,7 +64,7 @@ class DomainClock(XMLBuilder):
         hpet.present = False
 
         if (guest.hyperv_supported() and
-            self.conn.check_support(self.conn.SUPPORT_CONN_HYPERV_CLOCK)):
+            self.conn.support.conn_hyperv_clock()):
             hyperv = self.timers.add_new()
             hyperv.name = "hypervclock"
             hyperv.present = True

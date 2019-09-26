@@ -2,15 +2,14 @@
 # Some code for parsing libvirt's capabilities XML
 #
 # Copyright 2007, 2012-2014 Red Hat, Inc.
-# Mark McLoughlin <markmc@redhat.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
 import pwd
 
 from .domain import DomainCpu
+from .logger import log
 from .xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
 
 
@@ -74,7 +73,7 @@ class _CapsHost(XMLBuilder):
                     label = baselabel.content
                     break
             if not label:
-                continue
+                continue  # pragma: no cover
 
             # XML we are looking at is like:
             #
@@ -88,10 +87,10 @@ class _CapsHost(XMLBuilder):
                 uid = int(label.split(":")[0].replace("+", ""))
                 user = pwd.getpwuid(uid)[0]
                 return user, uid
-            except Exception:
-                logging.debug("Exception parsing qemu dac baselabel=%s",
+            except Exception:  # pragma: no cover
+                log.debug("Exception parsing qemu dac baselabel=%s",
                     label, exc_info=True)
-        return None, None
+        return None, None  # pragma: no cover
 
 
 ################################
@@ -159,13 +158,9 @@ class _CapsGuest(XMLBuilder):
         """
         Return True if kvm guests can be installed
         """
-        if self.os_type != "hvm":
-            return False
-
         for d in self.domains:
             if d.hypervisor_type == "kvm":
                 return True
-
         return False
 
     def supports_pae(self):
@@ -221,55 +216,11 @@ class Capabilities(XMLBuilder):
     guests = XMLChildProperty(_CapsGuest)
 
 
-    ###################
-    # Private helpers #
-    ###################
-
-    def _is_xen(self):
-        for g in self.guests:
-            if g.os_type != "xen":
-                continue
-
-            for d in g.domains:
-                if d.hypervisor_type == "xen":
-                    return True
-
-        return False
-
-
-    ##############
-    # Public API #
-    ##############
-
-    def get_cpu_values(self, arch):
-        if not arch:
-            return []
-        if not self.conn.check_support(self.conn.SUPPORT_CONN_CPU_MODEL_NAMES):
-            return []
-        if arch in self._cpu_models_cache:
-            return self._cpu_models_cache[arch]
-
-        try:
-            names = self.conn.getCPUModelNames(arch, 0)
-            if names == -1:
-                names = []
-        except Exception as e:
-            logging.debug("Error fetching CPU model names for arch=%s: %s",
-                          arch, e)
-            names = []
-
-        self._cpu_models_cache[arch] = names
-        return names
-
-
     ############################
     # Public XML building APIs #
     ############################
 
     def _guestForOSType(self, os_type, arch):
-        if self.host is None:
-            return None
-
         archs = [arch]
         if arch is None:
             archs = [self.host.cpu.arch, None]

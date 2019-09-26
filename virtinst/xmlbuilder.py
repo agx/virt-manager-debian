@@ -2,19 +2,19 @@
 # Base class for all VM devices
 #
 # Copyright 2008, 2013 Red Hat, Inc.
-# Cole Robinson <crobinso@redhat.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
 import collections
-import logging
 import os
 import re
-import string  # pylint: disable=deprecated-module
+import string
+import textwrap
 
+from .logger import log
 from .xmlapi import XMLAPI
-from . import util
+from . import xmlutil
 
 
 # pylint: disable=protected-access
@@ -192,8 +192,8 @@ class XMLProperty(_XMLPropertyBase):
         :param do_abspath: If True, run os.path.abspath on the passed value
         """
         self._xpath = xpath
-        if not self._xpath:
-            raise RuntimeError("XMLProperty: xpath must be passed.")
+        xmlutil.raise_programming_error(not self._xpath,
+                "XMLProperty: xpath must be passed.")
 
         self._is_bool = is_bool
         self._is_int = is_int
@@ -201,10 +201,11 @@ class XMLProperty(_XMLPropertyBase):
         self._is_onoff = is_onoff
         self._do_abspath = do_abspath
 
-        if sum([int(bool(i)) for i in
+        conflicts = sum([int(bool(i)) for i in
                 [self._is_bool, self._is_int,
-                 self._is_yesno, self._is_onoff]]) > 1:
-            raise RuntimeError("Conflict property converter options.")
+                 self._is_yesno, self._is_onoff]])
+        xmlutil.raise_programming_error(conflicts > 1,
+                "Conflict property converter options.")
 
         self._is_tracked = False
         if _trackprops:
@@ -224,16 +225,30 @@ class XMLProperty(_XMLPropertyBase):
     def _convert_get_value(self, val):
         # pylint: disable=redefined-variable-type
         if self._is_bool:
-            ret = bool(val)
+            return bool(val)
         elif self._is_int and val is not None:
-            intkwargs = {}
-            if "0x" in str(val):
-                intkwargs["base"] = 16
-            ret = int(val, **intkwargs)
-        elif self._is_yesno and val is not None:
-            ret = bool(val == "yes")
-        elif self._is_onoff and val is not None:
-            ret = bool(val == "on")
+            try:
+                intkwargs = {}
+                if "0x" in str(val):
+                    intkwargs["base"] = 16
+                ret = int(val, **intkwargs)
+            except ValueError as e:
+                log.debug("Error converting XML value to int: %s", e)
+                ret = val
+        elif self._is_yesno:
+            if val == "yes":
+                ret = True
+            elif val == "no":
+                ret = False
+            else:
+                ret = val
+        elif self._is_onoff:
+            if val == "on":
+                ret = True
+            elif val == "off":
+                ret = False
+            else:
+                ret = val
         else:
             ret = val
         return ret
@@ -241,10 +256,16 @@ class XMLProperty(_XMLPropertyBase):
     def _convert_set_value(self, val):
         if self._do_abspath and val is not None:
             val = os.path.abspath(val)
-        elif self._is_onoff and val is not None:
-            val = bool(val) and "on" or "off"
-        elif self._is_yesno and val is not None:
-            val = bool(val) and "yes" or "no"
+        elif self._is_onoff:
+            if val is True:
+                val = "on"
+            elif val is False:
+                val = "off"
+        elif self._is_yesno:
+            if val is True:
+                val = "yes"
+            elif val is False:
+                val = "no"
         elif self._is_int and val is not None:
             intkwargs = {}
             if "0x" in str(val):
@@ -371,8 +392,12 @@ class _XMLState(object):
         try:
             self.xmlapi = XMLAPI(parsexml)
         except Exception:
-            logging.debug("Error parsing xml=\n%s", parsexml)
+            log.debug("Error parsing xml=\n%s", parsexml)
             raise
+
+        if not self.is_build:
+            # Ensure parsexml has the correct root node
+            self.xmlapi.validate_root_name(self._root_name.split(":")[-1])
 
     def set_relative_object_xpath(self, xpath):
         self._relative_object_xpath = xpath or ""
@@ -381,8 +406,6 @@ class _XMLState(object):
         self._parent_xpath = xpath or ""
 
     def _join_xpath(self, x1, x2):
-        if x1.endswith("/"):
-            x1 = x1[:-1]
         if x2.startswith("."):
             x2 = x2[1:]
         return x1 + x2
@@ -425,6 +448,21 @@ class XMLBuilder(object):
     def register_namespace(nsname, uri):
         XMLAPI.register_namespace(nsname, uri)
 
+    @staticmethod
+    def validate_generic_name(name_label, val):
+        # Rather than try and match libvirt's regex, just forbid things we
+        # know don't work
+        forbid = [" "]
+        if not val:
+            raise ValueError(
+                _("A name must be specified for the %s") % name_label)
+        for c in forbid:
+            if c not in val:
+                continue
+            raise ValueError(
+                _("%s name '%s' can not contain '%s' character.") %
+                (name_label, val, c))
+
 
     def __init__(self, conn, parsexml=None,
                  parentxmlstate=None, relative_object_xpath=None):
@@ -439,11 +477,7 @@ class XMLBuilder(object):
         self.conn = conn
 
         if self._XML_SANITIZE:
-            if hasattr(parsexml, 'decode'):
-                parsexml = parsexml.decode("ascii", "ignore").encode("ascii")
-            else:
-                parsexml = parsexml.encode("ascii", "ignore").decode("ascii")
-
+            parsexml = parsexml.encode("ascii", "ignore").decode("ascii")
             parsexml = "".join([c for c in parsexml if c in string.printable])
 
         self._propstore = collections.OrderedDict()
@@ -463,15 +497,16 @@ class XMLBuilder(object):
         xmlprops = self._all_xml_props()
         childprops = self._all_child_props()
         for key in self._XML_PROP_ORDER:
-            if key not in xmlprops and key not in childprops:
-                raise RuntimeError("programming error: key '%s' must be "
-                                   "xml prop or child prop" % key)
+            xmlutil.raise_programming_error(
+                key not in xmlprops and key not in childprops,
+                "key '%s' must be xml prop or child prop" % key)
 
         childclasses = []
         for childprop in childprops.values():
-            if childprop.child_class in childclasses:
-                raise RuntimeError("programming error: can't register "
-                        "duplicate child_classs=%s" % childprop.child_class)
+            xmlutil.raise_programming_error(
+                childprop.child_class in childclasses,
+                "can't register duplicate child_class=%s" %
+                childprop.child_class)
             childclasses.append(childprop.child_class)
 
         setattr(self.__class__, cachekey, True)
@@ -551,7 +586,6 @@ class XMLBuilder(object):
         Validate any set values and raise an exception if there's
         a problem
         """
-        pass
 
     def set_defaults(self, guest):
         """
@@ -598,14 +632,16 @@ class XMLBuilder(object):
 
     def _find_child_prop(self, child_class):
         xmlprops = self._all_child_props()
+        ret = None
         for xmlprop in list(xmlprops.values()):
             if xmlprop.is_single:
                 continue
             if child_class is xmlprop.child_class:
-                return xmlprop
-        raise RuntimeError("programming error: "
-                           "Didn't find child property for child_class=%s" %
-                           child_class)
+                ret = xmlprop
+                break
+        xmlutil.raise_programming_error(not ret,
+                "Didn't find child property for child_class=%s" % child_class)
+        return ret
 
     def _set_xpaths(self, parent_xpath, relative_object_xpath=-1):
         """
@@ -615,7 +651,7 @@ class XMLBuilder(object):
         if relative_object_xpath != -1:
             self._xmlstate.set_relative_object_xpath(relative_object_xpath)
         for propname in self._all_child_props():
-            for p in util.listify(getattr(self, propname, [])):
+            for p in xmlutil.listify(getattr(self, propname, [])):
                 p._set_xpaths(self._xmlstate.abs_xpath())
 
     def _set_child_xpaths(self):
@@ -626,7 +662,7 @@ class XMLBuilder(object):
         """
         typecount = {}
         for propname, xmlprop in self._all_child_props().items():
-            for obj in util.listify(getattr(self, propname)):
+            for obj in xmlutil.listify(getattr(self, propname)):
                 idxstr = ""
                 if not xmlprop.is_single:
                     class_type = obj.__class__
@@ -645,7 +681,7 @@ class XMLBuilder(object):
         """
         self._xmlstate.parse(*args, **kwargs)
         for propname in self._all_child_props():
-            for p in util.listify(getattr(self, propname, [])):
+            for p in xmlutil.listify(getattr(self, propname, [])):
                 p._parse_with_children(None, self._xmlstate)
 
     def add_child(self, obj, idx=None):
@@ -669,7 +705,7 @@ class XMLBuilder(object):
             use_xpath = obj._xmlstate.abs_xpath().rsplit("/", 1)[0]
             indent = 2 * obj._xmlstate.abs_xpath().count("/")
             self._xmlstate.xmlapi.node_add_xml(
-                    util.xml_indent(xml, indent), use_xpath)
+                    textwrap.indent(xml, indent * " "), use_xpath)
         obj._parse_with_children(None, self._xmlstate)
 
     def remove_child(self, obj):
@@ -686,6 +722,24 @@ class XMLBuilder(object):
         obj._parse_with_children(xml, None)
         self._xmlstate.xmlapi.node_force_remove(xpath)
         self._set_child_xpaths()
+
+    def replace_child(self, origobj, newobj):
+        """
+        Replace the origobj child with the newobj. For is_build, this
+        replaces the objects, but for !is_build this only replaces the
+        XML and keeps the object references in place. This is hacky and
+        it's fixable but at time or writing it doesn't matter for
+        our usecases.
+        """
+        if not self._xmlstate.is_build:
+            xpath = origobj.get_xml_id()
+            indent = 2 * xpath.count("/")
+            xml = textwrap.indent(newobj.get_xml(), indent * " ").strip()
+            self._xmlstate.xmlapi.node_replace_xml(xpath, xml)
+        else:
+            origidx = origobj.get_xml_idx()
+            self.remove_child(origobj)
+            self.add_child(newobj, idx=origidx)
 
     def _prop_is_unset(self, propname):
         """
@@ -737,5 +791,5 @@ class XMLBuilder(object):
             if key in xmlprops:
                 xmlprops[key]._set_xml(self, self._propstore[key])
             elif key in childprops:
-                for obj in util.listify(getattr(self, key)):
+                for obj in xmlutil.listify(getattr(self, key)):
                     obj._add_parse_bits(self._xmlstate.xmlapi)

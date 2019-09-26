@@ -48,43 +48,15 @@ class TestCapabilities(unittest.TestCase):
         test_utils(caps_with_kvm, True, True)
         test_utils(caps_no_kvm, True, False)
 
+        # Small test for extra unittest coverage
+        with self.assertRaises(ValueError):
+            caps_empty.guest_lookup(os_type="linux")
+
     def testCapsNuma(self):
         cells = self._buildCaps("lxc.xml").host.topology.cells
         self.assertEqual(len(cells), 1)
         self.assertEqual(len(cells[0].cpus), 8)
         self.assertEqual(cells[0].cpus[3].id, '3')
-
-
-    ####################################
-    # Test getCPUModel output handling #
-    ####################################
-
-    def testCPUAPI(self):
-        caps = self._buildCaps("test-qemu-with-kvm.xml")
-
-        cpu_64 = caps.get_cpu_values("x86_64")
-        cpu_32 = caps.get_cpu_values("i686")
-        cpu_random = caps.get_cpu_values("mips")
-
-        def test_cpu_map(cpumap, cpus):
-            cpunames = sorted(cpumap, key=str.lower)
-
-            for c in cpus:
-                self.assertTrue(c in cpunames)
-
-        self.assertEqual(cpu_64, cpu_32)
-
-        x86_cpunames = [
-            '486', 'athlon', 'Conroe', 'core2duo', 'coreduo', 'n270',
-            'Nehalem', 'Opteron_G1', 'Opteron_G2', 'Opteron_G3', 'Penryn',
-            'pentium', 'pentium2', 'pentium3', 'pentiumpro', 'phenom',
-            'qemu32', 'qemu64']
-
-        test_cpu_map(cpu_64, x86_cpunames)
-        test_cpu_map(cpu_random, [])
-
-        cpu_64 = caps.get_cpu_values("x86_64")
-        self.assertTrue(len(cpu_64) > 0)
 
 
     ##############################

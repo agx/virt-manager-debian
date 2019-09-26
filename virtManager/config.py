@@ -5,16 +5,16 @@
 # See the COPYING file in the top-level directory.
 
 import os
-import logging
 
 from gi.repository import Gio
 from gi.repository import GLib
 from gi.repository import Gtk
 
 from virtinst import DomainCpu
+from virtinst import log
 
-from .inspection import vmmInspection
-from .keyring import vmmKeyring, vmmSecret
+from .lib.inspection import vmmInspection
+from .lib.keyring import vmmKeyring, vmmSecret
 
 
 class _SettingsWrapper(object):
@@ -160,23 +160,25 @@ class vmmConfig(object):
     def is_initialized(cls):
         return bool(cls._instance)
 
-    def __init__(self, CLIConfig, test_first_run):
+    def __init__(self, BuildConfig, CLITestOptions):
         self.appname = "virt-manager"
-        self.appversion = CLIConfig.version
+        self.appversion = BuildConfig.version
         self.conf_dir = "/org/virt-manager/%s/" % self.appname
-        self.ui_dir = CLIConfig.ui_dir
-        self.test_first_run = bool(test_first_run)
-        self.test_leak_debug = False
+        self.ui_dir = BuildConfig.ui_dir
 
         self.conf = _SettingsWrapper("org.virt-manager.virt-manager")
+
+        self.CLITestOptions = CLITestOptions
+        if self.CLITestOptions.xmleditor_enabled:
+            self.set_xmleditor_enabled(True)
 
         # We don't create it straight away, since we don't want
         # to block the app pending user authorization to access
         # the keyring
         self.keyring = None
 
-        self.default_graphics_from_config = CLIConfig.default_graphics
-        self.default_hvs = CLIConfig.default_hvs
+        self.default_graphics_from_config = BuildConfig.default_graphics
+        self.default_hvs = BuildConfig.default_hvs
 
         self.default_storage_format_from_config = "qcow2"
         self.default_console_resizeguest = 0
@@ -364,10 +366,22 @@ class vmmConfig(object):
     def set_view_system_tray(self, val):
         self.conf.set("/system-tray", val)
 
+
+    # XML editor enabled
+    def on_xmleditor_enabled_changed(self, cb):
+        return self.conf.notify_add("/xmleditor-enabled", cb)
+    def get_xmleditor_enabled(self):
+        return self.conf.get("/xmleditor-enabled")
+    def set_xmleditor_enabled(self, val):
+        self.conf.set("/xmleditor-enabled", val)
+
+
     # Libguestfs VM inspection
     def on_libguestfs_inspect_vms_changed(self, cb):
         return self.conf.notify_add("/enable-libguestfs-vm-inspection", cb)
     def get_libguestfs_inspect_vms(self):
+        if self.CLITestOptions.first_run:
+            return False
         return self.conf.get("/enable-libguestfs-vm-inspection")
     def set_libguestfs_inspect_vms(self, val):
         self.conf.set("/enable-libguestfs-vm-inspection", val)
@@ -628,7 +642,7 @@ class vmmConfig(object):
                 _type == self.CONFIG_DIR_FLOPPY_MEDIA):
                 path = os.getcwd()
 
-        logging.debug("directory for type=%s returning=%s", _type, path)
+        log.debug("directory for type=%s returning=%s", _type, path)
         return path
 
     def set_default_directory(self, folder, _type):
@@ -636,7 +650,7 @@ class vmmConfig(object):
         if not key:
             return
 
-        logging.debug("saving directory for type=%s to %s", key, folder)
+        log.debug("saving directory for type=%s to %s", key, folder)
         self.conf.set("/paths/%s-default" % key, folder)
 
     # Keyring / VNC password dealings

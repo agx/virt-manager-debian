@@ -2,12 +2,30 @@
 # Base class for all VM devices
 #
 # Copyright 2008, 2013 Red Hat, Inc.
-# Cole Robinson <crobinso@redhat.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
 from ..xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
+
+
+class DeviceVirtioDriver(XMLBuilder):
+    """
+    Represents shared virtio <driver> options
+    """
+    XML_NAME = "driver"
+    ats = XMLProperty("./@ats", is_onoff=True)
+    iommu = XMLProperty("./@iommu", is_onoff=True)
+
+
+class DeviceSeclabel(XMLBuilder):
+    """
+    Minimal seclabel that's used for device sources.
+    """
+    XML_NAME = "seclabel"
+    model = XMLProperty("./@model")
+    relabel = XMLProperty("./@relabel", is_yesno=True)
+    label = XMLProperty("./label")
 
 
 class DeviceAlias(XMLBuilder):
@@ -18,6 +36,7 @@ class DeviceAlias(XMLBuilder):
 class DeviceBoot(XMLBuilder):
     XML_NAME = "boot"
     order = XMLProperty("./@order", is_int=True)
+    loadparm = XMLProperty("./@loadparm")
 
 
 class DeviceAddress(XMLBuilder):
@@ -77,6 +96,8 @@ class DeviceAddress(XMLBuilder):
     slot = XMLProperty("./@slot", is_int=True)
     function = XMLProperty("./@function", is_int=True)
     multifunction = XMLProperty("./@multifunction", is_onoff=True)
+    zpci_uid = XMLProperty("./zpci/@uid")
+    zpci_fid = XMLProperty("./zpci/@fid")
     # type=drive
     controller = XMLProperty("./@controller", is_int=True)
     unit = XMLProperty("./@unit", is_int=True)
@@ -106,12 +127,67 @@ class Device(XMLBuilder):
         :param conn: libvirt connection to validate device against
         """
         XMLBuilder.__init__(self, *args, **kwargs)
-        self._XML_PROP_ORDER = self._XML_PROP_ORDER + ["alias", "address"]
+        self._XML_PROP_ORDER = self._XML_PROP_ORDER + [
+                "virtio_driver", "alias", "address"]
 
     alias = XMLChildProperty(DeviceAlias, is_single=True)
     address = XMLChildProperty(DeviceAddress, is_single=True)
     boot = XMLChildProperty(DeviceBoot, is_single=True)
+    virtio_driver = XMLChildProperty(DeviceVirtioDriver, is_single=True)
 
     @property
     def DEVICE_TYPE(self):
         return self.XML_NAME
+
+    def compare_device(self, newdev, idx):
+        """
+        Attempt to compare this device against the passed @newdev,
+        using various heuristics. For example, when removing a device
+        from both active and inactive XML, the device XML my be very
+        different or the devices may appear in different orders, so
+        we have to do some fuzzy matching to determine if the devices
+        are a 'match'
+        """
+        devprops = {
+            "disk":          ["target", "bus"],
+            "interface":     ["macaddr", "xmlindex"],
+            "input":         ["bus", "type", "xmlindex"],
+            "sound":         ["model", "xmlindex"],
+            "video":         ["model", "xmlindex"],
+            "watchdog":      ["xmlindex"],
+            "hostdev":       ["type", "managed", "xmlindex",
+                              "product", "vendor",
+                              "function", "domain", "slot"],
+            "serial":        ["type", "target_port"],
+            "parallel":      ["type", "target_port"],
+            "console":       ["type", "target_type", "target_port"],
+            "graphics":      ["type", "xmlindex"],
+            "controller":    ["type", "index"],
+            "channel":       ["type", "target_name"],
+            "filesystem":    ["target", "xmlindex"],
+            "smartcard":     ["mode", "xmlindex"],
+            "redirdev":      ["bus", "type", "xmlindex"],
+            "tpm":           ["type", "xmlindex"],
+            "rng":           ["backend_model", "xmlindex"],
+            "panic":         ["type", "xmlindex"],
+            "vsock":         ["xmlindex"],
+        }
+
+        if id(self) == id(newdev):
+            return True
+
+        if not isinstance(self, type(newdev)):
+            return False
+
+        for devprop in devprops[self.DEVICE_TYPE]:
+            if devprop == "xmlindex":
+                origval = self.get_xml_idx()
+                newval = idx
+            else:
+                origval = getattr(self, devprop)
+                newval = getattr(newdev, devprop)
+
+            if origval != newval:
+                return False
+
+        return True

@@ -1,6 +1,5 @@
 #
 # Copyright 2010, 2013 Red Hat, Inc.
-# Cole Robinson <crobinso@redhat.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
@@ -49,8 +48,6 @@ class DomainOs(XMLBuilder):
         return self.arch == "aarch64"
     def is_arm(self):
         return self.is_arm32() or self.is_arm64()
-    def is_arm_vexpress(self):
-        return self.is_arm() and str(self.machine).startswith("vexpress-")
     def is_arm_machvirt(self):
         return self.is_arm() and str(self.machine).startswith("virt")
 
@@ -62,21 +59,26 @@ class DomainOs(XMLBuilder):
     def is_s390x(self):
         return self.arch == "s390x"
 
+    def is_riscv(self):
+        return self.arch == "riscv64" or self.arch == "riscv32"
+    def is_riscv_virt(self):
+        return self.is_riscv() and str(self.machine).startswith("virt")
+
     XML_NAME = "os"
     _XML_PROP_ORDER = ["arch", "os_type", "loader", "loader_ro", "loader_type",
                        "nvram", "nvram_template", "kernel", "initrd",
-                       "kernel_args", "dtb", "_bootdevs", "smbios_mode"]
+                       "kernel_args", "dtb", "bootdevs", "smbios_mode"]
 
     def _get_bootorder(self):
-        return [dev.dev for dev in self._bootdevs]
+        return [dev.dev for dev in self.bootdevs]
     def _set_bootorder(self, newdevs):
-        for dev in self._bootdevs:
+        for dev in self.bootdevs:
             self.remove_child(dev)
 
         for d in newdevs:
-            dev = self._bootdevs.add_new()
+            dev = self.bootdevs.add_new()
             dev.dev = d
-    _bootdevs = XMLChildProperty(_BootDevice)
+    bootdevs = XMLChildProperty(_BootDevice)
     bootorder = property(_get_bootorder, _set_bootorder)
 
     initargs = XMLChildProperty(_InitArg)
@@ -108,6 +110,7 @@ class DomainOs(XMLBuilder):
     arch = XMLProperty("./type/@arch")
     machine = XMLProperty("./type/@machine")
     os_type = XMLProperty("./type")
+    firmware = XMLProperty("./@firmware")
 
 
     ##################

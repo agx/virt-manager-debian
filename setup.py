@@ -4,10 +4,14 @@
 # See the COPYING file in the top-level directory.
 
 
+import sys
+if sys.version_info.major < 3:
+    print("virt-manager is python3 only. Run this as ./setup.py")
+    sys.exit(1)
+
 import glob
 import fnmatch
 import os
-import sys
 import unittest
 
 import distutils
@@ -20,13 +24,29 @@ import distutils.dist
 import distutils.log
 import distutils.sysconfig
 
-if sys.version_info.major < 3:
-    print("virt-manager is python3 only. Run this as ./setup.py")
-    sys.exit(1)
-
-from virtcli import CLIConfig
 
 sysprefix = distutils.sysconfig.get_config_var("prefix")
+
+
+def _import_buildconfig():
+    # A bit of crazyness to import the buildconfig file without importing
+    # the rest of virtinst, so the build process doesn't require all the
+    # runtime deps to be installed
+    import warnings
+
+    # 'imp' is deprecated. We use it elsewhere though too. Deal with using
+    # the modern replacement when we replace all usage
+    with warnings.catch_warnings():
+        warnings.filterwarnings("ignore", category=DeprecationWarning)
+        import imp
+        buildconfig = imp.load_source('buildconfig', 'virtinst/buildconfig.py')
+        if "libvirt" in sys.modules:
+            raise RuntimeError("Found libvirt in sys.modules. setup.py should "
+                    "not import virtinst.")
+        return buildconfig.BuildConfig
+
+
+BuildConfig = _import_buildconfig()
 
 
 # pylint: disable=attribute-defined-outside-init
@@ -53,7 +73,6 @@ def _generate_potfiles_in():
 
     potfiles = "\n".join(scripts) + "\n\n"
     potfiles += "\n".join(find("virtManager", "*.py")) + "\n\n"
-    potfiles += "\n".join(find("virtcli", "*.py")) + "\n\n"
     potfiles += "\n".join(find("virtconv", "*.py")) + "\n\n"
     potfiles += "\n".join(find("virtinst", "*.py")) + "\n\n"
 
@@ -163,12 +182,11 @@ class my_build(distutils.command.build.build):
     def _make_bin_wrappers(self):
         cmds = ["virt-manager", "virt-install", "virt-clone",
                 "virt-convert", "virt-xml"]
-
         if not os.path.exists("build"):
             os.mkdir("build")
 
         for app in cmds:
-            sharepath = os.path.join(CLIConfig.prefix,
+            sharepath = os.path.join(BuildConfig.prefix,
                 "share", "virt-manager", app)
 
             wrapper = "#!/bin/sh\n\n"
@@ -190,7 +208,7 @@ class my_build(distutils.command.build.build):
             ret = os.system('pod2man '
                             '--center "Virtual Machine Manager" '
                             '--release %s --name %s '
-                            '< %s > %s' % (CLIConfig.version,
+                            '< %s > %s' % (BuildConfig.version,
                                            appname.upper(),
                                            path, newpath))
             if ret != 0:
@@ -218,10 +236,32 @@ class my_build(distutils.command.build.build):
                 self.distribution.data_files.append((dest, icons))
 
 
+    def _make_bash_completion_files(self):
+        scripts = ["virt-install", "virt-clone", "virt-convert", "virt-xml"]
+        srcfile = "data/bash-completion.sh.in"
+        builddir = "build/bash-completion/"
+        if not os.path.exists(builddir):
+            os.makedirs(builddir)
+
+        instpaths = []
+        for script in scripts:
+            genfile = os.path.join(builddir, script)
+            print("Generating %s" % genfile)
+            src = open(srcfile, "r")
+            dst = open(genfile, "w")
+            dst.write(src.read().replace("::SCRIPTNAME::", script))
+            dst.close()
+            instpaths.append(genfile)
+
+        bashdir = "share/bash-completion/completions/"
+        self.distribution.data_files.append((bashdir, instpaths))
+
+
     def run(self):
         self._make_bin_wrappers()
         self._make_man_pages()
         self._build_icons()
+        self._make_bash_completion_files()
 
         self.run_command("build_i18n")
         distutils.command.build.build.run(self)
@@ -241,18 +281,18 @@ class my_install(distutils.command.install.install):
     """
     def finalize_options(self):
         if self.prefix is None:
-            if CLIConfig.prefix != sysprefix:
+            if BuildConfig.prefix != sysprefix:
                 print("Using configured prefix=%s instead of sysprefix=%s" % (
-                    CLIConfig.prefix, sysprefix))
-                self.prefix = CLIConfig.prefix
+                    BuildConfig.prefix, sysprefix))
+                self.prefix = BuildConfig.prefix
             else:
                 print("Using sysprefix=%s" % sysprefix)
                 self.prefix = sysprefix
 
-        elif self.prefix != CLIConfig.prefix:
+        elif self.prefix != BuildConfig.prefix:
             print("Install prefix=%s doesn't match configure prefix=%s\n"
                   "Pass matching --prefix to 'setup.py configure'" %
-                  (self.prefix, CLIConfig.prefix))
+                  (self.prefix, BuildConfig.prefix))
             sys.exit(1)
 
         distutils.command.install.install.finalize_options(self)
@@ -281,7 +321,7 @@ class my_sdist(distutils.command.sdist.sdist):
         f1 = open('virt-manager.spec.in', 'r')
         f2 = open('virt-manager.spec', 'w')
         for line in f1:
-            f2.write(line.replace('@VERSION@', CLIConfig.version))
+            f2.write(line.replace('@VERSION@', BuildConfig.version))
         f1.close()
         f2.close()
 
@@ -307,7 +347,7 @@ class my_rpm(distutils.core.Command):
         """
         self.run_command('sdist')
         os.system('rpmbuild -ta --clean dist/virt-manager-%s.tar.gz' %
-                  CLIConfig.version)
+                  BuildConfig.version)
 
 
 class configure(distutils.core.Command):
@@ -340,8 +380,8 @@ class configure(distutils.core.Command):
         if self.default_hvs is not None:
             template += "default_hvs = %s\n" % self.default_hvs
 
-        open(CLIConfig.cfgpath, "w").write(template)
-        print("Generated %s" % CLIConfig.cfgpath)
+        open(BuildConfig.cfgpath, "w").write(template)
+        print("Generated %s" % BuildConfig.cfgpath)
 
 
 class TestBaseCommand(distutils.core.Command):
@@ -363,6 +403,7 @@ class TestBaseCommand(distutils.core.Command):
         self.coverage = 0
         self.only = None
         self._testfiles = []
+        self._clistate = {}
         self._dir = os.getcwd()
         self.testfile = None
         self._force_verbose = False
@@ -398,7 +439,7 @@ class TestBaseCommand(distutils.core.Command):
         cov = None
         if self.coverage:
             import coverage
-            omit = ["/usr/*", "/*/tests/*"]
+            omit = ["/usr/*", "/*/tests/*", "*progress.py"]
             cov = coverage.coverage(omit=omit)
             cov.erase()
             if not self._external_coverage:
@@ -409,6 +450,8 @@ class TestBaseCommand(distutils.core.Command):
                 self.regenerate_output)
         testsmodule.utils.clistate.use_coverage = bool(cov)
         testsmodule.utils.clistate.debug = bool(self.debug)
+        for key, val in self._clistate.items():
+            setattr(testsmodule.utils.clistate, key, val)
         testsmodule.setup_logging()
         testsmodule.setup_cli_imports()
 
@@ -453,19 +496,13 @@ class TestBaseCommand(distutils.core.Command):
         err = int(bool(len(result.failures) > 0 or
                        len(result.errors) > 0))
         if cov and not err:
-            cov.report(show_missing=False)
+            cov.report(show_missing=False, skip_covered=True)
         sys.exit(err)
 
 
 
 class TestCommand(TestBaseCommand):
     description = "Runs a quick unit test suite"
-
-    def initialize_options(self):
-        TestBaseCommand.initialize_options(self)
-
-    def finalize_options(self):
-        TestBaseCommand.finalize_options(self)
 
     def run(self):
         '''
@@ -503,21 +540,36 @@ class TestUI(TestBaseCommand):
 
 class TestURLFetch(TestBaseCommand):
     description = "Test fetching kernels and isos from various distro trees"
+    user_options = TestBaseCommand.user_options + [
+        ('skip-libosinfo', None,
+            "Don't use libosinfo for media/tree detection, "
+            "Use our internal detection logic."),
+        ('force-libosinfo', None,
+            "Only use libosinfo for media/tree detection. This will skip "
+            "some cases that are known not to work, like debian/ubuntu "
+            "tree detection."),
+        ('iso-only', None, "Only run iso tests"),
+        ('url-only', None, "Only run url tests"),
+    ]
 
     def initialize_options(self):
         TestBaseCommand.initialize_options(self)
-        self.path = ""
+        self.skip_libosinfo = 0
+        self.force_libosinfo = 0
+        self.iso_only = 0
+        self.url_only = 0
 
     def finalize_options(self):
         TestBaseCommand.finalize_options(self)
-        origpath = str(self.path)
-        if not origpath:
-            self.path = []
-        else:
-            self.path = origpath.split(",")
 
     def run(self):
         self._testfiles = ["tests.test_urls"]
+        self._clistate = {
+            "url_iso_only": bool(self.iso_only),
+            "url_only": bool(self.url_only),
+            "url_skip_libosinfo": bool(self.skip_libosinfo),
+            "url_force_libosinfo": bool(self.force_libosinfo),
+        }
         TestBaseCommand.run(self)
 
 
@@ -535,32 +587,6 @@ class TestDist(TestBaseCommand):
     def run(self):
         self._testfiles = ["tests.dist"]
         TestBaseCommand.run(self)
-
-
-class CheckSpell(distutils.core.Command):
-    user_options = []
-    description = "Check code for common misspellings"
-
-    def initialize_options(self):
-        pass
-
-    def finalize_options(self):
-        pass
-
-    def run(self):
-        try:
-            import codespell_lib
-        except ImportError:
-            raise ImportError('codespell is not installed')
-
-        files = ["setup.py", "virt-install", "virt-clone",
-                 "virt-convert", "virt-xml", "virt-manager",
-                 "virtcli", "virtinst", "virtconv", "virtManager",
-                 "tests"]
-        # pylint: disable=protected-access
-        codespell_lib._codespell.main(
-            '-I', 'tests/codespell_dict.txt',
-            '--skip', '*.pyc,*.zip,*.vmdk,*.iso,*.xml', *files)
 
 
 class CheckPylint(distutils.core.Command):
@@ -582,19 +608,28 @@ class CheckPylint(distutils.core.Command):
 
         files = ["setup.py", "virt-install", "virt-clone",
                  "virt-convert", "virt-xml", "virt-manager",
-                 "virtcli", "virtinst", "virtconv", "virtManager",
+                 "virtinst", "virtconv", "virtManager",
                  "tests"]
 
+        try:
+            import codespell_lib
+            # pylint: disable=protected-access
+            print("running codespell")
+            codespell_lib._codespell.main(
+                '-I', 'tests/codespell_dict.txt',
+                '--skip', '*.pyc,*.zip,*.vmdk,*.iso,*.xml', *files)
+        except ImportError:
+            print("codespell is not installed. skipping...")
+        except Exception as e:
+            print("Error running codespell: %s" % e)
+
         output_format = sys.stdout.isatty() and "colorized" or "text"
-        exclude = ["virtinst/progress.py"]
 
         print("running pycodestyle")
         style_guide = pycodestyle.StyleGuide(
-            config_file='tests/pycodestyle.cfg',
+            config_file='setup.cfg',
+            format="pylint",
             paths=files
-        )
-        style_guide.options.exclude = pycodestyle.normalize_paths(
-            ','.join(exclude)
         )
         report = style_guide.check_files()
         if style_guide.options.count:
@@ -602,9 +637,9 @@ class CheckPylint(distutils.core.Command):
 
         print("running pylint")
         pylint_opts = [
-            "--rcfile", "tests/pylint.cfg",
+            "--rcfile", "pylintrc",
             "--output-format=%s" % output_format,
-        ] + ["--ignore"] + [os.path.basename(p) for p in exclude]
+        ]
         if self.jobs:
             pylint_opts += ["--jobs=%d" % self.jobs]
 
@@ -625,7 +660,7 @@ class VMMDistribution(distutils.dist.Distribution):
 
 distutils.core.setup(
     name="virt-manager",
-    version=CLIConfig.version,
+    version=BuildConfig.version,
     author="Cole Robinson",
     author_email="virt-tools-list@redhat.com",
     url="http://virt-manager.org",
@@ -660,13 +695,24 @@ distutils.core.setup(
         ]),
 
         ("share/virt-manager/virtManager", glob.glob("virtManager/*.py")),
-
-        ("share/virt-manager/virtcli",
-         glob.glob("virtcli/*.py") + glob.glob("virtcli/cli.cfg")),
-        ("share/virt-manager/virtinst", glob.glob("virtinst/*.py")),
-        ("share/virt-manager/virtinst/devices", glob.glob("virtinst/devices/*.py")),
-        ("share/virt-manager/virtinst/domain", glob.glob("virtinst/domain/*.py")),
-        ("share/virt-manager/virtconv", glob.glob("virtconv/*.py")),
+        ("share/virt-manager/virtManager/details",
+            glob.glob("virtManager/details/*.py")),
+        ("share/virt-manager/virtManager/device",
+            glob.glob("virtManager/device/*.py")),
+        ("share/virt-manager/virtManager/lib",
+            glob.glob("virtManager/lib/*.py")),
+        ("share/virt-manager/virtManager/object",
+            glob.glob("virtManager/object/*.py")),
+        ("share/virt-manager/virtinst",
+            glob.glob("virtinst/*.py") + glob.glob("virtinst/build.cfg")),
+        ("share/virt-manager/virtinst/devices",
+            glob.glob("virtinst/devices/*.py")),
+        ("share/virt-manager/virtinst/domain",
+            glob.glob("virtinst/domain/*.py")),
+        ("share/virt-manager/virtinst/install",
+            glob.glob("virtinst/install/*.py")),
+        ("share/virt-manager/virtconv",
+            glob.glob("virtconv/*.py")),
     ],
 
     cmdclass={
@@ -681,7 +727,6 @@ distutils.core.setup(
         'configure': configure,
 
         'pylint': CheckPylint,
-        'codespell': CheckSpell,
         'rpm': my_rpm,
         'test': TestCommand,
         'test_ui': TestUI,

@@ -30,13 +30,20 @@ A detailed dependency list can be found in
 
 Minimum version requirements of major components:
 
-   - python >= 3.3
-   - gtk3 >= 3.14
+   - python >= 3.4
+   - gtk3 >= 3.22
    - libvirt-python >= 0.6.0
-   - pygobject3 >= 3.14
+   - pygobject3 >= 3.22
    - libosinfo >= 0.2.10
+   - gtksourceview >= 3
 
 On Debian or Ubuntu based distributions, you need to install the
 `gobject-introspection` bindings for some dependencies like `libvirt-glib`
 and `libosinfo`. Look for package names that start with `'gir'`, for example
 `gir1.2-libosinfo-1.0`.
+
+
+## Optional software
+
+`virt-manager` can optionally use [libguestfs](http://libguestfs.org/)
+for inspecting the guests.  For this, `python-libguestfs` >= 1.22 is needed.

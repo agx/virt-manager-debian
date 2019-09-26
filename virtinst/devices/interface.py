@@ -1,16 +1,14 @@
 #
 # Copyright 2006-2009, 2013 Red Hat, Inc.
-# Jeremy Katz <katzj@redhat.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
 import os
 import random
 
-from .. import util
 from .device import Device
+from ..logger import log
 from ..xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
 
 
@@ -43,14 +41,14 @@ def _random_mac(conn):
 
 def _default_route():
     route_file = "/proc/net/route"
-    if not os.path.exists(route_file):
-        logging.debug("route_file=%s does not exist", route_file)
+    if not os.path.exists(route_file):  # pragma: no cover
+        log.debug("route_file=%s does not exist", route_file)
         return None
 
     for line in open(route_file):
         info = line.split()
-        if len(info) != 11:
-            logging.debug("Unexpected field count=%s when parsing %s",
+        if len(info) != 11:  # pragma: no cover
+            log.debug("Unexpected field count=%s when parsing %s",
                           len(info), route_file)
             break
 
@@ -61,42 +59,39 @@ def _default_route():
         except ValueError:
             continue
 
-    return None
+    return None  # pragma: no cover
 
 
-def _default_bridge(conn):
-    if "VIRTINST_TEST_SUITE" in os.environ:
-        return "eth0"
-
-    if conn.is_remote():
-        return None
-
+def _default_bridge():
     dev = _default_route()
     if not dev:
-        return None
+        return None  # pragma: no cover
 
     # New style peth0 == phys dev, eth0 == bridge, eth0 == default route
     if os.path.exists("/sys/class/net/%s/bridge" % dev):
-        return dev
+        return dev  # pragma: no cover
 
     # Old style, peth0 == phys dev, eth0 == netloop, xenbr0 == bridge,
     # vif0.0 == netloop enslaved, eth0 == default route
     try:
         defn = int(dev[-1])
-    except Exception:
+    except Exception:  # pragma: no cover
         defn = -1
 
     if (defn >= 0 and
         os.path.exists("/sys/class/net/peth%d/brport" % defn) and
         os.path.exists("/sys/class/net/xenbr%d/bridge" % defn)):
-        return "xenbr%d"
+        return "xenbr%d"  # pragma: no cover
     return None
 
 
-def _default_network(conn):
-    ret = _default_bridge(conn)
-    if ret:
-        return ["bridge", ret]
+def _default_source(conn):
+    if not conn.is_remote():
+        ret = _default_bridge()
+        if conn.in_testsuite():
+            ret = "testsuitebr0"
+        if ret:
+            return ["bridge", ret]
     return ["network", "default"]
 
 
@@ -123,42 +118,6 @@ class DeviceInterface(Device):
     TYPE_DIRECT   = "direct"
 
     @staticmethod
-    def get_models(guest):
-        if not guest.os.is_hvm():
-            return []
-
-        ret = []
-        if guest.type in ["kvm", "qemu", "vz", "test"]:
-            ret.append("virtio")
-        if guest.os.is_x86():
-            if guest.os.is_q35():
-                ret.append("e1000e")
-            else:
-                ret.append("rtl8139")
-                ret.append("e1000")
-        if guest.type in ["xen", "test"]:
-            ret.append("netfront")
-
-        ret.sort()
-        return ret
-
-    @staticmethod
-    def get_network_type_desc(net_type):
-        """
-        Return human readable description for passed network type
-        """
-        desc = net_type.capitalize()
-
-        if net_type == DeviceInterface.TYPE_BRIDGE:
-            desc = _("Shared physical device")
-        elif net_type == DeviceInterface.TYPE_VIRTUAL:
-            desc = _("Virtual networking")
-        elif net_type == DeviceInterface.TYPE_USER:
-            desc = _("Usermode networking")
-
-        return desc
-
-    @staticmethod
     def generate_mac(conn):
         """
         Generate a random MAC that doesn't conflict with any VMs on
@@ -173,11 +132,12 @@ class DeviceInterface(Device):
             try:
                 DeviceInterface.is_conflict_net(conn, mac)
                 return mac
-            except RuntimeError:
+            except RuntimeError:  # pragma: no cover
                 continue
 
-        logging.debug("Failed to generate non-conflicting MAC")
-        return None
+        log.debug(  # pragma: no cover
+                "Failed to generate non-conflicting MAC")
+        return None  # pragma: no cover
 
     @staticmethod
     def is_conflict_net(conn, searchmac):
@@ -204,29 +164,27 @@ class DeviceInterface(Device):
         per the network type.
         """
         if self.type == self.TYPE_VIRTUAL:
-            return self._network
+            return self.network
         if self.type == self.TYPE_BRIDGE:
-            return self._bridge
+            return self.bridge
         if self.type == self.TYPE_DIRECT:
-            return self._source_dev
-        if self.type == self.TYPE_USER or self.type == self.TYPE_ETHERNET:
-            return None
-        return self._network or self._bridge or self._source_dev
+            return self.source_dev
+        return None
     def _set_source(self, newsource):
         """
         Convenience function, try to set the relevant <source> value
         per the network type
         """
-        self._bridge = None
-        self._network = None
-        self._source_dev = None
+        self.bridge = None
+        self.network = None
+        self.source_dev = None
 
         if self.type == self.TYPE_VIRTUAL:
-            self._network = newsource
+            self.network = newsource
         elif self.type == self.TYPE_BRIDGE:
-            self._bridge = newsource
+            self.bridge = newsource
         elif self.type == self.TYPE_DIRECT:
-            self._source_dev = newsource
+            self.source_dev = newsource
     source = property(_get_source, _set_source)
 
 
@@ -235,13 +193,13 @@ class DeviceInterface(Device):
     ##################
 
     _XML_PROP_ORDER = [
-        "_bridge", "_network", "_source_dev", "source_type", "source_path",
+        "bridge", "network", "source_dev", "source_type", "source_path",
         "source_mode", "portgroup", "macaddr", "target_dev", "model",
         "virtualport", "filterref", "rom_bar", "rom_file", "mtu_size"]
 
-    _bridge = XMLProperty("./source/@bridge")
-    _network = XMLProperty("./source/@network")
-    _source_dev = XMLProperty("./source/@dev")
+    bridge = XMLProperty("./source/@bridge")
+    network = XMLProperty("./source/@network")
+    source_dev = XMLProperty("./source/@dev")
 
     virtualport = XMLChildProperty(_VirtualPort, is_single=True)
     type = XMLProperty("./@type")
@@ -275,14 +233,13 @@ class DeviceInterface(Device):
         if not self.macaddr:
             return
 
-        util.validate_macaddr(self.macaddr)
         self.is_conflict_net(self.conn, self.macaddr)
 
     def set_default_source(self):
         if (self.conn.is_qemu_session() or self.conn.is_test()):
             self.type = self.TYPE_USER
         else:
-            self.type, self.source = _default_network(self.conn)
+            self.type, self.source = _default_source(self.conn)
 
 
     ##################
@@ -312,9 +269,9 @@ class DeviceInterface(Device):
             self.type = self.TYPE_BRIDGE
         if not self.macaddr:
             self.macaddr = self.generate_mac(self.conn)
-        if self.type == self.TYPE_BRIDGE and not self._bridge:
-            self._bridge = _default_bridge(self.conn)
-        if self.type == self.TYPE_DIRECT and not self.source_mode:
-            self.source_mode = "vepa"
+        if self.type == self.TYPE_BRIDGE and not self.bridge:
+            srctype, br = _default_source(self.conn)
+            if srctype == self.TYPE_BRIDGE:
+                self.bridge = br
         if not self.model:
             self.model = self.default_model(guest)

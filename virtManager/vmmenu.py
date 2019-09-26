@@ -4,9 +4,9 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
-
 from gi.repository import Gtk
+
+from virtinst import log
 
 from .asyncjob import vmmAsyncJob
 
@@ -87,8 +87,7 @@ class VMShutdownMenu(_VMMenu):
 
             if name == "reset":
                 child.set_tooltip_text(None)
-                if vm and not vm.conn.check_support(
-                        vm.conn.SUPPORT_CONN_DOMAIN_RESET):
+                if vm and not vm.conn.support.conn_domain_reset():
                     child.set_tooltip_text(_("Hypervisor does not support "
                         "domain reset."))
                     child.set_sensitive(False)
@@ -160,14 +159,14 @@ class VMActionUI(object):
 
     @staticmethod
     def save_cancel(asyncjob, vm):
-        logging.debug("Cancelling save job")
+        log.debug("Cancelling save job")
         if not vm:
             return
 
         try:
             vm.abort_job()
         except Exception as e:
-            logging.exception("Error cancelling save job")
+            log.exception("Error cancelling save job")
             asyncjob.show_warning(_("Error cancelling save job: %s") % str(e))
             return
 
@@ -210,7 +209,7 @@ class VMActionUI(object):
                     "shutting down the OS and may cause data loss.")):
             return
 
-        logging.debug("Destroying vm '%s'", vm.get_name())
+        log.debug("Destroying vm '%s'", vm.get_name())
         vmmAsyncJob.simple_async_noshow(vm.destroy, [], src,
                                         _("Error shutting down domain"))
 
@@ -222,19 +221,19 @@ class VMActionUI(object):
                     vm.get_name())):
             return
 
-        logging.debug("Pausing vm '%s'", vm.get_name())
+        log.debug("Pausing vm '%s'", vm.get_name())
         vmmAsyncJob.simple_async_noshow(vm.suspend, [], src,
                                         _("Error pausing domain"))
 
     @staticmethod
     def resume(src, vm):
-        logging.debug("Unpausing vm '%s'", vm.get_name())
+        log.debug("Unpausing vm '%s'", vm.get_name())
         vmmAsyncJob.simple_async_noshow(vm.resume, [], src,
                                         _("Error unpausing domain"))
 
     @staticmethod
     def run(src, vm):
-        logging.debug("Starting vm '%s'", vm.get_name())
+        log.debug("Starting vm '%s'", vm.get_name())
 
         if vm.has_managed_save():
             def errorcb(error, details):
@@ -279,7 +278,7 @@ class VMActionUI(object):
                     vm.get_name())):
             return
 
-        logging.debug("Shutting down vm '%s'", vm.get_name())
+        log.debug("Shutting down vm '%s'", vm.get_name())
         vmmAsyncJob.simple_async_noshow(vm.shutdown, [], src,
                                         _("Error shutting down domain"))
 
@@ -291,7 +290,7 @@ class VMActionUI(object):
                     vm.get_name())):
             return
 
-        logging.debug("Rebooting vm '%s'", vm.get_name())
+        log.debug("Rebooting vm '%s'", vm.get_name())
         vmmAsyncJob.simple_async_noshow(vm.reboot, [], src,
             _("Error rebooting domain"))
 
@@ -306,7 +305,7 @@ class VMActionUI(object):
                     "shutting down the OS and may cause data loss.")):
             return
 
-        logging.debug("Resetting vm '%s'", vm.get_name())
+        log.debug("Resetting vm '%s'", vm.get_name())
         vmmAsyncJob.simple_async_noshow(vm.reset, [], src,
                                         _("Error resetting domain"))
 
@@ -327,5 +326,5 @@ class VMActionUI(object):
 
     @staticmethod
     def show(src, vm):
-        from .details import vmmDetails
-        vmmDetails.get_instance(src, vm).show()
+        from .vmwindow import vmmVMWindow
+        vmmVMWindow.get_instance(src, vm).show()

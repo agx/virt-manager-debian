@@ -5,24 +5,21 @@
 # See the COPYING file in the top-level directory.
 
 import ipaddress
-import logging
 
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import Pango
 
+import libvirt
+
+from virtinst import generatename
+from virtinst import log
 from virtinst import Network
 
-from . import uiutil
+from .lib import uiutil
 from .asyncjob import vmmAsyncJob
 from .baseclass import vmmGObjectUI
-
-(PAGE_NAME,
-PAGE_IPV4,
-PAGE_IPV6,
-PAGE_MISC) = range(4)
-
-PAGE_MAX = PAGE_MISC
+from .xmleditor import vmmXMLEditor
 
 _green = Gdk.Color.parse("#c0ffc0")[1]
 _red = Gdk.Color.parse("#ffc0c0")[1]
@@ -44,17 +41,19 @@ class vmmCreateNetwork(vmmGObjectUI):
         vmmGObjectUI.__init__(self, "createnet.ui", "vmm-create-net")
         self.conn = conn
 
+        self._xmleditor = vmmXMLEditor(self.builder, self.topwin,
+                self.widget("net-details-align"),
+                self.widget("net-details"))
+        self._xmleditor.connect("xml-requested",
+                self._xmleditor_xml_requested_cb)
+
         self.builder.connect_signals({
-            "on_create_pages_switch_page": self.page_changed,
             "on_create_cancel_clicked": self.close,
             "on_vmm_create_delete_event": self.close,
-            "on_create_forward_clicked": self.forward,
-            "on_create_back_clicked": self.back,
             "on_create_finish_clicked": self.finish,
 
-            "on_net_name_activate": self.forward,
-            "on_net_forward_toggled": self.change_forward_type,
-            "on_net_forward_mode_toggled": self.change_forward_mode_type,
+            "on_net_forward_mode_changed": self._net_forward_mode_changed_cb,
+            "on_net_dns_use_toggled": self._net_dns_use_toggled_cb,
 
             "on_net-ipv4-enable_toggled":  self.change_ipv4_enable,
             "on_net-ipv4-network_changed":  self.change_ipv4_network,
@@ -67,14 +66,6 @@ class vmmCreateNetwork(vmmGObjectUI):
             "on_net-dhcpv6-enable_toggled": self.change_dhcpv6_enable,
             "on_net-dhcpv6-start_changed":  self.change_dhcpv6_start,
             "on_net-dhcpv6-end_changed":    self.change_dhcpv6_end,
-
-            "on_net-routev4-enable_toggled":  self.change_routev4_enable,
-            "on_net-routev4-network_changed": self.change_routev4_network,
-            "on_net-routev4-gateway_changed": self.change_routev4_gateway,
-
-            "on_net-routev6-enable_toggled":  self.change_routev6_enable,
-            "on_net-routev6-network_changed": self.change_routev6_network,
-            "on_net-routev6-gateway_changed": self.change_routev6_gateway,
         })
         self.bind_escape_key_close()
 
@@ -86,88 +77,88 @@ class vmmCreateNetwork(vmmGObjectUI):
     ####################
 
     def show(self, parent):
-        logging.debug("Showing new network wizard")
+        log.debug("Showing new network wizard")
         self.reset_state()
         self.topwin.set_transient_for(parent)
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
-        logging.debug("Closing new network wizard")
+        log.debug("Closing new network wizard")
         self.topwin.hide()
         return 1
 
     def _cleanup(self):
         self.conn = None
+        self._xmleditor.cleanup()
+        self._xmleditor = None
+
+
+    ###########
+    # UI init #
+    ###########
 
     def set_initial_state(self):
-        notebook = self.widget("create-pages")
-        notebook.set_show_tabs(False)
-
         blue = Gdk.Color.parse("#0072A8")[1]
         self.widget("header").modify_bg(Gtk.StateType.NORMAL, blue)
 
         # [ label, dev name ]
-        pf_list = self.widget("pf-list")
+        pf_list = self.widget("net-hostdevs")
         pf_model = Gtk.ListStore(str, str)
         pf_list.set_model(pf_model)
-        text = uiutil.init_combo_text_column(pf_list, 0)
+        text = uiutil.init_combo_text_column(pf_list, 1)
         text.set_property("ellipsize", Pango.EllipsizeMode.MIDDLE)
 
         # [ label, dev name ]
-        fw_list = self.widget("net-forward")
+        fw_list = self.widget("net-forward-device")
         fw_model = Gtk.ListStore(str, str)
         fw_list.set_model(fw_model)
-        uiutil.init_combo_text_column(fw_list, 0)
+        uiutil.init_combo_text_column(fw_list, 1)
 
         # [ label, mode ]
         mode_list = self.widget("net-forward-mode")
         mode_model = Gtk.ListStore(str, str)
         mode_list.set_model(mode_model)
-        uiutil.init_combo_text_column(mode_list, 0)
+        uiutil.init_combo_text_column(mode_list, 1)
 
-        mode_model.append([_("NAT"), "nat"])
-        mode_model.append([_("Routed"), "route"])
-        mode_model.append([_("Open"), "open"])
+        mode_model.append(["nat", _("NAT")])
+        mode_model.append(["route", _("Routed")])
+        mode_model.append(["open", _("Open")])
+        mode_model.append(["isolated", _("Isolated")])
+        mode_model.append(["hostdev", _("SR-IOV pool")])
 
     def reset_state(self):
-        notebook = self.widget("create-pages")
-        notebook.set_current_page(0)
+        self._xmleditor.reset_state()
 
-        self.page_changed(None, None, 0)
+        basename = "network"
+        def cb(n):
+            return generatename.check_libvirt_collision(
+                self.conn.get_backend().networkLookupByName, n)
+        default_name = generatename.generate_name(basename, cb)
+        self.widget("net-name").set_text(default_name)
 
-        self.widget("net-name").set_text("")
-        self.widget("net-domain-name").set_text("")
+        self.widget("net-dns-use-netname").set_active(True)
+
+        self.widget("net-ipv4-expander").set_visible(True)
+        self.widget("net-ipv4-expander").set_expanded(False)
+        self.widget("net-ipv6-expander").set_visible(True)
+        self.widget("net-ipv6-expander").set_expanded(False)
+        self.widget("net-dns-expander").set_visible(True)
+        self.widget("net-dns-expander").set_expanded(False)
 
         self.widget("net-ipv4-enable").set_active(True)
         self.widget("net-ipv4-network").set_text("192.168.100.0/24")
         self.widget("net-dhcpv4-enable").set_active(True)
         self.widget("net-dhcpv4-start").set_text("192.168.100.128")
         self.widget("net-dhcpv4-end").set_text("192.168.100.254")
-        self.widget("net-routev4-enable").set_active(False)
-        self.widget("net-routev4-enable").toggled()
-        self.widget("net-routev4-network").set_text("")
-        self.widget("net-routev4-gateway").set_text("")
 
         self.widget("net-ipv6-enable").set_active(False)
-        self.widget("net-ipv6-enable").toggled()
         self.widget("net-ipv6-network").set_text("")
         self.widget("net-dhcpv6-enable").set_active(False)
-        self.widget("net-dhcpv6-enable").toggled()
         self.widget("net-dhcpv6-start").set_text("")
         self.widget("net-dhcpv6-end").set_text("")
-        self.widget("net-routev6-enable").set_active(False)
-        self.widget("net-routev6-enable").toggled()
-        self.widget("net-routev6-network").set_text("")
-        self.widget("net-routev6-gateway").set_text("")
-
-        self.widget("net-enable-ipv6-networking").set_active(False)
 
 
         # Populate physical forward devices
-        fw_model = self.widget("net-forward").get_model()
-        fw_model.clear()
-        fw_model.append([_("Any physical device"), None])
-
         devnames = []
         for nodedev in self.conn.filter_nodedevs("net"):
             devnames.append(nodedev.xmlobj.interface)
@@ -175,23 +166,24 @@ class vmmCreateNetwork(vmmGObjectUI):
             if iface.get_name() not in devnames:
                 devnames.append(iface.get_name())
 
+        fw_model = self.widget("net-forward-device").get_model()
+        fw_model.clear()
+        fw_model.append([None, _("Any physical device")])
+
         for name in devnames:
-            fw_model.append([_("Physical device %s") % name, name])
-        self.widget("net-forward").set_active(0)
+            fw_model.append([name, _("Physical device %s") % name])
+        self.widget("net-forward-device").set_active(0)
 
         self.widget("net-forward-mode").set_active(0)
 
 
         # Populate hostdev forward devices
-        pf_model = self.widget("pf-list").get_model()
-        pf_model.clear()
-
         devprettynames = []
         ifnames = []
         for pcidev in self.conn.filter_nodedevs("pci"):
-            if pcidev.xmlobj.capability_type != "virt_functions":
+            if not pcidev.xmlobj.is_pci_sriov():
                 continue
-            devdesc = pcidev.xmlobj.pretty_name()
+            devdesc = pcidev.pretty_name()
             for netdev in self.conn.filter_nodedevs("net"):
                 if pcidev.xmlobj.name != netdev.xmlobj.parent:
                     continue
@@ -200,13 +192,14 @@ class vmmCreateNetwork(vmmGObjectUI):
                 devprettynames.append(devprettyname)
                 ifnames.append(ifname)
                 break
-        for devprettyname, ifname in zip(devprettynames, ifnames):
-            pf_model.append([_("%s") % devprettyname, ifname])
-        if len(pf_model) is 0:
-            pf_model.append([_("No available device"), None])
-        self.widget("pf-list").set_active(0)
 
-        self.widget("net-forward-none").set_active(True)
+        pf_model = self.widget("net-hostdevs").get_model()
+        pf_model.clear()
+        for devprettyname, ifname in zip(devprettynames, ifnames):
+            pf_model.append([ifname, devprettyname])
+        if len(pf_model) == 0:
+            pf_model.append([None, _("No available device")])
+        self.widget("net-hostdevs").set_active(0)
 
 
 
@@ -215,17 +208,24 @@ class vmmCreateNetwork(vmmGObjectUI):
     ##################
 
     def get_config_ipv4_enable(self):
-        return self.widget("net-ipv4-enable").get_active()
+        return (self.widget("net-ipv4-expander").is_visible() and
+                self.widget("net-ipv4-enable").get_active())
     def get_config_ipv6_enable(self):
-        return self.widget("net-ipv6-enable").get_active()
+        return (self.widget("net-ipv6-expander").is_visible() and
+                self.widget("net-ipv6-enable").get_active())
     def get_config_dhcpv4_enable(self):
         return self.widget("net-dhcpv4-enable").get_active()
     def get_config_dhcpv6_enable(self):
         return self.widget("net-dhcpv6-enable").get_active()
-    def get_config_routev4_enable(self):
-        return self.widget("net-routev4-enable").get_active()
-    def get_config_routev6_enable(self):
-        return self.widget("net-routev6-enable").get_active()
+
+    def get_config_domain_name(self):
+        widget = self.widget("net-domain-name")
+        if not widget.is_visible():
+            return None
+
+        if self.widget("net-dns-use-netname").get_active():
+            return self.widget("net-name").get_text()
+        return widget.get_text()
 
     def _get_network_helper(self, widgetname):
         widget = self.widget(widgetname)
@@ -247,291 +247,38 @@ class vmmCreateNetwork(vmmGObjectUI):
         return self._get_network_helper("net-dhcpv6-end")
 
     def get_config_forwarding(self):
-        if self.widget("net-forward-mode-hostdev").get_active():
-            name = uiutil.get_list_selection(self.widget("pf-list"), column=1)
-            mode = "hostdev"
-            return [name, mode]
-
-        if self.widget("net-forward-none").get_active():
+        mode = uiutil.get_list_selection(self.widget("net-forward-mode"))
+        if mode == "isolated":
             return [None, None]
 
-        name = uiutil.get_list_selection(self.widget("net-forward"), column=1)
-        mode = uiutil.get_list_selection(
-            self.widget("net-forward-mode"), column=1)
-        return [name, mode]
-
-    def get_config_routev4_network(self):
-        if not self.get_config_routev4_enable():
-            return None
-        return self.widget("net-routev4-network").get_text()
-    def get_config_routev4_gateway(self):
-        if not self.get_config_routev4_enable():
-            return None
-        return self.widget("net-routev4-gateway").get_text()
-    def get_config_routev6_network(self):
-        if not self.get_config_routev6_enable():
-            return None
-        return self.widget("net-routev6-network").get_text()
-    def get_config_routev6_gateway(self):
-        if not self.get_config_routev6_enable():
-            return None
-        return self.widget("net-routev6-gateway").get_text()
-
-
-    ###################
-    # Page validation #
-    ###################
-
-    def validate_name(self):
-        try:
-            name = self.widget("net-name").get_text()
-            Network.validate_name(self.conn.get_backend(), name)
-        except Exception as e:
-            return self.err.val_err(_("Invalid network name"), str(e))
-
-        return True
-
-    def validate_ipv4(self):
-        if not self.get_config_ipv4_enable():
-            return True
-        ip = self.get_config_ip4()
-        if ip is None:
-            return self.err.val_err(_("Invalid Network Address"),
-                    _("The network address could not be understood"))
-
-        if ip.version != 4:
-            return self.err.val_err(_("Invalid Network Address"),
-                    _("The network must be an IPv4 address"))
-
-        if ip.num_addresses < 8:
-            return self.err.val_err(_("Invalid Network Address"),
-                    _("The network must address at least 8 addresses."))
-
-        if ip.prefixlen < 15:
-            return self.err.val_err(_("Invalid Network Address"),
-                    _("The network prefix must be >= 15"))
-
-        if not ip.is_private:
-            res = self.err.yes_no(_("Check Network Address"),
-                    _("The network should normally use a private IPv4 "
-                      "address. Use this non-private address anyway?"))
-            if not res:
-                return False
-
-        enabled = self.get_config_dhcpv4_enable()
-        if enabled:
-            start = self.get_config_dhcpv4_start()
-            end = self.get_config_dhcpv4_end()
-            if start is None:
-                return self.err.val_err(_("Invalid DHCP Address"),
-                    _("The DHCP start address could not be understood"))
-            if end is None:
-                return self.err.val_err(_("Invalid DHCP Address"),
-                    _("The DHCP end address could not be understood"))
-            if not ip.overlaps(start):
-                return self.err.val_err(_("Invalid DHCP Address"),
-                    (_("The DHCP start address is not with the network %s") %
-                     (str(ip))))
-            if not ip.overlaps(end):
-                return self.err.val_err(_("Invalid DHCP Address"),
-                    (_("The DHCP end address is not with the network %s") %
-                     (str(ip))))
-
-        enabled = self.get_config_routev4_enable()
-        if enabled:
-            ntwk = self.get_config_routev4_network()
-            ntwkbad = False
-            gway = self.get_config_routev4_gateway()
-            gwaybad = False
-            if ntwk is None or gway is None:
-                return True
-            if ntwk == "" and gway == "":
-                return True
-            naddr = _make_ipaddr(ntwk)
-            if naddr is None:
-                ntwkbad = True
-            else:
-                if naddr.version != 4:
-                    ntwkbad = True
-                if naddr.prefixlen > 28:
-                    ntwkbad = True
-            gaddr = _make_ipaddr(gway)
-            if gaddr is None:
-                gwaybad = True
-            else:
-                if gaddr.version != 4:
-                    gwaybad = True
-                if gaddr.prefixlen != 32:
-                    gwaybad = True
-                if not ip.overlaps(gaddr):
-                    gwaybad = True
-            if ntwkbad:
-                return self.err.val_err(_("Invalid static route"),
-                            _("The network address is incorrect."))
-            if gwaybad:
-                return self.err.val_err(_("Invalid static route"),
-                            _("The gateway address is incorrect."))
-
-        return True
-
-    def validate_ipv6(self):
-        if not self.get_config_ipv6_enable():
-            return True
-        ip = self.get_config_ip6()
-        if ip is None:
-            return self.err.val_err(_("Invalid Network Address"),
-                    _("The network address could not be understood"))
-
-        if ip.version != 6:
-            return self.err.val_err(_("Invalid Network Address"),
-                    _("The network must be an IPv6 address"))
-
-        if ip.prefixlen != 64:
-            return self.err.val_err(_("Invalid Network Address"),
-                    _("For libvirt, the IPv6 network prefix must be /64"))
-
-        if not ip.is_private:
-            res = self.err.yes_no(_("Check Network Address"),
-                    _("The network should normally use a private IPv6 "
-                      "address. Use this non-private address anyway?"))
-            if not res:
-                return False
-
-        enabled = self.get_config_dhcpv6_enable()
-        if enabled:
-            start = self.get_config_dhcpv6_start()
-            end = self.get_config_dhcpv6_end()
-            if start is None:
-                return self.err.val_err(_("Invalid DHCPv6 Address"),
-                    _("The DHCPv6 start address could not be understood"))
-            if end is None:
-                return self.err.val_err(_("Invalid DHCPv6 Address"),
-                    _("The DHCPv6 end address could not be understood"))
-            if not ip.overlaps(start):
-                return self.err.val_err(_("Invalid DHCPv6 Address"),
-                    (_("The DHCPv6 start address is not with the network %s") %
-                    (str(ip))))
-            if not ip.overlaps(end):
-                return self.err.val_err(_("Invalid DHCPv6 Address"),
-                    (_("The DHCPv6 end address is not with the network %s") %
-                    (str(ip))))
-
-        enabled = self.get_config_routev6_enable()
-        if enabled:
-            ntwk = self.get_config_routev6_network()
-            ntwkbad = False
-            gway = self.get_config_routev6_gateway()
-            gwaybad = False
-            if ntwk is None or gway is None:
-                return True
-            if ntwk == "" and gway == "":
-                return True
-            naddr = _make_ipaddr(ntwk)
-            if naddr is None:
-                ntwkbad = True
-            else:
-                if naddr.version != 6:
-                    ntwkbad = True
-                if naddr.prefixlen > 64:
-                    ntwkbad = True
-            gaddr = _make_ipaddr(gway)
-            if gaddr is None:
-                gwaybad = True
-            else:
-                if gaddr.version != 6:
-                    gwaybad = True
-                if gaddr.prefixlen != 128:
-                    gwaybad = True
-                if not ip.overlaps(gaddr):
-                    gwaybad = True
-            if ntwkbad:
-                return self.err.val_err(_("Invalid static route"),
-                            _("The network address is incorrect."))
-            if gwaybad:
-                return self.err.val_err(_("Invalid static route"),
-                            _("The gateway address is incorrect."))
-
-        return True
-
-    def validate_miscellaneous(self):
-        return True
-
-    def validate(self, page_num):
-        if page_num == PAGE_NAME:
-            return self.validate_name()
-        elif page_num == PAGE_IPV4:
-            return self.validate_ipv4()
-        elif page_num == PAGE_IPV6:
-            return self.validate_ipv6()
-        elif page_num == PAGE_MISC:
-            return self.validate_miscellaneous()
-        return True
+        if mode == "hostdev":
+            dev = uiutil.get_list_selection(self.widget("net-hostdevs"))
+        else:
+            dev = uiutil.get_list_selection(self.widget("net-forward-device"))
+        return [dev, mode]
 
 
     #############
     # Listeners #
     #############
 
-    def forward(self, ignore=None):
-        notebook = self.widget("create-pages")
-        if self.validate(notebook.get_current_page()) is not True:
-            return
+    def _net_forward_mode_changed_cb(self, src):
+        mode = uiutil.get_list_selection(self.widget("net-forward-mode"))
 
-        self.widget("create-forward").grab_focus()
-        notebook.next_page()
+        fw_visible = mode not in ["open", "isolated", "hostdev"]
+        is_hostdev = mode in ["hostdev"]
 
-    def back(self, ignore=None):
-        notebook = self.widget("create-pages")
-        notebook.prev_page()
+        uiutil.set_grid_row_visible(
+            self.widget("net-forward-device"), fw_visible)
+        uiutil.set_grid_row_visible(self.widget("net-hostdevs"), is_hostdev)
 
-    def page_changed(self, ignore1, ignore2, page_number):
-        page_lbl = ("<span color='#59B0E2'>%s</span>" %
-                    _("Step %(current_page)d of %(max_page)d") %
-                    {'current_page': page_number + 1,
-                     'max_page': PAGE_MISC + 1})
-        self.widget("header-pagenum").set_markup(page_lbl)
+        self.widget("net-ipv4-expander").set_visible(not is_hostdev)
+        self.widget("net-ipv6-expander").set_visible(not is_hostdev)
+        self.widget("net-dns-expander").set_visible(not is_hostdev)
 
-        if page_number == PAGE_NAME:
-            name_widget = self.widget("net-name")
-            name_widget.set_sensitive(True)
-            name_widget.grab_focus()
-        elif page_number == PAGE_MISC:
-            name = self.widget("net-name").get_text()
-            if self.widget("net-domain-name").get_text() == "":
-                self.widget("net-domain-name").set_text(name)
-
-        self.widget("create-back").set_sensitive(page_number != 0)
-
-        is_last_page = (
-            page_number == (self.widget("create-pages").get_n_pages() - 1))
-        self.widget("create-forward").set_visible(not is_last_page)
-        self.widget("create-finish").set_visible(is_last_page)
-        if is_last_page:
-            self.widget("create-finish").grab_focus()
-
-    def change_forward_type(self, ignore):
-        sriov_capable = bool(len(self.widget("pf-list").get_model()))
-        self.widget("net-forward-mode-hostdev").set_sensitive(sriov_capable)
-        mode = uiutil.get_list_selection(self.widget("net-forward-mode"),
-                                        column=1)
-
-        is_hostdev = self.widget("net-forward-mode-hostdev").get_active()
-        fwd_sensitive = False
-        if not is_hostdev:
-            fwd_sensitive = not self.widget("net-forward-none").get_active()
-
-        self.widget("net-forward-mode").set_sensitive(fwd_sensitive)
-        self.widget("net-forward").set_sensitive(fwd_sensitive and
-                                                mode != "open")
-        self.widget("net-forward-hostdev-table").set_sensitive(is_hostdev)
-        self.widget("net-enable-ipv6-networking-box").set_sensitive(
-            not is_hostdev)
-        self.widget("dns-domain-name-box").set_sensitive(not is_hostdev)
-
-    def change_forward_mode_type(self, ignore):
-        mode = uiutil.get_list_selection(self.widget("net-forward-mode"),
-                                        column=1)
-        self.widget("net-forward").set_sensitive(mode != "open")
+    def _net_dns_use_toggled_cb(self, src):
+        custom = self.widget("net-dns-use-custom").get_active()
+        self.widget("net-domain-name").set_sensitive(custom)
 
     def change_ipv4_enable(self, ignore):
         enabled = self.get_config_ipv4_enable()
@@ -539,19 +286,6 @@ class vmmCreateNetwork(vmmGObjectUI):
     def change_ipv6_enable(self, ignore):
         enabled = self.get_config_ipv6_enable()
         self.widget("net-ipv6-box").set_visible(enabled)
-
-    def change_routev4_enable(self, ignore):
-        enabled = self.get_config_routev4_enable()
-        ntwk = self.widget("net-routev4-network")
-        gway = self.widget("net-routev4-gateway")
-        uiutil.set_grid_row_visible(ntwk, enabled)
-        uiutil.set_grid_row_visible(gway, enabled)
-    def change_routev6_enable(self, ignore):
-        enabled = self.get_config_routev6_enable()
-        ntwk = self.widget("net-routev6-network")
-        gway = self.widget("net-routev6-gateway")
-        uiutil.set_grid_row_visible(ntwk, enabled)
-        uiutil.set_grid_row_visible(gway, enabled)
 
     def change_dhcpv4_enable(self, ignore):
         enabled = self.get_config_dhcpv4_enable()
@@ -610,50 +344,14 @@ class vmmCreateNetwork(vmmGObjectUI):
             return
 
         valid_ip = (ip.num_addresses >= 8 and ip.is_private)
-        gateway = (ip.prefixlen != 32 and str(ip.network_address + 1) or "")
-        info = (ip.is_private and _("Private") or _("Other/Public"))
         start = int(ip.num_addresses // 2)
         end = int(ip.num_addresses - 2)
 
         src.modify_bg(Gtk.StateType.NORMAL, valid_ip and _green or _red)
-        self.widget("net-info-gateway").set_text(gateway)
-        self.widget("net-info-type").set_text(info)
         self.widget("net-dhcpv4-start").set_text(
             str(ip.network_address + start)
         )
         self.widget("net-dhcpv4-end").set_text(str(ip.network_address + end))
-
-    def change_routev4_network(self, src):
-        ntwk = self.get_config_routev4_network()
-        ipAddr = self.get_config_ip4()
-        if ipAddr is None or ntwk is None:
-            src.modify_bg(Gtk.StateType.NORMAL, _white)
-            return
-
-        addr = _make_ipaddr(ntwk)
-        color = _green
-        if (addr is None or
-            addr.version != 4 or
-            addr.prefixlen > 28):
-            color = _red
-        src.modify_bg(Gtk.StateType.NORMAL, color)
-
-    def change_routev4_gateway(self, src):
-        gway = self.get_config_routev4_gateway()
-        ipAddr = self.get_config_ip4()
-        if ipAddr is None or gway is None:
-            src.modify_bg(Gtk.StateType.NORMAL, _white)
-            return
-
-        addr = _make_ipaddr(gway)
-        color = _green
-        if (addr is None or
-            addr.version != 4 or
-            not ipAddr.overlaps(addr) or
-            addr.prefixlen != 32):
-            color = _red
-        src.modify_bg(Gtk.StateType.NORMAL, color)
-
 
     def change_ipv6_network(self, src):
         ip = self.get_config_ip6()
@@ -663,72 +361,40 @@ class vmmCreateNetwork(vmmGObjectUI):
             return
 
         valid_ip = (ip.num_addresses == 64 and ip.is_private)
-        gateway = (ip.prefixlen != 64 and str(ip.network_address + 1) or "")
         start = 256
         end = 512 - 1
-        if ip.is_private:
-            info = _("Private")
-        elif ip.is_reserved:
-            info = _("Reserved")
-        elif ip.is_unspecified:
-            info = _("Unspecified")
-        else:
-            info = _("Other/Public")
 
         src.modify_bg(Gtk.StateType.NORMAL, valid_ip and _green or _red)
-        self.widget("net-info-gateway-ip6").set_text(gateway)
-        self.widget("net-info-type-ip6").set_text(info)
         self.widget("net-dhcpv6-start").set_text(
             str(ip.network_address + start)
         )
         self.widget("net-dhcpv6-end").set_text(str(ip.network_address + end))
-
-    def change_routev6_network(self, src):
-        ntwk = self.get_config_routev6_network()
-        ip = self.get_config_ip6()
-        if ip is None or ntwk is None:
-            src.modify_bg(Gtk.StateType.NORMAL, _white)
-            return
-
-        addr = _make_ipaddr(ntwk)
-        color = _green
-        if (addr is None or
-            addr.version != 6 or
-            addr.prefixlen > 64):
-            color = _red
-        src.modify_bg(Gtk.StateType.NORMAL, color)
-
-    def change_routev6_gateway(self, src):
-        gway = self.get_config_routev6_gateway()
-        ip = self.get_config_ip6()
-        if ip is None or gway is None:
-            src.modify_bg(Gtk.StateType.NORMAL, _white)
-            return
-
-        addr = _make_ipaddr(gway)
-        color = _green
-        if (addr is None or
-            addr.version != 6 or
-            ip.overlaps(addr) or
-            addr.prefixlen != 128):
-            color = _red
-        src.modify_bg(Gtk.StateType.NORMAL, color)
-
 
 
     #########################
     # XML build and install #
     #########################
 
+    def _validate(self, net):
+        net.validate_generic_name(_("Network"), net.name)
 
-    def _build_xmlobj(self):
+        try:
+            net.conn.networkLookupByName(net.name)
+        except libvirt.libvirtError:
+            return
+        raise ValueError(_("Name '%s' already in use by another network." %
+                         net.name))
+
+    def _build_xmlobj_from_xmleditor(self):
+        xml = self._xmleditor.get_xml()
+        log.debug("Using XML from xmleditor:\n%s", xml)
+        return Network(self.conn.get_backend(), parsexml=xml)
+
+    def _build_xmlobj_from_ui(self):
         net = Network(self.conn.get_backend())
 
         net.name = self.widget("net-name").get_text()
-        net.domain_name = self.widget("net-domain-name").get_text() or None
-
-        if self.widget("net-enable-ipv6-networking").get_active():
-            net.ipv6 = True
+        net.domain_name = self.get_config_domain_name()
 
         dev, mode = self.get_config_forwarding()
         if mode:
@@ -740,11 +406,9 @@ class vmmCreateNetwork(vmmGObjectUI):
 
         if net.forward.mode == "hostdev":
             net.forward.managed = "yes"
-            pfobj = net.forward.pfs.add_new()
+            pfobj = net.forward.pf.add_new()
             pfobj.dev = net.forward.dev
             net.forward.dev = None
-            net.domain_name = None
-            net.ipv6 = None
             return net
 
         if self.get_config_ipv4_enable():
@@ -776,25 +440,16 @@ class vmmCreateNetwork(vmmGObjectUI):
                     self.get_config_dhcpv6_end().network_address
                 )
 
-        netaddr = _make_ipaddr(self.get_config_routev4_network())
-        gwaddr = _make_ipaddr(self.get_config_routev4_gateway())
-        if netaddr and gwaddr:
-            route = net.routes.add_new()
-            route.family = "ipv4"
-            route.address = netaddr.network_address
-            route.prefix = netaddr.prefixlen
-            route.gateway = gwaddr.network_address
-
-        netaddr = _make_ipaddr(self.get_config_routev6_network())
-        gwaddr = _make_ipaddr(self.get_config_routev6_gateway())
-        if netaddr and gwaddr:
-            route = net.routes.add_new()
-            route.family = "ipv6"
-            route.address = netaddr.network_address
-            route.prefix = netaddr.prefixlen
-            route.gateway = gwaddr.network_address
-
         return net
+
+    def _build_xmlobj(self, check_xmleditor):
+        try:
+            xmlobj = self._build_xmlobj_from_ui()
+            if check_xmleditor and self._xmleditor.is_xml_selected():
+                xmlobj = self._build_xmlobj_from_xmleditor()
+            return xmlobj
+        except Exception as e:
+            self.err.show_err(_("Error building XML: %s") % str(e))
 
     def _finish_cb(self, error, details):
         self.reset_finish_cursor()
@@ -808,17 +463,28 @@ class vmmCreateNetwork(vmmGObjectUI):
 
     def _async_net_create(self, asyncjob, net):
         ignore = asyncjob
-        net.install()
+        xml = net.get_xml()
+        log.debug("Creating virtual network '%s' with xml:\n%s",
+                      net.name, xml)
+
+        netobj = self.conn.get_backend().networkDefineXML(xml)
+        try:
+            netobj.create()
+            netobj.setAutostart(True)
+        except Exception:
+            netobj.undefine()
+            raise
 
     def finish(self, ignore):
-        if not self.validate(PAGE_MAX):
+        net = self._build_xmlobj(check_xmleditor=True)
+        if not net:
             return
 
         try:
-            net = self._build_xmlobj()
+            self._validate(net)
         except Exception as e:
-            self.err.show_err(_("Error generating network xml: %s") % str(e))
-            return
+            return self.err.show_err(
+                    _("Error validating network: %s") % e)
 
         self.set_finish_cursor()
         progWin = vmmAsyncJob(self._async_net_create, [net],
@@ -828,3 +494,13 @@ class vmmCreateNetwork(vmmGObjectUI):
                                 "while..."),
                               self.topwin)
         progWin.run()
+
+
+
+    ################
+    # UI listeners #
+    ################
+
+    def _xmleditor_xml_requested_cb(self, src):
+        xmlobj = self._build_xmlobj(check_xmleditor=False)
+        self._xmleditor.set_xml(xmlobj and xmlobj.get_xml() or "")

@@ -1,0 +1,18 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>destroy</on_crash>
+   <devices>
++    <interface type="bridge">
++      <source bridge="testsuitebr0"/>
++      <mac address="00:11:22:33:44:55"/>
++      <model type="virtio"/>
++    </interface>
+   </devices>
++  <metadata>
++    <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
++      <libosinfo:os id="http://fedoraproject.org/fedora/28"/>
++    </libosinfo:libosinfo>
++  </metadata>
+ </domain>
+
+Domain 'test' defined successfully.
+Changes will take effect after the domain is fully powered off.

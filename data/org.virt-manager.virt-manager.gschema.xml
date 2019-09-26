@@ -35,6 +35,12 @@
       <summary>Custom connection description</summary>
       <description>Custom connection description, used in the manager window. If empty, the app generates a default on demand.</description>
     </key>
+
+    <key name="window-size" type="(ii)">
+      <default>(-1, -1)</default>
+      <summary>Conn details window dimensions</summary>
+      <description>Connection details window dimensions</description>
+    </key>
   </schema>
 
 
@@ -45,6 +51,12 @@
       <default>false</default>
       <summary>Show system tray icon</summary>
       <description>Show system tray icon while app is running</description>
+    </key>
+
+    <key name="xmleditor-enabled" type="b">
+      <default>false</default>
+      <summary>Enable XML editting UI</summary>
+      <description>Enable XML editting UI</description>
     </key>
 
     <key name="enable-libguestfs-vm-inspection" type="b">

@@ -145,14 +145,10 @@ class AddHardware(uiutils.UITestCase):
         uiutils.check_in_loop(lambda: details.active)
 
     def testQemuSearchCheck(self):
-        os.environ.pop("VIRTINST_TEST_SUITE")
-        try:
-            with tempfile.TemporaryDirectory() as tmpdir:
-                with tempfile.NamedTemporaryFile(dir=tmpdir) as tmpfile:
-                    os.chmod(tmpdir, 0o700)
-                    self._testQemuSearchCheck(tmpfile.name)
-        finally:
-            os.environ["VIRTINST_TEST_SUITE"] = "1"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            with tempfile.NamedTemporaryFile(dir=tmpdir) as tmpfile:
+                os.chmod(tmpdir, 0o700)
+                self._testQemuSearchCheck(tmpfile.name)
 
     def testAddDisks(self):
         """
@@ -618,10 +614,18 @@ class AddHardware(uiutils.UITestCase):
         finish.click()
         uiutils.check_in_loop(lambda: details.active)
 
+        # Add vsock
+        self._open_addhw_window(details)
+        tab = self._select_hw(addhw, "Virtio VSOCK", "vsock-tab")
+        tab.find("vsock-auto").click()
+        tab.find("vsock-cid").text = "7"
+        finish.click()
+        uiutils.check_in_loop(lambda: details.active)
 
-    def testAddCornerCases(self):
+
+    def testAddHWCornerCases(self):
         """
-        Could random addhardware related tests
+        Random addhardware related tests
         """
         details = self._open_details_window("test-many-devices")
         addhw = self._open_addhw_window(details)
@@ -641,6 +645,7 @@ class AddHardware(uiutils.UITestCase):
         alert.find("No", "push button").click()
         uiutils.check_in_loop(lambda: details.active)
 
+        # Test live adding, error dialog, click yes
         self._open_addhw_window(details)
         finish.click()
         alert = self.app.root.find("vmm dialog", "alert")
@@ -650,3 +655,52 @@ class AddHardware(uiutils.UITestCase):
         alert.find("Details", "toggle button").click_expander()
         alert.find("Yes", "push button").click()
         uiutils.check_in_loop(lambda: alert.dead)
+
+    def testAddHWXMLEdit(self):
+        """
+        Test XML editor integration
+        """
+        self.app.open(xmleditor_enabled=True)
+        details = self._open_details_window()
+        win = self._open_addhw_window(details)
+        finish = win.find("Finish", "push button")
+
+        # Disk test, change path and make sure we error it is missing
+        win.find("XML", "page tab").click()
+        xmleditor = win.find("XML editor")
+        origpath = "/var/lib/libvirt/images/test-clone-simple.qcow2"
+        newpath = "/FOO/XMLEDIT/test1.img"
+        xmleditor.text = xmleditor.text.replace(origpath, newpath)
+        finish.click()
+        alert = self.app.root.find("vmm dialog", "alert")
+        alert.find_fuzzy("non-existent path")
+        alert.find("Close", "push button").click()
+
+        # Undo the bad change, change bus/target
+        xmleditor.text = xmleditor.text.replace(newpath, origpath)
+        xmleditor.text = xmleditor.text.replace("hdb", "xvda")
+        xmleditor.text = xmleditor.text.replace("ide", "xen")
+        finish.click()
+
+        # Verify the changes applied
+        details.find("Xen Disk 1").click()
+        uiutils.check_in_loop(lambda: details.active)
+        win = self._open_addhw_window(details)
+        tab = self._select_hw(win, "Storage", "storage-tab")
+        tab.find_fuzzy("Select or create", "radio").click()
+        tab.find("storage-browse", "push button").click()
+        browse = self.app.root.find("Choose Storage Volume", "frame")
+        browse.find(os.path.basename(origpath))
+        browse.find("Cancel").click()
+
+        # Select XML, switch to new dev type, verify we change focus
+        win.find("XML", "page tab").click()
+        xmleditor = win.find("XML editor")
+        uiutils.check_in_loop(lambda: xmleditor.showing)
+        tab = self._select_hw(win, "Network", "network-tab")
+        uiutils.check_in_loop(lambda: not xmleditor.showing)
+
+        # Do standard xmleditor tests
+        self._test_xmleditor_interactions(win, finish)
+        win.find("Cancel", "push button").click()
+        uiutils.check_in_loop(lambda: not win.visible)

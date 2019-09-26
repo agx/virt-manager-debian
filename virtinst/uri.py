@@ -5,11 +5,10 @@
 # See the COPYING file in the top-level directory.
 #
 
-import logging
 import re
 import urllib.parse
 
-from .cli import parse_optstr_tuples
+from .logger import log
 
 
 def sanitize_xml_for_test_define(xml):
@@ -25,7 +24,7 @@ def sanitize_xml_for_test_define(xml):
     diff = "\n".join(difflib.unified_diff(orig.split("\n"),
                                           xml.split("\n")))
     if diff:
-        logging.debug("virtinst test sanitizing diff\n:%s", diff)
+        log.debug("virtinst test sanitizing diff\n:%s", diff)
     return xml
 
 
@@ -126,8 +125,9 @@ class MagicURI(object):
         return uri.startswith(MagicURI.VIRTINST_URI_MAGIC_PREFIX)
 
     def __init__(self, uri):
-        if not self.uri_is_magic(uri):
-            raise RuntimeError("uri=%s is not virtinst magic URI" % uri)
+        assert self.uri_is_magic(uri)
+
+        from .cli import parse_optstr_tuples
 
         uri = uri.replace(self.VIRTINST_URI_MAGIC_PREFIX, "")
         ret = uri.split(",", 1)
@@ -165,8 +165,7 @@ class MagicURI(object):
         if self.libvirt_version:
             self.libvirt_version = int(self.libvirt_version)
 
-        if opts:
-            raise RuntimeError("Unhandled virtinst test uri options %s" % opts)
+        assert not opts
 
 
     ##############

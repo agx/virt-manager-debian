@@ -1,0 +1,583 @@
+#
+# Common code for all guests
+#
+# Copyright 2006-2009, 2013 Red Hat, Inc.
+#
+# This work is licensed under the GNU GPLv2 or later.
+# See the COPYING file in the top-level directory.
+
+import os
+
+from . import unattended
+from .installertreemedia import InstallerTreeMedia
+from .installerinject import perform_cdrom_injections
+from ..domain import DomainOs
+from ..devices import DeviceDisk
+from ..osdict import OSDB
+from ..logger import log
+from .. import progress
+
+
+def _make_testsuite_path(path):
+    return os.path.join("/VIRTINST-TESTSUITE",
+            os.path.basename(path).split("-", 2)[-1])
+
+
+class Installer(object):
+    """
+    Class for kicking off VM installs. The VM is set up separately in a Guest
+    instance. This class tracks the install media/bootdev choice, alters the
+    Guest XML, boots it for the install, then saves the post install XML
+    config. The Guest is passed in via start_install, only install media
+    selection is done at __init__ time
+
+    :param cdrom: Path to a cdrom device or iso. Maps to virt-install --cdrom
+    :param location: An install tree URI, local directory, or ISO/CDROM path.
+        Largely handled by installtreemedia helper class. Maps to virt-install
+        --location
+    :param location_kernel: URL pointing to a kernel to fetch, or a relative
+        path to indicate where the kernel is stored in location
+    :param location_initrd: location_kernel, but pointing to an initrd
+    :param install_kernel: Kernel to install off of
+    :param install_initrd: Initrd to install off of
+    :param install_kernel_args: Kernel args <cmdline> to use. This overwrites
+        whatever the installer might request, unlike extra_args which will
+        append arguments.
+    :param no_install: If True, this installer specifically does not have
+        an install phase. We are just using it to create the initial XML.
+    """
+    def __init__(self, conn, cdrom=None, location=None, install_bootdev=None,
+            location_kernel=None, location_initrd=None,
+            install_kernel=None, install_initrd=None, install_kernel_args=None,
+            no_install=None):
+        self.conn = conn
+
+        # Entry point for virt-manager 'Customize' wizard to change autostart
+        self.autostart = False
+
+        self._install_cdrom_device_added = False
+        self._unattended_install_cdrom_device = None
+        self._tmpfiles = []
+        self._defaults_are_set = False
+        self._unattended_data = None
+
+        self._install_bootdev = install_bootdev
+        self._no_install = no_install
+
+        self._treemedia = None
+        self._treemedia_bootconfig = None
+        self._cdrom = None
+        if cdrom:
+            cdrom = InstallerTreeMedia.validate_path(self.conn, cdrom)
+            self._cdrom = cdrom
+            self._install_bootdev = "cdrom"
+        elif (location or location_kernel or location_initrd or
+              install_kernel or install_initrd):
+            self._treemedia = InstallerTreeMedia(self.conn, location,
+                    location_kernel, location_initrd,
+                    install_kernel, install_initrd, install_kernel_args)
+
+
+    ###################
+    # Private helpers #
+    ###################
+
+    def _cdrom_path(self):
+        if self._treemedia:
+            return self._treemedia.cdrom_path()
+        return self._cdrom
+
+    def _add_install_cdrom_device(self, guest):
+        if self._install_cdrom_device_added:
+            return  # pragma: no cover
+        if not bool(self._cdrom_path()):
+            return
+
+        dev = DeviceDisk(self.conn)
+        dev.device = dev.DEVICE_CDROM
+        dev.path = self._cdrom_path()
+        dev.sync_path_props()
+        dev.validate()
+        self._install_cdrom_device_added = True
+
+        # Insert the CDROM before any other CDROM, so boot=cdrom picks
+        # it as the priority
+        for idx, disk in enumerate(guest.devices.disk):
+            if disk.is_cdrom():
+                guest.devices.add_child(dev, idx=idx)
+                return
+        guest.add_device(dev)
+
+    def _remove_install_cdrom_media(self, guest):
+        if not self._install_cdrom_device_added:
+            return
+        if guest.osinfo.is_windows():
+            # Keep media attached for windows which has a multi stage install
+            return
+        for disk in guest.devices.disk:
+            if disk.is_cdrom() and disk.path == self._cdrom_path():
+                disk.path = None
+                disk.sync_path_props()
+                break
+
+    def _add_unattended_install_cdrom_device(self, guest, location):
+        if self._unattended_install_cdrom_device:
+            return  # pragma: no cover
+        dev = DeviceDisk(self.conn)
+        dev.device = dev.DEVICE_CDROM
+        dev.path = location
+        dev.sync_path_props()
+        dev.validate()
+        dev.set_defaults(guest)
+        self._unattended_install_cdrom_device = dev
+        guest.add_device(self._unattended_install_cdrom_device)
+
+        if self.conn.in_testsuite():
+            # pylint: disable=protected-access
+            # Hack to set just the XML path differently for the test suite.
+            # Setting this via regular 'path' will error that it doesn't exist
+            dev._source_file = _make_testsuite_path(location)
+
+    def _remove_unattended_install_cdrom_device(self, guest):
+        dummy = guest
+        if not self._unattended_install_cdrom_device:
+            return
+
+        self._unattended_install_cdrom_device.path = None
+        self._unattended_install_cdrom_device.sync_path_props()
+
+    def _build_boot_order(self, guest, bootdev):
+        bootorder = [bootdev]
+
+        # If guest has an attached disk, always have 'hd' in the boot
+        # list, so disks are marked as bootable/installable (needed for
+        # windows virtio installs, and booting local disk from PXE)
+        for disk in guest.devices.disk:
+            if disk.device == disk.DEVICE_DISK:
+                bootdev = "hd"
+                if bootdev not in bootorder:
+                    bootorder.append(bootdev)
+                break
+        return bootorder
+
+    def _can_set_guest_bootorder(self, guest):
+        return (not guest.os.is_container() and
+            not guest.os.kernel and
+            not any([d.boot.order for d in guest.devices.get_all()]))
+
+    def _alter_treemedia_bootconfig(self, guest):
+        if not self._treemedia:
+            return
+
+        kernel, initrd, kernel_args = self._treemedia_bootconfig
+        if kernel:
+            guest.os.kernel = (self.conn.in_testsuite() and
+                    _make_testsuite_path(kernel) or kernel)
+        if initrd:
+            guest.os.initrd = (self.conn.in_testsuite() and
+                    _make_testsuite_path(initrd) or initrd)
+        if kernel_args:
+            guest.os.kernel_args = kernel_args
+
+    def _alter_bootconfig(self, guest):
+        """
+        Generate the portion of the guest xml that determines boot devices
+        and parameters. (typically the <os></os> block)
+
+        :param guest: Guest instance we are installing
+        """
+        guest.on_reboot = "destroy"
+        self._alter_treemedia_bootconfig(guest)
+
+        bootdev = self._install_bootdev
+        if bootdev and self._can_set_guest_bootorder(guest):
+            guest.os.bootorder = self._build_boot_order(guest, bootdev)
+        else:
+            guest.os.bootorder = []
+
+    def _alter_install_resources(self, guest, meter):
+        """
+        Sets the appropriate amount of ram needed when performing a "network"
+        based installation
+
+        :param guest: Guest instance we are installing
+        """
+        if not self._treemedia:
+            return
+        if not self._treemedia.requires_internet(guest, meter):
+            return
+
+        ram = guest.osinfo.get_network_install_required_ram(guest)
+        ram = (ram or 0) // 1024
+        if ram > guest.currentMemory:
+            log.warning(_("Overriding memory to %s MiB needed for %s "
+                "network install."), ram // 1024, guest.osinfo.name)
+            guest.currentMemory = ram
+
+
+    ##########################
+    # Internal API overrides #
+    ##########################
+
+    def _prepare_unattended_data(self, guest, script):
+        expected_filename = script.get_expected_filename()
+        unattended_cmdline = script.generate_cmdline()
+        log.debug("Generated unattended cmdline: %s", unattended_cmdline)
+
+        scriptpath = script.write()
+        self._tmpfiles.append(scriptpath)
+
+        iso = perform_cdrom_injections([(scriptpath, expected_filename)],
+                InstallerTreeMedia.make_scratchdir(guest))
+        self._tmpfiles.append(iso)
+        self._add_unattended_install_cdrom_device(guest, iso)
+
+    def _prepare_unattended_script(self, guest, meter):
+        url = None
+        if self._treemedia:
+            if self._treemedia.is_network_url():
+                url = self.location
+            os_media = self._treemedia.get_os_media(guest, meter)
+            injection_method = "initrd"
+        else:
+            if self.conn.is_remote():
+                raise RuntimeError("Unattended method=cdrom installs are "
+                        "not yet supported for remote connections.")
+            if not guest.osinfo.is_windows():
+                log.warning("Attempting unattended method=cdrom injection "
+                        "for a non-windows OS. If this doesn't work, try "
+                        "passing install media to --location")
+            osguess = OSDB.guess_os_by_iso(self.cdrom)
+            os_media = osguess[1] if osguess else None
+            injection_method = "cdrom"
+
+        return unattended.prepare_install_script(
+                guest, self._unattended_data, url, os_media, injection_method)
+
+    def _prepare(self, guest, meter):
+        unattended_script = None
+        if self._unattended_data:
+            unattended_script = self._prepare_unattended_script(guest, meter)
+
+        if self._treemedia:
+            self._treemedia_bootconfig = self._treemedia.prepare(guest, meter,
+                    unattended_script)
+
+        elif unattended_script:
+            self._prepare_unattended_data(guest, unattended_script)
+
+    def _cleanup(self, guest):
+        if self._treemedia:
+            self._treemedia.cleanup(guest)
+
+        for f in self._tmpfiles:
+            log.debug("Removing %s", str(f))
+            os.unlink(f)
+
+    def _get_postinstall_bootdev(self, guest):
+        if self.cdrom and self._no_install:
+            return DomainOs.BOOT_DEVICE_CDROM
+
+        if self._install_bootdev:
+            if any([d for d in guest.devices.disk
+                    if d.device == d.DEVICE_DISK]):
+                return DomainOs.BOOT_DEVICE_HARDDISK
+            return self._install_bootdev
+
+        device = guest.devices.disk and guest.devices.disk[0].device or None
+        if device == DeviceDisk.DEVICE_DISK:
+            return DomainOs.BOOT_DEVICE_HARDDISK
+        elif device == DeviceDisk.DEVICE_CDROM:
+            return DomainOs.BOOT_DEVICE_CDROM
+        elif device == DeviceDisk.DEVICE_FLOPPY:
+            return DomainOs.BOOT_DEVICE_FLOPPY
+        return DomainOs.BOOT_DEVICE_HARDDISK
+
+
+    ##############
+    # Public API #
+    ##############
+
+    @property
+    def location(self):
+        if self._treemedia:
+            return self._treemedia.location
+
+    @property
+    def cdrom(self):
+        return self._cdrom
+
+    def set_initrd_injections(self, initrd_injections):
+        if not self._treemedia:
+            raise RuntimeError("Install method does not support "
+                    "initrd injections.")
+        self._treemedia.set_initrd_injections(initrd_injections)
+
+    def set_extra_args(self, extra_args):
+        if not self._treemedia:
+            raise RuntimeError("Kernel arguments are only supported with "
+                    "location or kernel installs.")
+        self._treemedia.set_extra_args(extra_args)
+
+    def set_install_defaults(self, guest):
+        """
+        Allow API users to set defaults ahead of time if they want it.
+        Used by vmmDomainVirtinst so the 'Customize before install' dialog
+        shows accurate values.
+
+        If the user doesn't explicitly call this, it will be called by
+        start_install()
+        """
+        if self._defaults_are_set:
+            return
+
+        self._add_install_cdrom_device(guest)
+
+        if not guest.os.bootorder and self._can_set_guest_bootorder(guest):
+            bootdev = self._get_postinstall_bootdev(guest)
+            guest.os.bootorder = self._build_boot_order(guest, bootdev)
+
+        guest.set_defaults(None)
+        self._defaults_are_set = True
+
+    def get_search_paths(self, guest):
+        """
+        Return a list of paths that the hypervisor will need search access
+        for to perform this install.
+        """
+        search_paths = []
+        if self._treemedia:
+            search_paths.append(InstallerTreeMedia.make_scratchdir(guest))
+        if self._cdrom_path():
+            search_paths.append(self._cdrom_path())
+        return search_paths
+
+    def has_install_phase(self):
+        """
+        Return True if the requested setup is actually installing an OS
+        into the guest. Things like LiveCDs, Import, or a manually specified
+        bootorder do not have an install phase.
+        """
+        if self._no_install:
+            return False
+        return bool(self._cdrom or
+                    self._install_bootdev or
+                    self._treemedia)
+
+    def options_specified(self):
+        """
+        Return True if some explicit install option was actually passed in
+        Validate that some install option was actually passed in.
+        """
+        if self._no_install:
+            return True
+        return self.has_install_phase()
+
+    def detect_distro(self, guest):
+        """
+        Attempt to detect the distro for the Installer's 'location'. If
+        an error is encountered in the detection process (or if detection
+        is not relevant for the Installer type), None is returned.
+
+        :returns: distro variant string, or None
+        """
+        ret = None
+        if self._treemedia:
+            ret = self._treemedia.detect_distro(guest)
+        elif self.cdrom:
+            if guest.conn.is_remote():
+                log.debug("Can't detect distro for cdrom "
+                    "remote connection.")
+            else:
+                osguess = OSDB.guess_os_by_iso(self.cdrom)
+                if osguess:
+                    ret = osguess[0]
+        else:
+            log.debug("No media for distro detection.")
+
+        log.debug("installer.detect_distro returned=%s", ret)
+        return ret
+
+    def set_unattended_data(self, unattended_data):
+        self._unattended_data = unattended_data
+
+
+    ##########################
+    # guest install handling #
+    ##########################
+
+    def _prepare_get_install_xml(self, guest):
+        # We do a shallow copy of the OS block here, so that we can
+        # set the install time properties but not permanently overwrite
+        # any config the user explicitly requested.
+        data = (guest.os.bootorder, guest.os.kernel, guest.os.initrd,
+                guest.os.kernel_args, guest.on_reboot, guest.currentMemory,
+                guest.memory)
+        return data
+
+    def _finish_get_install_xml(self, guest, data):
+        (guest.os.bootorder, guest.os.kernel, guest.os.initrd,
+                guest.os.kernel_args, guest.on_reboot, guest.currentMemory,
+                guest.memory) = data
+
+    def _get_install_xml(self, guest, meter):
+        data = self._prepare_get_install_xml(guest)
+        try:
+            self._alter_bootconfig(guest)
+            self._alter_install_resources(guest, meter)
+            ret = guest.get_xml()
+            return ret
+        finally:
+            self._remove_install_cdrom_media(guest)
+            self._remove_unattended_install_cdrom_device(guest)
+            self._finish_get_install_xml(guest, data)
+
+    def _build_xml(self, guest, meter):
+        install_xml = None
+        if self.has_install_phase():
+            install_xml = self._get_install_xml(guest, meter)
+        final_xml = guest.get_xml()
+
+        log.debug("Generated install XML: %s",
+            (install_xml and ("\n" + install_xml) or "None required"))
+        log.debug("Generated boot XML: \n%s", final_xml)
+
+        return install_xml, final_xml
+
+    def _manual_transient_create(self, install_xml, final_xml, needs_boot):
+        """
+        For hypervisors (like vz) that don't implement createXML,
+        we need to define+start, and undefine on start failure
+        """
+        domain = self.conn.defineXML(install_xml or final_xml)
+        if not needs_boot:
+            return domain
+
+        # Handle undefining the VM if the initial startup fails
+        try:
+            domain.create()
+        except Exception:  # pragma: no cover
+            try:
+                domain.undefine()
+            except Exception:
+                pass
+            raise
+
+        if install_xml and install_xml != final_xml:
+            domain = self.conn.defineXML(final_xml)
+        return domain
+
+    def _create_guest(self, guest,
+                      meter, install_xml, final_xml, doboot, transient):
+        """
+        Actually do the XML logging, guest defining/creating
+
+        :param doboot: Boot guest even if it has no install phase
+        """
+        meter_label = _("Creating domain...")
+        meter = progress.ensure_meter(meter)
+        meter.start(size=None, text=meter_label)
+        needs_boot = doboot or self.has_install_phase()
+
+        if guest.type == "vz":
+            if transient:
+                raise RuntimeError(_("Domain type 'vz' doesn't support "
+                    "transient installs."))
+            domain = self._manual_transient_create(
+                    install_xml, final_xml, needs_boot)
+
+        else:
+            if transient or needs_boot:
+                domain = self.conn.createXML(install_xml or final_xml, 0)
+            if not transient:
+                domain = self.conn.defineXML(final_xml)
+
+        try:
+            log.debug("XML fetched from libvirt object:\n%s",
+                          domain.XMLDesc(0))
+        except Exception as e:  # pragma: no cover
+            log.debug("Error fetching XML from libvirt object: %s", e)
+        return domain
+
+    def _flag_autostart(self, domain):
+        """
+        Set the autostart flag for domain if the user requested it
+        """
+        try:
+            domain.setAutostart(True)
+        except Exception as e:  # pragma: no cover
+            if not self.conn.support.is_error_nosupport(e):
+                raise
+            log.warning("Could not set autostart flag: libvirt "
+                            "connection does not support autostart.")
+
+
+    ######################
+    # Public install API #
+    ######################
+
+    def start_install(self, guest, meter=None,
+                      dry=False, return_xml=False,
+                      doboot=True, transient=False):
+        """
+        Begin the guest install. Will add install media to the guest config,
+        launch it, then redefine the XML with the postinstall config.
+
+        :param return_xml: Don't create the guest, just return generated XML
+        """
+        guest.validate_name(guest.conn, guest.name)
+        self.set_install_defaults(guest)
+
+        try:
+            self._prepare(guest, meter)
+
+            if not dry:
+                for dev in guest.devices.disk:
+                    dev.build_storage(meter)
+
+            install_xml, final_xml = self._build_xml(guest, meter)
+            if dry or return_xml:
+                return (install_xml, final_xml)
+
+            domain = self._create_guest(
+                    guest, meter, install_xml, final_xml,
+                    doboot, transient)
+
+            if self.autostart:
+                self._flag_autostart(domain)
+            return domain
+        finally:
+            self._cleanup(guest)
+
+    def get_created_disks(self, guest):
+        return [d for d in guest.devices.disk if d.storage_was_created]
+
+    def cleanup_created_disks(self, guest, meter):
+        """
+        Remove any disks we created as part of the install. Only ever
+        called by clients.
+        """
+        clean_disks = self.get_created_disks(guest)
+        if not clean_disks:
+            return
+
+        for disk in clean_disks:
+            log.debug("Removing created disk path=%s vol_object=%s",
+                disk.path, disk.get_vol_object())
+            name = os.path.basename(disk.path)
+
+            try:
+                meter.start(size=None, text=_("Removing disk '%s'") % name)
+
+                if disk.get_vol_object():
+                    disk.get_vol_object().delete()
+                else:  # pragma: no cover
+                    # This case technically shouldn't happen here, but
+                    # it's here incase future assumptions change
+                    os.unlink(disk.path)
+
+                meter.end(0)
+            except Exception as e:  # pragma: no cover
+                log.debug("Failed to remove disk '%s'",
+                    name, exc_info=True)
+                log.error("Failed to remove disk '%s': %s", name, e)

@@ -4,7 +4,6 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
 import traceback
 
 from gi.repository import Gtk
@@ -14,19 +13,22 @@ from virtinst import (DeviceChannel, DeviceConsole,
         DeviceController, DeviceDisk, DeviceGraphics, DeviceHostdev,
         DeviceInput, DeviceInterface, DevicePanic, DeviceParallel,
         DeviceRedirdev, DeviceRng, DeviceSerial, DeviceSmartcard,
-        DeviceSound, DeviceTpm, DeviceVideo, DeviceWatchdog)
+        DeviceSound, DeviceTpm, DeviceVideo, DeviceVsock, DeviceWatchdog)
+from virtinst import log
 
-from . import uiutil
-from .fsdetails import vmmFSDetails
-from .gfxdetails import vmmGraphicsDetails
-from .netlist import vmmNetworkList
+from .lib import uiutil
 from .asyncjob import vmmAsyncJob
-from .storagebrowse import vmmStorageBrowser
 from .baseclass import vmmGObjectUI
-from .addstorage import vmmAddStorage
+from .device.addstorage import vmmAddStorage
+from .device.fsdetails import vmmFSDetails
+from .device.gfxdetails import vmmGraphicsDetails
+from .device.netlist import vmmNetworkList
+from .device.vsockdetails import vmmVsockDetails
+from .storagebrowse import vmmStorageBrowser
+from .xmleditor import vmmXMLEditor
 
-(PAGE_ERROR,
- PAGE_DISK,
+
+(PAGE_DISK,
  PAGE_CONTROLLER,
  PAGE_NETWORK,
  PAGE_INPUT,
@@ -41,7 +43,8 @@ from .addstorage import vmmAddStorage
  PAGE_USBREDIR,
  PAGE_TPM,
  PAGE_RNG,
- PAGE_PANIC) = range(0, 17)
+ PAGE_PANIC,
+ PAGE_VSOCK) = range(17)
 
 
 def _build_combo(combo, values, default_value=None, sort=True):
@@ -63,16 +66,14 @@ def _build_combo(combo, values, default_value=None, sort=True):
 
 
 class vmmAddHardware(vmmGObjectUI):
-    def __init__(self, vm, is_customize_dialog):
+    def __init__(self, vm):
         vmmGObjectUI.__init__(self, "addhardware.ui", "vmm-add-hardware")
 
         self.vm = vm
         self.conn = vm.conn
-        self.is_customize_dialog = is_customize_dialog
 
         self._storagebrowser = None
 
-        self._dev = None
         self._remove_usb_controller = None
         self._selected_model = None
 
@@ -92,11 +93,20 @@ class vmmAddHardware(vmmGObjectUI):
         self.widget("storage-align").add(self.addstorage.top_box)
         self.addstorage.connect("browse-clicked", self._browse_storage_cb)
 
+        self._vsockdetails = vmmVsockDetails(self.vm, self.builder, self.topwin)
+        self.widget("vsock-align").add(self._vsockdetails.top_box)
+
+        self._xmleditor = vmmXMLEditor(self.builder, self.topwin,
+                self.widget("create-pages-align"),
+                self.widget("create-pages"))
+        self._xmleditor.connect("xml-requested",
+                self._xmleditor_xml_requested_cb)
+
         self.builder.connect_signals({
             "on_create_cancel_clicked": self.close,
             "on_vmm_create_delete_event": self.close,
             "on_create_finish_clicked": self._finish,
-            "on_hw_list_changed": self._hw_selected,
+            "on_hw_list_changed": self._hw_selected_cb,
 
             "on_storage_devtype_changed": self._change_storage_devtype,
 
@@ -117,7 +127,7 @@ class vmmAddHardware(vmmGObjectUI):
         self._set_initial_state()
 
     def show(self, parent):
-        logging.debug("Showing addhw")
+        log.debug("Showing addhw")
         self._reset_state()
         self.topwin.set_transient_for(parent)
         self.topwin.present()
@@ -126,8 +136,8 @@ class vmmAddHardware(vmmGObjectUI):
                                          pollnodedev=True)
 
     def close(self, ignore1=None, ignore2=None):
-        if self.topwin.is_visible():
-            logging.debug("Closing addhw")
+        if self.is_visible():
+            log.debug("Closing addhw")
             self.topwin.hide()
         if self._storagebrowser:
             self._storagebrowser.close()
@@ -137,7 +147,6 @@ class vmmAddHardware(vmmGObjectUI):
     def _cleanup(self):
         self.vm = None
         self.conn = None
-        self._dev = None
 
         if self._storagebrowser:
             self._storagebrowser.cleanup()
@@ -151,9 +160,10 @@ class vmmAddHardware(vmmGObjectUI):
         self._netlist = None
         self.addstorage.cleanup()
         self.addstorage = None
-
-    def is_visible(self):
-        return self.topwin.get_visible()
+        self._vsockdetails.cleanup()
+        self._vsockdetails = None
+        self._xmleditor.cleanup()
+        self._xmleditor = None
 
 
     ##########################
@@ -161,17 +171,11 @@ class vmmAddHardware(vmmGObjectUI):
     ##########################
 
     def _set_initial_state(self):
-        notebook = self.widget("create-pages")
-        notebook.set_show_tabs(False)
+        self.widget("create-pages").set_show_tabs(False)
+        self.widget("top-pages").set_show_tabs(False)
 
         blue = Gdk.color_parse("#0072A8")
         self.widget("page-title-box").modify_bg(Gtk.StateType.NORMAL, blue)
-
-        # Name, icon name, page number, is sensitive, tooltip, icon size,
-        # device type (serial/parallel)...
-        model = Gtk.ListStore(str, str, int, bool, str, str)
-        hw_list = self.widget("hw-list")
-        hw_list.set_model(model)
 
         hw_col = Gtk.TreeViewColumn(_("Hardware"))
         hw_col.set_spacing(6)
@@ -187,7 +191,7 @@ class vmmAddHardware(vmmGObjectUI):
         hw_col.add_attribute(icon, 'icon-name', 1)
         hw_col.add_attribute(text, 'text', 0)
         hw_col.add_attribute(text, 'sensitive', 3)
-        hw_list.append_column(hw_col)
+        self.widget("hw-list").append_column(hw_col)
 
         # Individual HW page UI
         self.build_disk_bus_combo(self.vm, self.widget("storage-bustype"))
@@ -225,9 +229,10 @@ class vmmAddHardware(vmmGObjectUI):
             storage_tooltip = _("Connection does not support storage"
                                 " management.")
 
-        hwlist = self.widget("hw-list")
-        model = hwlist.get_model()
-        model.clear()
+        # Name, icon name, page number, is sensitive, tooltip, icon size,
+        # device type (serial/parallel)...
+        model = Gtk.ListStore(str, str, int, bool, str, str)
+        self.widget("hw-list").set_model(model)
 
         def add_hw_option(name, icon, page, sensitive, errortxt, devtype=None):
             model.append([name, icon, page, sensitive, errortxt, devtype])
@@ -285,19 +290,21 @@ class vmmAddHardware(vmmGObjectUI):
                       True, None)
         add_hw_option(_("RNG"), "system-run", PAGE_RNG, True, None)
         add_hw_option(_("Panic Notifier"), "system-run", PAGE_PANIC,
-            bool(DevicePanic.get_models(self.vm.get_xmlobj().os)),
+            bool(DevicePanic.get_models(self.vm.get_xmlobj())),
+            _("Not supported for this hypervisor/libvirt/arch combination."))
+        add_hw_option(_("Virtio VSOCK"), "network-idle", PAGE_VSOCK,
+            self.vm.is_hvm(),
             _("Not supported for this hypervisor/libvirt/arch combination."))
 
 
     def _reset_state(self):
         # Hide all notebook pages, otherwise the wizard window is as large
         # as the largest page
-        notebook = self.widget("create-pages")
-        for page in range(notebook.get_n_pages()):
-            widget = notebook.get_nth_page(page)
+        for page in range(self.widget("create-pages").get_n_pages()):
+            widget = self.widget("create-pages").get_nth_page(page)
             widget.hide()
-        self._set_hw_selection(0)
 
+        self._set_hw_selection(0)
 
         # Storage params
         self.widget("storage-devtype").set_active(0)
@@ -317,7 +324,6 @@ class vmmAddHardware(vmmGObjectUI):
 
         netmodel = self.widget("net-model")
         self.populate_network_model_combo(self.vm, netmodel)
-        netmodel.set_active(0)
 
 
         # Char parameters
@@ -328,7 +334,7 @@ class vmmAddHardware(vmmGObjectUI):
 
         # RNG params
         default_rng = "/dev/random"
-        if self.conn.check_support(self.conn.SUPPORT_CONN_RNG_URANDOM):
+        if self.conn.support.conn_rng_urandom():
             default_rng = "/dev/urandom"
         self.widget("rng-device").set_text(default_rng)
 
@@ -337,6 +343,7 @@ class vmmAddHardware(vmmGObjectUI):
         self._fsdetails.reset_state()
         self.widget("tpm-device-path").set_text("/dev/tpm0")
         self._gfxdetails.reset_state()
+        self._vsockdetails.reset_state()
 
 
     @staticmethod
@@ -378,7 +385,7 @@ class vmmAddHardware(vmmGObjectUI):
                 vm.hotplug(**hotplug_args)
         except Exception as e:
             did_hotplug = True
-            logging.debug("Hotplug failed: %s", str(e))
+            log.debug("Hotplug failed: %s", str(e))
             hotplug_err = ((str(e), "".join(traceback.format_exc())))
 
         if did_hotplug and not hotplug_err:
@@ -405,6 +412,295 @@ class vmmAddHardware(vmmGObjectUI):
 
         return True
 
+
+    #####################
+    # Pretty UI helpers #
+    #####################
+
+    @staticmethod
+    def char_recommended_types(char_class):
+        if char_class.XML_NAME == "console":
+            return [DeviceSerial.TYPE_PTY]
+
+        ret = [DeviceSerial.TYPE_PTY,
+               DeviceSerial.TYPE_FILE,
+               DeviceSerial.TYPE_UNIX]
+        if char_class.XML_NAME == "channel":
+            ret = [DeviceSerial.TYPE_SPICEVMC,
+                   DeviceSerial.TYPE_SPICEPORT] + ret
+        return ret
+
+    @staticmethod
+    def char_pretty_channel_name(val):
+        if val == DeviceChannel.CHANNEL_NAME_SPICE:
+            return "spice"
+        if val == DeviceChannel.CHANNEL_NAME_QEMUGA:
+            return "qemu-ga"
+        if val == DeviceChannel.CHANNEL_NAME_LIBGUESTFS:
+            return "libguestfs"
+        if val == DeviceChannel.CHANNEL_NAME_SPICE_WEBDAV:
+            return "spice-webdav"
+        return None
+
+    @staticmethod
+    def char_pretty_type(ctype):
+        """
+        Return a human readable description of the passed char type
+        """
+        if ctype == DeviceSerial.TYPE_PTY:
+            return _("Pseudo TTY")
+        elif ctype == DeviceSerial.TYPE_FILE:
+            return _("Output to a file")
+        elif ctype == DeviceSerial.TYPE_TCP:
+            return _("TCP net console")
+        elif ctype == DeviceSerial.TYPE_UDP:
+            return _("UDP net console")
+        elif ctype == DeviceSerial.TYPE_UNIX:
+            return _("Unix socket")
+        elif ctype == DeviceSerial.TYPE_SPICEVMC:
+            return _("Spice agent")
+        elif ctype == DeviceSerial.TYPE_SPICEPORT:
+            return _("Spice port")
+        return ctype
+
+    @staticmethod
+    def controller_recommended_types():
+        return [DeviceController.TYPE_SCSI,
+                DeviceController.TYPE_USB,
+                DeviceController.TYPE_VIRTIOSERIAL,
+                DeviceController.TYPE_CCID]
+
+    @staticmethod
+    def controller_pretty_type(ctype):
+        pretty_mappings = {
+            DeviceController.TYPE_IDE:             "IDE",
+            DeviceController.TYPE_FDC:              _("Floppy"),
+            DeviceController.TYPE_SCSI:            "SCSI",
+            DeviceController.TYPE_SATA:            "SATA",
+            DeviceController.TYPE_VIRTIOSERIAL:    "VirtIO Serial",
+            DeviceController.TYPE_USB:             "USB",
+            DeviceController.TYPE_PCI:             "PCI",
+            DeviceController.TYPE_CCID:            "CCID",
+            DeviceController.TYPE_XENBUS:          "xenbus",
+        }
+        if ctype not in pretty_mappings:
+            return ctype
+        return pretty_mappings[ctype]
+
+    @staticmethod
+    def controller_pretty_desc(dev):
+        ret = vmmAddHardware.controller_pretty_type(dev.type)
+        if dev.type == "scsi":
+            if dev.model == "virtio-scsi":
+                ret = "Virtio " + ret
+            elif dev.address.type == "spapr-vio":
+                ret = "sPAPR " + ret
+        if dev.type == "pci" and dev.model == "pcie-root":
+            ret = "PCIe"
+        return ret
+
+    @staticmethod
+    def disk_old_recommended_buses(guest):
+        ret = []
+        if guest.os.is_hvm() or guest.conn.is_test():
+            if not guest.os.is_q35():
+                ret.append("ide")
+            ret.append("sata")
+            ret.append("fdc")
+            ret.append("scsi")
+            ret.append("usb")
+
+            if guest.type in ["qemu", "kvm", "test"]:
+                ret.append("sd")
+                ret.append("virtio")
+                if "scsi" not in ret:
+                    ret.append("scsi")
+
+        if guest.conn.is_xen() or guest.conn.is_test():
+            ret.append("xen")
+
+        return ret
+
+    @staticmethod
+    def disk_recommended_buses(guest, domcaps, devtype):
+        # try to get supported disk bus types from domain capabilities
+        if "bus" in domcaps.devices.disk.enum_names():
+            buses = domcaps.devices.disk.get_enum("bus").get_values()
+        else:
+            buses = vmmAddHardware.disk_old_recommended_buses(guest)
+
+        bus_map = {
+            "disk": ["ide", "sata", "scsi", "sd", "usb", "virtio", "xen"],
+            "floppy": ["fdc"],
+            "cdrom": ["ide", "sata", "scsi"],
+            "lun": ["scsi"],
+        }
+        return [bus for bus in buses if bus in bus_map.get(devtype, [])]
+
+    @staticmethod
+    def disk_pretty_bus(bus):
+        if bus in ["ide", "sata", "scsi", "usb", "sd"]:
+            return bus.upper()
+        if bus in ["xen"]:
+            return bus.capitalize()
+        if bus == "virtio":
+            return "VirtIO"
+        return bus
+
+    @staticmethod
+    def tpm_pretty_type(tpm_type):
+        if tpm_type == DeviceTpm.TYPE_PASSTHROUGH:
+            return _("Passthrough device")
+        if tpm_type == DeviceTpm.TYPE_EMULATOR:
+            return _("Emulated device")
+        return tpm_type
+
+    @staticmethod
+    def tpm_pretty_model(tpm_model):
+        if tpm_model == DeviceTpm.MODEL_TIS:
+            return _("TIS")
+        if tpm_model == DeviceTpm.MODEL_CRB:
+            return _("CRB")
+        return tpm_model
+
+    @staticmethod
+    def panic_pretty_model(panic_model):
+        if panic_model == DevicePanic.MODEL_ISA:
+            return _("ISA")
+        elif panic_model == DevicePanic.MODEL_PSERIES:
+            return _("pSeries")
+        elif panic_model == DevicePanic.MODEL_HYPERV:
+            return _("Hyper-V")
+        elif panic_model == DevicePanic.MODEL_S390:
+            return _("s390")
+        return panic_model
+
+    @staticmethod
+    def rng_pretty_type(rng_type):
+        if rng_type == DeviceRng.TYPE_RANDOM:
+            return _("Random")
+        if rng_type == DeviceRng.TYPE_EGD:
+            return _("Entropy Gathering Daemon")
+        return rng_type
+
+    @staticmethod
+    def rng_pretty_backend_type(backend_type):
+        return {"udp": "UDP",
+                "tcp": "TCP"}.get(backend_type) or backend_type
+
+    @staticmethod
+    def rng_pretty_mode(mode):
+        return {"bind": _("Bind"),
+                "connect": _("Connect")}.get(mode) or mode
+
+    @staticmethod
+    def sound_recommended_models(_guest):
+        return ["ich6", "ich9", "ac97"]
+
+    @staticmethod
+    def sound_pretty_model(model):
+        ret = model.upper()
+        if model in ["ich6", "ich9"]:
+            ret = "HDA (%s)" % model.upper()
+        return ret
+
+    @staticmethod
+    def watchdog_pretty_action(action):
+        if action == DeviceWatchdog.ACTION_RESET:
+            return _("Forcefully reset the guest")
+        if action == DeviceWatchdog.ACTION_SHUTDOWN:
+            return _("Gracefully shutdown the guest")
+        if action == DeviceWatchdog.ACTION_POWEROFF:
+            return _("Forcefully power off the guest")
+        if action == DeviceWatchdog.ACTION_PAUSE:
+            return _("Pause the guest")
+        if action == DeviceWatchdog.ACTION_NONE:
+            return _("No action")
+        if action == DeviceWatchdog.ACTION_DUMP:
+            return _("Dump guest memory core")
+        return action
+
+    @staticmethod
+    def input_pretty_name(typ, bus):
+        if typ == "tablet" and bus == "usb":
+            return _("EvTouch USB Graphics Tablet")
+
+        if bus in ["usb", "ps2"]:
+            return _("Generic") + (" %s %s" %
+                (bus.upper(), str(typ).capitalize()))
+        return "%s %s" % (str(bus).capitalize(), str(typ).capitalize())
+
+    @staticmethod
+    def interface_recommended_models(guest):
+        if not guest.os.is_hvm():
+            return []
+
+        ret = []
+        if guest.type in ["kvm", "qemu", "vz", "test"]:
+            ret.append("virtio")
+        if guest.os.is_x86():
+            if guest.os.is_q35():
+                ret.append("e1000e")
+            else:
+                ret.append("rtl8139")
+                ret.append("e1000")
+        if guest.type in ["xen", "test"]:
+            ret.append("netfront")
+
+        ret.sort()
+        return ret
+
+    @staticmethod
+    def redirdev_pretty_type(typ):
+        if typ == "tcp":
+            return "TCP"
+        if typ == "spicevmc":
+            return "SpiceVMC"
+        return typ and typ.capitalize()
+
+    @staticmethod
+    def video_recommended_models(guest):
+        if guest.conn.is_xen():
+            return ["xen", "vga"]
+        if guest.conn.is_qemu() or guest.conn.is_test():
+            return ["vga", "qxl", "virtio"]
+        return []
+
+    @staticmethod
+    def video_pretty_model(model):
+        if model in ["qxl", "vmvga", "vga"]:
+            return model.upper()
+        return model.capitalize()
+
+    @staticmethod
+    def hostdev_pretty_name(hostdev):
+        def dehex(val):
+            if val.startswith("0x"):
+                val = val[2:]
+            return val
+
+        def safeint(val, fmt="%.3d"):
+            try:
+                int(val)
+            except Exception:
+                return str(val)
+            return fmt % int(val)
+
+        label = hostdev.type.upper()
+
+        if hostdev.vendor and hostdev.product:
+            label += " %s:%s" % (dehex(hostdev.vendor), dehex(hostdev.product))
+
+        elif hostdev.bus and hostdev.device:
+            label += " %s:%s" % (safeint(hostdev.bus), safeint(hostdev.device))
+
+        elif (hostdev.bus and hostdev.slot and
+              hostdev.function and hostdev.domain):
+            label += (" %s:%s:%s.%s" %
+                      (dehex(hostdev.domain), dehex(hostdev.bus),
+                       dehex(hostdev.slot), dehex(hostdev.function)))
+
+        return label
 
 
     #########################
@@ -470,11 +766,11 @@ class vmmAddHardware(vmmGObjectUI):
     @staticmethod
     def populate_disk_bus_combo(vm, devtype, model):
         domcaps = vm.get_domain_capabilities()
-        buses = DeviceDisk.get_recommended_buses(vm.xmlobj, domcaps, devtype)
+        buses = vmmAddHardware.disk_recommended_buses(vm.xmlobj, domcaps, devtype)
 
         model.clear()
         for bus in buses:
-            model.append([bus, DeviceDisk.pretty_disk_bus(bus)])
+            model.append([bus, vmmAddHardware.disk_pretty_bus(bus)])
 
 
     @staticmethod
@@ -484,7 +780,7 @@ class vmmAddHardware(vmmGObjectUI):
 
         # [xml value, label]
         model.append([None, _("Hypervisor default")])
-        for netmodel in DeviceInterface.get_models(vm.xmlobj):
+        for netmodel in vmmAddHardware.interface_recommended_models(vm.xmlobj):
             model.append([netmodel, netmodel])
 
         uiutil.set_list_selection(
@@ -505,15 +801,16 @@ class vmmAddHardware(vmmGObjectUI):
             (DeviceInput.TYPE_TABLET, DeviceInput.BUS_VIRTIO),
         ]
 
-        cvals = [((t, b), DeviceInput.pretty_name(t, b)) for t, b in devices]
+        cvals = [((t, b), vmmAddHardware.input_pretty_name(t, b))
+                 for t, b in devices]
         _build_combo(self.widget("input-type"), cvals)
 
 
     @staticmethod
     def build_sound_combo(vm, combo):
         values = []
-        for m in DeviceSound.get_recommended_models(vm.xmlobj):
-            values.append([m, DeviceSound.pretty_model(m)])
+        for m in vmmAddHardware.sound_recommended_models(vm.xmlobj):
+            values.append([m, vmmAddHardware.sound_pretty_model(m)])
 
         default = DeviceSound.default_model(vm.xmlobj)
         _build_combo(combo, values, default_value=default)
@@ -539,17 +836,16 @@ class vmmAddHardware(vmmGObjectUI):
         devs = self.conn.filter_nodedevs(devtype)
         netdevs = self.conn.filter_nodedevs("net")
         for dev in devs:
-            if devtype == "usb_device" and dev.xmlobj.is_linux_root_hub():
+            if dev.xmlobj.is_usb_linux_root_hub():
                 continue
-            if (devtype == "pci" and
-                dev.xmlobj.capability_type == "pci-bridge"):
+            if dev.xmlobj.is_pci_bridge():
                 continue
-            prettyname = dev.xmlobj.pretty_name()
+            prettyname = dev.pretty_name()
 
             if devtype == "pci":
                 for subdev in netdevs:
                     if dev.xmlobj.name == subdev.xmlobj.parent:
-                        prettyname += " (%s)" % subdev.xmlobj.pretty_name()
+                        prettyname += " (%s)" % subdev.pretty_name()
 
             model.append([dev.xmlobj, prettyname])
 
@@ -561,8 +857,8 @@ class vmmAddHardware(vmmGObjectUI):
     @staticmethod
     def build_video_combo(vm, combo):
         values = []
-        for m in DeviceVideo.get_recommended_models(vm.xmlobj):
-            values.append([m, DeviceVideo.pretty_model(m)])
+        for m in vmmAddHardware.video_recommended_models(vm.xmlobj):
+            values.append([m, vmmAddHardware.video_pretty_model(m)])
         if not values:
             values.append([None, _("Hypervisor default")])
         default = DeviceVideo.default_model(vm.xmlobj)
@@ -588,8 +884,8 @@ class vmmAddHardware(vmmGObjectUI):
         model = self.widget("char-device-type").get_model()
         model.clear()
 
-        for t in char_class.get_recommended_types(self.vm.xmlobj):
-            model.append([t, char_class.pretty_type(t) + " (%s)" % t])
+        for t in vmmAddHardware.char_recommended_types(char_class):
+            model.append([t, vmmAddHardware.char_pretty_type(t) + " (%s)" % t])
         uiutil.set_list_selection(self.widget("char-device-type"), "pty")
 
 
@@ -604,7 +900,7 @@ class vmmAddHardware(vmmGObjectUI):
     def build_watchdogaction_combo(_vm, combo):
         values = []
         for m in DeviceWatchdog.ACTIONS:
-            values.append([m, DeviceWatchdog.get_action_desc(m)])
+            values.append([m, vmmAddHardware.watchdog_pretty_action(m)])
         _build_combo(combo, values, default_value=DeviceWatchdog.ACTION_RESET)
 
 
@@ -625,16 +921,17 @@ class vmmAddHardware(vmmGObjectUI):
     def _build_tpm_type_combo(self):
         values = []
         for t in DeviceTpm.TYPES:
-            values.append([t, DeviceTpm.get_pretty_type(t)])
+            values.append([t, vmmAddHardware.tpm_pretty_type(t)])
         _build_combo(self.widget("tpm-type"), values)
         values = []
         for t in DeviceTpm.MODELS:
-            values.append([t, DeviceTpm.get_pretty_model(t)])
+            values.append([t, vmmAddHardware.tpm_pretty_model(t)])
         _build_combo(self.widget("tpm-model"), values)
         values = []
         for t in DeviceTpm.VERSIONS:
             values.append([t, t])
-        _build_combo(self.widget("tpm-version"), values)
+        _build_combo(self.widget("tpm-version"), values,
+                default_value=DeviceTpm.VERSION_2_0)
 
     @staticmethod
     def _get_tpm_model_list(vm, tpmversion):
@@ -653,7 +950,7 @@ class vmmAddHardware(vmmGObjectUI):
 
         mod_list = vmmAddHardware._get_tpm_model_list(vm, tpmversion)
         for m in mod_list:
-            model.append([m, DeviceTpm.get_pretty_model(m)])
+            model.append([m, vmmAddHardware.tpm_pretty_model(m)])
         combo.set_active(0)
 
     @staticmethod
@@ -664,8 +961,8 @@ class vmmAddHardware(vmmGObjectUI):
 
     def _build_panic_model_combo(self):
         values = []
-        for m in DevicePanic.get_models(self.vm.get_xmlobj().os):
-            values.append([m, DevicePanic.get_pretty_model(m)])
+        for m in DevicePanic.get_models(self.vm.get_xmlobj()):
+            values.append([m, vmmAddHardware.panic_pretty_model(m)])
 
         default = DevicePanic.get_default_model(self.vm.get_xmlobj())
         _build_combo(self.widget("panic-model"), values, default_value=default)
@@ -673,8 +970,8 @@ class vmmAddHardware(vmmGObjectUI):
 
     def _build_controller_type_combo(self):
         values = []
-        for t in DeviceController.get_recommended_types(self.vm.xmlobj):
-            values.append([t, DeviceController.pretty_type(t)])
+        for t in vmmAddHardware.controller_recommended_types():
+            values.append([t, vmmAddHardware.controller_pretty_type(t)])
 
         _build_combo(self.widget("controller-type"), values,
                 default_value=DeviceController.TYPE_SCSI)
@@ -723,30 +1020,26 @@ class vmmAddHardware(vmmGObjectUI):
     def _get_hw_selection(self):
         return uiutil.get_list_selected_row(self.widget("hw-list"))
 
+    def _set_error_page(self, msg=None):
+        self.widget("top-pages").set_current_page(1)
+        self.widget("error-label").set_text(msg or "Hardware selection error.")
+        self.widget("create-finish").set_sensitive(False)
+
 
     ################
     # UI listeners #
     ################
 
-    def _hw_selected(self, src=None):
-        ignore = src
-        self._dev = None
-        notebook = self.widget("create-pages")
+    def _hw_selected_cb(self, src):
+        self.widget("create-finish").set_sensitive(True)
+        self._xmleditor.reset_state()
 
         row = self._get_hw_selection()
-        if not row:
-            self._set_hw_selection(0)
+        if not row or not row[3]:
+            self._set_error_page(row and row[4] or None)
             return
 
         page = row[2]
-        sens = row[3]
-        msg = row[4] or ""
-
-        self.widget("create-finish").set_sensitive(sens)
-
-        if not sens:
-            page = PAGE_ERROR
-            self.widget("hardware-info").set_text(msg)
 
         if page == PAGE_CHAR:
             # Need to do this here, since we share the char page between
@@ -769,12 +1062,11 @@ class vmmAddHardware(vmmGObjectUI):
             self.widget("controller-type").emit("changed")
 
         self._set_page_title(page)
-        notebook.get_nth_page(page).show()
-        notebook.set_current_page(page)
+        self.widget("create-pages").get_nth_page(page).show()
+        self.widget("create-pages").set_current_page(page)
+        self.widget("top-pages").set_current_page(0)
 
     def _dev_to_title(self, page):
-        if page == PAGE_ERROR:
-            return _("Error")
         if page == PAGE_DISK:
             return _("Storage")
         if page == PAGE_CONTROLLER:
@@ -803,6 +1095,8 @@ class vmmAddHardware(vmmGObjectUI):
             return _("Random Number Generator")
         if page == PAGE_PANIC:
             return _("Panic Notifier")
+        if page == PAGE_VSOCK:
+            return _("VM Sockets")
 
         if page == PAGE_CHAR:
             devclass = self._get_char_class()(self.conn.get_backend())
@@ -819,6 +1113,10 @@ class vmmAddHardware(vmmGObjectUI):
         title = self._dev_to_title(page)
         markup = "<span size='large' color='white'>%s</span>" % title
         self.widget("page-title-label").set_markup(markup)
+
+    def _xmleditor_xml_requested_cb(self, src):
+        dev = self._build_device(check_xmleditor=False)
+        self._xmleditor.set_xml(dev and dev.get_xml() or "")
 
 
     #########################
@@ -869,18 +1167,13 @@ class vmmAddHardware(vmmGObjectUI):
         if devtype is None:
             return
 
-        tpm_widget_mappings = {
-            "device_path": "tpm-device-path",
-            "version": "tpm-version",
-        }
+        dev = DeviceTpm(self.conn.get_backend())
+        dev.type = devtype
 
-        self._dev = DeviceTpm(self.conn.get_backend())
-        self._dev.type = devtype
-
-        for param_name, widget_name in tpm_widget_mappings.items():
-            make_visible = self._dev.supports_property(param_name)
-            uiutil.set_grid_row_visible(self.widget(widget_name + "-label"),
-                                           make_visible)
+        uiutil.set_grid_row_visible(self.widget("tpm-device-path-label"),
+                devtype == dev.TYPE_PASSTHROUGH)
+        uiutil.set_grid_row_visible(self.widget("tpm-version-label"),
+                devtype == dev.TYPE_EMULATOR)
 
     def _change_char_auto_socket(self, src):
         if not src.get_visible():
@@ -920,10 +1213,14 @@ class vmmAddHardware(vmmGObjectUI):
         iscon = dev.DEVICE_TYPE == "console"
         show_auto = devtype == "unix" and ischan
 
+        supports_path = [dev.TYPE_FILE, dev.TYPE_UNIX,
+                         dev.TYPE_DEV, dev.TYPE_PIPE]
+        supports_channel = [dev.TYPE_SPICEPORT]
+
         uiutil.set_grid_row_visible(self.widget("char-path-label"),
-                dev.supports_property("source_path"))
+                devtype in supports_path)
         uiutil.set_grid_row_visible(self.widget("char-channel-label"),
-                dev.supports_property("source_channel"))
+                devtype in supports_channel)
 
         uiutil.set_grid_row_visible(
             self.widget("char-target-name-label"), ischan)
@@ -979,31 +1276,31 @@ class vmmAddHardware(vmmGObjectUI):
     # Add device methods #
     ######################
 
-    def _setup_device(self, asyncjob):
-        if self._dev.DEVICE_TYPE != "disk":
+    def _setup_device(self, asyncjob, dev):
+        if dev.DEVICE_TYPE != "disk":
             return
 
         poolname = None
-        if (self._dev.wants_storage_creation() and
-            self._dev.get_parent_pool()):
-            poolname = self._dev.get_parent_pool().name()
+        if (dev.wants_storage_creation() and
+            dev.get_parent_pool()):
+            poolname = dev.get_parent_pool().name()
 
-        logging.debug("Running build_storage() for device=%s", self._dev)
-        self._dev.build_storage(meter=asyncjob.get_meter())
-        logging.debug("build_storage() complete")
+        log.debug("Running build_storage() for device=%s", dev)
+        dev.build_storage(meter=asyncjob.get_meter())
+        log.debug("build_storage() complete")
 
         if poolname:
             try:
                 pool = self.conn.get_pool(poolname)
                 self.idle_add(pool.refresh)
             except Exception:
-                logging.debug("Error looking up pool=%s for refresh after "
+                log.debug("Error looking up pool=%s for refresh after "
                     "storage creation.", poolname, exc_info=True)
 
 
-    def _add_device(self):
-        xml = self._dev.get_xml()
-        logging.debug("Adding device:\n%s", xml)
+    def _add_device(self, dev):
+        xml = dev.get_xml()
+        log.debug("Adding device:\n%s", xml)
 
         if self._remove_usb_controller:
             kwargs = {}
@@ -1018,18 +1315,18 @@ class vmmAddHardware(vmmGObjectUI):
 
             return
 
-        controller = getattr(self._dev, "vmm_controller", None)
+        controller = getattr(dev, "vmm_controller", None)
         if controller is not None:
-            logging.debug("Adding controller:\n%s",
+            log.debug("Adding controller:\n%s",
                           controller.get_xml())
         # Hotplug device
         attach_err = False
         try:
             if controller is not None:
                 self.vm.attach_device(controller)
-            self.vm.attach_device(self._dev)
+            self.vm.attach_device(dev)
         except Exception as e:
-            logging.debug("Device could not be hotplugged: %s", str(e))
+            log.debug("Device could not be hotplugged: %s", str(e))
             attach_err = (str(e), "".join(traceback.format_exc()))
 
         if attach_err:
@@ -1051,18 +1348,18 @@ class vmmAddHardware(vmmGObjectUI):
         try:
             if controller is not None:
                 self.vm.add_device(controller)
-            self.vm.add_device(self._dev)
+            self.vm.add_device(dev)
         except Exception as e:
             self.err.show_err(_("Error adding device: %s") % str(e))
             return True
 
         return False
 
-    def _finish_cb(self, error, details):
+    def _finish_cb(self, error, details, dev):
         failure = True
         if not error:
             try:
-                failure = self._add_device()
+                failure = self._add_device(dev)
             except Exception as e:
                 failure = True
                 error = _("Unable to add device: %s") % str(e)
@@ -1073,13 +1370,16 @@ class vmmAddHardware(vmmGObjectUI):
 
         self.reset_finish_cursor()
 
-        self._dev = None
         if not failure:
             self.close()
 
     def _finish(self, ignore=None):
+        dev = self._build_device(check_xmleditor=True)
+        if not dev:
+            return
+
         try:
-            if self._validate() is False:
+            if self._validate_device(dev) is False:
                 return
         except Exception as e:
             self.err.show_err(
@@ -1087,8 +1387,8 @@ class vmmAddHardware(vmmGObjectUI):
             return
 
         self.set_finish_cursor()
-        progWin = vmmAsyncJob(self._setup_device, [],
-                              self._finish_cb, [],
+        progWin = vmmAsyncJob(self._setup_device, [dev],
+                              self._finish_cb, [dev],
                               _("Creating device"),
                               _("Depending on the device, this may take "
                                 "a few minutes to complete."),
@@ -1097,54 +1397,109 @@ class vmmAddHardware(vmmGObjectUI):
 
 
     ###########################
-    # Page validation methods #
+    # Device build/validation #
     ###########################
 
-    def _validate(self):
-        # Any uncaught errors in this function are reported via _finish()
+    def _validate_hostdev_collision(self, dev):
+        names = []
+        nodedev = getattr(dev, "vmm_nodedev", None)
+        if not nodedev:
+            return
+
+        for vm in self.conn.list_vms():
+            for hostdev in vm.xmlobj.devices.hostdev:
+                if nodedev.compare_to_hostdev(hostdev):
+                    names.append(vm.get_name())
+        if names:
+            res = self.err.yes_no(
+                    _('The device is already in use by other guests %s') %
+                     (names),
+                    _("Do you really want to use the device?"))
+            if not res:
+                return False
+
+    def _validate_device(self, dev):
+        dev.validate()
+
+        if dev.DEVICE_TYPE == "disk":
+            if self.addstorage.validate_device(dev) is False:
+                return False
+
+        if dev.DEVICE_TYPE == "network":
+            self._netlist.validate_device(dev)
+
+        if dev.DEVICE_TYPE == "hostdev":
+            self._validate_hostdev_collision(dev)
+
+    def _build_xmleditor_device(self, srcdev):
+        xml = self._xmleditor.get_xml()
+        log.debug("Using XML from xmleditor:\n%s", xml)
+        devclass = srcdev.__class__
+        dev = devclass(srcdev.conn, parsexml=xml)
+
+        if srcdev.DEVICE_TYPE == "disk":
+            if (srcdev.path == dev.path and
+                srcdev.get_vol_install()):
+                dev.set_vol_install(srcdev.get_vol_install())
+            elif dev.path:
+                # Needed to convince disk.validate() to validate a passed path
+                dev.set_backend_for_existing_path()
+
+        return dev
+
+    def _build_device(self, check_xmleditor):
         page_num = self.widget("create-pages").get_current_page()
+        try:
+            dev = self._build_device_page(page_num)
 
+            if check_xmleditor and self._xmleditor.is_xml_selected():
+                dev = self._build_xmleditor_device(dev)
+
+            return dev
+        except Exception as e:
+            self.err.show_err(
+                    _("Error building device XML: %s") % str(e))
+            return
+
+    def _build_device_page(self, page_num):
         # pylint: disable=assignment-from-no-return
-        if page_num == PAGE_ERROR:
-            self._dev = None
-            ret = True
-        elif page_num == PAGE_DISK:
-            ret = self._validate_page_storage()
+        if page_num == PAGE_DISK:
+            dev = self._build_storage()
         elif page_num == PAGE_CONTROLLER:
-            ret = self._validate_page_controller()
+            dev = self._build_controller()
         elif page_num == PAGE_NETWORK:
-            ret = self._validate_page_network()
+            dev = self._build_network()
         elif page_num == PAGE_INPUT:
-            ret = self._validate_page_input()
+            dev = self._build_input()
         elif page_num == PAGE_GRAPHICS:
-            ret = self._validate_page_graphics()
+            dev = self._build_graphics()
         elif page_num == PAGE_SOUND:
-            ret = self._validate_page_sound()
+            dev = self._build_sound()
         elif page_num == PAGE_HOSTDEV:
-            ret = self._validate_page_hostdev()
+            dev = self._build_hostdev()
         elif page_num == PAGE_CHAR:
-            ret = self._validate_page_char()
+            dev = self._build_char()
         elif page_num == PAGE_VIDEO:
-            ret = self._validate_page_video()
+            dev = self._build_video()
         elif page_num == PAGE_WATCHDOG:
-            ret = self._validate_page_watchdog()
+            dev = self._build_watchdog()
         elif page_num == PAGE_FILESYSTEM:
-            ret = self._validate_page_filesystem()
+            dev = self._build_filesystem()
         elif page_num == PAGE_SMARTCARD:
-            ret = self._validate_page_smartcard()
+            dev = self._build_smartcard()
         elif page_num == PAGE_USBREDIR:
-            ret = self._validate_page_usbredir()
+            dev = self._build_usbredir()
         elif page_num == PAGE_TPM:
-            ret = self._validate_page_tpm()
+            dev = self._build_tpm()
         elif page_num == PAGE_RNG:
-            ret = self._validate_page_rng()
+            dev = self._build_rng()
         elif page_num == PAGE_PANIC:
-            ret = self._validate_page_panic()
+            dev = self._build_panic()
+        elif page_num == PAGE_VSOCK:
+            dev = self._build_vsock()
 
-        if ret is not False and self._dev:
-            self._dev.set_defaults(self.vm.get_xmlobj())
-            self._dev.validate()
-        return ret
+        dev.set_defaults(self.vm.get_xmlobj())
+        return dev
 
     def _set_disk_controller(self, disk, controller_model, used_disks):
         # Add a SCSI controller with model virtio-scsi if needed
@@ -1192,7 +1547,7 @@ class vmmAddHardware(vmmGObjectUI):
 
         return controller.index
 
-    def _validate_page_storage(self):
+    def _build_storage(self):
         bus = uiutil.get_list_selection(
             self.widget("storage-bustype"))
         device = uiutil.get_list_selection(
@@ -1211,128 +1566,91 @@ class vmmAddHardware(vmmGObjectUI):
         controller_model = None
         if (bus == "scsi" and
             self.vm.get_hv_type() in ["qemu", "kvm", "test"] and
-            not self.vm.xmlobj.os.is_pseries() and not
-            any([c.type == "scsi"
+            not any([c.type == "scsi"
                  for c in self.vm.xmlobj.devices.controller])):
             controller_model = "virtio-scsi"
 
-        collidelist = [d.path for d in self.vm.xmlobj.devices.disk]
-        try:
-            disk = self.addstorage.validate_storage(self.vm.get_name(),
-                collidelist=collidelist, device=device)
-        except Exception as e:
-            return self.err.val_err(_("Storage parameter error."), e)
+        disk = self.addstorage.build_device(self.vm.get_name(),
+            collideguest=self.vm.xmlobj, device=device)
 
-        if disk is False:
-            return False
+        used = []
+        disk.bus = bus
+        if cache:
+            disk.driver_cache = cache
+        if io:
+            disk.driver_io = io
+        if discard:
+            disk.driver_discard = discard
+        if detect_zeroes:
+            disk.driver_detect_zeroes = detect_zeroes
+        if device == "lun" and reservations_managed:
+            disk.reservations_managed = "yes"
 
-        try:
-            used = []
-            disk.bus = bus
-            if cache:
-                disk.driver_cache = cache
-            if io:
-                disk.driver_io = io
-            if discard:
-                disk.driver_discard = discard
-            if detect_zeroes:
-                disk.driver_detect_zeroes = detect_zeroes
-            if device == "lun" and reservations_managed:
-                disk.reservations_managed = "yes"
+        # Generate target
+        disks = (self.vm.xmlobj.devices.disk +
+                 self.vm.get_xmlobj(inactive=True).devices.disk)
+        for d in disks:
+            if d.target not in used:
+                used.append(d.target)
 
-            # Generate target
-            disks = (self.vm.xmlobj.devices.disk +
-                     self.vm.get_xmlobj(inactive=True).devices.disk)
-            for d in disks:
-                if d.target not in used:
-                    used.append(d.target)
+        prefer_ctrl = self._set_disk_controller(
+            disk, controller_model, disks)
 
-            prefer_ctrl = self._set_disk_controller(
-                disk, controller_model, disks)
+        disk.generate_target(used, prefer_ctrl)
+        return disk
 
-            disk.generate_target(used, prefer_ctrl)
-        except Exception as e:
-            return self.err.val_err(_("Storage parameter error."), e)
-
-        if self.addstorage.validate_disk_object(disk) is False:
-            return False
-
-        self._dev = disk
-        return True
-
-
-    def _validate_page_network(self):
-        nettype = self._netlist.get_network_selection()[0]
+    def _build_network(self):
         model = uiutil.get_list_selection(self.widget("net-model"))
         mac = None
         if self.widget("mac-address").get_active():
             mac = self.widget("create-mac-address").get_text()
 
-        if not nettype:
-            return self.err.val_err(_("Network selection error."),
-                                    _("A network source must be selected."))
+        dev = self._netlist.build_device(mac, model)
+        return dev
 
-        ret = self._netlist.validate_network(mac, model)
-        if ret is False:
-            return False
-
-        self._dev = ret
-
-    def _validate_page_input(self):
+    def _build_input(self):
         typ, bus = uiutil.get_list_selection(self.widget("input-type"))
-        self._dev = DeviceInput(self.conn.get_backend())
-        self._dev.type = typ
-        self._dev.bus = bus
+        dev = DeviceInput(self.conn.get_backend())
+        dev.type = typ
+        dev.bus = bus
+        return dev
 
-    def _validate_page_graphics(self):
+    def _build_graphics(self):
         (gtype, port, tlsport, listen,
          addr, passwd, keymap, gl, rendernode) = self._gfxdetails.get_values()
-        self._dev = DeviceGraphics(self.conn.get_backend())
-        self._dev.type = gtype
-        self._dev.passwd = passwd
-        self._dev.gl = gl
-        self._dev.rendernode = rendernode
+        dev = DeviceGraphics(self.conn.get_backend())
+        dev.type = gtype
+        dev.passwd = passwd
+        dev.gl = gl
+        dev.rendernode = rendernode
 
         if not listen or listen == "none":
-            self._dev.set_listen_none()
+            dev.listen = "none"
         elif listen == "address":
-            self._dev.listen = addr
-            self._dev.port = port
-            self._dev.tlsPort = tlsport
+            dev.listen = addr
+            dev.port = port
+            dev.tlsPort = tlsport
         else:
             raise ValueError(_("invalid listen type"))
         if keymap:
-            self._dev.keymap = keymap
+            dev.keymap = keymap
 
-    def _validate_page_sound(self):
+        return dev
+
+    def _build_sound(self):
         smodel = uiutil.get_list_selection(self.widget("sound-model"))
-        self._dev = DeviceSound(self.conn.get_backend())
-        self._dev.model = smodel
+        dev = DeviceSound(self.conn.get_backend())
+        dev.model = smodel
+        return dev
 
-    def _validate_page_hostdev(self):
+    def _build_hostdev(self):
         nodedev = uiutil.get_list_selection(self.widget("host-device"))
-        if nodedev is None:
-            return self.err.val_err(_("Physical Device Required"),
-                                    _("A device must be selected."))
-
         dev = DeviceHostdev(self.conn.get_backend())
-        # Hostdev collision
-        names  = []
-        for vm in self.conn.list_vms():
-            for hostdev in vm.xmlobj.devices.hostdev:
-                if nodedev.compare_to_hostdev(hostdev):
-                    names.append(vm.get_name())
-        if names:
-            res = self.err.yes_no(
-                    _('The device is already in use by other guests %s') %
-                     (names),
-                    _("Do you really want to use the device?"))
-            if not res:
-                return False
         dev.set_from_nodedev(nodedev)
-        self._dev = dev
+        setattr(dev, "vmm_nodedev", nodedev)
+        return dev
 
-    def _validate_page_char(self):
+    def _build_char(self):
         char_class = self._get_char_class()
         devtype = uiutil.get_list_selection(self.widget("char-device-type"))
 
@@ -1342,109 +1660,117 @@ class vmmAddHardware(vmmGObjectUI):
         target_name = self.widget("char-target-name").get_child().get_text()
         target_type = uiutil.get_list_selection(typebox)
 
+        if not self.widget("char-path").get_visible():
+            source_path = None
+        if not self.widget("char-channel").get_visible():
+            source_channel = None
         if not self.widget("char-target-name").get_visible():
             target_name = None
         if not typebox.get_visible():
             target_type = None
-        if (self.widget("char-auto-socket").get_visible() and
-            self.widget("char-auto-socket").get_active()):
-            source_path = None
 
-        self._dev = char_class(self.conn.get_backend())
-        self._dev.type = devtype
-        if self._dev.supports_property("source_path"):
-            self._dev.source_path = source_path
-        if self._dev.supports_property("source_channel"):
-            self._dev.source_channel = source_channel
-        if self._dev.supports_property("target_name"):
-            self._dev.target_name = target_name
-        if self._dev.supports_property("target_type"):
-            self._dev.target_type = target_type
+        dev = char_class(self.conn.get_backend())
+        dev.type = devtype
+        dev.source.path = source_path
+        dev.source.channel = source_channel
+        dev.target_name = target_name
+        dev.target_type = target_type
+        return dev
 
-    def _validate_page_video(self):
+    def _build_video(self):
         model = uiutil.get_list_selection(self.widget("video-model"))
-        self._dev = DeviceVideo(self.conn.get_backend())
-        self._dev.model = model
+        dev = DeviceVideo(self.conn.get_backend())
+        dev.model = model
+        return dev
 
-    def _validate_page_watchdog(self):
+    def _build_watchdog(self):
         model = uiutil.get_list_selection(self.widget("watchdog-model"))
         action = uiutil.get_list_selection(self.widget("watchdog-action"))
-        self._dev = DeviceWatchdog(self.conn.get_backend())
-        self._dev.model = model
-        self._dev.action = action
+        dev = DeviceWatchdog(self.conn.get_backend())
+        dev.model = model
+        dev.action = action
+        return dev
 
-    def _validate_page_filesystem(self):
+    def _build_filesystem(self):
         if self._fsdetails.validate_page_filesystem() is False:
             return False
-        self._dev = self._fsdetails.get_dev()
+        return self._fsdetails.get_dev()
 
-    def _validate_page_smartcard(self):
+    def _build_smartcard(self):
         mode = uiutil.get_list_selection(self.widget("smartcard-mode"))
-        self._dev = DeviceSmartcard(self.conn.get_backend())
-        self._dev.mode = mode
+        dev = DeviceSmartcard(self.conn.get_backend())
+        dev.mode = mode
+        return dev
 
-    def _validate_page_usbredir(self):
+    def _build_usbredir(self):
         stype = uiutil.get_list_selection(self.widget("usbredir-list"))
-        self._dev = DeviceRedirdev(self.conn.get_backend())
-        self._dev.type = stype
+        dev = DeviceRedirdev(self.conn.get_backend())
+        dev.type = stype
+        return dev
 
-    def _validate_page_tpm(self):
+    def _build_tpm(self):
         typ = uiutil.get_list_selection(self.widget("tpm-type"))
         model = uiutil.get_list_selection(self.widget("tpm-model"))
         device_path = self.widget("tpm-device-path").get_text()
         version = uiutil.get_list_selection(self.widget("tpm-version"))
 
-        value_mappings = {
-            "type": typ,
-            "model": model,
-            "device_path": device_path,
-            "version": version,
-        }
+        if not self.widget("tpm-device-path").get_visible():
+            device_path = None
+        if not self.widget("tpm-version").get_visible():
+            version = None
 
-        self._dev = DeviceTpm(self.conn.get_backend())
-        for param_name, val in value_mappings.items():
-            if self._dev.supports_property(param_name) and val is not None:
-                setattr(self._dev, param_name, val)
+        dev = DeviceTpm(self.conn.get_backend())
+        dev.type = typ
+        dev.model = model
+        dev.device_path = device_path
+        dev.version = version
+        return dev
 
-    def _validate_page_panic(self):
+    def _build_panic(self):
         model = uiutil.get_list_selection(self.widget("panic-model"))
-        self._dev = DevicePanic(self.conn.get_backend())
-        self._dev.model = model
+        dev = DevicePanic(self.conn.get_backend())
+        dev.model = model
+        return dev
 
-    def _validate_page_controller(self):
+    def _build_vsock(self):
+        auto_cid, cid = self._vsockdetails.get_values()
+        dev = DeviceVsock(self.conn.get_backend())
+        dev.auto_cid = auto_cid
+        dev.cid = cid
+        return dev
+
+    def _build_controller(self):
         controller_type = uiutil.get_list_selection(
             self.widget("controller-type"))
         model = uiutil.get_list_selection(self.widget("controller-model"))
 
         self._selected_model = model
         if model == "usb3":
-            self._dev = DeviceController.get_usb3_controller(
+            dev = DeviceController.get_usb3_controller(
                     self.conn.get_backend(), self.vm.xmlobj)
             model = None
         else:
-            self._dev = DeviceController(self.conn.get_backend())
+            dev = DeviceController(self.conn.get_backend())
 
         controllers = self.vm.xmlobj.devices.controller
         controller_num = [x for x in controllers if
                 (x.type == controller_type)]
         if len(controller_num) > 0:
             index_new = max([x.index for x in controller_num]) + 1
-            self._dev.index = index_new
+            dev.index = index_new
 
-        self._dev.type = controller_type
+        dev.type = controller_type
 
         if model and model != "none":
-            self._dev.model = model
+            dev.model = model
+        return dev
 
-    def _validate_page_rng(self):
+    def _build_rng(self):
         device = self.widget("rng-device").get_text()
-        if not device:
-            return self.err.val_err(_("RNG selection error."),
-                                _("A device must be specified."))
-
-        self._dev = DeviceRng(self.conn.get_backend())
-        self._dev.type = DeviceRng.TYPE_RANDOM
-        self._dev.device = device
+        dev = DeviceRng(self.conn.get_backend())
+        dev.backend_model = DeviceRng.TYPE_RANDOM
+        dev.device = device
+        return dev
 
 
     ####################

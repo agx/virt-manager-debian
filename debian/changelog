@@ -1,3 +1,13 @@
+virt-manager (1:2.2.1-1~1.gbp24757d) UNRELEASED; urgency=medium
+
+  ** SNAPSHOT build @24757dcb3ea53b0446d4e038c4a1348e6c974c67 **
+
+  * Drop superfluous python-requests dependency (Closes: #921618)
+  * tests: Mark test as superficial
+  * New upstream version 2.2.1
+
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 26 Sep 2019 17:13:34 +0200
+
 virt-manager (1:2.0.0-3) unstable; urgency=medium
 
   * Mark autopkgtest scripts executable

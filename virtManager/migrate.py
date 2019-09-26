@@ -4,20 +4,20 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
 import traceback
 
 from gi.repository import Gdk
 from gi.repository import Gtk
 from gi.repository import Pango
 
-from virtinst import util
+from virtinst import log
+from virtinst import xmlutil
 
-from . import uiutil
+from .lib import uiutil
 from .asyncjob import vmmAsyncJob
 from .baseclass import vmmGObjectUI
 from .connmanager import vmmConnectionManager
-from .domain import vmmDomain
+from .object.domain import vmmDomain
 
 
 NUM_COLS = 3
@@ -74,14 +74,14 @@ class vmmMigrateDialog(vmmGObjectUI):
     ##############
 
     def show(self, parent, vm):
-        logging.debug("Showing migrate wizard")
+        log.debug("Showing migrate wizard")
         self._set_vm(vm)
         self._reset_state()
         self.topwin.set_transient_for(parent)
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
-        logging.debug("Closing migrate wizard")
+        log.debug("Closing migrate wizard")
         self.topwin.hide()
         self._set_vm(None)
         return 1
@@ -154,7 +154,7 @@ class vmmMigrateDialog(vmmGObjectUI):
 
     def _reset_state(self):
         title_str = ("<span size='large' color='white'>%s '%s'</span>" %
-                     (_("Migrate"), util.xml_escape(self.vm.get_name())))
+                     (_("Migrate"), xmlutil.xml_escape(self.vm.get_name())))
         self.widget("header-label").set_markup(title_str)
 
         self.widget("migrate-advanced-expander").set_expanded(False)
@@ -409,14 +409,14 @@ class vmmMigrateDialog(vmmGObjectUI):
         progWin.run()
 
     def _cancel_migration(self, asyncjob, vm):
-        logging.debug("Cancelling migrate job")
+        log.debug("Cancelling migrate job")
         if not vm:
             return
 
         try:
             vm.abort_job()
         except Exception as e:
-            logging.exception("Error cancelling migrate job")
+            log.exception("Error cancelling migrate job")
             asyncjob.show_warning(_("Error cancelling migrate job: %s") % e)
             return
 
@@ -433,7 +433,7 @@ class vmmMigrateDialog(vmmGObjectUI):
         vminst = srcconn.get_backend().lookupByName(origvm.get_name())
         vm = vmmDomain(srcconn, vminst, vminst.UUID())
 
-        logging.debug("Migrating vm=%s from %s to %s", vm.get_name(),
+        log.debug("Migrating vm=%s from %s to %s", vm.get_name(),
                       srcconn.get_uri(), dstconn.get_uri())
 
         vm.migrate(dstconn, migrate_uri, tunnel, unsafe, temporary,

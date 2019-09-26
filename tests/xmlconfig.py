@@ -19,8 +19,8 @@ def _make_guest(conn=None, os_variant=None):
 
     g = virtinst.Guest(conn)
     g.name = "TestGuest"
-    g.memory = int(200 * 1024)
-    g.maxmemory = int(400 * 1024)
+    g.currentMemory = int(200 * 1024)
+    g.memory = int(400 * 1024)
 
     if os_variant:
         g.set_os_name(os_variant)
@@ -112,7 +112,7 @@ class TestXMLMisc(unittest.TestCase):
         self.assertEqual("hdc", disk.generate_target(["hdb", "sda"]))
         self.assertEqual("hdb", disk.generate_target(["hda", "hdd"]))
 
-        disk.bus = "virtio-scsi"
+        disk.bus = "scsi"
         self.assertEqual("sdb",
             disk.generate_target(["sda", "sdg", "sdi"], 0))
         self.assertEqual("sdh", disk.generate_target(["sda", "sdg"], 1))
@@ -193,25 +193,45 @@ class TestXMLMisc(unittest.TestCase):
         g._metadata.libosinfo.os_id = "http://example.com/idontexit"  # pylint: disable=protected-access
         self.assertEqual(g.osinfo.name, "generic")
 
+    @utils.run_without_testsuite_hacks
     def test_dir_searchable(self):
         # Normally the dir searchable test is skipped in the unittest,
         # but let's contrive an example that should trigger all the code
         # to ensure it isn't horribly broken
         from virtinst import diskbackend
-        oldtest = os.environ.pop("VIRTINST_TEST_SUITE")
+        uid = -1
+        username = "fakeuser-zzzz"
+        with tempfile.TemporaryDirectory() as tmpdir:
+            fixlist = diskbackend.is_path_searchable(tmpdir, uid, username)
+            self.assertTrue(bool(fixlist))
+            errdict = diskbackend.set_dirs_searchable(fixlist, username)
+            self.assertTrue(not bool(errdict))
+
+        import getpass
+        fixlist = diskbackend.is_path_searchable(
+                os.getcwd(), os.getuid(), getpass.getuser())
+        self.assertTrue(not bool(fixlist))
+
+    def test_nonpredicatble_generate(self):
+        kvm_uri = utils.URIs.kvm.replace(",predictable", "")
+        kvmconn = virtinst.cli.getConnection(kvm_uri)
+        testconn = virtinst.cli.getConnection("test:///default")
+
+        testuuid = virtinst.Guest.generate_uuid(self.conn)
+        randomuuid = virtinst.Guest.generate_uuid(testconn)
+        self.assertTrue(randomuuid != testuuid)
+        self.assertTrue(len(randomuuid) == len(testuuid))
+
+        testmac = virtinst.DeviceInterface.generate_mac(self.conn)
+        randommac = virtinst.DeviceInterface.generate_mac(testconn)
+        qemumac = virtinst.DeviceInterface.generate_mac(kvmconn)
+        self.assertTrue(randommac != testmac)
+        self.assertTrue(qemumac != testmac)
+        self.assertTrue(len(randommac) == len(testmac))
+
+    def test_support_misc(self):
         try:
-            uid = -1
-            username = "fakeuser-zzzz"
-            with tempfile.TemporaryDirectory() as tmpdir:
-                fixlist = diskbackend.is_path_searchable(tmpdir, uid, username)
-                self.assertTrue(bool(fixlist))
-                errdict = diskbackend.set_dirs_searchable(fixlist, username)
-                self.assertTrue(not bool(errdict))
-
-
-            import getpass
-            fixlist = diskbackend.is_path_searchable(
-                    os.getcwd(), os.getuid(), getpass.getuser())
-            self.assertTrue(not bool(fixlist))
-        finally:
-            os.environ["VIRTINST_TEST_SUITE"] = oldtest
+            self.conn.lookupByName("foobar-idontexist")
+        except Exception as e:
+            if not self.conn.support.is_libvirt_error_no_domain(e):
+                raise

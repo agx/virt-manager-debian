@@ -1,5 +1,5 @@
 <domain type="kvm">
-  <name>foobar</name>
+  <name>centos7.0</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
@@ -8,7 +8,7 @@
   </metadata>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
-  <vcpu>1</vcpu>
+  <vcpu>2</vcpu>
   <os>
     <type arch="x86_64" machine="q35">hvm</type>
     <boot dev="network"/>
@@ -39,7 +39,7 @@
     </disk>
     <controller type="usb" index="0" model="qemu-xhci" ports="15"/>
     <interface type="bridge">
-      <source bridge="eth0"/>
+      <source bridge="testsuitebr0"/>
       <mac address="00:11:22:33:44:55"/>
       <model type="virtio"/>
     </interface>
@@ -61,13 +61,14 @@
     </video>
     <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="spicevmc"/>
+    <memballoon model="virtio"/>
     <rng model="virtio">
       <backend model="random">/dev/urandom</backend>
     </rng>
   </devices>
 </domain>
 <domain type="kvm">
-  <name>foobar</name>
+  <name>centos7.0</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
@@ -76,7 +77,7 @@
   </metadata>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
-  <vcpu>1</vcpu>
+  <vcpu>2</vcpu>
   <os>
     <type arch="x86_64" machine="q35">hvm</type>
     <boot dev="hd"/>
@@ -105,7 +106,7 @@
     </disk>
     <controller type="usb" index="0" model="qemu-xhci" ports="15"/>
     <interface type="bridge">
-      <source bridge="eth0"/>
+      <source bridge="testsuitebr0"/>
       <mac address="00:11:22:33:44:55"/>
       <model type="virtio"/>
     </interface>
@@ -127,6 +128,7 @@
     </video>
     <redirdev bus="usb" type="spicevmc"/>
     <redirdev bus="usb" type="spicevmc"/>
+    <memballoon model="virtio"/>
     <rng model="virtio">
       <backend model="random">/dev/urandom</backend>
     </rng>

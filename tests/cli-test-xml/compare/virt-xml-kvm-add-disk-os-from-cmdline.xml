@@ -1,0 +1,18 @@
+   <on_reboot>restart</on_reboot>
+   <on_crash>destroy</on_crash>
+   <devices>
++    <disk type="file" device="disk">
++      <driver name="qemu" type="qcow2"/>
++      <source file="/dev/default-pool/testvol1.img"/>
++      <target dev="vda" bus="virtio"/>
++    </disk>
+   </devices>
++  <metadata>
++    <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
++      <libosinfo:os id="http://fedoraproject.org/fedora/28"/>
++    </libosinfo:libosinfo>
++  </metadata>
+ </domain>
+
+Domain 'test' defined successfully.
+Changes will take effect after the domain is fully powered off.
