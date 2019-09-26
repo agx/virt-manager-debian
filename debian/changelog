@@ -1,12 +1,16 @@
-virt-manager (1:2.2.1-1~1.gbp24757d) UNRELEASED; urgency=medium
-
-  ** SNAPSHOT build @24757dcb3ea53b0446d4e038c4a1348e6c974c67 **
+virt-manager (1:2.2.1-1) unstable; urgency=medium
 
   * Drop superfluous python-requests dependency (Closes: #921618)
   * tests: Mark test as superficial
   * New upstream version 2.2.1
+    (Closes: #933707)
+  * Rediff patches
+  * Drop /u/share/virtcli from installed dirs
+  * Switch to debhelper 12
+  * Install app-data
+  * Install bash completions
 
- -- Guido Günther <agx@sigxcpu.org>  Thu, 26 Sep 2019 17:13:34 +0200
+ -- Guido Günther <agx@sigxcpu.org>  Thu, 26 Sep 2019 17:30:36 +0200
 
 virt-manager (1:2.0.0-3) unstable; urgency=medium
 
