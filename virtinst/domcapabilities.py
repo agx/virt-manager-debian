@@ -6,9 +6,13 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
 import re
+import xml.etree.ElementTree as ET
 
+import libvirt
+
+from .domain import DomainCpu
+from .logger import log
 from .xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
 
 
@@ -67,6 +71,17 @@ def _make_capsblock(xml_root_name):
     return TmpClass
 
 
+################################
+# SEV launch security handling #
+################################
+
+class _SEV(XMLBuilder):
+    XML_NAME = "sev"
+    supported = XMLProperty("./@supported", is_yesno=True)
+    cbitpos = XMLProperty("./cbitpos", is_int=True)
+    reducedPhysBits = XMLProperty("./reducedPhysBits", is_int=True)
+
+
 #############################
 # Misc toplevel XML classes #
 #############################
@@ -85,6 +100,7 @@ class _Devices(_CapsBlock):
 class _Features(_CapsBlock):
     XML_NAME = "features"
     gic = XMLChildProperty(_make_capsblock("gic"), is_single=True)
+    sev = XMLChildProperty(_SEV, is_single=True)
 
 
 ###############
@@ -94,7 +110,7 @@ class _Features(_CapsBlock):
 class _CPUModel(XMLBuilder):
     XML_NAME = "model"
     model = XMLProperty(".")
-    usable = XMLProperty("./@usable", is_yesno=True)
+    usable = XMLProperty("./@usable")
     fallback = XMLProperty("./@fallback")
 
 
@@ -137,13 +153,12 @@ class DomainCapabilities(XMLBuilder):
     @staticmethod
     def build_from_params(conn, emulator, arch, machine, hvtype):
         xml = None
-        if conn.check_support(
-                conn.SUPPORT_CONN_DOMAIN_CAPABILITIES):
+        if conn.support.conn_domain_capabilities():
             try:
                 xml = conn.getDomainCapabilities(emulator, arch,
                     machine, hvtype)
             except Exception:
-                logging.debug("Error fetching domcapabilities XML",
+                log.debug("Error fetching domcapabilities XML",
                     exc_info=True)
 
         if not xml:
@@ -227,11 +242,87 @@ class DomainCapabilities(XMLBuilder):
         """
         Return True if domcaps reports support for cpu mode=host-model.
         host-model infact predates this support, however it wasn't
-        general purpose safe prior to domcaps advertisement
+        general purpose safe prior to domcaps advertisement.
         """
-        return [(m.name == "host-model" and m.supported)
-                for m in self.cpu.modes]
+        for m in self.cpu.modes:
+            if (m.name == "host-model" and m.supported and
+                    m.models[0].fallback == "forbid"):
+                return True
+        return False
 
+    def get_cpu_models(self):
+        models = []
+
+        for m in self.cpu.modes:
+            if m.name == "custom" and m.supported:
+                for model in m.models:
+                    if model.usable != "no":
+                        models.append(model.model)
+
+        return models
+
+    def _convert_mode_to_cpu(self, xml):
+        root = ET.fromstring(xml)
+        root.tag = "cpu"
+        root.attrib = None
+        arch = ET.SubElement(root, "arch")
+        arch.text = self.arch
+        return ET.tostring(root, encoding="unicode")
+
+    def _get_expanded_cpu(self, mode):
+        cpuXML = self._convert_mode_to_cpu(mode.get_xml())
+        log.debug("CPU XML for security flag baseline: %s", cpuXML)
+
+        try:
+            expandedXML = self.conn.baselineHypervisorCPU(
+                    self.path, self.arch, self.machine, self.domain, [cpuXML],
+                    libvirt.VIR_CONNECT_BASELINE_CPU_EXPAND_FEATURES)
+        except libvirt.libvirtError:
+            expandedXML = self.conn.baselineCPU([cpuXML],
+                    libvirt.VIR_CONNECT_BASELINE_CPU_EXPAND_FEATURES)
+
+        log.debug("Expanded CPU XML: %s", expandedXML)
+
+        return DomainCpu(self.conn, expandedXML)
+
+    _features = None
+
+    def get_cpu_security_features(self):
+        sec_features = [
+                'spec-ctrl',
+                'ssbd',
+                'ibpb',
+                'virt-ssbd',
+                'md-clear']
+
+        if self._features:
+            return self._features
+
+        self._features = []
+
+        for m in self.cpu.modes:
+            if m.name != "host-model" or not m.supported:
+                continue
+
+            try:
+                cpu = self._get_expanded_cpu(m)
+            except libvirt.libvirtError as e:
+                log.warning(_("Failed to get expanded CPU XML: %s"), e)
+                break
+
+            for feature in cpu.features:
+                if feature.name in sec_features:
+                    self._features.append(feature.name)
+
+        return self._features
+
+    def supports_sev_launch_security(self):
+        """
+        Returns False if either libvirt doesn't advertise support for SEV at
+        all (< libvirt-4.5.0) or if it explicitly advertises it as unsupported
+        on the platform
+        """
+        return bool(self.features.sev.supported)
 
     XML_NAME = "domainCapabilities"
     os = XMLChildProperty(_OS, is_single=True)

@@ -2,16 +2,15 @@
 # Classes for building disk device xml
 #
 # Copyright 2006-2008, 2012-2014 Red Hat, Inc.
-# Jeremy Katz <katzj@redhat.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
+from ..logger import log
 
 from .. import diskbackend
-from .. import util
-from .device import Device
+from .. import progress
+from .device import Device, DeviceSeclabel
 from ..xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
 
 
@@ -29,22 +28,13 @@ def _qemu_sanitize_drvtype(phystype, fmt):
 
 
 class _Host(XMLBuilder):
-    _XML_PROP_ORDER = ["name", "port"]
+    _XML_PROP_ORDER = ["name", "port", "transport", "socket"]
     XML_NAME = "host"
 
     name = XMLProperty("./@name")
     port = XMLProperty("./@port", is_int=True)
-
-
-class _DiskSeclabel(XMLBuilder):
-    """
-    This is for disk source <seclabel>. It's similar to a domain
-    <seclabel> but has fewer options
-    """
-    XML_NAME = "seclabel"
-    model = XMLProperty("./@model")
-    relabel = XMLProperty("./@relabel", is_yesno=True)
-    label = XMLProperty("./label")
+    transport = XMLProperty("./@transport")
+    socket = XMLProperty("./@socket")
 
 
 class DeviceDisk(Device):
@@ -86,54 +76,6 @@ class DeviceDisk(Device):
     IO_MODE_NATIVE = "native"
     IO_MODE_THREADS = "threads"
     IO_MODES = [IO_MODE_NATIVE, IO_MODE_THREADS]
-
-    @staticmethod
-    def get_old_recommended_buses(guest):
-        ret = []
-        if guest.os.is_hvm() or guest.conn.is_test():
-            if not guest.os.is_q35():
-                ret.append("ide")
-            ret.append("sata")
-            ret.append("fdc")
-            ret.append("scsi")
-            ret.append("usb")
-
-            if guest.type in ["qemu", "kvm", "test"]:
-                ret.append("sd")
-                ret.append("virtio")
-                if "scsi" not in ret:
-                    ret.append("scsi")
-
-        if guest.conn.is_xen() or guest.conn.is_test():
-            ret.append("xen")
-
-        return ret
-
-    @staticmethod
-    def get_recommended_buses(guest, domcaps, devtype):
-        # try to get supported disk bus types from domain capabilities
-        if "bus" in domcaps.devices.disk.enum_names():
-            buses = domcaps.devices.disk.get_enum("bus").get_values()
-        else:
-            buses = DeviceDisk.get_old_recommended_buses(guest)
-
-        bus_map = {
-            "disk": ["ide", "sata", "scsi", "sd", "usb", "virtio", "xen"],
-            "floppy": ["fdc"],
-            "cdrom": ["ide", "sata", "scsi"],
-            "lun": ["scsi"],
-        }
-        return [bus for bus in buses if bus in bus_map.get(devtype, [])]
-
-    @staticmethod
-    def pretty_disk_bus(bus):
-        if bus in ["ide", "sata", "scsi", "usb", "sd"]:
-            return bus.upper()
-        if bus in ["xen"]:
-            return bus.capitalize()
-        if bus == "virtio":
-            return "VirtIO"
-        return bus
 
     @staticmethod
     def path_definitely_exists(conn, path):
@@ -279,7 +221,7 @@ class DeviceDisk(Device):
                 "path '%s'. Use libvirt APIs to manage the parent directory "
                 "as a pool first.") % volname)
 
-        logging.debug("Creating volume '%s' on pool '%s'",
+        log.debug("Creating volume '%s' on pool '%s'",
                       volname, poolobj.name())
 
         cap = (size * 1024 * 1024 * 1024)
@@ -297,7 +239,7 @@ class DeviceDisk(Device):
         volinst.backing_format = backing_format
 
         if fmt:
-            if not volinst.supports_property("format"):
+            if not volinst.supports_format():
                 raise ValueError(_("Format attribute not supported for this "
                                    "volume type"))
             volinst.format = fmt
@@ -396,24 +338,36 @@ class DeviceDisk(Device):
         self._set_xmlpath(self.path)
     path = property(_get_path, _set_path)
 
+    def set_backend_for_existing_path(self):
+        # This is an entry point for parsexml Disk instances to request
+        # a _storage_backend to be initialized from the XML path. That
+        # will cause validate() to actually validate the path exists.
+        # We need this so addhw XML editing will still validate the disk path
+        if not self._storage_backend:
+            self._set_default_storage_backend()
+
     def set_vol_object(self, vol_object, parent_pool):
-        logging.debug("disk.set_vol_object: volxml=\n%s",
+        log.debug("disk.set_vol_object: volxml=\n%s",
             vol_object.XMLDesc(0))
-        logging.debug("disk.set_vol_object: poolxml=\n%s",
+        log.debug("disk.set_vol_object: poolxml=\n%s",
             parent_pool.XMLDesc(0))
         self._change_backend(None, vol_object, parent_pool)
         self._set_xmlpath(self.path)
 
     def set_vol_install(self, vol_install):
-        logging.debug("disk.set_vol_install: name=%s poolxml=\n%s",
+        log.debug("disk.set_vol_install: name=%s poolxml=\n%s",
             vol_install.name, vol_install.pool.XMLDesc(0))
         self._storage_backend = diskbackend.ManagedStorageCreator(
             self.conn, vol_install)
         self._set_xmlpath(self.path)
 
     def get_vol_object(self):
+        if not self._storage_backend:
+            return None
         return self._storage_backend.get_vol_object()
     def get_vol_install(self):
+        if not self._storage_backend:
+            return None
         return self._storage_backend.get_vol_install()
     def get_parent_pool(self):
         if self.get_vol_install():
@@ -437,8 +391,7 @@ class DeviceDisk(Device):
         # If type block, use name=phy. Otherwise do the same as qemu
         if self.conn.is_xen() and self.type == self.TYPE_BLOCK:
             return self.DRIVER_NAME_PHY
-        if self.conn.check_support(
-                self.conn.SUPPORT_CONN_DISK_DRIVER_NAME_QEMU):
+        if self.conn.support.conn_disk_driver_name_qemu():
             return self.DRIVER_NAME_QEMU
         return None
 
@@ -505,9 +458,12 @@ class DeviceDisk(Device):
                     self.source_name = self.source_name[1:]
 
     def _set_source_network_from_storage(self, volxml, poolxml):
-        self.source_protocol = poolxml.type
-        logging.debug("disk.set_vol_object: poolxml=\n%s",
-                      dir(poolxml))
+        is_iscsi_direct = poolxml.type == "iscsi-direct"
+        protocol = poolxml.type
+        if is_iscsi_direct:
+            protocol = "iscsi"
+
+        self.source_protocol = protocol
         if poolxml.auth_type:
             self.auth_username = poolxml.auth_username
             self.auth_secret_type = poolxml.auth_type
@@ -521,14 +477,22 @@ class DeviceDisk(Device):
                 obj.port = host.port
 
         path = ""
-        if poolxml.source_name:
-            path += poolxml.source_name
-            if poolxml.source_path:
-                path += poolxml.source_path
-            if not path.endswith('/'):
-                path += "/"
-        path += volxml.name
-        self.source_name = path
+        if is_iscsi_direct:
+            # Vol path is like this:
+            # ip-10.66.144.87:3260-iscsi-iqn.2017-12.com.virttest:emulated-iscsi-noauth.target2-lun-1
+            # Always seems to have -iscsi- embedded in it
+            if "-iscsi-iqn." in volxml.target_path:
+                path = volxml.target_path.split("-iscsi-", 1)[-1]
+        else:
+            if poolxml.source_name:
+                path += poolxml.source_name
+                if poolxml.source_path:
+                    path += poolxml.source_path
+                if not path.endswith('/'):
+                    path += "/"
+            path += volxml.name
+        self.source_name = path or None
+
         self.type = "network"
 
     def _set_network_source_from_backend(self):
@@ -541,7 +505,7 @@ class DeviceDisk(Device):
             self._set_source_network_from_url(self._storage_backend.get_path())
 
     def _build_url_from_network_source(self):
-        ret = self.source_protocol
+        ret = self.source_protocol or "unknown"
         if self.source_host_transport:
             ret += "+%s" % self.source_host_transport
         ret += "://"
@@ -651,6 +615,7 @@ class DeviceDisk(Device):
     driver_copy_on_read = XMLProperty("./driver/@copy_on_read", is_onoff=True)
 
     sgio = XMLProperty("./@sgio")
+    rawio = XMLProperty("./@rawio")
 
     bus = XMLProperty("./target/@bus")
     target = XMLProperty("./target/@dev")
@@ -665,6 +630,7 @@ class DeviceDisk(Device):
 
     error_policy = XMLProperty("./driver/@error_policy")
     serial = XMLProperty("./serial")
+    wwn = XMLProperty("./wwn")
     startup_policy = XMLProperty("./source/@startupPolicy")
     logical_block_size = XMLProperty("./blockio/@logical_block_size")
     physical_block_size = XMLProperty("./blockio/@physical_block_size")
@@ -676,7 +642,7 @@ class DeviceDisk(Device):
     iotune_wbs = XMLProperty("./iotune/write_bytes_sec", is_int=True)
     iotune_wis = XMLProperty("./iotune/write_iops_sec", is_int=True)
 
-    seclabels = XMLChildProperty(_DiskSeclabel, relative_xpath="./source")
+    seclabels = XMLChildProperty(DeviceSeclabel, relative_xpath="./source")
 
     geometry_cyls = XMLProperty("./geometry/@cyls", is_int=True)
     geometry_heads = XMLProperty("./geometry/@heads", is_int=True)
@@ -705,17 +671,14 @@ class DeviceDisk(Device):
             path = self._build_url_from_network_source()
 
         if typ == DeviceDisk.TYPE_VOLUME:
-            conn = self.conn
-            if "weakref" in str(type(conn)):
-                conn = conn()
-
             try:
-                parent_pool = conn.storagePoolLookupByName(self.source_pool)
+                parent_pool = self.conn.storagePoolLookupByName(
+                    self.source_pool)
                 vol_object = parent_pool.storageVolLookupByName(
                     self.source_volume)
             except Exception as e:
                 self._source_volume_err = str(e)
-                logging.debug("Error fetching source pool=%s vol=%s",
+                log.debug("Error fetching source pool=%s vol=%s",
                     self.source_pool, self.source_volume, exc_info=True)
 
         if vol_object is None and path is None:
@@ -780,11 +743,6 @@ class DeviceDisk(Device):
 
             return
 
-        if (self.type == DeviceDisk.TYPE_DIR and
-            not self.is_floppy()):
-            raise ValueError(_("The path '%s' must be a file or a "
-                               "device, not a directory") % self.path)
-
         if not self._storage_backend:
             return
 
@@ -803,10 +761,11 @@ class DeviceDisk(Device):
         If storage doesn't exist (a non-existent file 'path', or 'vol_install'
         was specified), we create it.
         """
-        if not self._storage_backend.will_create_storage():
+        if (not self._storage_backend or
+            not self._storage_backend.will_create_storage()):
             return
 
-        meter = util.ensure_meter(meter)
+        meter = progress.ensure_meter(meter)
         vol_object = self._storage_backend.create(meter)
         self.storage_was_created = True
         if not vol_object:
@@ -825,6 +784,8 @@ class DeviceDisk(Device):
         Non fatal conflicts (sparse disk exceeds available space) will
         return (False, "description of collision")
         """
+        if not self._storage_backend:
+            return (False, None)
         return self._storage_backend.is_size_conflict()
 
     def is_conflict_disk(self, conn=None):
@@ -930,9 +891,8 @@ class DeviceDisk(Device):
             # controller or didn't add any
             raise ValueError(_("Controller number %d for disk of type %s has "
                                "no empty slot to use" % (pref_ctrl, prefix)))
-        else:
-            raise ValueError(_("Only %s disks for bus '%s' are supported"
-                               % (maxnode, self.bus)))
+        raise ValueError(_("Only %s disks for bus '%s' are supported"
+                           % (maxnode, self.bus)))
 
 
     ##################
@@ -948,20 +908,19 @@ class DeviceDisk(Device):
             # This likely isn't correct, but it's kind of a catch all
             # for virt types we don't know how to handle.
             return "ide"
-
-        if guest.os.is_arm_machvirt():
-            # We prefer virtio-scsi for machvirt, gets us hotplug
-            return "scsi"
         if self.is_disk() and guest.supports_virtiodisk():
             return "virtio"
-        if guest.os.is_pseries() and self.is_cdrom():
+        if (self.is_cdrom() and
+            guest.supports_virtioscsi() and
+            not guest.os.is_x86()):
+            # x86 long time default has been IDE CDROM, stick with that to
+            # avoid churn, but every newer virt arch that supports virtio-scsi
+            # should use it
             return "scsi"
         if guest.os.is_arm():
             return "sd"
         if guest.os.is_q35():
             return "sata"
-        if self.is_cdrom() and guest.os.is_s390x():
-            return "scsi"
         return "ide"
 
     def set_defaults(self, guest):

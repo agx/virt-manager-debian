@@ -1,14 +1,13 @@
 #
 # Copyright 2006-2009, 2013 Red Hat, Inc.
-# Jeremy Katz <katzj@redhat.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
 import os
 
 from .device import Device
+from ..logger import log
 from ..xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
 
 
@@ -53,8 +52,6 @@ class DeviceGraphics(Device):
     CHANNEL_TYPE_RECORD   = "record"
 
     KEYMAP_LOCAL = "local"
-    KEYMAP_DEFAULT = "default"
-    _special_keymaps = [KEYMAP_LOCAL, KEYMAP_DEFAULT]
 
     @staticmethod
     def valid_keymaps():
@@ -73,15 +70,6 @@ class DeviceGraphics(Device):
 
         return sort_list
 
-    @staticmethod
-    def pretty_type_simple(gtype):
-        if (gtype in [DeviceGraphics.TYPE_VNC,
-                      DeviceGraphics.TYPE_SDL,
-                      DeviceGraphics.TYPE_RDP]):
-            return str(gtype).upper()
-
-        return str(gtype).capitalize()
-
     def __init__(self, *args, **kwargs):
         Device.__init__(self, *args, **kwargs)
 
@@ -99,10 +87,7 @@ class DeviceGraphics(Device):
         return self._local_keymap
 
     def _set_keymap(self, val):
-        if val == self.KEYMAP_DEFAULT:
-            # Leave it up to the hypervisor
-            val = None
-        elif val == self.KEYMAP_LOCAL:
+        if val == self.KEYMAP_LOCAL:
             val = self._get_local_keymap()
         self._keymap = val
     def _get_keymap(self):
@@ -142,15 +127,15 @@ class DeviceGraphics(Device):
 
 
     def _set_listen(self, val):
-        # Update the corresponding <listen> block
-        find_listen = [l for l in self.listens if
-                       (l.type == "address" and l.address == self._listen)]
-        if find_listen:
-            if val is None:
-                self.remove_child(find_listen[0])
-            else:
-                find_listen[0].address = val
-        self._listen = val
+        if val == "none":
+            self._set_listen_none()
+        elif val == "socket":
+            self._remove_all_listens()
+            obj = self.listens.add_new()
+            obj.type = "socket"
+        else:
+            self._remove_all_listens()
+            self._listen = val
     def _get_listen(self):
         return self._listen
     _listen = XMLProperty("./@listen")
@@ -164,7 +149,7 @@ class DeviceGraphics(Device):
     defaultMode = XMLProperty("./@defaultMode")
 
     listens = XMLChildProperty(_GraphicsListen)
-    def remove_all_listens(self):
+    def _remove_all_listens(self):
         for listen in self.listens:
             self.remove_child(listen)
 
@@ -173,16 +158,15 @@ class DeviceGraphics(Device):
             return self.listens[0].type
         return None
 
-    def set_listen_none(self):
-        self.remove_all_listens()
+    def _set_listen_none(self):
+        self._remove_all_listens()
         self.listen = None
         self.port = None
         self.tlsPort = None
         self.autoport = None
         self.socket = None
 
-        if self.conn.check_support(
-                self.conn.SUPPORT_CONN_GRAPHICS_LISTEN_NONE):
+        if self.conn.support.conn_graphics_listen_none():
             obj = self.listens.add_new()
             obj.type = "none"
 
@@ -194,6 +178,7 @@ class DeviceGraphics(Device):
     filetransfer_enable = XMLProperty("./filetransfer/@enable", is_yesno=True)
     gl = XMLProperty("./gl/@enable", is_yesno=True)
     rendernode = XMLProperty("./gl/@rendernode")
+    zlib_compression = XMLProperty("./zlib/@compression")
 
 
     ##################
@@ -233,9 +218,9 @@ class DeviceGraphics(Device):
 
     def _default_type(self, guest):
         gtype = guest.default_graphics_type
-        logging.debug("Using default_graphics=%s", gtype)
+        log.debug("Using default_graphics=%s", gtype)
         if gtype == "spice" and not self._spice_supported():
-            logging.debug("spice requested but HV doesn't support it. "
+            log.debug("spice requested but HV doesn't support it. "
                           "Using vnc.")
             gtype = "vnc"
         return gtype
@@ -244,23 +229,20 @@ class DeviceGraphics(Device):
         if self.type != "spice":
             return None
         if not self.conn.is_remote():
-            logging.debug("Local connection, disabling spice image "
+            log.debug("Local connection, disabling spice image "
                 "compression.")
             return "off"
         return None
 
     def _default_spice_gl(self, _guest):
-        if not self.conn.check_support(
-                self.conn.SUPPORT_CONN_SPICE_GL):
+        if not self.conn.support.conn_spice_gl():  # pragma: no cover
             raise ValueError(_("Host does not support spice GL"))
 
         # If spice GL but rendernode wasn't specified, hardcode
         # the first one
-        if not self.rendernode and self.conn.check_support(
-                self.conn.SUPPORT_CONN_SPICE_RENDERNODE):
+        if not self.rendernode and self.conn.support.conn_spice_rendernode():
             for nodedev in self.conn.fetch_all_nodedevs():
-                if (nodedev.device_type != 'drm' or
-                    nodedev.drm_type != 'render'):
+                if not nodedev.is_drm_render():
                     continue
                 self.rendernode = nodedev.get_devnode().path
                 break

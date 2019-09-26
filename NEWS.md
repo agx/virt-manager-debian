@@ -1,5 +1,56 @@
 # Virtual Machine Manager News
 
+## Release 2.2.1 (July 03, 2019)
+- CVE-2019-10183: Replace --unattended user-password and admin-password with
+  user-password-file and admin-password-file (Fabiano Fidêncio)
+- Consistent --memballoon default across non-x86 (Andrea Bolognani)
+- virt-install: add --numatune memnode.* (Athina Plaskasoviti)
+- Drop hard dep on gtksourceview4, gtksourceview3 is fine as well
+
+## Release 2.2.0 (June 17, 2019)
+- libvirt XML viewing and editing UI for new and existing domain, pools,
+  volumes, networks
+- virt-install: libosinfo --unattended support (Fabiano Fidêncio, Cole
+  Robinson)
+- Improve CPU model security defaults (Pavel Hrdina)
+- virt-install: new --install  option. Ex: virt-install --install fedora29
+- virt-install: new --install kernel=,initrd=
+- virt-install: --disk, --memory, --name defaults from libosinfo (Fabiano
+  Fidêncio, Cole Robinson)
+- virt-install: add device suboption aliases which consistently match
+  libvirt XML naming
+- virt-xml: new --start, --no-define options (Marc Hartmayer)
+- virt-install: Add driver_queues argument to --controller (Vasudeva Kamath)
+- RISC-V support (Andrea Bolognani)
+- Device default improvements for non-x86 KVM (Andrea Bolognani)
+- Redesigned 'New Network' wizard
+- libguestfs inspection improvements (Pino Toscano)
+- virt-install: Add support for xenbus controller (Jim Fehlig)
+- cli: Add --disk wwn=,rawio= (Athina Plaskasoviti)
+- cli: Add --memballoon autodeflate=,stats.period= (Athina Plaskasoviti)
+- cli: Add --iothreads (Athina Plaskasoviti)
+- cli: Add --numatune memory.placement (Athina Plaskasoviti)
+- cli: Add --launchSecurity option (Erik Skultety)
+- cli: Fill in --memorybacking options
+- cli: --smartcard: support database= and certificate[0-9]*=
+- cli: --sysinfo: Add chasis suboptions
+- cli: --metadata: add genid= and genid_enable=
+- cli: --vcpus: add vcpus.vcpu[0-9]* config
+- cli: fill in all common char source options for --serial, --parellel,
+  --console, --channel, --smartcard, --rng, --redirdev
+
+## Release 2.1.0 (February 03, 2019)
+- Bash autocompletion support (Lin Ma, Cole Robinson)
+- UI and command line --vsock support (Slavomir Kaslev)
+- virt-xml: Add --os-variant option (Andrea Bolognani)
+- virt-install: use libosinfo cpu, mem, disk size defaults (Fabiano
+  Fidencio)
+- virt-install: Better usage of libosinfo -unknown distro IDs (Fabiano
+  Fidencio)
+- virt-install: More usage of libosinfo for ISO --location detection
+- virt-install: Add --location LOCATION,kernel=X,initrd=Y for pointing to
+  kernel/initrd in media that virt-install/libosinfo fails to detect
+
 ## Release 2.0.0 (October 15, 2018)
 - Finish port to Python 3 (Radostin Stoyanov, Cole Robinson)
 - Improved VM defaults for supported OS: q35 PCIe, usb3, CPU host-model

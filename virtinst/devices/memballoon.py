@@ -1,7 +1,6 @@
 # Copyright (C) 2013 Red Hat, Inc.
 #
 # Copyright 2012
-# Eiichi Tsukata <devel@etsukata.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
@@ -14,6 +13,8 @@ class DeviceMemballoon(Device):
     XML_NAME = "memballoon"
 
     model = XMLProperty("./@model")
+    autodeflate = XMLProperty("./@autodeflate", is_onoff=True)
+    stats_period = XMLProperty("./stats/@period", is_int=True)
 
 
     ##################

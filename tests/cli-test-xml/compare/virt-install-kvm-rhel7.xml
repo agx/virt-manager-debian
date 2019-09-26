@@ -1,18 +1,19 @@
 <domain type="kvm">
-  <name>foobar</name>
+  <name>rhel7.0</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
       <libosinfo:os id="http://redhat.com/rhel/7.0"/>
     </libosinfo:libosinfo>
   </metadata>
-  <memory>65536</memory>
-  <currentMemory>65536</currentMemory>
-  <vcpu>1</vcpu>
+  <memory>1572864</memory>
+  <currentMemory>1572864</currentMemory>
+  <vcpu>2</vcpu>
   <os>
     <type arch="x86_64" machine="pc">hvm</type>
-    <boot dev="network"/>
-    <boot dev="hd"/>
+    <kernel>/VIRTINST-TESTSUITE/vmlinuz</kernel>
+    <initrd>/VIRTINST-TESTSUITE/initrd.img</initrd>
+    <cmdline>test overwrite</cmdline>
   </os>
   <features>
     <acpi/>
@@ -39,7 +40,7 @@
     </disk>
     <controller type="usb" index="0" model="qemu-xhci" ports="15"/>
     <interface type="bridge">
-      <source bridge="eth0"/>
+      <source bridge="testsuitebr0"/>
       <mac address="00:11:22:33:44:55"/>
       <model type="virtio"/>
     </interface>
@@ -67,7 +68,7 @@
   </devices>
 </domain>
 <domain type="kvm">
-  <name>foobar</name>
+  <name>rhel7.0</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
@@ -76,7 +77,7 @@
   </metadata>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
-  <vcpu>1</vcpu>
+  <vcpu>2</vcpu>
   <os>
     <type arch="x86_64" machine="pc">hvm</type>
     <boot dev="hd"/>
@@ -105,7 +106,7 @@
     </disk>
     <controller type="usb" index="0" model="qemu-xhci" ports="15"/>
     <interface type="bridge">
-      <source bridge="eth0"/>
+      <source bridge="testsuitebr0"/>
       <mac address="00:11:22:33:44:55"/>
       <model type="virtio"/>
     </interface>

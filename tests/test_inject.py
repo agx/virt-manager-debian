@@ -51,7 +51,8 @@ _add("centos-6-latest", "http://ftp.linux.ncsu.edu/pub/CentOS/6/os/x86_64/",
      warntype=WARN_RHEL5, filename=KSOLD)
 _add("centos-7-latest", "http://ftp.linux.ncsu.edu/pub/CentOS/7/os/x86_64/",
      filename=KSNEW)
-_add("fedora-27", FEDORA_URL % ("27", "x86_64"), filename=KSNEW)
+_add("fedora-29", FEDORA_URL % ("29", "x86_64"), filename=KSNEW)
+_add("fedora-30", DEVFEDORA_URL % ("30", "x86_64"), filename=KSNEW)
 _add("debian-9",
      "http://ftp.us.debian.org/debian/dists/stretch/main/installer-amd64/",
      filename=PRESEED, warntype=WARN_DEBIAN)
@@ -81,7 +82,8 @@ def _test_distro(distro):
     cmd = ("./virt-install --connect qemu:///system "
         "--name __virtinst__test__initrd__ --ram 2048 "
         "--transient --destroy-on-exit --disk none "
-        "--location %s --initrd-inject %s --extra-args %s" %
+        "--location %s --initrd-inject %s "
+        "--install kernel_args=%s,kernel_args_overwrite=yes" %
         (distro.url, distro.filename, append))
     print("\n\n" + cmd)
     os.system(cmd)

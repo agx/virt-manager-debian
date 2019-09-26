@@ -5,13 +5,12 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-
 import argparse
-import logging
 import sys
 
 from virtinst import cli
 from virtinst import Cloner
+from virtinst import log
 from virtinst.cli import fail, print_stdout, print_stderr
 
 
@@ -20,7 +19,7 @@ def get_clone_name(new_name, auto_clone, design):
     if not new_name and auto_clone:
         # Generate a name to use
         new_name = design.generate_clone_name()
-        logging.debug("Auto-generated clone name '%s'", new_name)
+        log.debug("Auto-generated clone name '%s'", new_name)
 
     if not new_name:
         fail(_("A name is required for the new virtual machine,"
@@ -38,7 +37,7 @@ def get_original_guest(guest_name, origfile, design):
         try:
             design.original_xml = origxml
             return
-        except (ValueError, RuntimeError) as e:
+        except (ValueError, RuntimeError) as e:  # pragma: no cover
             fail(e)
 
     if not guest_name:
@@ -67,11 +66,10 @@ def get_clone_diskfile(new_diskfiles, design, preserve, auto_clone):
             new_diskfiles.append(None)
         newpath = new_diskfiles[newidx]
 
-        if newpath is None and auto_clone:
-            newpath = design.generate_clone_disk_path(origpath)
-
         if origpath is None:
             newpath = None
+        elif newpath is None and auto_clone:
+            newpath = design.generate_clone_disk_path(origpath)
 
         clonepaths.append(newpath)
         newidx += 1
@@ -114,6 +112,10 @@ def parse_args():
     stog.add_argument("--force-copy", dest="target", action="append",
                     help=_("Force to copy devices (eg, if 'hdc' is a "
                            "readonly cdrom device, --force-copy=hdc)"))
+    stog.add_argument("--skip-copy", action="append",
+                    help=_("Skip copy of the device target. (eg, if 'vda' is a "
+                           "disk you don't want to copy and use the same path "
+                           "in the new VM, use --skip-copy=vda)"))
     stog.add_argument("--nonsparse", action="store_false", dest="sparse",
                     default=True,
                     help=_("Do not use a sparse file for the clone's "
@@ -138,6 +140,8 @@ def parse_args():
 
     cli.add_misc_options(misc, prompt=True, replace=True, printxml=True)
 
+    cli.autocomplete(parser)
+
     return parser.parse_args()
 
 
@@ -152,9 +156,7 @@ def main(conn=None):
     cli.convert_old_force(options)
     cli.parse_check(options.check)
     cli.set_prompt(options.prompt)
-
-    if conn is None:
-        conn = cli.getConnection(options.connect)
+    conn = cli.getConnection(options.connect, conn=conn)
 
     if (options.new_diskfile is None and
         options.auto_clone is False and
@@ -177,6 +179,8 @@ def main(conn=None):
         design.reflink = True
     for i in options.target or []:
         design.force_target = i
+    for i in options.skip_copy or []:
+        design.skip_target = i
     design.clone_sparse = options.sparse
     design.preserve = options.preserve
 
@@ -199,10 +203,10 @@ def main(conn=None):
 
     print_stdout("")
     print_stdout(_("Clone '%s' created successfully.") % design.clone_name)
-    logging.debug("end clone")
+    log.debug("end clone")
     return 0
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     try:
         sys.exit(main())
     except SystemExit as sys_e:

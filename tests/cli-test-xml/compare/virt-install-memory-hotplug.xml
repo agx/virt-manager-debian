@@ -1,9 +1,7 @@
 <domain type="test">
-  <name>foobar</name>
+  <name>vm1</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <maxMemory slots="2">2097152</maxMemory>
-  <memory>1048576</memory>
-  <currentMemory>1048576</currentMemory>
   <vcpu>1</vcpu>
   <os>
     <type arch="i686">hvm</type>
@@ -51,6 +49,7 @@
       </target>
     </memory>
     <memory model="nvdimm">
+      <alias name="mymemdev3"/>
       <source>
         <path>/path/to/nvdimm</path>
       </source>
@@ -65,11 +64,9 @@
   </devices>
 </domain>
 <domain type="test">
-  <name>foobar</name>
+  <name>vm1</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <maxMemory slots="2">2097152</maxMemory>
-  <memory>1048576</memory>
-  <currentMemory>1048576</currentMemory>
   <vcpu>1</vcpu>
   <os>
     <type arch="i686">hvm</type>
@@ -116,6 +113,7 @@
       </target>
     </memory>
     <memory model="nvdimm">
+      <alias name="mymemdev3"/>
       <source>
         <path>/path/to/nvdimm</path>
       </source>

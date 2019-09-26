@@ -4,12 +4,13 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
+import os
 
 from gi.repository import Gio
 from gi.repository import Gtk
 
-from virtinst import util
+from virtinst import log
+from virtinst import xmlutil
 
 from . import vmmenu
 from .baseclass import vmmGObject
@@ -60,8 +61,18 @@ def _has_appindicator_dbus():
             return True
         return False
     except Exception:
-        logging.exception("Error checking for appindicator dbus")
+        log.exception("Error checking for appindicator dbus")
         return False
+
+
+_USING_APPINDICATOR = False
+if AppIndicator3:
+    if not _has_appindicator_dbus():
+        log.debug("AppIndicator3 is available, but didn't "
+                              "find any dbus watcher.")
+    else:
+        _USING_APPINDICATOR = True
+        log.debug("Using AppIndicator3 for systray")
 
 
 ###########################
@@ -143,21 +154,21 @@ class vmmSystray(vmmGObject):
             cls._instance = vmmSystray()
         return cls._instance
 
+    @staticmethod
+    def systray_disabled_message():
+        if "WAYLAND_DISPLAY" not in os.environ:
+            return
+        if _USING_APPINDICATOR:
+            return
+        return ("No appindicator listener found, which is required "
+            "on wayland.")
+
     def __init__(self):
         vmmGObject.__init__(self)
         self._cleanup_on_app_close()
         self.topwin = None  # Need this for error callbacks from VMActionMenu
 
         self._systray = None
-        self._using_appindicator = False
-
-        if AppIndicator3:
-            if not _has_appindicator_dbus():
-                logging.debug("AppIndicator3 is available, but didn't "
-                              "find any dbus watcher.")
-            else:
-                self._using_appindicator = True
-                logging.debug("Using AppIndicator3 for systray")
 
         connmanager = vmmConnectionManager.get_instance()
         connmanager.connect("conn-added", self._conn_added_cb)
@@ -185,7 +196,7 @@ class vmmSystray(vmmGObject):
 
     def _show_systray(self):
         if not self._systray:
-            if self._using_appindicator:
+            if _USING_APPINDICATOR:
                 self._systray = _SystrayIndicator()
             else:
                 self._systray = _SystrayStatusIcon()
@@ -199,7 +210,7 @@ class vmmSystray(vmmGObject):
 
     def _show_systray_changed_cb(self):
         do_show = self.config.get_view_system_tray()
-        logging.debug("Showing systray: %s", do_show)
+        log.debug("Showing systray: %s", do_show)
 
         if do_show:
             self._show_systray()
@@ -227,7 +238,7 @@ class vmmSystray(vmmGObject):
         menu_item = Gtk.MenuItem.new_with_label(conn.get_pretty_desc())
         if conn.is_active():
             label = menu_item.get_child()
-            markup = "<b>%s</b>" % util.xml_escape(conn.get_pretty_desc())
+            markup = "<b>%s</b>" % xmlutil.xml_escape(conn.get_pretty_desc())
             label.set_markup(markup)
 
         menu = Gtk.Menu()

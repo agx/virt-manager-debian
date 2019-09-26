@@ -1,5 +1,5 @@
 <domain type="kvm">
-  <name>foobar</name>
+  <name>vm-i686</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
@@ -7,7 +7,8 @@
   <os>
     <type arch="i686" machine="pc">hvm</type>
     <loader readonly="yes" type="pflash">/usr/share/edk2/ovmf-ia32/OVMF_CODE.fd</loader>
-    <boot dev="network"/>
+    <kernel>/VIRTINST-TESTSUITE/httpkernel</kernel>
+    <initrd>/VIRTINST-TESTSUITE/ftpinitrd</initrd>
   </os>
   <features>
     <acpi/>
@@ -38,11 +39,14 @@
       <master startport="4"/>
     </controller>
     <interface type="bridge">
-      <source bridge="eth0"/>
+      <source bridge="testsuitebr0"/>
       <mac address="00:11:22:33:44:55"/>
       <model type="e1000"/>
     </interface>
     <console type="pty"/>
+    <channel type="spicevmc">
+      <target type="virtio" name="com.redhat.spice.0"/>
+    </channel>
     <input type="tablet" bus="usb"/>
     <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
       <image compression="off"/>
@@ -56,7 +60,7 @@
   </devices>
 </domain>
 <domain type="kvm">
-  <name>foobar</name>
+  <name>vm-i686</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
@@ -64,7 +68,7 @@
   <os>
     <type arch="i686" machine="pc">hvm</type>
     <loader readonly="yes" type="pflash">/usr/share/edk2/ovmf-ia32/OVMF_CODE.fd</loader>
-    <boot dev="network"/>
+    <boot dev="hd"/>
   </os>
   <features>
     <acpi/>
@@ -94,11 +98,14 @@
       <master startport="4"/>
     </controller>
     <interface type="bridge">
-      <source bridge="eth0"/>
+      <source bridge="testsuitebr0"/>
       <mac address="00:11:22:33:44:55"/>
       <model type="e1000"/>
     </interface>
     <console type="pty"/>
+    <channel type="spicevmc">
+      <target type="virtio" name="com.redhat.spice.0"/>
+    </channel>
     <input type="tablet" bus="usb"/>
     <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
       <image compression="off"/>

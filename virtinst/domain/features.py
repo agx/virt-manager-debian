@@ -1,6 +1,5 @@
 #
 # Copyright 2010, 2013 Red Hat, Inc.
-# Cole Robinson <crobinso@redhat.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
@@ -40,7 +39,7 @@ class DomainFeatures(XMLBuilder):
     pvspinlock = XMLProperty("./pvspinlock/@state", is_onoff=True)
 
     smm = XMLProperty("./smm/@state", is_onoff=True)
-    vmcoreinfo = XMLProperty("./vmcoreinfo", is_bool=True)
+    vmcoreinfo = XMLProperty("./vmcoreinfo/@state", is_onoff=True)
 
 
     ##################
@@ -73,7 +72,7 @@ class DomainFeatures(XMLBuilder):
                 self.pae = capsinfo.guest.supports_pae()
 
         if (guest.hyperv_supported() and
-            self.conn.check_support(self.conn.SUPPORT_CONN_HYPERV_VAPIC)):
+            self.conn.support.conn_hyperv_vapic()):
             if self.hyperv_relaxed is None:
                 self.hyperv_relaxed = True
             if self.hyperv_vapic is None:

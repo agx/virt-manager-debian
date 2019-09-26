@@ -1,8 +1,6 @@
 #!/usr/bin/env python3
 #
 # Copyright 2008, 2013, 2014  Red Hat, Inc.
-# Joey Boggs <jboggs@redhat.com>
-# Cole Robinson <crobinso@redhat.com>
 #
 # Copyright 2008 Sun Microsystems, Inc.  All rights reserved.
 # Use is subject to license terms.
@@ -67,6 +65,8 @@ def parse_args():
     misc = parser.add_argument_group("Miscellaneous Options")
     cli.add_misc_options(misc, dryrun=True, printxml=True, noautoconsole=True)
 
+    cli.autocomplete(parser)
+
     options = parser.parse_args()
     options.input = options.input[0]
 
@@ -82,8 +82,7 @@ def main(conn=None):
     options = parse_args()
     cli.setupLogging("virt-convert", options.debug, options.quiet)
 
-    if conn is None:
-        conn = cli.getConnection(options.connect)
+    conn = cli.getConnection(options.connect, conn=conn)
     if options.xmlonly:
         options.dry = True
         options.quiet = True
@@ -110,18 +109,18 @@ def main(conn=None):
         if options.xmlonly:
             print_stdout(installer.start_install(guest, return_xml=True)[1],
                 do_force=True)
-        elif not options.dry:
+        elif not options.dry or cli.in_testsuite():
             print_stdout(_("Creating guest '%s'.") % guest.name)
             domain = installer.start_install(guest)
             cli.connect_console(guest, domain, conscb, True, False)
-    except Exception:
+    except Exception:  # pragma: no cover
         converter.cleanup()
         raise
 
     return 0
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     try:
         sys.exit(main())
     except SystemExit as sys_e:

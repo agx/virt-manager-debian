@@ -5,7 +5,12 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-from ..xmlbuilder import XMLBuilder, XMLProperty
+from ..xmlbuilder import XMLBuilder, XMLChildProperty, XMLProperty
+
+
+class _SysinfoEntry(XMLBuilder):
+    XML_NAME = "entry"
+    value = XMLProperty(".")
 
 
 class DomainSysinfo(XMLBuilder):
@@ -19,7 +24,9 @@ class DomainSysinfo(XMLBuilder):
         "system_manufacturer", "system_product", "system_version",
         "system_serial", "system_uuid", "system_sku", "system_family",
         "baseBoard_manufacturer", "baseBoard_product", "baseBoard_version",
-        "baseBoard_serial", "baseBoard_asset", "baseBoard_location"]
+        "baseBoard_serial", "baseBoard_asset", "baseBoard_location",
+        "chassis_manufacturer", "chassis_version",
+        "chassis_serial", "chassis_asset", "chassis_sku", "oemStrings"]
 
     type = XMLProperty("./@type")
 
@@ -43,3 +50,11 @@ class DomainSysinfo(XMLBuilder):
     baseBoard_serial = XMLProperty("./baseBoard/entry[@name='serial']")
     baseBoard_asset = XMLProperty("./baseBoard/entry[@name='asset']")
     baseBoard_location = XMLProperty("./baseBoard/entry[@name='location']")
+
+    chassis_manufacturer = XMLProperty("./chassis/entry[@name='manufacturer']")
+    chassis_version = XMLProperty("./chassis/entry[@name='version']")
+    chassis_serial = XMLProperty("./chassis/entry[@name='serial']")
+    chassis_asset = XMLProperty("./chassis/entry[@name='asset']")
+    chassis_sku = XMLProperty("./chassis/entry[@name='sku']")
+
+    oemStrings = XMLChildProperty(_SysinfoEntry, relative_xpath="./oemStrings")

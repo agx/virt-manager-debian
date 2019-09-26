@@ -6,7 +6,6 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
 import os
 import re
 import stat
@@ -14,24 +13,8 @@ import subprocess
 
 import libvirt
 
+from .logger import log
 from .storage import StoragePool, StorageVolume
-
-
-def _lookup_pool_by_dirname(conn, path):
-    """
-    Try to find the parent pool for the passed path.
-    If found, and the pool isn't running, attempt to start it up.
-
-    return pool, or None if not found
-    """
-    pool = StoragePool.lookup_pool_by_path(conn, os.path.dirname(path))
-    if not pool:
-        return None
-
-    # Ensure pool is running
-    if pool.info()[0] != libvirt.VIR_STORAGE_POOL_RUNNING:
-        pool.create(0)
-    return pool
 
 
 def _lookup_vol_by_path(conn, path):
@@ -44,7 +27,12 @@ def _lookup_vol_by_path(conn, path):
         vol.info()
         return vol, None
     except libvirt.libvirtError as e:
-        if (hasattr(libvirt, "VIR_ERR_NO_STORAGE_VOL") and
+        # test_urls trigger empty errors here, because python
+        # garbage collection kicks in after the failure but before
+        # we read the error code, and libvirt virStoragePoolFree
+        # public entry point clears the cached error. So ignore
+        # an empty error code
+        if (e.get_error_code() and
             e.get_error_code() != libvirt.VIR_ERR_NO_STORAGE_VOL):
             raise
         return None, e
@@ -96,15 +84,15 @@ def _check_if_path_managed(conn, path):
     if vol:
         return vol, vol.storagePoolLookupByVolume()
 
-    pool = _lookup_pool_by_dirname(conn, path)
+    pool = StoragePool.lookup_pool_by_path(conn, os.path.dirname(path))
     if not pool:
         return None, None
 
     # We have the parent pool, but didn't find a volume on first lookup
     # attempt. Refresh the pool and try again, in case we were just out
-    # of date.
+    # of date or the pool was inactive.
     try:
-        pool.refresh(0)
+        StoragePool.ensure_pool_is_running(pool, refresh=True)
         vol, verr = _lookup_vol_by_path(conn, path)
         if verr:
             try:
@@ -140,7 +128,7 @@ def manage_path(conn, path):
     """
     If path is not managed, try to create a storage pool to probe the path
     """
-    if not conn.check_support(conn.SUPPORT_CONN_STORAGE):
+    if not conn.support.conn_storage():
         return None, None
     if not path:
         return None, None
@@ -156,7 +144,7 @@ def manage_path(conn, path):
     if not poolname:
         poolname = "dirpool"
     poolname = StoragePool.find_free_name(conn, poolname)
-    logging.debug("Attempting to build pool=%s target=%s", poolname, dirname)
+    log.debug("Attempting to build pool=%s target=%s", poolname, dirname)
 
     poolxml = StoragePool(conn)
     poolxml.name = poolname
@@ -269,16 +257,16 @@ def _fix_perms_acl(dirname, username):
                             stderr=subprocess.PIPE)
     out, err = proc.communicate()
 
-    logging.debug("Ran command '%s'", cmd)
+    log.debug("Ran command '%s'", cmd)
     if out or err:
-        logging.debug("out=%s\nerr=%s", out, err)
+        log.debug("out=%s\nerr=%s", out, err)
 
     if proc.returncode != 0:
         raise ValueError(err)
 
 
 def _fix_perms_chmod(dirname):
-    logging.debug("Setting +x on %s", dirname)
+    log.debug("Setting +x on %s", dirname)
     mode = os.stat(dirname).st_mode
     newmode = mode | stat.S_IXOTH
     os.chmod(dirname, newmode)
@@ -298,8 +286,8 @@ def set_dirs_searchable(dirlist, username):
                 _fix_perms_acl(dirname, username)
                 continue
             except Exception as e:
-                logging.debug("setfacl failed: %s", e)
-                logging.debug("trying chmod")
+                log.debug("setfacl failed: %s", e)
+                log.debug("trying chmod")
                 useacl = False
 
         try:
@@ -341,11 +329,11 @@ def _is_dir_searchable(dirname, uid, username):
                                 stderr=subprocess.PIPE)
         out, err = proc.communicate()
     except OSError:
-        logging.debug("Didn't find the getfacl command.")
+        log.debug("Didn't find the getfacl command.")
         return False
 
     if proc.returncode != 0:
-        logging.debug("Cmd '%s' failed: %s", cmd, err)
+        log.debug("Cmd '%s' failed: %s", cmd, err)
         return False
 
     pattern = "user:%s:..x" % username
@@ -471,7 +459,7 @@ class _StorageCreator(_StorageBase):
 
     def get_driver_type(self):
         if self._vol_install:
-            if self._vol_install.supports_property("format"):
+            if self._vol_install.supports_format():
                 return self._vol_install.format
         return "raw"
 
@@ -492,7 +480,7 @@ class _StorageCreator(_StorageBase):
         if err:
             raise ValueError(msg)
         if msg:
-            logging.warning(msg)
+            log.warning(msg)
 
     def will_create_storage(self):
         return True
@@ -530,7 +518,7 @@ class CloneStorageCreator(_StorageCreator):
         else:
             vfs = os.statvfs(os.path.dirname(self._path))
             avail = vfs.f_frsize * vfs.f_bavail
-            need = int(self._size) * 1024 * 1024 * 1024
+        need = int(self._size) * 1024 * 1024 * 1024
         if need > avail:
             if self._sparse:
                 msg = _("The filesystem will not have enough free space"
@@ -561,10 +549,10 @@ class CloneStorageCreator(_StorageCreator):
         if self._input_path == "/dev/null":
             # Not really sure why this check is here,
             # but keeping for compat
-            logging.debug("Source dev was /dev/null. Skipping")
+            log.debug("Source dev was /dev/null. Skipping")
             return
         if self._input_path == self._output_path:
-            logging.debug("Source and destination are the same. Skipping.")
+            log.debug("Source and destination are the same. Skipping.")
             return
 
         # If a destination file exists and sparse flag is True,
@@ -585,7 +573,7 @@ class CloneStorageCreator(_StorageCreator):
             clone_block_size = 1024 * 1024 * 10
             sparse = False
 
-        logging.debug("Local Cloning %s to %s, sparse=%s, block_size=%s",
+        log.debug("Local Cloning %s to %s, sparse=%s, block_size=%s",
                       self._input_path, self._output_path,
                       sparse, clone_block_size)
 

@@ -28,14 +28,17 @@ an existing disk image (thus skipping the install phase) are also supported.
 
 Given suitable command line arguments, C<virt-install> is capable of running
 completely unattended, with the guest 'kickstarting' itself too. This allows
-for easy automation of guest installs.
+for easy automation of guest installs. This can be done manually, or more
+simply with the --unattended option.
 
 Many arguments have sub options, specified like opt1=foo,opt2=bar, etc. Try
 --option=? to see a complete list of sub options associated with that
 argument, example: virt-install --disk=?
 
-Most options are not required. Minimum requirements are --name, --memory,
-guest storage (--disk or --filesystem), and an install option.
+Most options are not required. If a suitable --os-variant value is specified
+or detected, all defaults will be filled in and reported in the terminal
+output. If an --os-variant is not specified. minimum required options, --memory,
+guest storage (--disk or --filesystem), and an install method choice.
 
 
 =head1 CONNECTING TO LIBVIRT
@@ -95,10 +98,11 @@ running C<virt-install>.
 =item B<--memory> OPTIONS
 
 Memory to allocate for the guest, in MiB. This deprecates the -r/--ram option.
-Sub options are available, like 'maxmemory', 'hugepages', 'hotplugmemorymax'
-and 'hotplugmemoryslots'.  The memory parameter is mapped to <currentMemory> element,
-the 'maxmemory' sub-option is mapped to <memory> element and 'hotplugmemorymax'
-and 'hotplugmemoryslots' are mapped to <maxMemory> element.
+Sub options are available, like 'memory', 'currentMemory', 'maxMemory'
+and 'maxMemory.slots', which all map to the identically named XML values.
+
+Back compat values 'memory' maps to the <currentMemory> element, and maxmemory
+maps to the <memory> element.
 
 To configure memory modules which can be hotunplugged see B<--memdev> description.
 
@@ -141,9 +145,30 @@ Use --resource=? to see a list of all available sub options. Complete details at
 
 =item B<--sysinfo> OPT=VAL,[...]
 
-Configure sysinfo/SMBIOS values exposed to the guest OS. '--sysinfo host' can be used to expose the host's SMBIOS info to the VM, otherwise values can be manually specified.
+Configure sysinfo/SMBIOS values exposed to the VM OS.
 
-Use --sysinfo=? to see a list of all available sub options. Complete details at L<https://libvirt.org/formatdomain.html#elementsSysinfo>
+Some examples:
+
+=over 4
+
+=item B<--sysinfo host>
+
+Special type that exposes the host's SMBIOS info into the VM.
+
+=item B<--sysinfo emulate>
+
+Sepcial type where hypervisor will generate SMBIOS info into the VM.
+
+=item B<--sysinfo bios.vendor=custom> or B<--sysinfo smbios,bios.vendor=custom>
+
+The default type is B<smbios> and allows users to specify SMBIOS info manually.
+
+=back
+
+Use --sysinfo=? to see a list of all available sub options.
+
+Complete details at L<https://libvirt.org/formatdomain.html#elementsSysinfo>
+and L<https://libvirt.org/formatdomain.html#elementsOSBIOS> for B<smbios> XML element.
 
 =item B<--qemu-commandline> ARGS
 
@@ -182,7 +207,7 @@ Use --vcpus=? to see a list of all available sub options. Complete details at L<
 Tune NUMA policy for the domain process. Example invocations
 
     --numatune 1,2,3,4-7
-    --numatune 1-3,5,mode=preferred
+    --numatune 1-3,5,memory.mode=preferred
 
 Specifies the numa nodes to allocate memory from. This has the same syntax
 as C<--vcpus cpuset=> option. mode can be one of 'interleave', 'preferred', or
@@ -205,7 +230,7 @@ Use --memtune=? to see a list of all available sub options. Complete details at 
 Tune blkio policy for the domain process. Example invocations
 
     --blkiotune 100
-    --blkiotune weight=100,device_path=/dev/sdc,device_weight=200
+    --blkiotune weight=100,device.path=/dev/sdc,device.weight=200
 
 Use --blkiotune=? to see a list of all available sub options. Complete details at L<https://libvirt.org/formatdomain.html#elementsBlockTuning>
 
@@ -216,7 +241,17 @@ required value is MODEL, which is a valid CPU model as known to libvirt.
 
 Libvirt's feature policy values force, require, optional, disable, or forbid,
 or with the shorthand '+feature' and '-feature', which equal 'force=feature'
-and 'disable=feature' respectively
+and 'disable=feature' respectively.
+
+If exact CPU model is specified virt-install will automatically copy CPU
+features available on the host to mitigate recent CPU speculative execution
+side channel and Microarchitectural Store Buffer Data security vulnerabilities.
+This however will have some impact on performance and will break migration
+to hosts without security patches. In order to control this behavior there
+is a B<secure> parameter. Possible values are I<on> and I<off>, with I<on>
+as the default. It is highly recommended to leave this enabled and ensure all
+virtualization hosts have fully up to date microcode, kernel & virtualization
+software installed.
 
 Some examples:
 
@@ -237,7 +272,7 @@ may cause issues if migrating the guest to a host without an identical CPU.
 Expose the nearest host CPU model configuration to the guest.
 It is the best CPU which can be used for a guest on any of the hosts.
 
-=item B<--cpu cell0.memory=1234,cell0.cpus=0-3,cell1.memory=5678,cell1.cpus=4-7>
+=item B<--cpu numa.cell0.memory=1234,numa.cell0.cpus=0-3,numa.cell1.memory=5678,numa.cell1.cpus=4-7>
 
 Example of specifying two NUMA cells. This will generate XML like:
 
@@ -262,21 +297,27 @@ Tune CPU parameters for the guest.
 
 Configure which of the host's physical CPUs the domain VCPU will be pinned to. Example invocation
 
-    --cputune vpcupin0.vcpu=0,vpcupin0.cpuset=0-3,vpcupin1.vcpu=1,vpcupin1.cpuset=4-7
+    --cputune vcpupin0.vcpu=0,vcpupin0.cpuset=0-3,vcpupin1.vcpu=1,vcpupin1.cpuset=4-7
 
 Use --cputune=? to see a list of all available sub options. Complete details at L<https://libvirt.org/formatdomain.html#elementsCPUTuning>
 
-=item B<--security> type=TYPE[,label=LABEL][,relabel=yes|no]
+=item B<--security>/B<--seclabel> type=TYPE[,label=LABEL][,relabel=yes|no],...
 
-Configure domain security driver settings. Type can be either 'static' or
+Configure domain seclabel domain settings. Type can be either 'static' or
 'dynamic'. 'static' configuration requires a security LABEL. Specifying
 LABEL without TYPE implies static configuration.
 
-To have libvirt automatically apply your static label, you must specify
-relabel=yes. Otherwise disk images must be manually labeled by the admin,
-including images that virt-install is asked to create.
-
 Use --security=? to see a list of all available sub options. Complete details at L<https://libvirt.org/formatdomain.html#seclabel>
+
+
+=item B<--iothreads> OPTIONS
+
+Specify domain <iothreads> and/or <iothreadids> XML. For example, to configure <iothreads>4</iothreads>, do:
+
+  --iothreads 4
+
+Use --iothreads=? to see a list of all available sub options. Complete details at L<https://libvirt.org/formatdomain.html#elementsIOThreadsAllocation>
+
 
 =item B<--features> FEAT=on|off,...
 
@@ -285,15 +326,15 @@ apic, eoi, privnet, and hyperv features. Some examples:
 
 =over 4
 
-=item B<--features eoi=on>
+=item B<--features apic.eoi=on>
 
 Enable APIC PV EOI
 
-=item B<--features hyperv_vapic=on,hyperv_spinlocks=off>
+=item B<--features hyperv.vapic.state=on,hyperv.spinlocks.state=off>
 
 Enable hypver VAPIC, but disable spinlocks
 
-=item B<--features kvm_hidden=on>
+=item B<--features kvm.hidden.state==on>
 
 Allow the KVM hypervisor signature to be hidden from the guest
 
@@ -301,12 +342,12 @@ Allow the KVM hypervisor signature to be hidden from the guest
 
 Notify the guest that the host supports paravirtual spinlocks for example by exposing the pvticketlocks mechanism.
 
-=item B<--features gic_version=2>
+=item B<--features gic.version=2>
 
 This is relevant only for ARM architectures. Possible values are "host" or
 version number.
 
-=item B<--features smm=on>
+=item B<--features smm.state=on>
 
 This enables System Management Mode of hypervisor. Some UEFI firmwares may
 require this feature to be present. (QEMU supports SMM only with q35 machine
@@ -342,11 +383,32 @@ Use --clock=? to see a list of all available sub options. Complete details at L<
 
 =item B<--pm> OPTIONS
 
-Configure guest power management features. Example suboptions include suspend_to_mem=on|off and suspend_to_disk=on|off
+Configure guest power management features. Example:
+
+    --pm suspend_to_memi.enabled=on,suspend_to_disk.enabled=off
 
 Use --pm=? to see a list of all available sub options. Complete details at L<https://libvirt.org/formatdomain.html#elementsPowerManagement>
 
+=item B<--launch-security> TYPE[,OPTS]
 
+Enable launch security for the guest, e.g. AMD SEV.
+
+Use --launch-security=? to see a list of all available sub options. Complete
+details at L<https://libvirt.org/formatdomain.html#launchSecurity>. Example
+invocations:
+    # This will use a default policy 0x03
+    # No dhCert provided, so no data can be exchanged with the SEV firmware
+    --launchSecurity sev
+
+    # Explicit policy 0x01 - disables debugging, allows guest key sharing
+    --launchSecurity sev,policy=0x01
+
+    # Provide the session blob obtained from the SEV firmware
+    # Provide dhCert to open a secure communication channel with SEV firmware
+    --launchSecurity sev,session=BASE64SESSIONSTRING,dhCert=BASE64DHCERTSTRING
+
+SEV has further implications on usage of virtio devices, so refer to EXAMPLES
+section to see a full invocation of virt-install with --launchSecurity.
 
 =back
 
@@ -354,37 +416,22 @@ Use --pm=? to see a list of all available sub options. Complete details at L<htt
 
 =over 4
 
-=item B<-c> OPTIONS
+=item B<-c>, B<--cdrom> PATH
 
-=item B<--cdrom> OPTIONS
+ISO file or CDROM device to use for VM install media. After install,
+the the virtual CDROM device will remain attached to the VM, but with
+the ISO or host path media ejected.
 
-File or device used as a virtual CD-ROM device.
-It can be path to an ISO image, or to a CDROM device. It can also be a URL
-from which to fetch/access a minimal boot ISO image. The URLs take the same
-format as described for the C<--location> argument. If a cdrom has been
-specified via the C<--disk> option, and neither C<--cdrom> nor any other
-install option is specified, the C<--disk> cdrom is used as the install media.
-
-=item B<-l> LOCATION
-
-=item B<--location> OPTIONS
+=item B<-l>, B<--location> OPTIONS
 
 Distribution tree installation source. virt-install can recognize
 certain distribution trees and fetches a bootable kernel/initrd pair to
 launch the install.
 
-With libvirt 0.9.4 or later, network URL installs work for remote connections.
-virt-install will download kernel/initrd to the local machine, and then
-upload the media to the remote host. This option requires the URL to
-be accessible by both the local and remote host.
-
---location allows things like --extra-args for kernel arguments, and using --initrd-inject. If you want to use those options with CDROM media, you have a few options:
-
-* Run virt-install as root and do --location ISO
-
-* Mount the ISO at a local directory, and do --location DIRECTORY
-
-* Mount the ISO at a local directory, export that directory over local http, and do --location https://localhost/DIRECTORY
+--location allows things like --extra-args for kernel arguments,
+and using --initrd-inject. If you want to use those options with CDROM media,
+you can pass the ISO to --location as well which works for some, but not
+all, CDROM media.
 
 The C<LOCATION> can take one of the following forms:
 
@@ -398,13 +445,13 @@ An HTTP server location containing an installable distribution image.
 
 An FTP server location containing an installable distribution image.
 
+=item ISO
+
+Probe the ISO and extract files using 'isoinfo'
+
 =item DIRECTORY
 
 Path to a local directory containing an installable distribution image. Note that the directory will not be accessible by the guest after initial boot, so the OS installer will need another way to access the rest of the install media.
-
-=item ISO
-
-Mount the ISO and probe the directory. This requires running virt-install as root, and has the same VM access caveat as DIRECTORY.
 
 =back
 
@@ -414,7 +461,7 @@ Some distro specific url samples:
 
 =item Fedora/Red Hat Based
 
-https://download.fedoraproject.org/pub/fedora/linux/releases/25/Server/x86_64/os
+https://download.fedoraproject.org/pub/fedora/linux/releases/29/Server/x86_64/os
 
 =item Debian
 
@@ -428,20 +475,23 @@ https://us.archive.ubuntu.com/ubuntu/dists/wily/main/installer-amd64/
 
 https://download.opensuse.org/pub/opensuse/distribution/leap/42.3/repo/oss/
 
-=item Mandriva
-
-ftp://ftp.uwsg.indiana.edu/linux/mandrake/official/2009.0/i586/
-
-=item Mageia
-
-ftp://distrib-coffee.ipsl.jussieu.fr/pub/linux/Mageia/distrib/1
-
 =back
+
+Additionally, --location can take 'kernel' and 'initrd' sub options. These paths
+relative to the specified location URL/ISO that allow selecting specific files
+for kernel/initrd within the install tree. This can be useful if virt-install/
+libosinfo doesn't know where to find the kernel in the specified --location.
+
+For example, if you have an ISO that libosinfo doesn't know about called
+my-unknown.iso, with a kernel at 'kernel/fookernel' and initrd at
+'kernel/fooinitrd', you can make this work with:
+
+  --location my-unknown.iso,kernel=kernel/fookernel,initrd=kernel/fooinitrd
 
 =item B<--pxe>
 
-Use the PXE boot protocol to load the initial ramdisk and kernel for starting
-the guest installation process.
+Install from PXE. This just tells the VM to boot off the network
+for the first boot.
 
 =item B<--import>
 
@@ -449,15 +499,7 @@ Skip the OS installation process, and build a guest around an existing
 disk image. The device used for booting is the first device specified via
 C<--disk> or C<--filesystem>.
 
-=item B<--livecd>
-
-Specify that the installation media is a live CD and thus the guest
-needs to be configured to boot off the CDROM device permanently. It
-may be desirable to also use the C<--disk none> flag in combination.
-
-=item B<-x> EXTRA
-
-=item B<--extra-args> OPTIONS
+=item B<-x>, B<--extra-args> KERNELARGS
 
 Additional kernel command line arguments to pass to the installer when
 performing a guest install from C<--location>. One common usage is specifying
@@ -472,20 +514,129 @@ file:
 
 --initrd-inject=/path/to/my.ks --extra-args "ks=file:/my.ks"
 
-=item B<--os-variant> OS_VARIANT
 
-Optimize the guest configuration for a specific operating system (ex.
-'fedora18', 'rhel7', 'winxp'). While not required, specifying this
-options is HIGHLY RECOMMENDED, as it can greatly increase performance
-by specifying virtio among other guest tweaks.
 
-By default, virt-install will attempt to auto detect this value from
-the install media (currently only supported for URL installs). Autodetection
-can be disabled with the special value 'none'. Autodetection can be
-forced with the special value 'auto'.
+=item B<--install>
 
-Use the command "osinfo-query os" to get the list of the accepted OS
-variants.
+This is a larger entry point for various types of install operations. The
+command has multiple subarguments, similar to --disk and friends. This
+option is strictly for VM install operations, essentially configuring the
+first boot.
+
+The simplest usage to ex: install fedora29 is:
+
+  --install fedora29
+
+And virt-install will fetch a --location URL from libosinfo, and populate
+defaults from there.
+
+Available suboptions:
+
+=over 4
+
+=item B<os=>
+
+This is os install option described above. The explicit way to specify that
+would be B<--install os=fedora29>. os= is the default option if none is
+specified
+
+=item B<kernel=>, B<initrd=>
+
+Specify a kernel and initrd pair to use as install media. They are copied
+into a temporary location before booting the VM, so they can be combined
+with --initrd-inject and your source media will not be altered. Media
+will be uploaded to a remote connection if required.
+
+Example case using local filesystem paths:
+  --install kernel=/path/to/kernel,initrd=/path/to/initrd
+
+Example using network paths. Kernel/initrd will be downloaded locally first,
+then passed to the VM as local filesystem paths
+  --install kernel=https://127.0.0.1/tree/kernel,initrd=https://127.0.0.1/tree/initrd
+
+Note, these are just for install time booting. If you want to set the kernel
+used for permanent VM booting, use the B<--boot> option.
+
+=item B<kernel_args=>, B<kernel_args_overwrite=yes|no>
+
+Specify install time kernel arguments (libvirt <cmdline> XML). These can
+be combine with ex: kernel/initrd options, or B<--location> media. By
+default, kernel_args is just like --extra-args, and will _append_ to
+the arguments that virt-install will try to set by default for most
+--location installs. If you want to override the virt-install default,
+additionally specify kernel_args_overwrite=yes
+
+=item B<bootdev=>
+
+Specify the install bootdev (hd, cdrom, floppy, network) to boot off of
+for the install phase. This maps to libvirt <os><boot dev=X> XML.
+
+If you want to install off a cdrom or network, it's probably simpler
+and more backwards compatible to just use B<--cdrom> or B<--pxe>, but
+this options gives fine grained control over the install process if
+needed.
+
+=item B<no_install=yes|no>
+
+Tell virt-install that there isn't actually any install happening,
+and you just want to create the VM. B<--import> is just an alias
+for this, as is specifying B<--boot> without any other install
+options. The deprecated B<--live> option is the same as
+'--cdrom $ISO --install no_install=yes'
+
+=back
+
+
+
+=item B<--unattended> [OPTIONS]
+
+Perform an unattended install using libosinfo's install script support.
+This is essentially a database of auto install scripts for various
+distros: Red Hat kickstarts, Debian installer scripting, Windows
+unattended installs, and potentially others. The simplest invocation
+is to combine it with --install like:
+
+  --install fedora29 --unattended
+
+A Windows install will look like
+
+  --cdrom /path/to/my/windows.iso --unattended
+
+Sub options are:
+
+=over 4
+
+=item B<profile=>
+
+Choose which libosinfo unattended profile to use. Most distros have
+a 'desktop' and a 'jeos' profile. virt-install will default to 'desktop'
+if this is unspecified.
+
+=item B<admin-password-file=>
+
+A file used to set the VM OS admin/root password from. This option can
+be used either as "admin-password-file=/path/to/password-file" or as
+"admin-password-file=/dev/fd/n", being n the file descriptor of the
+password-file.
+Note that only the first line of the file will be considered, including
+any whitespace characters and excluding new-line.
+
+=item B<user-password-file=>
+
+A file used to set the VM user password. This option can be used either as
+"user-password-file=/path/to/password-file" or as
+"user-password-file=/dev/fd/n", being n the file descriptor of the
+password-file. The username is your current host username.
+Note that only the first line of the file will be considered, including
+any whitespace characters and excluding new-line.
+
+=item B<product-key=>
+
+Set a Windows product key
+
+=back
+
+
 
 =item B<--boot> BOOTOPTS
 
@@ -503,10 +654,10 @@ Some examples:
 
 =over 4
 
-=item B<--boot cdrom,fd,hd,network,menu=on>
+=item B<--boot cdrom,fd,hd,network>
 
 Set the boot device priority as first cdrom, first floppy, first harddisk,
-network PXE boot. Additionally enable BIOS boot menu prompt.
+network PXE boot.
 
 =item B<--boot kernel=KERNEL,initrd=INITRD,kernel_args="console=/dev/ttyS0">
 
@@ -523,7 +674,7 @@ configurations like ARM or PPC
 
 Use BIOSPATH as the virtual machine BIOS.
 
-=item B<--boot menu=on,useserial=on>
+=item B<--boot bootmenu.enable=on,bios.useserial=on>
 
 Enable the bios boot menu, and enable sending bios text output over
 serial console.
@@ -541,7 +692,7 @@ correct UEFI parameters, libvirt needs to be advertising known UEFI binaries
 via domcapabilities XML, so this will likely only work if using properly
 configured distro packages.
 
-=item B<--boot loader=/.../OVMF_CODE.fd,loader_ro=yes,loader_type=pflash,nvram_template=/.../OVMF_VARS.fd,loader_secure=no>
+=item B<--boot loader=/.../OVMF_CODE.fd,loader.readonly=yes,loader.type=pflash,nvram.template=/.../OVMF_VARS.fd,loader_secure=no>
 
 Specify that the virtual machine use the custom OVMF binary as boot firmware,
 mapped as a virtual flash chip. In addition, request that libvirt instantiate
@@ -561,15 +712,37 @@ the 'user' namespace will be enabled to apply these.
 A suitably configured UID/GID mapping is a pre-requisite to
 make containers secure, in the absence of sVirt confinement.
 
---idmap can be specified to enable user namespace for LXC containers
+--idmap can be specified to enable user namespace for LXC containers. Example:
 
-Example:
-    --idmap uid_start=0,uid_target=1000,uid_count=10,gid_start=0,gid_target=1000,gid_count=10
+    --idmap uid.start=0,uid.target=1000,uid.count=10,gid.start=0,gid.target=1000,gid.count=10
 
 Use --idmap=? to see a list of all available sub options. Complete details at L<https://libvirt.org/formatdomain.html#elementsOSContainer>
 
 =back
 
+
+
+
+=head1 GUEST OS OPTIONS
+
+=over 4
+
+=item B<--os-variant> OS_VARIANT
+
+Optimize the guest configuration for a specific operating system (ex.
+'fedora29', 'rhel7', 'win10'). While not required, specifying this
+options is HIGHLY RECOMMENDED, as it can greatly increase performance
+by specifying virtio among other guest tweaks.
+
+By default, virt-install will attempt to auto detect this value from
+the install media (currently only supported for URL installs). Autodetection
+can be disabled with the special value 'none'. Autodetection can be
+forced with the special value 'auto'.
+
+Use the command "osinfo-query os" to get the list of the accepted OS
+variants.
+
+=back
 
 
 
@@ -622,38 +795,11 @@ An existing libvirt storage volume to use. This is specified as
 
 =back
 
-Other available options:
+
+
+Options that apply to storage creation:
 
 =over 4
-
-=item B<device>
-
-Disk device type. Value can be 'cdrom', 'disk', 'lun' or 'floppy'. Default is
-'disk'. If a 'cdrom' is specified, and no install method is chosen, the
-cdrom is used as the install media.
-
-=item B<boot_order>
-
-Guest installation with multiple disks will need this parameter to boot correctly after being installed. A boot_order parameter will take values 1,2,3,... Devices with lower value has higher priority.
-
-=item B<bus>
-
-Disk bus type. Value can be 'ide', 'sata', 'scsi', 'usb', 'virtio' or 'xen'.
-The default is hypervisor dependent since not all hypervisors support all
-bus types.
-
-=item B<removable>
-
-Sets the removable flag (/sys/block/$dev/removable on Linux). Only
-used with QEMU and bus=usb. Value can be 'on' or 'off'.
-
-=item B<readonly>
-
-Set drive as readonly (takes 'on' or 'off')
-
-=item B<shareable>
-
-Set drive as shareable (takes 'on' or 'off')
 
 =item B<size>
 
@@ -670,6 +816,14 @@ will be usually balanced by faster install times inside the guest. Thus
 use of this option is recommended to ensure consistently high performance
 and to avoid I/O errors in the guest should the host filesystem fill up.
 
+=item B<format>
+
+Disk image format. For file volumes, this can be 'raw', 'qcow2', 'vmdk', etc. See format types in L<https://libvirt.org/storage.html> for possible values. This is often mapped to the B<driver_type> value as well.
+
+If not specified when creating file images, this will default to 'qcow2'.
+
+If creating storage, this will be the format of the new image. If using an existing image, this overrides libvirt's format auto-detection.
+
 =item B<backing_store>
 
 Path to a disk to use as the backing store for the newly created image.
@@ -677,6 +831,37 @@ Path to a disk to use as the backing store for the newly created image.
 =item B<backing_format>
 
 Disk image format of B<backing_store>
+
+=back
+
+
+
+Some example device configuration suboptions:
+
+=over 4
+
+=item B<device>
+
+Disk device type. Example values are be 'cdrom', 'disk', 'lun' or 'floppy'. The default is 'disk'.
+
+=item B<boot.order>
+
+Guest installation with multiple disks will need this parameter to boot correctly after being installed. A boot.order parameter will take values 1,2,3,... Devices with lower value has higher priority.
+This option applies to other bootable device types as well.
+
+=item B<target.bus> or B<bus>
+
+Disk bus type. Example values are be 'ide', 'sata', 'scsi', 'usb', 'virtio' or 'xen'.
+The default is hypervisor dependent since not all hypervisors support all
+bus types.
+
+=item B<readonly>
+
+Set drive as readonly (takes 'on' or 'off')
+
+=item B<shareable>
+
+Set drive as shareable (takes 'on' or 'off')
 
 =item B<cache>
 
@@ -688,36 +873,28 @@ read and write caching. 'directsync' bypasses the host page
 cache. 'unsafe' may cache all content and ignore flush requests from
 the guest.
 
-=item B<discard>
+=item B<driver.discard>
 
 Whether discard (also known as "trim" or "unmap") requests are ignored
 or passed to the filesystem. The value can be either "unmap" (allow
 the discard request to be passed) or "ignore" (ignore the discard
 request). Since 1.0.6 (QEMU and KVM only)
 
-=item B<format>
-
-Disk image format. For file volumes, this can be 'raw', 'qcow2', 'vmdk', etc. See format types in L<https://libvirt.org/storage.html> for possible values. This is often mapped to the B<driver_type> value as well.
-
-If not specified when creating file images, this will default to 'qcow2'.
-
-If creating storage, this will be the format of the new image. If using an existing image, this overrides libvirt's format auto-detection.
-
-=item B<driver_name>
+=item B<driver.name>
 
 Driver name the hypervisor should use when accessing the specified
 storage. Typically does not need to be set by the user.
 
-=item B<driver_type>
+=item B<driver.type>
 
 Driver format/type the hypervisor should use when accessing the specified
 storage. Typically does not need to be set by the user.
 
-=item B<io>
+=item B<driver.io>
 
 Disk IO backend. Can be either "threads" or "native".
 
-=item B<error_policy>
+=item B<driver.error_policy>
 
 How guest should react if a write error is encountered. Can be one of
 "stop", "ignore", or "enospace"
@@ -728,12 +905,12 @@ Serial number of the emulated disk device. This is used in linux guests
 to set /dev/disk/by-id symlinks. An example serial number might be:
 WD-WMAP9A966149
 
-=item B<startup_policy>
+=item B<source.startupPolicy>
 
 It defines what to do with the disk if the source file is not accessible.  See
 possible values in L<https://www.libvirt.org/formatdomain.html#elementsDisks>, "startupPolicy" attribute of the <disk> element
 
-=item B<snapshot_policy>
+=item B<snapshot>
 
 Defines default behavior of the disk during disk snapshots.  See possible
 values in L<https://www.libvirt.org/formatdomain.html#elementsDisks>,
@@ -746,6 +923,9 @@ See the examples section for some uses. This option deprecates -f/--file,
 
 Use --disk=? to see a list of all available sub options. Complete details at L<https://libvirt.org/formatdomain.html#elementsDisks>
 
+
+
+
 =item B<--filesystem>
 
 Specifies a directory on the host to export to the guest. The most simple
@@ -757,7 +937,7 @@ Which will work for recent QEMU and linux guest OS or LXC containers. For
 QEMU, the target point is just a mounting hint in sysfs, so will not be
 automatically mounted.
 
-The following explicit options can be specified:
+Some example suboptions:
 
 =over 4
 
@@ -766,7 +946,7 @@ The following explicit options can be specified:
 The type or the source directory. Valid values are 'mount' (the default) or
 'template' for OpenVZ templates.
 
-=item B<mode>
+=item B<accessmode> or B<mode>
 
 The access mode for the source directory from the guest OS. Only used with
 QEMU and type=mount. Valid modes are 'passthrough' (the default), 'mapped',
@@ -819,7 +999,7 @@ with a name of C<default>. Use a virtual network if the host has dynamic
 networking (eg NetworkManager), or using wireless. The guest will be
 NATed to the LAN by whichever connection is active.
 
-=item type=direct,source=IFACE[,source_mode=MODE]
+=item type=direct,source=IFACE[,source.mode=MODE]
 
 Direct connect to host interface IFACE using macvtap.
 
@@ -840,16 +1020,16 @@ that will be used for connectivity. Failing that, the virtual network
 called C<default> will be used. This option can be specified multiple
 times to setup more than one NIC.
 
-Other available options are:
+Some example suboptions:
 
 =over 4
 
-=item B<model>
+=item B<model.type> or B<model>
 
 Network device model as seen by the guest. Value can be any nic model supported
 by the hypervisor, e.g.: 'e1000', 'rtl8139', 'virtio', ...
 
-=item B<mac>
+=item B<mac.address> or B<mac>
 
 Fixed MAC address for the guest; If this parameter is omitted, or the value
 C<RANDOM> is specified a suitable address will be randomly generated. For
@@ -857,96 +1037,17 @@ Xen virtual machines it is required that the first 3 pairs in the MAC address
 be the sequence '00:16:3e', while for QEMU or KVM virtual machines it must
 be '52:54:00'.
 
-=item B<filterref>
+=item B<filterref.filter>
 
 Controlling firewall and network filtering in libvirt. Value can be any nwfilter
 defined by the C<virsh> 'nwfilter' subcommands. Available filters can be listed
 by running 'virsh nwfilter-list', e.g.: 'clean-traffic', 'no-mac-spoofing', ...
 
-=item B<virtualport_type>
+=item B<virtualport.*> options
 
-The type of virtual port profile, one the following values
-
-=over 4
-
-=item C<802.Qbg>
-
-The following additional parameters are accepted
-
-=over 4
-
-=item B<virtualport_managerid>
-
-
-The VSI Manager ID identifies the database containing the VSI type
-and instance definitions. This is an integer value and the value
-0 is reserved.
-
-=item B<virtualport_typeid>
-
-The VSI Type ID identifies a VSI type characterizing the network
-access. VSI types are typically managed by network administrator.
-This is an integer value.
-
-=item B<virtualport_typeidversion>
-
-The VSI Type Version allows multiple versions of a VSI Type. This
-is an integer value.
-
-=item B<virtualport_instanceid>
-
-The VSI Instance ID Identifier is generated when a VSI instance
-(i.e. a virtual interface of a virtual machine) is created. This
-is a globally unique identifier.
-
-=back
-
-=item C<802.Qbh>
-
-The following additional parameters are accepted
-
-=over 4
-
-=item B<virtualport_profileid>
-
-The profile ID contains the name of the port profile that is to
-be applied to this interface. This name is resolved by the port
-profile database into the network parameters from the port profile,
-and those network parameters will be applied to this interface.
-
-=back
-
-=item C<openvswitch>
-
-The following additional parameters are accepted
-
-=over 4
-
-=item B<virtualport_profileid>
-
-The OpenVSwitch port profile for the interface
-
-=item B<virtualport_interfaceid>
-
-A UUID to uniquely identify the interface. If omitted one will
-be generated automatically
-
-=back
-
-=item C<midonet>
-
-The following additional parameters are accepted
-
-=over 4
-
-=item B<virtualport_interfaceid>
-
-A UUID identifying the port in the network to which the interface
-will be bound
-
-=back
-
-=back
+Configure the device virtual port profile. This is used for 802.Qbg, 802.Qbh,
+midonet, and openvswitch config. Check for 'virtualport' references in the
+libvirt documentation: C<https://libvirt.org/formatdomain.html#elementsNICS>
 
 =back
 
@@ -983,7 +1084,7 @@ For example:
 
     --graphics vnc,password=foobar
 
-The supported options are:
+Some supported options are:
 
 =over 4
 
@@ -1022,7 +1123,7 @@ command 'virsh console NAME' can be used to connect to the serial device.
 Request a permanent, statically assigned port number for the guest
 console. This is used by 'vnc' and 'spice'
 
-=item B<tlsport>
+=item B<tlsPort>
 
 Specify the spice tlsport.
 
@@ -1042,27 +1143,18 @@ path on the host filesystem.
 
 This is used by 'vnc' and 'spice'
 
-=item B<keymap>
-
-Request that the virtual console be configured to run with a specific
-keyboard layout. If the special value 'local' is specified, virt-install
-will attempt to configure to use the same keymap as the local system. A value
-of 'none' specifically defers to the hypervisor. Default behavior is
-hypervisor specific, but typically is the same as 'local'. This is used
-by 'vnc' and 'spice'.
-
 =item B<password>
 
 Request a console password, required at connection time. Beware, this info may
 end up in virt-install log files, so don't use an important password. This
 is used by 'vnc' and 'spice'
 
-=item B<gl>
+=item B<gl.enable>
 
-Whether to use OpenGl accelerated rendering. Value is 'yes' or 'no'. This is
+Whether to use OpenGL accelerated rendering. Value is 'yes' or 'no'. This is
 used by 'spice'.
 
-=item B<rendernode>
+=item B<gl.rendernode>
 
 DRM render node path to use. This is used when 'gl' is enabled.
 
@@ -1078,6 +1170,13 @@ Don't automatically try to connect to the guest console. The default behaviour
 is to launch L<virt-viewer(1)> to display the graphical console, or to run the
 C<virsh> C<console> command to display the text console. Use of this parameter
 will disable this behaviour.
+
+Note, virt-install exits quickly when this option is specified. If your
+command requested a multistep install, like --cdrom or --location, after
+the install phase is complete the VM will be shutoff, regardless of
+whether a reboot was requested in the VM. If you want the VM to be
+rebooted, virt-install must remain running. You can use '--wait' to keep
+virt-install alive even if --noautoconsole is specified.
 
 =back
 
@@ -1144,6 +1243,8 @@ Controller also supports the special values B<usb2> and B<usb3> to
 specify which version of the USB controller should be used (version 2
 or 3).
 
+Some example suboptions:
+
 =over 4
 
 =item B<model>
@@ -1163,28 +1264,6 @@ The preferred method for setting this is using the address.* parameters.
 
 A decimal integer describing in which order the bus controller is
 encountered, and to reference the controller bus.
-
-=item B<master>
-
-Applicable to USB companion controllers, to define the master bus startport.
-
-=back
-
-Examples:
-
-=over 4
-
-=item B<--controller usb,model=ich9-ehci1,address=0:0:4.0,index=0>
-
-Adds a ICH9 EHCI1 USB controller on PCI address 0:0:4.0
-
-=item B<--controller usb,model=ich9-uhci2,address=0:0:4.7,index=0,master=2>
-
-Adds a ICH9 UHCI2 USB companion controller for the previous master
-controller, ports start from port number 2.
-
-The parameter multifunction='on' will be added automatically to the
-proper device (if needed).  This applies to all PCI devices.
 
 =back
 
@@ -1322,11 +1401,7 @@ devices, this could be /dev/parport0.
 
 Write output to FILENAME.
 
-=item B<--serial pipe,path=PIPEPATH>
-
-Named pipe (see pipe(7))
-
-=item B<--serial tcp,host=HOST:PORT,mode=MODE,protocol=PROTOCOL>
+=item B<--serial tcp,host=HOST:PORT,source.mode=MODE,protocol.type=PROTOCOL>
 
 TCP net console. MODE is either 'bind' (wait for connections on HOST:PORT)
 or 'connect' (send output to HOST:PORT), default is 'bind'. HOST defaults
@@ -1340,12 +1415,12 @@ Wait for connections on any address, port 4567:
 
 Connect to localhost, port 1234:
 
---serial tcp,host=:1234,mode=connect
+--serial tcp,host=:1234,source.mode=connect
 
 Wait for telnet connection on localhost, port 2222. The user could then
 connect interactively to this console via 'telnet localhost 2222':
 
---serial tcp,host=:2222,mode=bind,protocol=telnet
+--serial tcp,host=:2222,source.mode=bind,source.protocol=telnet
 
 =item B<--serial udp,host=CONNECT_HOST:PORT,bind_host=BIND_HOST:BIND_PORT>
 
@@ -1384,12 +1459,12 @@ Some of the types of character device redirection are:
 
 =over 4
 
-=item B<--channel SOURCE,target_type=guestfwd,target_address=HOST:PORT>
+=item B<--channel SOURCE,target.type=guestfwd,target.address=HOST:PORT>
 
 Communication channel using QEMU usermode networking stack. The guest can
 connect to the channel using the specified HOST:PORT combination.
 
-=item B<--channel SOURCE,target_type=virtio[,name=NAME]>
+=item B<--channel SOURCE,target.type=virtio[,target.name=NAME]>
 
 Communication channel using virtio serial (requires 2.6.34 or later host and
 guest). Each instance of a virtio --channel line is exposed in the
@@ -1398,7 +1473,7 @@ can be any string, such as org.linux-kvm.virtioport1.
 If specified, this will be exposed in the guest at
 /sys/class/virtio-ports/vport0p1/NAME
 
-=item B<--channel spicevmc,target_type=virtio[,name=NAME]>
+=item B<--channel spicevmc,target.type=virtio[,target.name=NAME]>
 
 Communication channel for QEMU spice agent, using virtio serial
 (requires 2.6.34 or later host and guest). NAME is optional metadata,
@@ -1420,7 +1495,7 @@ Example:
 
 =over 4
 
-=item B<--console pty,target_type=virtio>
+=item B<--console pty,target.type=virtio>
 
 Connect a virtio console to the guest, redirected to a PTY on the host.
 For supported guests, this exposes /dev/hvc0 in the guest. See
@@ -1562,7 +1637,7 @@ be specified:
 
 =over 4
 
-=item B<backend_device>
+=item B<backend>
 
 The device to use as a source of entropy.
 
@@ -1572,29 +1647,29 @@ Whereas, when the type is B<egd>, these values must be provided:
 
 =over 4
 
-=item B<backend_host>
+=item B<backend.source.host>
 
 Specify the host of the Entropy Gathering Daemon to connect to.
 
-=item B<backend_service>
+=item B<backend.source.service>
 
 Specify the port of the Entropy Gathering Daemon to connect to.
 
-=item B<backend_type>
+=item B<backend.type>
 
 Specify the type of the connection: B<tcp> or B<udp>.
 
-=item B<backend_mode>
+=item B<backend.source.mode>
 
 Specify the mode of the connection.  It is either 'bind' (wait for
 connections on HOST:PORT) or 'connect' (send output to HOST:PORT).
 
-=item B<backend_connect_host>
+=item B<backend.connect_host>
 
 Specify the remote host to connect to when the specified backend_type is B<udp>
 and backend_mode is B<bind>.
 
-=item B<backend_connect_service>
+=item B<backend.connect_service>
 
 Specify the remote service to connect to when the specified backend_type is
 B<udp> and backend_mode is B<bind>.
@@ -1605,7 +1680,7 @@ An example invocation:
 
 =over 4
 
-=item B<--rng egd,backend_host=localhost,backend_service=8000,backend_type=tcp>
+=item B<--rng egd,backend.source.host=localhost,backend.source.service=8000,backend.type=tcp>
 
 Connect to localhost to the TCP port 8000 to get entropy data.
 
@@ -1632,6 +1707,14 @@ Add a memory module to a guest which can be hotunplugged. To add a memdev you ne
 to configure hotplugmemory and NUMA for a guest.
 
 Use --memdev=? to see a list of all available sub options. Complete details at L<https://libvirt.org/formatdomain.html#elementsMemory>.
+
+=item B<--vsock> OPTS
+
+Configure a vsock host/guest interface. A typical configuration would be
+
+  --vsock cid.auto=yes
+
+Use --vsock=? to see a list of all available sub options. Complete details at L<https://libvirt.org/formatdomain.html#vsock>.
 
 
 =back
@@ -1684,13 +1767,15 @@ completed.
 
 =item B<--wait> WAIT
 
-Amount of time to wait (in minutes) for a VM to complete its install.
+Configure how virt-install will wait for the install to complete.
 Without this option, virt-install will wait for the console to close (not
 necessarily indicating the guest has shutdown), or in the case of
---noautoconsole, simply kick off the install and exit. Any negative
-value will make virt-install wait indefinitely, a value of 0 triggers the
-same results as noautoconsole. If the time limit is exceeded, virt-install
-simply exits, leaving the virtual machine in its current state.
+--noautoconsole, simply kick off the install and exit.
+
+Bare '--wait' or any negative value will make virt-install wait indefinitely.
+Any positive number is the number of minutes virt-install will wait. If the
+time limit is exceeded, virt-install simply exits, leaving the virtual machine
+in its current state.
 
 =item B<--dry-run>
 
@@ -1721,89 +1806,48 @@ C<~/.cache/virt-manager/virt-install.log> even if this parameter is omitted.
 
 =head1 EXAMPLES
 
-Install a Fedora 20 KVM guest with virtio accelerated disk/network,
-creating a new 10GiB qcow2 file, installing from media in the hosts
-CDROM drive. This will use Spice graphics by default, and launch autolaunch
-a graphical client.
+The simplest invocation to interactively install a Fedora 29 KVM VM
+with recommended defaults. L<virt-viewer(1)> will be launched to
+graphically interact with the VM install
+
+  # sudo virt-install --install fedora29
+
+Similar, but use libosinfo's unattended install support, which will
+perform the fedora29 install automatically without user intervention:
+
+  # sudo virt-install --install fedora29 --unattended
+
+Install a Windows 10 VM, using 40GiB storage in the default location
+and 4096MiB of ram, and ensure we are connecting to the system libvirtd
+instance:
+
+  # virt-install \
+      --connect qemu:///system \
+      --name my-win10-vm \
+      --memory 4096 \
+      --disk size=40 \
+      --os-variant win10 \
+      --cdrom /path/to/my/win10.iso
+
+Install a CentOS 7 KVM from a URL, with recommended device defaults and
+default required storag,e but specifically request VNC graphics instead
+of the default SPICE, and request 8 virtual CPUs and 8192 MiB of memory:
 
   # virt-install \
        --connect qemu:///system \
-       --virt-type kvm \
-       --name demo \
-       --memory 500 \
-       --disk size=10 \
-       --cdrom /dev/cdrom \
-       --os-variant fedora13
-
-Install a Fedora 9 plain QEMU guest, using LVM partition, virtual networking,
-booting from PXE, using VNC server/viewer, with virtio-scsi disk
-
-  # virt-install \
-       --connect qemu:///system \
-       --name demo \
-       --memory 500 \
-       --disk path=/dev/HostVG/DemoVM,bus=scsi \
-       --controller virtio-scsi \
-       --network network=default \
-       --virt-type qemu \
+       --memory 8192 \
+       --vcpus 8 \
        --graphics vnc \
-       --os-variant fedora9
+       --os-variant centos7.0 \
+       --location http://mirror.centos.org/centos-7/7/os/x86_64/
 
-Run a Live CD image under Xen fullyvirt, in diskless environment
-
-  # virt-install \
-       --hvm \
-       --name demo \
-       --memory 500 \
-       --disk none \
-       --livecd \
-       --graphics vnc \
-       --cdrom /root/fedora7live.iso
-
-Run /usr/bin/httpd in a linux container guest (LXC). Resource usage is capped
-at 512 MiB of ram and 2 host cpus:
+Create a VM around an existing debian9 disk image:
 
   # virt-install \
-        --connect lxc:/// \
-        --name httpd_guest \
-        --memory 512 \
-        --vcpus 2 \
-        --init /usr/bin/httpd
-
-Start a linux container guest(LXC) with a private root filesystem,
-using /bin/sh as init.
-Container's root will be under host dir /home/LXC.
-The host dir "/home/test" will be mounted at
-"/mnt" dir inside container:
-
-  # virt-install \
-        --connect lxc:/// \
-        --name container \
-        --memory 128 \
-        --filesystem /home/LXC,/ \
-        --filesystem /home/test,/mnt \
-        --init /bin/sh
-
-Install a paravirtualized Xen guest, 500 MiB of RAM, a 5 GiB of disk, and
-Fedora Core 6 from a web server, in text-only mode, with old style --file
-options:
-
-  # virt-install \
-       --paravirt \
-       --name demo \
-       --memory 500 \
-       --disk /var/lib/xen/images/demo.img,size=6 \
-       --graphics none \
-       --location https://download.fedora.redhat.com/pub/fedora/linux/core/6/x86_64/os/
-
-Create a guest from an existing disk image 'mydisk.img' using defaults for
-the rest of the options.
-
-  # virt-install \
-       --name demo \
+       --import \
        --memory 512 \
-       --disk /home/user/VMs/mydisk.img \
-       --import
+       --disk /home/user/VMs/my-debian9.img \
+       --os-variant debian9
 
 Start serial QEMU ARM VM, which requires specifying a manual kernel.
 
@@ -1815,9 +1859,31 @@ Start serial QEMU ARM VM, which requires specifying a manual kernel.
        --boot kernel=/tmp/my-arm-kernel,initrd=/tmp/my-arm-initrd,dtb=/tmp/my-arm-dtb,kernel_args="console=ttyAMA0 rw root=/dev/mmcblk0p3" \
        --graphics none
 
+Start an SEV launch security VM with 4GB RAM, 4GB+256MiB of hard_limit, with a
+couple of virtio devices:
+
+Note: The IOMMU flag needs to be turned on with driver.iommu for virtio
+devices. Usage of --memtune is currently required because of SEV limitations,
+refer to libvirt docs for a detailed explanation.
+
+  # virt-install \
+       --name foo \
+       --memory 4096 \
+       --boot uefi \
+       --machine q35 \
+       --memtune hard_limit=4563402 \
+       --disk size=15,target.bus=scsi \
+       --import \
+       --controller type=scsi,model=virtio-scsi,driver.iommu=on \
+       --controller type=virtio-serial,driver.iommu=on \
+       --network network=default,model=virtio,driver.iommu=on \
+       --rng driver,iommu=on \
+       --memballoon driver.iommu=on \
+       --launchSecurity sev
+
 =head1 BUGS
 
-Please see https://virt-manager.org/page/BugReporting
+Please see L<https://virt-manager.org/bugs>
 
 =head1 COPYRIGHT
 

@@ -1,5 +1,5 @@
 <domain type="kvm">
-  <name>foobar</name>
+  <name>rhel6.4</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
@@ -8,11 +8,12 @@
   </metadata>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
-  <vcpu>1</vcpu>
+  <vcpu>2</vcpu>
   <os>
     <type arch="x86_64" machine="pc">hvm</type>
-    <boot dev="network"/>
-    <boot dev="hd"/>
+    <kernel>/VIRTINST-TESTSUITE/fake-win7.iso</kernel>
+    <initrd>/VIRTINST-TESTSUITE/fake-centos65-label.iso</initrd>
+    <cmdline>foo bar</cmdline>
   </os>
   <features>
     <acpi/>
@@ -48,7 +49,7 @@
       <master startport="4"/>
     </controller>
     <interface type="bridge">
-      <source bridge="eth0"/>
+      <source bridge="testsuitebr0"/>
       <mac address="00:11:22:33:44:55"/>
       <model type="virtio"/>
     </interface>
@@ -73,7 +74,7 @@
   </devices>
 </domain>
 <domain type="kvm">
-  <name>foobar</name>
+  <name>rhel6.4</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
@@ -82,7 +83,7 @@
   </metadata>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
-  <vcpu>1</vcpu>
+  <vcpu>2</vcpu>
   <os>
     <type arch="x86_64" machine="pc">hvm</type>
     <boot dev="hd"/>
@@ -120,7 +121,7 @@
       <master startport="4"/>
     </controller>
     <interface type="bridge">
-      <source bridge="eth0"/>
+      <source bridge="testsuitebr0"/>
       <mac address="00:11:22:33:44:55"/>
       <model type="virtio"/>
     </interface>

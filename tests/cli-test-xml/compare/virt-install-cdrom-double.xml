@@ -1,5 +1,5 @@
 <domain type="test">
-  <name>foobar</name>
+  <name>vm1</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
@@ -21,7 +21,7 @@
   <devices>
     <emulator>/usr/bin/test-hv</emulator>
     <disk type="file" device="disk">
-      <source file="/var/lib/libvirt/images/foobar.qcow2"/>
+      <source file="/var/lib/libvirt/images/disk.qcow2"/>
       <target dev="hda" bus="ide"/>
     </disk>
     <disk type="file" device="cdrom">
@@ -52,7 +52,7 @@
   </devices>
 </domain>
 <domain type="test">
-  <name>foobar</name>
+  <name>vm1</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
@@ -72,7 +72,7 @@
   <devices>
     <emulator>/usr/bin/test-hv</emulator>
     <disk type="file" device="disk">
-      <source file="/var/lib/libvirt/images/foobar.qcow2"/>
+      <source file="/var/lib/libvirt/images/disk.qcow2"/>
       <target dev="hda" bus="ide"/>
     </disk>
     <disk type="file" device="cdrom">

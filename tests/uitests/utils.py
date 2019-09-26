@@ -1,7 +1,6 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
 import os
 import re
 import time
@@ -13,9 +12,18 @@ import unittest
 from gi.repository import Gio
 from gi.repository import Gdk
 import pyatspi
-import dogtail.tree
+import dogtail.utils
+
+from virtinst import log
 
 import tests
+
+if not dogtail.utils.isA11yEnabled():
+    print("Enabling gsettings accessibility")
+    dogtail.utils.enableA11y()
+
+# This will trigger an error if accessibility isn't enabled
+import dogtail.tree  # pylint: disable=wrong-import-order,ungrouped-imports
 
 
 class UITestCase(unittest.TestCase):
@@ -89,7 +97,7 @@ class UITestCase(unittest.TestCase):
             check_in_loop(lambda: run.sensitive)
         return win
 
-    def _walkUIList(self, win, lst, error_cb):
+    def _walkUIList(self, win, lst, error_cb, reverse=False):
         """
         Toggle down through a UI list like addhardware, net/storage/iface
         lists, and ensure an error isn't raised.
@@ -97,6 +105,8 @@ class UITestCase(unittest.TestCase):
         # Walk the lst UI and find all labelled table cells, these are
         # the actual list entries
         all_cells = lst.findChildren(lambda w: w.roleName == "table cell")
+        if reverse:
+            all_cells.reverse()
         all_cells[0].click()
         cells_per_selection = len([c for c in all_cells if c.focused])
 
@@ -111,7 +121,7 @@ class UITestCase(unittest.TestCase):
                     continue
 
             self.assertTrue(cell.state_selected)
-            dogtail.rawinput.pressKey("Down")
+            dogtail.rawinput.pressKey(reverse and "Up" or "Down")
 
             if not win.active:
                 # Should mean an error dialog popped up
@@ -126,6 +136,36 @@ class UITestCase(unittest.TestCase):
                 self.assertTrue(cell.state_selected)
             else:
                 self.assertTrue(not cell.state_selected)
+
+    def _test_xmleditor_interactions(self, win, finish):
+        """
+        Helper to test some common XML editor interactions
+        """
+        # Click the tab, make a bogus XML edit
+        win.find("XML", "page tab").click()
+        xmleditor = win.find("XML editor")
+        xmleditor.text = xmleditor.text.replace("<", "<FOO", 1)
+
+        # Trying to click away should warn that there's unapplied changes
+        win.find("Details", "page tab").click()
+        alert = self.app.root.find("vmm dialog")
+        alert.find_fuzzy("changes will be lost")
+
+        # Select 'No', meaning don't abandon changes
+        alert.find("No", "push button").click()
+        check_in_loop(lambda: xmleditor.showing)
+
+        # Click the finish button, but our bogus change should trigger error
+        finish.click()
+        alert = self.app.root.find("vmm dialog")
+        alert.find_fuzzy("(xmlParseDoc|tag mismatch)")
+        alert.find("Close", "push button").click()
+
+        # Try unapplied changes again, this time abandon our changes
+        win.find("Details", "page tab").click()
+        alert = self.app.root.find("vmm dialog")
+        alert.find("Yes", "push button").click()
+        check_in_loop(lambda: not xmleditor.showing)
 
 
 class _FuzzyPredicate(dogtail.predicate.Predicate):
@@ -184,7 +224,7 @@ class _FuzzyPredicate(dogtail.predicate.Predicate):
                 return
             return True
         except Exception as e:
-            logging.debug(
+            log.debug(
                     "got predicate exception name=%s role=%s labeller=%s: %s",
                     self._name, self._roleName, self._labeller_text, e)
 
@@ -202,6 +242,16 @@ def check_in_loop(func, timeout=2):
         if (time.time() - start_time) > timeout:
             raise RuntimeError("Loop condition wasn't met")
         time.sleep(interval)
+
+
+def drag(win, x, y):
+    """
+    Drag a window to the x/y coordinates
+    """
+    win.click()
+    clickX = win.position[0] + win.size[0] / 2
+    clickY = win.position[1] + 10
+    dogtail.rawinput.drag((clickX, clickY), (x, y))
 
 
 class VMMDogtailNode(dogtail.tree.Node):
@@ -228,6 +278,8 @@ class VMMDogtailNode(dogtail.tree.Node):
         # function to check whether we can click a widget. We may click
         # anywhere within the widget and clicks outside the screen bounds are
         # silently ignored.
+        if self.roleName in ["menu", "menu item", "frame"]:
+            return True
         screen = Gdk.Screen.get_default()
         return (self.position[0] > 0 and
                 self.position[0] + self.size[0] < screen.get_width() and
@@ -271,16 +323,8 @@ class VMMDogtailNode(dogtail.tree.Node):
         screen, helps reduce some test flakiness
         """
         # pylint: disable=arguments-differ
-        loops = 10
-        for idx in range(10):
-            try:
-                dogtail.tree.Node.click(self, *args, **kwargs)
-                return
-            except ValueError as e:
-                if "mouse event at negative coordinates" in str(e):
-                    if idx + 1 == loops:
-                        raise
-                    time.sleep(.1)
+        check_in_loop(lambda: self.onscreen)
+        dogtail.tree.Node.click(self, *args, **kwargs)
 
     def bring_on_screen(self, key_name="Down", max_tries=100):
         """
@@ -300,7 +344,7 @@ class VMMDogtailNode(dogtail.tree.Node):
     # Widget search helpers #
     #########################
 
-    def find(self, name, roleName=None, labeller_text=None):
+    def find(self, name, roleName=None, labeller_text=None, check_active=True):
         """
         Search root for any widget that contains the passed name/role regex
         strings.
@@ -317,7 +361,7 @@ class VMMDogtailNode(dogtail.tree.Node):
         # Wait for independent windows to become active in the window manager
         # before we return them. This ensures the window is actually onscreen
         # so it sidesteps a lot of race conditions
-        if ret.roleName in ["frame", "dialog", "alert"]:
+        if ret.roleName in ["frame", "dialog", "alert"] and check_active:
             check_in_loop(lambda: ret.active)
         return ret
 
@@ -410,7 +454,8 @@ class VMMDogtailApp(object):
     def is_running(self):
         return bool(self._proc and self._proc.poll() is None)
 
-    def open(self, extra_opts=None, check_already_running=True, use_uri=True):
+    def open(self, extra_opts=None, check_already_running=True, use_uri=True,
+            window_name=None, xmleditor_enabled=False):
         extra_opts = extra_opts or []
 
         if tests.utils.clistate.debug:
@@ -424,18 +469,22 @@ class VMMDogtailApp(object):
         cmd = [sys.executable]
         if tests.utils.clistate.use_coverage:
             cmd += ["-m", "coverage", "run", "--append",
-                    "--omit", "/usr/*"]
+                    "--omit", "/usr/*",
+                    "--omit", "*/virtinst/*"]
         cmd += [os.path.join(os.getcwd(), "virt-manager"),
-                "--test-first-run", "--no-fork"]
+                "--test-first-run",
+                "--no-fork"]
         if use_uri:
             cmd += ["--connect", self.uri]
+        if xmleditor_enabled:
+            cmd += ["--test-options=xmleditor-enabled"]
         cmd += extra_opts
 
         if check_already_running:
             self.error_if_already_running()
         self._proc = subprocess.Popen(cmd, stdout=stdout, stderr=stderr)
         self._root = dogtail.tree.root.application("virt-manager")
-        self._topwin = self._root.find(None, "(frame|dialog|alert)")
+        self._topwin = self._root.find(window_name, "(frame|dialog|alert)")
 
     def stop(self):
         """
@@ -447,7 +496,7 @@ class VMMDogtailApp(object):
         try:
             self._proc.send_signal(signal.SIGINT)
         except Exception:
-            logging.debug("Error terminating process", exc_info=True)
+            log.debug("Error terminating process", exc_info=True)
             self._proc = None
             return
 
@@ -458,7 +507,7 @@ class VMMDogtailApp(object):
                 self._proc = None
                 return
 
-        logging.warning("App didn't exit gracefully from SIGINT. Killing...")
+        log.warning("App didn't exit gracefully from SIGINT. Killing...")
         try:
             self._proc.kill()
         finally:

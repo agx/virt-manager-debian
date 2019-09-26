@@ -1,10 +1,9 @@
 <pool type="disk">
   <name>pool-disk</name>
   <source>
-    <format type="dos"/>
     <device path="/some/source/path"/>
   </source>
   <target>
-    <path>/some/target/path</path>
+    <path>/dev</path>
   </target>
 </pool>

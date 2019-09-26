@@ -3,11 +3,11 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
 import os
 import unittest
 
 from virtinst import StoragePool, StorageVolume
+from virtinst import log
 
 from tests import utils
 
@@ -27,18 +27,20 @@ def createPool(conn, ptype, poolname=None, fmt=None, target_path=None,
     pool_inst.name = poolname
     pool_inst.type = ptype
 
-    if pool_inst.supports_property("hosts"):
+    if pool_inst.supports_hosts():
         hostobj = pool_inst.hosts.add_new()
         hostobj.name = "some.random.hostname"
-    if pool_inst.supports_property("source_path"):
+    if pool_inst.supports_source_path():
         pool_inst.source_path = source_path or "/some/source/path"
-    if pool_inst.supports_property("target_path"):
-        pool_inst.target_path = target_path or "/some/target/path"
-    if fmt and pool_inst.supports_property("format"):
+    if pool_inst.supports_target_path():
+        pool_inst.target_path = (target_path or
+                pool_inst.default_target_path())
+    if fmt and pool_inst.supports_format():
         pool_inst.format = fmt
-    if source_name and pool_inst.supports_property("source_name"):
-        pool_inst.source_name = source_name
-    if iqn and pool_inst.supports_property("iqn"):
+    if pool_inst.supports_source_name():
+        pool_inst.source_name = (source_name or
+                pool_inst.default_source_name())
+    if iqn and pool_inst.supports_iqn():
         pool_inst.iqn = iqn
 
     return poolCompare(pool_inst)
@@ -67,7 +69,7 @@ def createVol(conn, poolobj, volname=None, input_vol=None, clone_vol=None):
 
     # Format here depends on libvirt-1.2.0 and later
     if clone_vol and conn.local_libvirt_version() < 1002000:
-        logging.debug("skip clone compare")
+        log.debug("skip clone compare")
         return
 
     alloc = 5 * 1024 * 1024 * 1024
@@ -136,7 +138,7 @@ class TestStorage(unittest.TestCase):
         poolobj = createPool(self.conn,
                              StoragePool.TYPE_LOGICAL,
                              "pool-logical",
-                             target_path="/dev/pool-logical")
+                             source_name="pool-logical")
         invol = createVol(self.conn, poolobj)
         createVol(self.conn, poolobj,
                   volname=invol.name() + "input", input_vol=invol)
@@ -159,7 +161,8 @@ class TestStorage(unittest.TestCase):
     def testDiskPool(self):
         poolobj = createPool(self.conn,
                              StoragePool.TYPE_DISK,
-                             "pool-disk", fmt="dos")
+                             "pool-disk", fmt="auto",
+                             target_path="/some/target/path")
         invol = createVol(self.conn, poolobj)
         createVol(self.conn, poolobj,
                   volname=invol.name() + "input", input_vol=invol)
@@ -186,34 +189,37 @@ class TestStorage(unittest.TestCase):
                 StoragePool.TYPE_GLUSTER, "pool-gluster")
         removePool(poolobj)
 
+    def testRBDPool(self):
+        poolobj = createPool(self.conn,
+                StoragePool.TYPE_RBD, "pool-rbd")
+        removePool(poolobj)
 
-    ##############################
-    # Tests for pool-sources API #
-    ##############################
+    def testMisc(self):
+        # Misc coverage testing
+        vol = StorageVolume(self.conn)
+        self.assertTrue(vol.is_size_conflict()[0] is False)
 
-    def _enumerateCompare(self, name, pool_list):
-        for pool in pool_list:
-            pool.name = name + str(pool_list.index(pool))
-            poolobj = poolCompare(pool)
-            removePool(poolobj)
+        fullconn = utils.URIs.open_testdriver_cached()
+        glusterpool = fullconn.storagePoolLookupByName("gluster-pool")
+        diskpool = fullconn.storagePoolLookupByName("disk-pool")
+
+        glustervol = StorageVolume(fullconn)
+        glustervol.pool = glusterpool
+        self.assertTrue(glustervol.supports_format() is True)
+
+        diskvol = StorageVolume(fullconn)
+        diskvol.pool = diskpool
+        self.assertTrue(diskvol.supports_format() is False)
+
+        glusterpool.destroy()
+        StoragePool.ensure_pool_is_running(glusterpool)
+
+        # Check pool collision detection
+        self.assertEqual(
+                StoragePool.find_free_name(fullconn, "gluster-pool"),
+                "gluster-pool-1")
 
     def testEnumerateLogical(self):
-        name = "pool-logical-list"
         lst = StoragePool.pool_list_from_sources(self.conn,
                                                  StoragePool.TYPE_LOGICAL)
-        self._enumerateCompare(name, lst)
-
-    def testEnumerateNetFS(self):
-        name = "pool-netfs-list"
-        host = "example.com"
-        lst = StoragePool.pool_list_from_sources(self.conn,
-                                                 StoragePool.TYPE_NETFS,
-                                                 host=host)
-        self._enumerateCompare(name, lst)
-
-    def testEnumerateiSCSI(self):
-        host = "example.com"
-        lst = StoragePool.pool_list_from_sources(self.conn,
-                                                 StoragePool.TYPE_ISCSI,
-                                                 host=host)
-        self.assertTrue(len(lst) == 0)
+        self.assertEqual(lst, ["testvg1", "testvg2"])

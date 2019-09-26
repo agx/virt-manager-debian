@@ -1,5 +1,5 @@
 <domain type="kvm">
-  <name>foobar</name>
+  <name>fedora22</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
@@ -8,7 +8,7 @@
   </metadata>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
-  <vcpu>1</vcpu>
+  <vcpu>2</vcpu>
   <os>
     <type arch="aarch64" machine="virt">hvm</type>
     <loader readonly="yes" type="pflash">/usr/share/AAVMF/AAVMF_CODE.fd</loader>
@@ -23,8 +23,8 @@
     <emulator>/usr/bin/qemu-system-aarch64</emulator>
     <disk type="file" device="disk">
       <driver name="qemu" type="qcow2"/>
-      <source file="/var/lib/libvirt/images/foobar.qcow2"/>
-      <target dev="sda" bus="scsi"/>
+      <source file="/var/lib/libvirt/images/disk.qcow2"/>
+      <target dev="vda" bus="virtio"/>
     </disk>
     <controller type="scsi" index="0" model="virtio-scsi">
       <address type="pci"/>
@@ -41,6 +41,7 @@
       <source mode="bind"/>
       <target type="virtio" name="org.qemu.guest_agent.0"/>
     </channel>
+    <memballoon model="virtio"/>
     <rng model="virtio">
       <backend model="random">/dev/urandom</backend>
     </rng>

@@ -4,7 +4,6 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
 import os
 
 from gi.repository import Gtk
@@ -13,11 +12,13 @@ from gi.repository import Gdk
 import virtinst
 from virtinst import Cloner
 from virtinst import DeviceInterface
+from virtinst import log
 
-from . import uiutil
+from .lib import uiutil
 from .baseclass import vmmGObjectUI
 from .asyncjob import vmmAsyncJob
 from .storagebrowse import vmmStorageBrowser
+from .object.storagepool import vmmStoragePool
 
 STORAGE_COMBO_CLONE = 0
 STORAGE_COMBO_SHARE = 1
@@ -64,6 +65,12 @@ def can_we_clone(conn, vol, path):
         elif not os.path.exists(path):
             msg = _("Path does not exist.")
 
+    else:
+        pool = vol.get_parent_pool()
+        if not vmmStoragePool.supports_volume_creation(
+                pool.get_type(), clone=True):
+            msg = _("Cannot clone %s storage pool.") % pool.get_type()
+
     if msg:
         ret = False
 
@@ -74,6 +81,7 @@ def do_we_default(conn, vol, path, ro, shared, devtype):
     """ Returns (do we clone by default?, info string if not)"""
     ignore = conn
     info = ""
+    can_default = True
 
     def append_str(str1, str2, delim=", "):
         if not str2:
@@ -94,17 +102,14 @@ def do_we_default(conn, vol, path, ro, shared, devtype):
 
     if vol:
         pool_type = vol.get_parent_pool().get_type()
-        if pool_type == virtinst.StoragePool.TYPE_SCSI:
-            info = append_str(info, _("SCSI device"))
-        elif pool_type == virtinst.StoragePool.TYPE_DISK:
+        if pool_type == virtinst.StoragePool.TYPE_DISK:
             info = append_str(info, _("Disk device"))
-        elif pool_type == virtinst.StoragePool.TYPE_ISCSI:
-            info = append_str(info, _("iSCSI share"))
+            can_default = False
 
     if shared:
         info = append_str(info, _("Shareable"))
 
-    return (not info, info)
+    return (not info, info, can_default)
 
 
 class vmmCloneVM(vmmGObjectUI):
@@ -171,7 +176,7 @@ class vmmCloneVM(vmmGObjectUI):
         return None
 
     def show(self, parent, vm):
-        logging.debug("Showing clone wizard")
+        log.debug("Showing clone wizard")
         self._set_vm(vm)
         self.reset_state()
         self.topwin.set_transient_for(parent)
@@ -179,7 +184,7 @@ class vmmCloneVM(vmmGObjectUI):
         self.topwin.present()
 
     def close(self, ignore1=None, ignore2=None):
-        logging.debug("Closing clone wizard")
+        log.debug("Closing clone wizard")
         self.change_mac_close()
         self.change_storage_close()
         self.topwin.hide()
@@ -389,8 +394,8 @@ class vmmCloneVM(vmmGObjectUI):
             skip_targets.remove(force_target)
 
             vol = self.conn.get_vol_by_path(path)
-            default, definfo = do_we_default(self.conn, vol, path, ro, shared,
-                                             devtype)
+            default, definfo, can_default = do_we_default(self.conn, vol, path,
+                                                          ro, shared, devtype)
 
             def storage_add(failinfo=None):
                 # pylint: disable=cell-var-from-loop
@@ -412,7 +417,7 @@ class vmmCloneVM(vmmGObjectUI):
                 cd.skip_target = skip_targets
                 cd.setup_original()
             except Exception as e:
-                logging.exception("Disk target '%s' caused clone error",
+                log.exception("Disk target '%s' caused clone error",
                                   force_target)
                 storage_add(str(e))
                 continue
@@ -425,7 +430,7 @@ class vmmCloneVM(vmmGObjectUI):
             storage_row[STORAGE_INFO_CAN_CLONE] = True
 
             # If we cannot create default clone_path don't even try to do that
-            if not default:
+            if not can_default:
                 storage_add()
                 continue
 
@@ -433,13 +438,13 @@ class vmmCloneVM(vmmGObjectUI):
                 # Generate disk path, make sure that works
                 clone_path = self.generate_clone_path_name(path)
 
-                logging.debug("Original path: %s\nGenerated clone path: %s",
+                log.debug("Original path: %s\nGenerated clone path: %s",
                               path, clone_path)
 
                 cd.clone_paths = clone_path
                 size = cd.original_disks[0].get_size()
             except Exception as e:
-                logging.exception("Error setting generated path '%s'",
+                log.exception("Error setting generated path '%s'",
                                   clone_path)
                 storage_add(str(e))
 
@@ -476,7 +481,7 @@ class vmmCloneVM(vmmGObjectUI):
                 newpath = self.generate_clone_path_name(origpath, newname)
                 row[STORAGE_INFO_NEW_PATH] = newpath
             except Exception as e:
-                logging.debug("Generating new path from clone name failed: %s",
+                log.debug("Generating new path from clone name failed: %s",
                               str(e))
 
     def build_storage_entry(self, disk, storage_box):
@@ -600,7 +605,7 @@ class vmmCloneVM(vmmGObjectUI):
             self.clone_design.clone_paths = new_disks
         except Exception as e:
             # Just log the error and go on. The UI will fail later if needed
-            logging.debug("Error setting clone_paths: %s", str(e))
+            log.debug("Error setting clone_paths: %s", str(e))
 
         # If any storage cannot be cloned or shared, don't allow cloning
         clone = True
@@ -835,35 +840,30 @@ class vmmCloneVM(vmmGObjectUI):
         progWin.run()
 
     def _async_clone(self, asyncjob):
-        try:
-            self.vm.set_cloning(True)
-            meter = asyncjob.get_meter()
+        meter = asyncjob.get_meter()
 
-            refresh_pools = []
-            for disk in self.clone_design.clone_disks:
-                if not disk.wants_storage_creation():
-                    continue
+        refresh_pools = []
+        for disk in self.clone_design.clone_disks:
+            if not disk.wants_storage_creation():
+                continue
 
-                pool = disk.get_parent_pool()
-                if not pool:
-                    continue
+            pool = disk.get_parent_pool()
+            if not pool:
+                continue
 
-                poolname = pool.name()
-                if poolname not in refresh_pools:
-                    refresh_pools.append(poolname)
+            poolname = pool.name()
+            if poolname not in refresh_pools:
+                refresh_pools.append(poolname)
 
-            self.clone_design.start_duplicate(meter)
+        self.clone_design.start_duplicate(meter)
 
-            for poolname in refresh_pools:
-                try:
-                    pool = self.conn.get_pool(poolname)
-                    self.idle_add(pool.refresh)
-                except Exception:
-                    logging.debug("Error looking up pool=%s for refresh after "
+        for poolname in refresh_pools:
+            try:
+                pool = self.conn.get_pool(poolname)
+                self.idle_add(pool.refresh)
+            except Exception:
+                log.debug("Error looking up pool=%s for refresh after "
                         "VM clone.", poolname, exc_info=True)
-
-        finally:
-            self.vm.set_cloning(False)
 
     def change_storage_browse(self, ignore):
         def callback(src_ignore, txt):

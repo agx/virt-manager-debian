@@ -3,30 +3,20 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
 import os
 import re
 import sys
-import time
-import traceback
 import unittest
 
 from tests import utils
 
+import virtinst.progress
+from virtinst import Installer
 from virtinst import Guest
-from virtinst import OSDB
-from virtinst import urldetect
-from virtinst import urlfetcher
-from virtinst import util
-from virtinst.urldetect import ALTLinuxDistro
-from virtinst.urldetect import CentOSDistro
-from virtinst.urldetect import DebianDistro
-from virtinst.urldetect import FedoraDistro
-from virtinst.urldetect import GenericTreeinfoDistro
-from virtinst.urldetect import MandrivaDistro
-from virtinst.urldetect import RHELDistro
-from virtinst.urldetect import SuseDistro
-from virtinst.urldetect import UbuntuDistro
+from virtinst import log
+
+# These are all functional tests
+os.environ.pop("VIRTINST_TEST_SUITE", None)
 
 
 class _URLTestData(object):
@@ -35,13 +25,15 @@ class _URLTestData(object):
     Data is stored in test_urls.ini
     """
     def __init__(self, name, url, detectdistro,
-            testxen, testshortcircuit, kernelarg):
+            testxen, testshortcircuit, kernelarg, kernelregex,
+            skip_libosinfo):
         self.name = name
         self.url = url
         self.detectdistro = detectdistro
         self.arch = self._find_arch()
-        self.distroclass = self._distroclass_for_name(self.name)
         self.kernelarg = kernelarg
+        self.kernelregex = kernelregex
+        self.skip_libosinfo = skip_libosinfo
 
         self.testxen = testxen
 
@@ -49,30 +41,6 @@ class _URLTestData(object):
         # so it can short circuit the lookup checks. Speeds up the tests
         # and exercises the shortcircuit infrastructure
         self.testshortcircuit = testshortcircuit
-
-    def _distroclass_for_name(self, name):
-        # Map the test case name to the expected urldetect distro
-        # class we should be detecting
-        if "fedora" in name:
-            return FedoraDistro
-        if "centos" in name:
-            return CentOSDistro
-        if "rhel" in name:
-            return RHELDistro
-        if "suse" in name:
-            return SuseDistro
-        if "debian" in name:
-            return DebianDistro
-        if "ubuntu" in name:
-            return UbuntuDistro
-        if "mageia" in name:
-            return MandrivaDistro
-        if "altlinux" in name:
-            return ALTLinuxDistro
-        if "generic" in name:
-            return GenericTreeinfoDistro
-        raise RuntimeError("name=%s didn't map to any distro class. Extend "
-            "_distroclass_for_name" % name)
 
     def _find_arch(self):
         if ("i686" in self.url or
@@ -98,168 +66,145 @@ hvmguest.os.os_type = "hvm"
 xenguest = Guest(testconn)
 xenguest.os.os_type = "xen"
 
-meter = util.make_meter(quiet=not utils.clistate.debug)
+meter = virtinst.progress.make_meter(quiet=not utils.clistate.debug)
 
-
-def _storeForDistro(fetcher, guest):
-    """
-    Helper to lookup the Distro store object, basically detecting the
-    URL. Handle occasional proxy errors
-    """
-    for ignore in range(0, 10):
-        try:
-            return urldetect.getDistroStore(guest, fetcher)
-        except Exception as e:
-            if "502" in str(e):
-                logging.debug("Caught proxy error: %s", str(e))
-                time.sleep(.5)
-                continue
-            raise
-    raise  # pylint: disable=misplaced-bare-raise
+if utils.clistate.url_skip_libosinfo:
+    os.environ["VIRTINST_TEST_SUITE_FORCE_LIBOSINFO"] = "0"
+elif utils.clistate.url_force_libosinfo:
+    os.environ["VIRTINST_TEST_SUITE_FORCE_LIBOSINFO"] = "1"
 
 
 def _sanitize_osdict_name(detectdistro):
-    """
-    Try to handle working with out of date osinfo-db data. Like if
-    checking distro FedoraXX but osinfo-db latest Fedora is
-    FedoraXX-1, convert to use that
-    """
-    if not detectdistro:
-        return detectdistro
-
-    if detectdistro == "testsuite-fedora-rawhide":
-        # Special value we use in the test suite to always return the latest
-        # fedora when checking rawhide URL
-        return OSDB.latest_fedora_version()
-
-    if re.match("fedora[0-9]+", detectdistro):
-        if not OSDB.lookup_os(detectdistro):
-            ret = OSDB.latest_fedora_version()
-            print("\nConverting detectdistro=%s to latest value=%s" %
-                    (detectdistro, ret))
-            return ret
-
+    if detectdistro in ["none", "None", None]:
+        return None
     return detectdistro
 
 
-def _testURL(fetcher, testdata):
-    """
-    Test that our URL detection logic works for grabbing kernels
-    """
+def _skipmsg(testdata):
+    is_iso = testdata.url.lower().endswith(".iso")
+    distname = testdata.name
+
+    if utils.clistate.url_iso_only and not is_iso:
+        return "skipping non-iso test"
+    elif utils.clistate.url_only and is_iso:
+        return "skipping non-url test"
+
+    if not utils.clistate.url_force_libosinfo:
+        return
+    if testdata.skip_libosinfo:
+        return "force-libosinfo requested but test has skip_libosinfo set"
+    if is_iso:
+        return
+
+    # If --force-libosinfo used, don't run tests that we know libosinfo
+    # can't detect, non-treeinfo URLs basically
+    if ("ubuntu" in distname or
+        "debian" in distname or
+        "mageia" in distname or
+        "opensuse10" in distname or
+        "opensuse11" in distname or
+        "opensuse12" in distname or
+        "opensuse13" in distname or
+        "opensuseleap-42" in distname or
+        "generic" in distname):
+        return "skipping known busted libosinfo URL tests"
+
+
+def _testGuest(testdata, guest):
     distname = testdata.name
     arch = testdata.arch
-    detectdistro = _sanitize_osdict_name(testdata.detectdistro)
+    url = testdata.url
+    checkdistro = testdata.detectdistro
 
-    hvmguest.os.arch = arch
-    xenguest.os.arch = arch
+    guest.os.arch = arch
     if testdata.testshortcircuit:
-        hvmguest.set_os_name(detectdistro)
-        xenguest.set_os_name(detectdistro)
-    else:
-        hvmguest.set_os_name("generic")
-        xenguest.set_os_name("generic")
+        guest.set_os_name(checkdistro)
 
+    msg = _skipmsg(testdata)
+    if msg:
+        raise unittest.SkipTest(msg)
+
+    installer = Installer(guest.conn, location=url)
     try:
-        hvmstore = _storeForDistro(fetcher, hvmguest)
-        xenstore = None
-        if testdata.testxen:
-            xenstore = _storeForDistro(fetcher, xenguest)
-    except Exception:
-        raise AssertionError("\nFailed to detect URLDistro class:\n"
+        detected_distro = installer.detect_distro(guest)
+    except Exception as e:
+        msg = ("\nFailed in installer detect_distro():\n"
             "name   = %s\n"
-            "url    = %s\n\n%s" %
-            (distname, fetcher.location, "".join(traceback.format_exc())))
+            "url    = %s\n\n%s" % (distname, url, str(e)))
+        raise type(e)(msg).with_traceback(sys.exc_info()[2]) from None
 
-    for s in [hvmstore, xenstore]:
-        if (s and testdata.distroclass and
-            not isinstance(s, testdata.distroclass)):
-            raise AssertionError("Unexpected URLDistro class:\n"
-                "found  = %s\n"
-                "expect = %s\n\n"
-                "testname = %s\n"
-                "url      = %s" %
-                (s.__class__, testdata.distroclass, distname,
-                 fetcher.location))
+    # Make sure the stores are reporting correct distro name/variant
+    if checkdistro != detected_distro:
+        raise AssertionError(
+            "Detected OS did not match expected values:\n"
+            "found   = %s\n"
+            "expect  = %s\n\n"
+            "testname = %s\n"
+            "url      = %s\n" %
+            (detected_distro, checkdistro, distname, url))
 
-        # Make sure the stores are reporting correct distro name/variant
-        if (s and detectdistro and
-            detectdistro != s.get_osdict_info()):
-            raise AssertionError(
-                "Detected OS did not match expected values:\n"
-                "found   = %s\n"
-                "expect  = %s\n\n"
-                "testname = %s\n"
-                "url      = %s\n"
-                "store    = %s" %
-                (s.get_osdict_info(), detectdistro,
-                 distname, fetcher.location, testdata.distroclass))
+    if guest is xenguest:
+        return
+
 
     # Do this only after the distro detection, since we actually need
     # to fetch files for that part
+    treemedia = installer._treemedia  # pylint: disable=protected-access
+    fetcher = treemedia._cached_fetcher  # pylint: disable=protected-access
     def fakeAcquireFile(filename):
-        logging.debug("Fake acquiring %s", filename)
-        return fetcher.hasFile(filename)
+        log.debug("Fake acquiring %s", filename)
+        return filename
     fetcher.acquireFile = fakeAcquireFile
 
     # Fetch regular kernel
-    kernel, initrd, kernelargs = hvmstore.acquireKernel()
-    if kernel is not True or initrd is not True:
-        AssertionError("%s-%s: hvm kernel fetching failed" %
-                       (distname, arch))
+    kernel, initrd, kernelargs = treemedia.prepare(guest, meter, None)
+    dummy = initrd
+    if testdata.kernelregex and not re.match(testdata.kernelregex, kernel):
+        raise AssertionError("kernel=%s but testdata.kernelregex='%s'" %
+                (kernel, testdata.kernelregex))
 
     if testdata.kernelarg == "None":
         if bool(kernelargs):
             raise AssertionError("kernelargs='%s' but testdata.kernelarg='%s'"
                     % (kernelargs, testdata.kernelarg))
     elif testdata.kernelarg:
-        if not kernelargs.startswith(testdata.kernelarg):
+        if testdata.kernelarg != str(kernelargs).split("=")[0]:
             raise AssertionError("kernelargs='%s' but testdata.kernelarg='%s'"
                     % (kernelargs, testdata.kernelarg))
 
-    # Fetch xen kernel
-    if xenstore:
-        kernel, initrd, kernelargs = xenstore.acquireKernel()
-        if kernel is not True or initrd is not True:
-            raise AssertionError("%s-%s: xen kernel fetching" %
-                                 (distname, arch))
 
-
-def _fetchWrapper(url, cb):
-    fetcher = urlfetcher.fetcherForURI(url, "/tmp", meter)
-    try:
-        fetcher.prepareLocation()
-        return cb(fetcher)
-    finally:
-        fetcher.cleanupLocation()
-
-
-def _testURLWrapper(testdata):
-    os.environ.pop("VIRTINST_TEST_SUITE", None)
-
-    logging.debug("Testing for media arch=%s distroclass=%s",
-                  testdata.arch, testdata.distroclass)
-
+def _testURL(testdata):
+    """
+    Test that our URL detection logic works for grabbing kernels
+    """
     sys.stdout.write("\nTesting %-25s " % testdata.name)
     sys.stdout.flush()
 
-    def cb(fetcher):
-        return _testURL(fetcher, testdata)
-    return _fetchWrapper(testdata.url, cb)
+    testdata.detectdistro = _sanitize_osdict_name(testdata.detectdistro)
+    _testGuest(testdata, hvmguest)
+    if testdata.testxen:
+        _testGuest(testdata, xenguest)
 
 
 # Register tests to be picked up by unittest
 class URLTests(unittest.TestCase):
     def test001BadURL(self):
         badurl = "http://aksdkakskdfa-idontexist.com/foo/tree"
-        def cb(fetcher):
-            return _storeForDistro(fetcher, hvmguest)
 
-        try:
-            _fetchWrapper(badurl, cb)
-            raise AssertionError("Expected URL failure")
-        except ValueError as e:
-            self.assertTrue("maybe you mistyped" in str(e))
+        with self.assertRaises(ValueError) as cm:
+            installer = Installer(hvmguest.conn, location=badurl)
+            installer.detect_distro(hvmguest)
+        self.assertTrue("maybe you mistyped" in str(cm.exception))
 
+        # Non-existent cdrom fails
+        with self.assertRaises(ValueError) as cm:
+            installer = Installer(hvmguest.conn, cdrom="/not/exist/foobar")
+            self.assertEqual(None, installer.detect_distro(hvmguest))
+        self.assertTrue("non-existent path" in str(cm.exception))
+
+        # Ensure existing but non-distro file doesn't error
+        installer = Installer(hvmguest.conn, cdrom="/dev/null")
+        self.assertEqual(None, installer.detect_distro(hvmguest))
 
 
 def _make_tests():
@@ -275,20 +220,23 @@ def _make_tests():
     urls = {}
     for name in cfg.sections():
         vals = dict(cfg.items(name))
-        d = _URLTestData(name, vals["url"],
-                vals.get("distro", None),
+        url = vals["url"]
+
+        if "distro" not in vals:
+            print("url needs an explicit distro= value: %s" % url)
+            sys.exit(1)
+        d = _URLTestData(name, url, vals["distro"],
                 vals.get("testxen", "0") == "1",
                 vals.get("testshortcircuit", "0") == "1",
-                vals.get("kernelarg", None))
+                vals.get("kernelarg", None),
+                vals.get("kernelregex", None),
+                vals.get("skiplibosinfo", "0") == "1")
         urls[d.name] = d
 
-    keys = list(urls.keys())
-    keys.sort()
-    for key in keys:
-        testdata = urls[key]
+    for key, testdata in sorted(urls.items()):
         def _make_wrapper(d):
-            return lambda _self: _testURLWrapper(d)
-        setattr(URLTests, "testURL%s" % key.replace("-", "_"),
-                _make_wrapper(testdata))
+            return lambda _self: _testURL(d)
+        methodname = "testURL%s" % key.replace("-", "_")
+        setattr(URLTests, methodname, _make_wrapper(testdata))
 
 _make_tests()

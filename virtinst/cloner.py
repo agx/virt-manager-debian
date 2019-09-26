@@ -7,16 +7,18 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
 import re
 import os
 
 import libvirt
 
-from . import util
+from . import generatename
+from . import progress
+from . import xmlutil
 from .guest import Guest
 from .devices import DeviceInterface
 from .devices import DeviceDisk
+from .logger import log
 from .storage import StorageVolume
 from .devices import DeviceChannel
 
@@ -57,12 +59,13 @@ class Cloner(object):
 
         # Default clone policy for back compat: don't clone readonly,
         # shareable, or empty disks
-        self._clone_policy = [self.CLONE_POLICY_NO_READONLY,
-                              self.CLONE_POLICY_NO_SHAREABLE,
-                              self.CLONE_POLICY_NO_EMPTYMEDIA]
+        self._clone_policy = []
+        self.clone_policy = [self.CLONE_POLICY_NO_READONLY,
+                             self.CLONE_POLICY_NO_SHAREABLE,
+                             self.CLONE_POLICY_NO_EMPTYMEDIA]
 
         # Generate a random UUID at the start
-        self.clone_uuid = util.generate_uuid(conn)
+        self.clone_uuid = Guest.generate_uuid(conn)
 
 
     ##############
@@ -79,8 +82,6 @@ class Cloner(object):
 
     # XML of the original guest
     def set_original_xml(self, val):
-        if not isinstance(val, str):
-            raise ValueError(_("Original xml must be a string."))
         self._original_xml = val
         self._original_guest = Guest(self.conn,
                                      parsexml=self._original_xml).name
@@ -112,7 +113,7 @@ class Cloner(object):
     # Paths to use for the new disk locations
     def set_clone_paths(self, paths):
         disklist = []
-        for path in util.listify(paths):
+        for path in xmlutil.listify(paths):
             try:
                 device = DeviceDisk.DEVICE_DISK
                 if not path:
@@ -131,7 +132,7 @@ class Cloner(object):
                 disk.validate()
                 disklist.append(disk)
             except Exception as e:
-                logging.debug("Error setting clone path.", exc_info=True)
+                log.debug("Error setting clone path.", exc_info=True)
                 raise ValueError(_("Could not use path '%s' for cloning: %s") %
                                  (path, str(e)))
 
@@ -147,7 +148,7 @@ class Cloner(object):
 
     # MAC address for the new guest clone
     def set_clone_macs(self, mac):
-        maclist = util.listify(mac)
+        maclist = xmlutil.listify(mac)
         for m in maclist:
             DeviceInterface.is_conflict_net(self.conn, m)
         self._clone_macs = maclist
@@ -213,8 +214,6 @@ class Cloner(object):
     # List of policy rules for determining which vm disks to clone.
     # See CLONE_POLICY_*
     def set_clone_policy(self, policy_list):
-        if not isinstance(policy_list, list):
-            raise ValueError(_("Cloning policy must be a list of rules."))
         self._clone_policy = policy_list
     def get_clone_policy(self):
         return self._clone_policy
@@ -252,7 +251,7 @@ class Cloner(object):
         """
         Validate and setup all parameters needed for the original (cloned) VM
         """
-        logging.debug("Validating original guest parameters")
+        log.debug("Validating original guest parameters")
 
         if self.original_guest is None and self.original_xml is None:
             raise RuntimeError(_("Original guest name or xml is required."))
@@ -262,7 +261,7 @@ class Cloner(object):
             flags = libvirt.VIR_DOMAIN_XML_SECURE
             self.original_xml = self.original_dom.XMLDesc(flags)
 
-        logging.debug("Original XML:\n%s", self.original_xml)
+        log.debug("Original XML:\n%s", self.original_xml)
 
         self._guest = Guest(self.conn, parsexml=self.original_xml)
         self._guest.id = None
@@ -270,9 +269,9 @@ class Cloner(object):
         # Pull clonable storage info from the original xml
         self._original_disks = self._get_original_disks_info()
 
-        logging.debug("Original paths: %s",
+        log.debug("Original paths: %s",
                       [d.path for d in self.original_disks])
-        logging.debug("Original sizes: %s",
+        log.debug("Original sizes: %s",
                       [d.get_size() for d in self.original_disks])
 
         # If domain has devices to clone, it must be 'off' or 'paused'
@@ -330,6 +329,8 @@ class Cloner(object):
                 vol_install.input_vol = orig_disk.get_vol_object()
                 vol_install.sync_input_vol(only_format=True)
 
+            if not self.clone_sparse:
+                vol_install.allocation = vol_install.capacity
             vol_install.reflink = self.reflink
             clone_disk.set_vol_install(vol_install)
         elif orig_disk.path:
@@ -344,16 +345,15 @@ class Cloner(object):
             self.clone_nvram = os.path.join(nvram_dir,
                                             "%s_VARS.fd" % self._clone_name)
 
+        old_nvram = DeviceDisk(self.conn)
+        old_nvram.path = self._guest.os.nvram
+
         nvram = DeviceDisk(self.conn)
         nvram.path = self.clone_nvram
-        if (not self.preserve_dest_disks and
-            nvram.wants_storage_creation()):
 
-            old_nvram = DeviceDisk(self.conn)
-            old_nvram.path = self._guest.os.nvram
-            if not old_nvram.get_vol_object():
-                raise RuntimeError(_("Path does not exist: %s") %
-                                     old_nvram.path)
+        if (not self.preserve_dest_disks and
+            nvram.wants_storage_creation() and
+            old_nvram.get_vol_object()):
 
             nvram_install = DeviceDisk.build_vol_install(
                     self.conn, os.path.basename(nvram.path),
@@ -363,8 +363,9 @@ class Cloner(object):
             nvram_install.reflink = self.reflink
             nvram.set_vol_install(nvram_install)
 
-        nvram.validate()
-        self._nvram_disk = nvram
+            nvram.validate()
+            self._nvram_disk = nvram
+
         self._guest.os.nvram = nvram.path
 
 
@@ -372,7 +373,7 @@ class Cloner(object):
         """
         Validate and set up all parameters needed for the new (clone) VM
         """
-        logging.debug("Validating clone parameters.")
+        log.debug("Validating clone parameters.")
 
         self._clone_xml = self.original_xml
 
@@ -382,14 +383,14 @@ class Cloner(object):
                                {"passed": len(self.clone_disks),
                                 "need": len(self.original_disks)})
 
-        logging.debug("Clone paths: %s", [d.path for d in self.clone_disks])
+        log.debug("Clone paths: %s", [d.path for d in self.clone_disks])
 
         self._guest.name = self._clone_name
         self._guest.uuid = self._clone_uuid
         self._clone_macs.reverse()
         for dev in self._guest.devices.graphics:
             if dev.port and dev.port != -1:
-                logging.warning(_("Setting the graphics device port to autoport, "
+                log.warning(_("Setting the graphics device port to autoport, "
                                "in order to avoid conflicting."))
                 dev.port = -1
 
@@ -424,24 +425,24 @@ class Cloner(object):
         # new guest name
         for channel in self._guest.devices.channel:
             if (channel.type == DeviceChannel.TYPE_UNIX and
-                channel.target_name and channel.source_path and
-                channel.target_name in channel.source_path):
-                channel.source_path = None
+                channel.target_name and channel.source.path and
+                channel.target_name in channel.source.path):
+                channel.source.path = None
 
         if self._guest.os.nvram:
             self._prepare_nvram()
 
         # Save altered clone xml
         self._clone_xml = self._guest.get_xml()
-        logging.debug("Clone guest xml is\n%s", self._clone_xml)
+        log.debug("Clone guest xml is\n%s", self._clone_xml)
 
     def start_duplicate(self, meter=None):
         """
         Actually perform the duplication: cloning disks if needed and defining
         the new clone xml.
         """
-        logging.debug("Starting duplicate.")
-        meter = util.ensure_meter(meter)
+        log.debug("Starting duplicate.")
+        meter = progress.ensure_meter(meter)
 
         dom = None
         try:
@@ -458,12 +459,12 @@ class Cloner(object):
                 if self._nvram_disk:
                     self._nvram_disk.build_storage(meter)
         except Exception as e:
-            logging.debug("Duplicate failed: %s", str(e))
+            log.debug("Duplicate failed: %s", str(e))
             if dom:
                 dom.undefine()
             raise
 
-        logging.debug("Duplicating finished.")
+        log.debug("Duplicating finished.")
 
     def generate_clone_disk_path(self, origpath, newname=None):
         origname = self.original_guest
@@ -489,30 +490,32 @@ class Cloner(object):
             clonebase = newname
 
         clonebase = os.path.join(dirname, clonebase)
-        return util.generate_name(
-                    clonebase,
-                    lambda p: DeviceDisk.path_definitely_exists(self.conn, p),
-                    suffix,
-                    lib_collision=False)
+        def cb(p):
+            return DeviceDisk.path_definitely_exists(self.conn, p)
+        return generatename.generate_name(clonebase, cb, suffix=suffix)
 
-    def generate_clone_name(self):
+    def generate_clone_name(self, basename=None):
         # If the orig name is "foo-clone", we don't want the clone to be
         # "foo-clone-clone", we want "foo-clone1"
-        basename = self.original_guest
+        if not basename:
+            basename = self.original_guest
 
         match = re.search("-clone[1-9]*$", basename)
         start_num = 1
+        force_num = False
         if match:
             num_match = re.search("[1-9]+$", match.group())
             if num_match:
-                start_num = int(str(num_match.group()))
+                start_num = int(str(num_match.group())) + 1
+                force_num = True
             basename = basename.replace(match.group(), "")
 
+        def cb(n):
+            return generatename.check_libvirt_collision(
+                self.conn.lookupByName, n)
         basename = basename + "-clone"
-        return util.generate_name(basename,
-                                  self.conn.lookupByName,
-                                  sep="", start_num=start_num)
-
+        return generatename.generate_name(basename, cb,
+                sep="", start_num=start_num, force_num=force_num)
 
 
     ############################
@@ -552,7 +555,7 @@ class Cloner(object):
                         raise ValueError(_("Disk path '%s' does not exist.") %
                                          newd.path)
             except Exception as e:
-                logging.debug("Exception creating clone disk objects",
+                log.debug("Exception creating clone disk objects",
                     exc_info=True)
                 raise ValueError(_("Could not determine original disk "
                                    "information: %s" % str(e)))
@@ -564,9 +567,6 @@ class Cloner(object):
     # if it should be cloned
     # Cloning policy based on 'clone_policy', 'force_target' and 'skip_target'
     def _do_we_clone_device(self, disk):
-        if not disk.target:
-            raise ValueError(_("XML has no 'dev' attribute in disk target"))
-
         if disk.target in self.skip_target:
             return False
 

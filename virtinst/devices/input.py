@@ -1,6 +1,5 @@
 #
 # Copyright 2009, 2013 Red Hat, Inc.
-# Cole Robinson <crobinso@redhat.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
@@ -20,16 +19,6 @@ class DeviceInput(Device):
     BUS_USB = "usb"
     BUS_VIRTIO = "virtio"
     BUS_XEN = "xen"
-
-    @staticmethod
-    def pretty_name(typ, bus):
-        if typ == "tablet" and bus == "usb":
-            return _("EvTouch USB Graphics Tablet")
-
-        if bus in ["usb", "ps2"]:
-            return _("Generic") + (" %s %s" %
-                (bus.upper(), str(typ).capitalize()))
-        return "%s %s" % (str(bus).capitalize(), str(typ).capitalize())
 
 
     type = XMLProperty("./@type")

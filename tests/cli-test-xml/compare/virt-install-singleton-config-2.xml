@@ -1,6 +1,7 @@
 <domain type="kvm">
-  <name>foobar</name>
+  <name>fedora</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
+  <genid>e9392370-2917-565e-692b-d057f46512d6</genid>
   <title>my-title</title>
   <description>my-description</description>
   <metadata>
@@ -8,6 +9,11 @@
       <libosinfo:os id="http://fedoraproject.org/fedora/unknown"/>
     </libosinfo:libosinfo>
   </metadata>
+  <iothreads>2</iothreads>
+  <iothreadids>
+    <iothread id="1"/>
+    <iothread id="2"/>
+  </iothreadids>
   <memory>1048576</memory>
   <currentMemory>524288</currentMemory>
   <blkiotune>
@@ -27,14 +33,18 @@
     <nosharepages/>
     <locked/>
     <hugepages>
-      <page size="1" unit="G" nodeset="1,2-5"/>
+      <page size="12" unit="G" nodeset="0,1"/>
+      <page size="1234" unit="MB" nodeset="2"/>
     </hugepages>
     <access mode="shared"/>
-    <source type="anonymous"/>
+    <source type="file"/>
+    <discard/>
+    <allocation mode="immediate"/>
   </memoryBacking>
-  <vcpu>4</vcpu>
+  <vcpu>9</vcpu>
   <numatune>
     <memory mode="strict" nodeset="1-3,4"/>
+    <memnode cellid="1" mode="strict" nodeset="2"/>
   </numatune>
   <resource>
     <partition>/virtualmachines/production</partition>
@@ -63,15 +73,29 @@
       <entry name="asset">Tag</entry>
       <entry name="location">Chassis</entry>
     </baseBoard>
+    <chassis>
+      <entry name="manufacturer">Chassis Corp.</entry>
+      <entry name="version">4.0</entry>
+      <entry name="serial">1234chassis</entry>
+      <entry name="asset">chasset</entry>
+      <entry name="sku">chassku</entry>
+    </chassis>
+    <oemStrings>
+      <entry>test0</entry>
+      <entry>test1</entry>
+      <entry>complicated parsing, foo=bar</entry>
+    </oemStrings>
   </sysinfo>
   <bootloader>/new/bootld</bootloader>
-  <os>
+  <os firmware="efi">
     <type arch="x86_64" machine="q35">hvm</type>
     <loader>/foo/bar</loader>
     <boot dev="network"/>
     <smbios mode="sysinfo"/>
     <bootmenu enable="no"/>
     <bios rebootTimeout="3"/>
+    <initarg>foo=bar</initarg>
+    <initarg>baz=woo</initarg>
   </os>
   <idmap>
     <uid start="0" target="1000" count="10"/>
@@ -83,16 +107,19 @@
     <pmu state="off"/>
     <hyperv>
       <reset state="on"/>
-      <spinlocks state="on" retries="1234"/>
+      <vapic state="on"/>
+      <spinlocks state="on" retries="5678"/>
       <synic state="on"/>
     </hyperv>
     <vmport state="off"/>
-    <vmcoreinfo/>
+    <kvm>
+      <hidden state="off"/>
+    </kvm>
+    <vmcoreinfo state="on"/>
   </features>
   <cpu mode="custom" match="strict">
     <model>foobar</model>
     <vendor>meee</vendor>
-    <topology sockets="2" cores="2" threads="2"/>
     <feature policy="force" name="x2apic"/>
     <feature policy="force" name="x2apicagain"/>
     <feature policy="require" name="reqtest"/>
@@ -115,11 +142,14 @@
           <sibling id="1" value="10"/>
         </distances>
       </cell>
+      <cell id="2" cpus="4" memory="256"/>
     </numa>
   </cpu>
   <clock offset="utc">
     <timer name="rtc" tickpolicy="merge"/>
-    <timer name="hpet" present="no"/>
+    <timer name="hpet" present="yes"/>
+    <timer name="hypervclock" present="no"/>
+    <timer name="pit" tickpolicy="delay"/>
   </clock>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>destroy</on_reboot>
@@ -131,13 +161,13 @@
   <devices>
     <emulator>/new/emu</emulator>
     <controller type="usb" index="0" model="qemu-xhci" ports="15"/>
-    <controller type="virtio-scsi" index="0"/>
+    <controller type="scsi" index="0" model="virtio-scsi"/>
     <filesystem type="mount" accessmode="mapped">
       <source dir="/foo/source"/>
       <target dir="/bar/target"/>
     </filesystem>
     <interface type="bridge">
-      <source bridge="eth0"/>
+      <source bridge="testsuitebr0"/>
       <mac address="00:11:22:33:44:55"/>
       <model type="virtio"/>
     </interface>
@@ -147,37 +177,36 @@
       <target type="virtio" name="org.qemu.guest_agent.0"/>
     </channel>
     <input type="tablet" bus="usb"/>
-    <tpm model="tpm-tis">
-      <backend type="passthrough">
-        <device path="/dev/tpm0"/>
-      </backend>
-    </tpm>
     <tpm model="tpm-crb">
       <backend type="passthrough">
         <device path="/dev/tpm0"/>
       </backend>
-    </tpm>
-    <tpm model="tpm-crb">
-      <backend type="emulator" version="2.0"/>
     </tpm>
     <graphics type="vnc" port="-1"/>
     <video>
       <model type="qxl"/>
     </video>
     <watchdog model="ib700" action="pause"/>
-    <memballoon model="virtio"/>
+    <memballoon model="virtio" autodeflate="on">
+      <stats period="10"/>
+    </memballoon>
     <rng model="virtio">
       <backend model="egd" type="udp">
         <source mode="bind" host="127.0.0.1" service="8000"/>
         <source mode="connect" host="foo" service="708"/>
       </backend>
+      <rate bytes="1234" period="1000"/>
     </rng>
     <panic model="isa">
-      <address iobase="0x506" type="isa"/>
+      <address type="isa" iobase="0x506"/>
     </panic>
   </devices>
   <seclabel type="static" model="selinux" relabel="yes">
     <label>system_u:object_r:svirt_image_t:s0:c100,c200</label>
+    <baselabel>baselabel</baselabel>
+  </seclabel>
+  <seclabel type="dynamic" model="dac">
+    <label>012:345</label>
   </seclabel>
   <on_lockfailure>ignore</on_lockfailure>
   <cputune>
@@ -185,8 +214,9 @@
   </cputune>
 </domain>
 <domain type="kvm">
-  <name>foobar</name>
+  <name>fedora</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
+  <genid>e9392370-2917-565e-692b-d057f46512d6</genid>
   <title>my-title</title>
   <description>my-description</description>
   <metadata>
@@ -194,6 +224,11 @@
       <libosinfo:os id="http://fedoraproject.org/fedora/unknown"/>
     </libosinfo:libosinfo>
   </metadata>
+  <iothreads>2</iothreads>
+  <iothreadids>
+    <iothread id="1"/>
+    <iothread id="2"/>
+  </iothreadids>
   <memory>1048576</memory>
   <currentMemory>524288</currentMemory>
   <blkiotune>
@@ -213,14 +248,18 @@
     <nosharepages/>
     <locked/>
     <hugepages>
-      <page size="1" unit="G" nodeset="1,2-5"/>
+      <page size="12" unit="G" nodeset="0,1"/>
+      <page size="1234" unit="MB" nodeset="2"/>
     </hugepages>
     <access mode="shared"/>
-    <source type="anonymous"/>
+    <source type="file"/>
+    <discard/>
+    <allocation mode="immediate"/>
   </memoryBacking>
-  <vcpu>4</vcpu>
+  <vcpu>9</vcpu>
   <numatune>
     <memory mode="strict" nodeset="1-3,4"/>
+    <memnode cellid="1" mode="strict" nodeset="2"/>
   </numatune>
   <resource>
     <partition>/virtualmachines/production</partition>
@@ -249,9 +288,21 @@
       <entry name="asset">Tag</entry>
       <entry name="location">Chassis</entry>
     </baseBoard>
+    <chassis>
+      <entry name="manufacturer">Chassis Corp.</entry>
+      <entry name="version">4.0</entry>
+      <entry name="serial">1234chassis</entry>
+      <entry name="asset">chasset</entry>
+      <entry name="sku">chassku</entry>
+    </chassis>
+    <oemStrings>
+      <entry>test0</entry>
+      <entry>test1</entry>
+      <entry>complicated parsing, foo=bar</entry>
+    </oemStrings>
   </sysinfo>
   <bootloader>/new/bootld</bootloader>
-  <os>
+  <os firmware="efi">
     <type arch="x86_64" machine="q35">hvm</type>
     <loader>/foo/bar</loader>
     <boot dev="cdrom"/>
@@ -261,6 +312,8 @@
     <smbios mode="sysinfo"/>
     <bootmenu enable="no"/>
     <bios rebootTimeout="3"/>
+    <initarg>foo=bar</initarg>
+    <initarg>baz=woo</initarg>
   </os>
   <idmap>
     <uid start="0" target="1000" count="10"/>
@@ -272,16 +325,19 @@
     <pmu state="off"/>
     <hyperv>
       <reset state="on"/>
-      <spinlocks state="on" retries="1234"/>
+      <vapic state="on"/>
+      <spinlocks state="on" retries="5678"/>
       <synic state="on"/>
     </hyperv>
     <vmport state="off"/>
-    <vmcoreinfo/>
+    <kvm>
+      <hidden state="off"/>
+    </kvm>
+    <vmcoreinfo state="on"/>
   </features>
   <cpu mode="custom" match="strict">
     <model>foobar</model>
     <vendor>meee</vendor>
-    <topology sockets="2" cores="2" threads="2"/>
     <feature policy="force" name="x2apic"/>
     <feature policy="force" name="x2apicagain"/>
     <feature policy="require" name="reqtest"/>
@@ -304,11 +360,14 @@
           <sibling id="1" value="10"/>
         </distances>
       </cell>
+      <cell id="2" cpus="4" memory="256"/>
     </numa>
   </cpu>
   <clock offset="utc">
     <timer name="rtc" tickpolicy="merge"/>
-    <timer name="hpet" present="no"/>
+    <timer name="hpet" present="yes"/>
+    <timer name="hypervclock" present="no"/>
+    <timer name="pit" tickpolicy="delay"/>
   </clock>
   <on_poweroff>destroy</on_poweroff>
   <on_reboot>restart</on_reboot>
@@ -320,13 +379,13 @@
   <devices>
     <emulator>/new/emu</emulator>
     <controller type="usb" index="0" model="qemu-xhci" ports="15"/>
-    <controller type="virtio-scsi" index="0"/>
+    <controller type="scsi" index="0" model="virtio-scsi"/>
     <filesystem type="mount" accessmode="mapped">
       <source dir="/foo/source"/>
       <target dir="/bar/target"/>
     </filesystem>
     <interface type="bridge">
-      <source bridge="eth0"/>
+      <source bridge="testsuitebr0"/>
       <mac address="00:11:22:33:44:55"/>
       <model type="virtio"/>
     </interface>
@@ -336,37 +395,36 @@
       <target type="virtio" name="org.qemu.guest_agent.0"/>
     </channel>
     <input type="tablet" bus="usb"/>
-    <tpm model="tpm-tis">
-      <backend type="passthrough">
-        <device path="/dev/tpm0"/>
-      </backend>
-    </tpm>
     <tpm model="tpm-crb">
       <backend type="passthrough">
         <device path="/dev/tpm0"/>
       </backend>
-    </tpm>
-    <tpm model="tpm-crb">
-      <backend type="emulator" version="2.0"/>
     </tpm>
     <graphics type="vnc" port="-1"/>
     <video>
       <model type="qxl"/>
     </video>
     <watchdog model="ib700" action="pause"/>
-    <memballoon model="virtio"/>
+    <memballoon model="virtio" autodeflate="on">
+      <stats period="10"/>
+    </memballoon>
     <rng model="virtio">
       <backend model="egd" type="udp">
         <source mode="bind" host="127.0.0.1" service="8000"/>
         <source mode="connect" host="foo" service="708"/>
       </backend>
+      <rate bytes="1234" period="1000"/>
     </rng>
     <panic model="isa">
-      <address iobase="0x506" type="isa"/>
+      <address type="isa" iobase="0x506"/>
     </panic>
   </devices>
   <seclabel type="static" model="selinux" relabel="yes">
     <label>system_u:object_r:svirt_image_t:s0:c100,c200</label>
+    <baselabel>baselabel</baselabel>
+  </seclabel>
+  <seclabel type="dynamic" model="dac">
+    <label>012:345</label>
   </seclabel>
   <on_lockfailure>ignore</on_lockfailure>
   <cputune>

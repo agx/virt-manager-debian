@@ -2,6 +2,7 @@
 # See the COPYING file in the top-level directory.
 
 from tests.uitests import utils as uiutils
+import tests.utils
 
 
 class Details(uiutils.UITestCase):
@@ -45,6 +46,10 @@ class Details(uiutils.UITestCase):
         lst = win.find("hw-list", "table")
         self._walkUIList(win, lst, lambda: False)
 
+        # Select XML editor, and reverse walk the list
+        win.find("XML", "page tab").click()
+        self._walkUIList(win, lst, lambda: False, reverse=True)
+
     def _testRename(self, origname, newname):
         win = self._open_details_window(origname)
 
@@ -87,6 +92,7 @@ class Details(uiutils.UITestCase):
         """
         Test overview, memory, cpu pages
         """
+        self.app.uri = tests.utils.URIs.kvm
         win = self._open_details_window(vmname="test-many-devices")
         appl = win.find("config-apply", "push button")
 
@@ -127,13 +133,13 @@ class Details(uiutils.UITestCase):
         tab.find("Application Default", "menu item").click()
         appl.click()
         uiutils.check_in_loop(lambda: not appl.sensitive)
+        tab.find_fuzzy("Copy host").click()
         tab.find("cpu-model").click_combo_entry()
         tab.find("Hypervisor Default", "menu item").click()
         appl.click()
         uiutils.check_in_loop(lambda: not appl.sensitive)
 
         # CPU topology
-        tab.find("Topology", "toggle button").click_expander()
         tab.find_fuzzy("Manually set", "check").click()
         tab.find("Sockets:", "spin button").typeText("8")
         tab.find("Cores:", "spin button").typeText("2")
@@ -388,6 +394,16 @@ class Details(uiutils.UITestCase):
         uiutils.check_in_loop(lambda: not appl.sensitive)
 
 
+        # vsock tweaks
+        tab = self._select_hw(win, "Virtio VSOCK", "vsock-tab")
+        addr = tab.find("vsock-cid")
+        auto = tab.find("vsock-auto")
+        self.assertTrue(addr.text == "5")
+        auto.click()
+        uiutils.check_in_loop(lambda: not addr.visible)
+        appl.click()
+
+
     def testDetailsMiscEdits(self):
         """
         Test misc editing behavior, like checking for unapplied
@@ -453,7 +469,6 @@ class Details(uiutils.UITestCase):
         tab = self._select_hw(win, "IDE Disk 1", "disk-tab")
         self.assertTrue(share.checked)
 
-
         # VM State change doesn't refresh UI
         share.click()
         self._start_vm(win)
@@ -467,3 +482,51 @@ class Details(uiutils.UITestCase):
         self.assertTrue(share.checked)
         self._stop_vm(win)
         self.assertTrue(not share.checked)
+
+        # Unapplied changes should warn when switching to XML tab
+        tab = self._select_hw(win, "Overview", "overview-tab")
+        tab.find("Description:", "text").text = "hey new description"
+        win.find("XML", "page tab").click()
+        alert = self.app.root.find("vmm dialog")
+        alert.find_fuzzy("changes will be lost")
+
+        # Select 'No', meaning don't abandon changes
+        alert.find("No", "push button").click()
+        uiutils.check_in_loop(lambda: tab.showing)
+
+        # Try unapplied changes again, this time abandon our changes
+        win.find("XML", "page tab").click()
+        alert = self.app.root.find("vmm dialog")
+        alert.find("Yes", "push button").click()
+        uiutils.check_in_loop(lambda: not tab.showing)
+
+    def testDetailsXMLEdit(self):
+        """
+        Test XML editing interaction
+        """
+        self.app.open(xmleditor_enabled=True)
+        win = self._open_details_window(vmname="test-clone-simple")
+        finish = win.find("config-apply")
+        xmleditor = win.find("XML editor")
+
+        # Edit vcpu count and verify it's reflected in CPU page
+        tab = self._select_hw(win, "CPUs", "cpu-tab")
+        win.find("XML", "page tab").click()
+        xmleditor.text = xmleditor.text.replace(">5</vcpu", ">8</vcpu")
+        finish.click()
+        win.find("Details", "page tab").click()
+        self.assertEqual(
+                tab.find("Current allocation:", "spin button").text, "8")
+
+        # Make some disk edits
+        tab = self._select_hw(win, "IDE Disk 1", "disk-tab")
+        win.find("XML", "page tab").click()
+        origpath = "/dev/default-pool/test-clone-simple.img"
+        newpath = "/path/FOOBAR"
+        xmleditor.text = xmleditor.text.replace(origpath, newpath)
+        finish.click()
+        win.find("Details", "page tab").click()
+        self.assertTrue(win.find("disk-source-path").text, newpath)
+
+        # Do standard xmleditor tests
+        self._test_xmleditor_interactions(win, finish)

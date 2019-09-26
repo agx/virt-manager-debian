@@ -1,5 +1,5 @@
 <domain type="qemu">
-  <name>foobar</name>
+  <name>fedora20-ppc64</name>
   <uuid>00000000-1111-2222-3333-444444444444</uuid>
   <metadata>
     <libosinfo:libosinfo xmlns:libosinfo="http://libosinfo.org/xmlns/libvirt/domain/1.0">
@@ -8,7 +8,7 @@
   </metadata>
   <memory>65536</memory>
   <currentMemory>65536</currentMemory>
-  <vcpu>1</vcpu>
+  <vcpu>2</vcpu>
   <os>
     <type arch="ppc64" machine="pseries">hvm</type>
     <boot dev="network"/>
@@ -30,6 +30,8 @@
     <channel type="spicevmc">
       <target type="virtio" name="com.redhat.spice.0"/>
     </channel>
+    <input type="tablet" bus="usb"/>
+    <input type="keyboard" bus="usb"/>
     <graphics type="spice" port="-1" tlsPort="-1" autoport="yes">
       <image compression="off"/>
     </graphics>
@@ -37,6 +39,7 @@
     <video>
       <model type="vga"/>
     </video>
+    <memballoon model="virtio"/>
     <rng model="virtio">
       <backend model="random">/dev/urandom</backend>
     </rng>

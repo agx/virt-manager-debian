@@ -4,23 +4,20 @@
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
-import logging
-
 from gi.repository import GObject
 from gi.repository import Gtk
 from gi.repository import Gdk
 from gi.repository import GdkPixbuf
 
-import libvirt
-
-from virtinst import util
+from virtinst import log
+from virtinst import xmlutil
 
 from . import vmmenu
-from . import uiutil
+from .lib import uiutil
 from .baseclass import vmmGObjectUI
 from .connmanager import vmmConnectionManager
 from .engine import vmmEngine
-from .graphwidgets import CellRendererSparkline
+from .lib.graphwidgets import CellRendererSparkline
 
 # Number of data points for performance graphs
 GRAPH_LEN = 40
@@ -71,7 +68,7 @@ def _get_inspection_icon_pixbuf(vm, w, h):
         pb.close()
         return pb.get_pixbuf()
     except Exception:
-        logging.exception("Error loading inspection icon data")
+        log.exception("Error loading inspection icon data")
         vm.inspection.icon = None
         return None
 
@@ -184,7 +181,7 @@ class vmmManager(vmmGObjectUI):
         if vis:
             return
 
-        logging.debug("Showing manager")
+        log.debug("Showing manager")
         if self.prev_position:
             self.topwin.move(*self.prev_position)
             self.prev_position = None
@@ -195,7 +192,7 @@ class vmmManager(vmmGObjectUI):
         if not self.is_visible():
             return
 
-        logging.debug("Closing manager")
+        log.debug("Closing manager")
         self.prev_position = self.topwin.get_position()
         self.topwin.hide()
         vmmEngine.get_instance().decrement_window_counter()
@@ -221,12 +218,10 @@ class vmmManager(vmmGObjectUI):
         if self._window_size:
             self.config.set_manager_window_size(*self._window_size)
 
-    def is_visible(self):
-        return bool(self.topwin.get_visible())
-
     def set_startup_error(self, msg):
         self.widget("vm-notebook").set_current_page(1)
         self.widget("startup-error-label").set_text(msg)
+
 
     ################
     # Init methods #
@@ -454,13 +449,13 @@ class vmmManager(vmmGObjectUI):
         vmmEngine.get_instance().exit_app()
 
     def open_newconn(self, _src):
-        from .connect import vmmConnect
-        vmmConnect.get_instance(self).show(self.topwin)
+        from .createconn import vmmCreateConn
+        vmmCreateConn.get_instance(self).show(self.topwin)
 
     def new_vm(self, _src):
-        from .create import vmmCreate
+        from .createvm import vmmCreateVM
         conn = self.current_conn()
-        vmmCreate.show_instance(self, conn and conn.get_uri() or None)
+        vmmCreateVM.show_instance(self, conn and conn.get_uri() or None)
 
     def show_about(self, _src):
         from .about import vmmAbout
@@ -587,7 +582,7 @@ class vmmManager(vmmGObjectUI):
         return hint
 
     def _build_conn_markup(self, conn, name):
-        name = util.xml_escape(name)
+        name = xmlutil.xml_escape(name)
         text = name
         if conn.is_disconnected():
             text += " - " + _("Not Connected")
@@ -605,7 +600,7 @@ class vmmManager(vmmGObjectUI):
 
     def _build_vm_markup(self, name, status):
         domtext     = ("<span size='smaller' weight='bold'>%s</span>" %
-                       util.xml_escape(name))
+                       xmlutil.xml_escape(name))
         statetext   = "<span size='smaller'>%s</span>" % status
         return domtext + "\n" + statetext
 
@@ -633,7 +628,7 @@ class vmmManager(vmmGObjectUI):
         row.insert(ROW_SORT_KEY, name)
         row.insert(ROW_MARKUP, markup)
         row.insert(ROW_STATUS_ICON, status_icon)
-        row.insert(ROW_HINT, util.xml_escape(hint))
+        row.insert(ROW_HINT, xmlutil.xml_escape(hint))
         row.insert(ROW_IS_CONN, bool(conn))
         row.insert(ROW_IS_CONN_CONNECTED,
                    bool(conn) and not conn.is_disconnected())
@@ -705,9 +700,9 @@ class vmmManager(vmmGObjectUI):
             row[ROW_MARKUP] = self._build_vm_markup(name, status)
 
             desc = vm.get_description()
-            row[ROW_HINT] = util.xml_escape(desc)
-        except libvirt.libvirtError as e:
-            if util.exception_is_libvirt_error(e, "VIR_ERR_NO_DOMAIN"):
+            row[ROW_HINT] = xmlutil.xml_escape(desc)
+        except Exception as e:
+            if vm.conn.support.is_libvirt_error_no_domain(e):
                 return
             raise
 
@@ -837,7 +832,7 @@ class vmmManager(vmmGObjectUI):
             # Popup the vm menu
             vm = model[_iter][ROW_HANDLE]
             self.vmmenu.update_widget_states(vm)
-            self.vmmenu.popup(None, None, None, None, 0, event.time)
+            self.vmmenu.popup_at_pointer(event)
         else:
             # Pop up connection menu
             conn = model[_iter][ROW_HANDLE]
@@ -850,7 +845,7 @@ class vmmManager(vmmGObjectUI):
             self.connmenu_items["connect"].set_sensitive(disconn)
             self.connmenu_items["delete"].set_sensitive(disconn)
 
-            self.connmenu.popup(None, None, None, None, 0, event.time)
+            self.connmenu.popup_at_pointer(event)
 
 
     #################
@@ -910,7 +905,7 @@ class vmmManager(vmmGObjectUI):
             widgn = "menu_view_stats_memory"
             do_enable = self.config.get_stats_enable_memory_poll()
 
-        for w in util.listify(widgn):
+        for w in xmlutil.listify(widgn):
             widget = self.widget(w)
             tool_text = ""
 

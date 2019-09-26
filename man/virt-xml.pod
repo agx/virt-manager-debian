@@ -17,7 +17,7 @@ Each B<virt-xml> invocation requires 3 things: name of an existing domain to alt
 --add-device: Append a new device definition to the XML
 --remove-device: Remove an existing device definition
 --edit: Edit an existing XML block
---build-xml: Just build the requested XML block and print it (no domain or input XML are required here).
+--build-xml: Just build the requested XML block and print it. No domain or input are required here, but it's recommended to provide them, so virt-xml can fill in optimal defaults.
 
 An XML change is one instance of any of the XML options provided by virt-xml, for example --disk or --boot.
 
@@ -118,6 +118,8 @@ This option will error if specified with a non-device XML option (see --edit sec
 
 Just build the specified XML, and print it to stdout. No input domain or input XML is required. Example: '--build-xml --disk DISK-OPTIONS' will just print the new <disk> device.
 
+However if the generated XML is targeted for a specific domain, it's recommended to pass it to virt-xml, so the tool can set optimal defaults.
+
 This option will error if specified with an XML option that does not map cleanly to a specific XML block, like --vcpus or --memory.
 
 =back
@@ -137,11 +139,19 @@ If the specified domain is running, attempt to alter the running VM configuratio
 
 Keep in mind, most XML properties and devices do not support live update operations, so don't expect it to succeed in all cases.
 
-Note that --update implies --define: it can't be used in isolation.
+By default this also implies B<--define>.
 
 =item B<--define>
 
 Define the requested XML change. This is typically the default if no output option is specified, but if a --print option is specified, --define is required to force the change.
+
+=item B<--no-define>
+
+Explicitly do not define the XML. For example if you only want to alter the runtime state of a VM, combine this with B<--update>.
+
+=item B<--start>
+
+Start the VM after performing the requeseted changes. If combined with --no-define, this will create transient VM boot with the requested changes.
 
 =item B<--print-diff>
 
@@ -154,6 +164,30 @@ Print the generated XML in its entirety. If only this output option is specified
 =item B<--confirm>
 
 Before defining or updating the domain, show the generated XML diff and interactively request confirmation.
+
+=back
+
+
+
+
+=head1 GUEST OS OPTIONS
+
+=over 4
+
+=item B<--os-variant> OS_VARIANT
+
+Optimize the guest configuration for a specific operating system (ex.
+'fedora29', 'rhel7', 'win10'). While not required, specifying this
+options is HIGHLY RECOMMENDED, as it can greatly increase performance
+by specifying virtio among other guest tweaks.
+
+If the guest has been installed using virt-manager version 2.0.0 or newer,
+providing this information should not be necessary, as the OS variant will
+have been stored in the guest configuration during installation and virt-xml
+will retrieve it from there automatically.
+
+Use the command "osinfo-query os" to get the list of the accepted OS
+variants.
 
 =back
 
@@ -178,9 +212,19 @@ Before defining or updating the domain, show the generated XML diff and interact
 
 =item B<--cpu>
 
-=item B<--security>
+=item B<--iothreads>
+
+=item B<--seclabel>
+
+=item B<--cputune>
 
 =item B<--numatune>
+
+=item B<--memtune>
+
+=item B<--blkiotune>
+
+=item B<--memorybacking>
 
 =item B<--features>
 
@@ -188,9 +232,19 @@ Before defining or updating the domain, show the generated XML diff and interact
 
 =item B<--pm>
 
+=item B<--events>
+
+=item B<--resources>
+
+=item B<--sysinfo>
+
+=item B<--qemu-commandline>
+
+=item B<--launchSecurity>
+
 =item B<--boot>
 
-=item B<--filesystem>
+=item B<--idmap>
 
 =item B<--controller>
 
@@ -205,6 +259,8 @@ Before defining or updating the domain, show the generated XML diff and interact
 =item B<--console>
 
 =item B<--hostdev>
+
+=item B<--filesystem>
 
 =item B<--sound>
 
@@ -225,8 +281,6 @@ Before defining or updating the domain, show the generated XML diff and interact
 =item B<--panic>
 
 =item B<--memdev>
-
-=item B<--qemu-commandline>
 
 These options alter the XML for a single class of XML elements. More complete documentation is found in L<virt-install(1)>.
 
@@ -331,6 +385,12 @@ Create a 10G qcow2 disk image and attach it to 'fedora18' for the next VM startu
   # virt-xml fedora18 --add-device \
     --disk /var/lib/libvirt/images/newimage.qcow2,format=qcow2,size=10
 
+Same as above, but ensure the disk is attached to the most appropriate bus
+for the guest OS by providing information about it on the command line:
+
+  # virt-xml fedora18 --os-variant fedora18 --add-device \
+    --disk /var/lib/libvirt/images/newimage.qcow2,format=qcow2,size=10
+
 Hotunplug the disk vdb from the running domain 'rhel7':
 
   # virt-xml rhel7 --update --remove-device --disk target=vdb
@@ -347,6 +407,9 @@ Add qemu command line passthrough:
 
   # virt-xml f25 --edit --confirm --qemu-commandline="-device FOO"
 
+Use boot device 'network' for a single transient boot:
+
+  # virt-xml myvm --no-define --start --edit --boot network
 
 =head1 CAVEATS
 
@@ -354,7 +417,7 @@ Virtualization hosts supported by libvirt may not permit all changes that might 
 
 =head1 BUGS
 
-Please see https://virt-manager.org/page/BugReporting
+Please see L<https://virt-manager.org/bugs>
 
 =head1 COPYRIGHT
 

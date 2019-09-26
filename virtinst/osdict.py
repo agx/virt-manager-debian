@@ -2,18 +2,21 @@
 # List of OS Specific data
 #
 # Copyright 2006-2008, 2013-2014 Red Hat, Inc.
-# Jeremy Katz <katzj@redhat.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
 
 import datetime
-import logging
+import os
 import re
 
-import gi
-gi.require_version('Libosinfo', '1.0')
-from gi.repository import Libosinfo as libosinfo
+from gi.repository import Libosinfo
+
+from .logger import log
+
+
+def _in_testsuite():
+    return "VIRTINST_TEST_SUITE" in os.environ
 
 
 ###################
@@ -86,6 +89,28 @@ def _sort(tosort):
             retlist.append(tosort[orig_key])
 
     return retlist
+
+
+class _OsinfoIter:
+    """
+    Helper to turn osinfo style get_length/get_nth lists into python
+    iterables
+    """
+    def __init__(self, listobj):
+        self.current = 0
+        self.listobj = listobj
+        self.high = -1
+        if self.listobj:
+            self.high = self.listobj.get_length() - 1
+
+    def __iter__(self):
+        return self
+    def __next__(self):
+        if self.current > self.high:
+            raise StopIteration
+        ret = self.listobj.get_nth(self.current)
+        self.current += 1
+        return ret
 
 
 class _OSDB(object):
@@ -161,7 +186,7 @@ class _OSDB(object):
     @property
     def _os_loader(self):
         if not self.__os_loader:
-            loader = libosinfo.Loader()
+            loader = Libosinfo.Loader()
             loader.process_default_path()
 
             self.__os_loader = loader
@@ -174,8 +199,8 @@ class _OSDB(object):
             allvariants = self._make_default_variants()
             db = loader.get_db()
             oslist = db.get_os_list()
-            for os in range(oslist.get_length()):
-                osi = _OsVariant(oslist.get_nth(os))
+            for o in _OsinfoIter(oslist):
+                osi = _OsVariant(o)
                 allvariants[osi.name] = osi
 
             self.__all_variants = allvariants
@@ -186,35 +211,59 @@ class _OSDB(object):
     # Public APIs #
     ###############
 
-    def lookup_os_by_full_id(self, full_id):
+    def lookup_os_by_full_id(self, full_id, raise_error=False):
         for osobj in self._all_variants.values():
             if osobj.full_id == full_id:
                 return osobj
+        if raise_error:
+            raise ValueError(_("Unknown libosinfo ID '%s'") % full_id)
 
-    def lookup_os(self, key):
+    def lookup_os(self, key, raise_error=False):
         if key in self._aliases:
             alias = self._aliases[key]
             # Added 2018-10-02. Maybe remove aliases in a year
-            logging.warning(
+            log.warning(
                 _("OS name '%s' is deprecated, using '%s' instead. "
-                  "This alias will be removed in the future."), (key, alias))
+                  "This alias will be removed in the future."), key, alias)
             key = alias
-        return self._all_variants.get(key)
 
-    def lookup_os_by_media(self, location):
-        media = libosinfo.Media.create_from_location(location, None)
-        ret = self._os_loader.get_db().guess_os_from_media(media)
-        if not (ret and len(ret) > 0 and ret[0]):
+        ret = self._all_variants.get(key)
+        if ret is None and raise_error:
+            raise ValueError(_("Unknown OS name '%s'. "
+                    "See `osinfo-query os` for valid values.") % key)
+        return ret
+
+    def guess_os_by_iso(self, location):
+        try:
+            media = Libosinfo.Media.create_from_location(location, None)
+        except Exception as e:
+            log.debug("Error creating libosinfo media object: %s", str(e))
             return None
 
-        osname = ret[0].get_short_id()
-        if osname == "fedora-unknown":
-            osname = self.latest_fedora_version()
-            logging.debug("Detected location=%s as os=fedora-unknown. "
-                "Converting that to the latest fedora OS version=%s",
-                location, osname)
+        if not self._os_loader.get_db().identify_media(media):
+            return None  # pragma: no cover
+        return media.get_os().get_short_id(), _OsMedia(media)
 
-        return osname
+    def guess_os_by_tree(self, location):
+        if location.startswith("/"):
+            location = "file://" + location
+
+        if _in_testsuite() and not location.startswith("file:"):
+            # We have mock network tests, but we don't want to pass the
+            # fake URL to libosinfo because it slows down the testcase
+            return None
+
+        try:
+            tree = Libosinfo.Tree.create_from_location(location, None)
+        except Exception as e:
+            log.debug("Error creating libosinfo tree object for "
+                "location=%s : %s", location, str(e))
+            return None
+
+        osobj, treeobj = self._os_loader.get_db().guess_os_from_tree(tree)
+        if not osobj:
+            return None  # pragma: no cover
+        return osobj.get_short_id(), treeobj
 
     def list_os(self):
         """
@@ -227,17 +276,68 @@ class _OSDB(object):
 
         return _sort(sortmap)
 
-    def latest_regex(self, regex):
-        """
-        Return the latest distro name that matches the passed regex
-        """
-        oses = [o.name for o in self.list_os() if re.match(regex, o.name)]
-        if not oses:
-            return None
-        return oses[0]
 
-    def latest_fedora_version(self):
-        return self.latest_regex("fedora[0-9]+")
+OSDB = _OSDB()
+
+
+#####################
+# OsResources class #
+#####################
+
+class _OsResources:
+    def __init__(self, minimum, recommended):
+        self._minimum = self._convert_to_dict(minimum)
+        self._recommended = self._convert_to_dict(recommended)
+
+    def _convert_to_dict(self, resources):
+        """
+        Convert an OsResources object to a dictionary for easier
+        lookups. Layout is: {arch: {strkey: value}}
+        """
+        ret = {}
+        for r in _OsinfoIter(resources):
+            vals = {}
+            vals["ram"] = r.get_ram()
+            vals["n-cpus"] = r.get_n_cpus()
+            vals["storage"] = r.get_storage()
+            ret[r.get_architecture()] = vals
+        return ret
+
+    def _get_key(self, resources, key, arch):
+        for checkarch in [arch, "all"]:
+            if checkarch in resources and key in resources[checkarch]:
+                return resources[checkarch][key]
+
+    def _get_minimum_key(self, key, arch):
+        val = self._get_key(self._minimum, key, arch)
+        if val and val > 0:
+            return val
+
+    def _get_recommended_key(self, key, arch):
+        val = self._get_key(self._recommended, key, arch)
+        if val and val > 0:
+            return val
+        # If we are looking for a recommended value, but the OS
+        # DB only has minimum resources tracked, double the minimum
+        # value as an approximation at a 'recommended' value
+        val = self._get_minimum_key(key, arch)
+        if val:
+            log.debug("No recommended value found for key='%s', "
+                    "using minimum=%s * 2", key, val)
+            return val * 2
+        return None
+
+    def get_minimum_ram(self, arch):
+        return self._get_minimum_key("ram", arch)
+
+    def get_recommended_ram(self, arch):
+        return self._get_recommended_key("ram", arch)
+
+    def get_recommended_ncpus(self, arch):
+        return self._get_recommended_key("n-cpus", arch)
+
+    def get_recommended_storage(self, arch):
+        return self._get_recommended_key("storage", arch)
 
 
 #####################
@@ -266,13 +366,13 @@ class _OsVariant(object):
     # Internal helper APIs #
     ########################
 
-    def _is_related_to(self, related_os_list, os=None,
+    def _is_related_to(self, related_os_list, osobj=None,
             check_derives=True, check_upgrades=True, check_clones=True):
-        os = os or self._os
-        if not os:
+        osobj = osobj or self._os
+        if not osobj:
             return False
 
-        if os.get_short_id() in related_os_list:
+        if osobj.get_short_id() in related_os_list:
             return True
 
         check_list = []
@@ -282,18 +382,18 @@ class _OsVariant(object):
                     check_list.append(obj)
 
         if check_derives:
-            _extend(os.get_related(
-                libosinfo.ProductRelationship.DERIVES_FROM).get_elements())
+            _extend(osobj.get_related(
+                Libosinfo.ProductRelationship.DERIVES_FROM).get_elements())
         if check_clones:
-            _extend(os.get_related(
-                libosinfo.ProductRelationship.CLONES).get_elements())
+            _extend(osobj.get_related(
+                Libosinfo.ProductRelationship.CLONES).get_elements())
         if check_upgrades:
-            _extend(os.get_related(
-                libosinfo.ProductRelationship.UPGRADES).get_elements())
+            _extend(osobj.get_related(
+                Libosinfo.ProductRelationship.UPGRADES).get_elements())
 
         for checkobj in check_list:
             if (checkobj.get_short_id() in related_os_list or
-                self._is_related_to(related_os_list, os=checkobj,
+                self._is_related_to(related_os_list, osobj=checkobj,
                     check_upgrades=check_upgrades,
                     check_derives=check_derives,
                     check_clones=check_clones)):
@@ -304,8 +404,7 @@ class _OsVariant(object):
     def _get_all_devices(self):
         if not self._os:
             return []
-        devlist = self._os.get_all_devices()
-        return [devlist.get_nth(i) for i in range(devlist.get_length())]
+        return list(_OsinfoIter(self._os.get_all_devices()))
 
     def _device_filter(self, devids=None, cls=None):
         ret = []
@@ -327,6 +426,11 @@ class _OsVariant(object):
         eol = self._os and self._os.get_eol_date() or None
         rel = self._os and self._os.get_release_date() or None
 
+        # We can use os.get_release_status() & osinfo.ReleaseStatus.ROLLING
+        # if we require libosinfo >= 1.4.0.
+        release_status = self._os and self._os.get_param_value(
+                Libosinfo.OS_PROP_RELEASE_STATUS) or None
+
         def _glib_to_datetime(glibdate):
             date = "%s-%s" % (glibdate.get_year(), glibdate.get_day_of_year())
             return datetime.datetime.strptime(date, "%Y-%j")
@@ -334,6 +438,10 @@ class _OsVariant(object):
         now = datetime.datetime.today()
         if eol is not None:
             return now > _glib_to_datetime(eol)
+
+        # Rolling distributions are never EOL.
+        if release_status == "rolling":
+            return False
 
         # If no EOL is present, assume EOL if release was > 5 years ago
         if rel is not None:
@@ -346,16 +454,14 @@ class _OsVariant(object):
     # Public APIs #
     ###############
 
+    def get_handle(self):
+        return self._os
+
     def is_generic(self):
         return self._os is None
 
     def is_windows(self):
         return self._family in ['win9x', 'winnt', 'win16']
-
-    def broken_x2apic(self):
-        # x2apic breaks networking in solaris10
-        # https://bugs.launchpad.net/bugs/1395217
-        return self.name in ('solaris10', 'solaris11')
 
     def broken_uefi_with_hyperv(self):
         # Some windows versions are broken with hyperv enlightenments + UEFI
@@ -385,6 +491,12 @@ class _OsVariant(object):
                   "http://pcisig.com/pci/1af4/1042"]
         return bool(self._device_filter(devids=devids))
 
+    def supports_virtioscsi(self):
+        # virtio-scsi and virtio1.0-scsi
+        devids = ["http://pcisig.com/pci/1af4/1004",
+                  "http://pcisig.com/pci/1af4/1048"]
+        return bool(self._device_filter(devids=devids))
+
     def supports_virtionet(self):
         # virtio-net and virtio1.0-net
         devids = ["http://pcisig.com/pci/1af4/1000",
@@ -397,6 +509,12 @@ class _OsVariant(object):
                   "http://pcisig.com/pci/1af4/1044"]
         return bool(self._device_filter(devids=devids))
 
+    def supports_virtioballoon(self):
+        # virtio-balloon and virtio1.0-balloon
+        devids = ["http://pcisig.com/pci/1af4/1002",
+                  "http://pcisig.com/pci/1af4/1045"]
+        return bool(self._device_filter(devids=devids))
+
     def supports_virtioserial(self):
         devids = ["http://pcisig.com/pci/1af4/1003",
                   "http://pcisig.com/pci/1af4/1043"]
@@ -405,6 +523,11 @@ class _OsVariant(object):
         # osinfo data was wrong for RHEL/centos here until Oct 2018
         # Remove this hack after 6 months or so
         return self._is_related_to("rhel6.0")
+
+    def supports_virtioinput(self):
+        # virtio1.0-input
+        devids = ["http://pcisig.com/pci/1af4/1052"]
+        return bool(self._device_filter(devids=devids))
 
     def supports_usb3(self):
         # qemu-xhci
@@ -423,39 +546,97 @@ class _OsVariant(object):
         devids = ["http://qemu.org/chipset/x86/q35"]
         return bool(self._device_filter(devids=devids))
 
-    def get_recommended_resources(self, guest):
-        ret = {}
+    def get_recommended_resources(self):
+        minimum = self._os and self._os.get_minimum_resources() or None
+        recommended = self._os and self._os.get_recommended_resources() or None
+        return _OsResources(minimum, recommended)
+
+    def get_network_install_required_ram(self, guest):
+        if hasattr(self._os, "get_network_install_resources"):
+            resources = self._os.get_network_install_resources()
+            for r in _OsinfoIter(resources):
+                arch = r.get_architecture()
+                if arch == guest.os.arch or arch == "all":
+                    return r.get_ram()
+
+    def get_kernel_url_arg(self):
+        """
+        Kernel argument name the distro's installer uses to reference
+        a network source, possibly bypassing some installer prompts
+        """
         if not self._os:
-            return ret
+            return None
 
-        def read_resource(resources, minimum, arch):
-            # If we are reading the "minimum" block, allocate more
-            # resources.
-            ram_scale = minimum and 2 or 1
-            n_cpus_scale = minimum and 2 or 1
-            storage_scale = minimum and 2 or 1
-            for i in range(resources.get_length()):
-                r = resources.get_nth(i)
-                if r.get_architecture() == arch:
-                    ret["ram"] = r.get_ram() * ram_scale
-                    ret["cpu"] = r.get_cpu()
-                    ret["n-cpus"] = r.get_n_cpus() * n_cpus_scale
-                    ret["storage"] = r.get_storage() * storage_scale
-                    break
+        # SUSE distros
+        if self.distro in ["caasp", "sle", "sled", "sles", "opensuse"]:
+            return "install"
 
-        # libosinfo may miss the recommended resources block for some OS,
-        # in this case read first the minimum resources (if present)
-        # and use them.
-        read_resource(self._os.get_minimum_resources(), True, "all")
-        read_resource(self._os.get_minimum_resources(), True, guest.os.arch)
-        read_resource(self._os.get_recommended_resources(), False, "all")
-        read_resource(self._os.get_recommended_resources(),
-            False, guest.os.arch)
+        if self.distro not in ["centos", "rhel", "fedora"]:
+            return None
 
-        # QEMU TCG doesn't gain anything by having extra VCPUs
-        if guest.type == "qemu":
-            ret["n-cpus"] = 1
+        # Red Hat distros
+        try:
+            if re.match(r"[0-9]+-unknown", self.version):
+                version = float(self.version.split("-")[0])
+            else:
+                version = float(self.version)
+        except Exception:
+            # Can hit this for -rawhide or -unknown
+            version = 999
 
-        return ret
+        if self.distro in ["centos", "rhel"] and version < 7:
+            return "method"
 
-OSDB = _OSDB()
+        if self.distro in ["fedora"] and version < 19:
+            return "method"
+
+        return "inst.repo"
+
+
+    def get_location(self, arch):
+        treelist = []
+        if self._os:
+            treelist = list(_OsinfoIter(self._os.get_tree_list()))
+
+        if not treelist:
+            raise RuntimeError(
+                _("OS '%s' does not have a URL location") % self.name)
+
+        # Some distros have more than one URL for a specific architecture,
+        # which is the case for Fedora and different variants (Server,
+        # Workstation). Later on, we'll have to differentiate that and return
+        # the right one.
+        for tree in treelist:
+            if tree.get_architecture() == arch:
+                return tree.get_url()
+
+        raise RuntimeError(
+            _("OS '%s' does not have a URL location for the %s architecture") %
+            (self.name, arch))
+
+    def get_install_script_list(self):
+        if not self._os:
+            return []  # pragma: no cover
+        return list(_OsinfoIter(self._os.get_install_script_list()))
+
+
+class _OsMedia(object):
+    def __init__(self, osinfo_media):
+        self._media = osinfo_media
+
+    def get_kernel_path(self):
+        return self._media.get_kernel_path()
+    def get_initrd_path(self):
+        return self._media.get_initrd_path()
+    def supports_installer_script(self):
+        return self._media.supports_installer_script()
+
+    def is_netinst(self):
+        variants = list(_OsinfoIter(self._media.get_os_variants()))
+        for variant in variants:
+            if "netinst" in variant.get_id():
+                return True
+        return False
+
+    def get_install_script_list(self):
+        return list(_OsinfoIter(self._media.get_install_script_list()))

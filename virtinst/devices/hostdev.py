@@ -1,6 +1,5 @@
 #
 # Copyright 2009, 2013 Red Hat, Inc.
-# Cole Robinson <crobinso@redhat.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
@@ -14,12 +13,6 @@ class DeviceHostdev(Device):
     XML_NAME = "hostdev"
 
     def set_from_nodedev(self, nodedev):
-        """
-        @use_full_usb: If set, and nodedev is USB, specify both
-            vendor and product. Used if user requests bus/add on virt-install
-            command line, or if virt-manager detects a dup USB device
-            and we need to differentiate
-        """
         if nodedev.device_type == NodeDevice.CAPABILITY_TYPE_PCI:
             self.type = "pci"
             self.domain = nodedev.domain
@@ -33,17 +26,11 @@ class DeviceHostdev(Device):
             self.product = nodedev.product_id
 
             count = 0
-
             for dev in self.conn.fetch_all_nodedevs():
                 if (dev.device_type == NodeDevice.CAPABILITY_TYPE_USBDEV and
                     dev.vendor_id == self.vendor and
                     dev.product_id == self.product):
                     count += 1
-
-            if not count:
-                raise RuntimeError(_("Could not find USB device "
-                                     "(vendorId: %s, productId: %s)")
-                                   % (self.vendor, self.product))
 
             if count > 1:
                 self.bus = nodedev.bus
@@ -68,34 +55,6 @@ class DeviceHostdev(Device):
 
         else:
             raise ValueError(_("Unknown node device type %s") % nodedev)
-
-    def pretty_name(self):
-        def dehex(val):
-            if val.startswith("0x"):
-                val = val[2:]
-            return val
-
-        def safeint(val, fmt="%.3d"):
-            try:
-                int(val)
-            except Exception:
-                return str(val)
-            return fmt % int(val)
-
-        label = self.type.upper()
-
-        if self.vendor and self.product:
-            label += " %s:%s" % (dehex(self.vendor), dehex(self.product))
-
-        elif self.bus and self.device:
-            label += " %s:%s" % (safeint(self.bus), safeint(self.device))
-
-        elif self.bus and self.slot and self.function and self.domain:
-            label += (" %s:%s:%s.%s" %
-                      (dehex(self.domain), dehex(self.bus),
-                       dehex(self.slot), dehex(self.function)))
-
-        return label
 
 
     _XML_PROP_ORDER = ["mode", "type", "managed", "vendor", "product",
@@ -143,5 +102,3 @@ class DeviceHostdev(Device):
             self.managed = self.conn.is_xen() and "no" or "yes"
         if not self.mode:
             self.mode = "subsystem"
-        if self.type == "pci" and not self.domain:
-            self.domain = "0x0"

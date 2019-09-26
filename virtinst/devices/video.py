@@ -1,6 +1,5 @@
 #
 # Copyright 2009, 2013 Red Hat, Inc.
-# Cole Robinson <crobinso@redhat.com>
 #
 # This work is licensed under the GNU GPLv2 or later.
 # See the COPYING file in the top-level directory.
@@ -11,20 +10,6 @@ from ..xmlbuilder import XMLProperty
 
 class DeviceVideo(Device):
     XML_NAME = "video"
-
-    @staticmethod
-    def get_recommended_models(guest):
-        if guest.conn.is_xen():
-            return ["xen", "vga"]
-        if guest.conn.is_qemu() or guest.conn.is_test():
-            return ["vga", "qxl", "virtio"]
-        return []
-
-    @staticmethod
-    def pretty_model(model):
-        if model in ["qxl", "vmvga", "vga"]:
-            return model.upper()
-        return model.capitalize()
 
     _XML_PROP_ORDER = ["model", "vram", "heads", "vgamem"]
     model = XMLProperty("./model/@type")
@@ -44,7 +29,9 @@ class DeviceVideo(Device):
     def default_model(guest):
         if guest.os.is_pseries():
             return "vga"
-        if guest.os.is_arm_machvirt():
+        if guest.os.is_arm_machvirt() or guest.os.is_riscv_virt():
+            return "virtio"
+        if guest.conn.is_qemu() and guest.os.is_s390x():
             return "virtio"
         if guest.has_spice() and guest.os.is_x86():
             if guest.has_gl():
