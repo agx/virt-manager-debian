@@ -1,6 +1,7 @@
 usr/bin/virt-manager
 usr/share/man/man1/virt-manager.1
 usr/share/icons/
+usr/share/appdata/virt-manager.appdata.xml
 usr/share/applications
 usr/share/glib-2.0
 usr/share/locale
