@@ -2,7 +2,9 @@ Source: virt-manager
 Section: admin
 Priority: optional
 Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.debian.org>
-Uploaders: Guido Günther <agx@sigxcpu.org>, Laurent Léonard <laurent@open-minds.org>
+Uploaders:
+ Guido Günther <agx@sigxcpu.org>,
+ Laurent Léonard <laurent@open-minds.org>,
 Standards-Version: 4.1.1
 Vcs-Git: https://salsa.debian.org/libvirt-team/virt-manager.git
 Vcs-Browser: https://salsa.debian.org/libvirt-team/virt-manager
@@ -26,23 +28,30 @@ Build-Depends:
 
 Package: virt-manager
 Architecture: all
-Depends: ${misc:Depends}, ${python3:Depends},
+Depends:
+ gir1.2-gtk-3.0 (>= 3.10),
+ gir1.2-gtk-vnc-2.0,
+ gir1.2-libosinfo-1.0,
+ gir1.2-libvirt-glib-1.0,
+ gir1.2-vte-2.91,
+ librsvg2-common,
+ python3-dbus,
  python3-gi,
  python3-gi-cairo,
- python3-dbus,
- librsvg2-common,
  python3-libvirt (>= 0.7.1),
- gir1.2-libvirt-glib-1.0,
- gir1.2-gtk-vnc-2.0,
- gir1.2-gtk-3.0 (>= 3.10),
- gir1.2-vte-2.91,
- gir1.2-libosinfo-1.0,
  virtinst (>= ${binary:Version}),
-Recommends: libvirt-daemon-system (>= 1.2.7),
+ ${misc:Depends},
+ ${python3:Depends},
+Recommends:
  gir1.2-spiceclientglib-2.0,
  gir1.2-spiceclientgtk-3.0,
-Suggests: virt-viewer, ssh-askpass, gnome-keyring, gir1.2-secret-1,
- python3-guestfs
+ libvirt-daemon-system (>= 1.2.7),
+Suggests:
+ gir1.2-secret-1,
+ gnome-keyring,
+ python3-guestfs,
+ ssh-askpass,
+ virt-viewer,
 Description: desktop application for managing virtual machines
  It presents a summary view of running domains and their live performance &
  resource utilization statistics. A detailed view presents graphs showing
@@ -56,24 +65,26 @@ Description: desktop application for managing virtual machines
 Package: virtinst
 Architecture: all
 Depends:
- ${python3:Depends},
- ${shlibs:Depends},
- ${misc:Depends},
  e2fsprogs,
  genisoimage,
+ gir1.2-libosinfo-1.0,
  python3,
  python3-distutils,
- python3-libvirt (>= 0.4.6),
  python3-gi,
+ python3-libvirt (>= 0.4.6),
  python3-libxml2,
  python3-requests,
- gir1.2-libosinfo-1.0,
-Recommends: virt-viewer, qemu-utils
+ ${misc:Depends},
+ ${python3:Depends},
+ ${shlibs:Depends},
+Recommends:
+ qemu-utils,
+ virt-viewer,
 Description: Programs to create and clone virtual machines
  Virtinst is a set of commandline tools to create virtual machines using
  libvirt:
  .
- virt-install: provision new virtual machines 
+ virt-install: provision new virtual machines
  virt-clone: clone existing virtual machines
  virt-xml: edit libvirt XML using command line options.
  virt-convert: convert virtual machines between formats
