@@ -31,6 +31,7 @@ Architecture: all
 Depends:
  gir1.2-gtk-3.0 (>= 3.10),
  gir1.2-gtk-vnc-2.0,
+ gir1.2-gtksource-4,
  gir1.2-libosinfo-1.0,
  gir1.2-libvirt-glib-1.0,
  gir1.2-vte-2.91,
