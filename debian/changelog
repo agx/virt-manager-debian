@@ -1,3 +1,10 @@
+virt-manager (1:2.2.1-2) unstable; urgency=medium
+
+  * d/control: wrap and sort
+  * d/control: Depend on gir1.2-gtksource-4 (Closes: #941249)
+
+ -- Guido Günther <agx@sigxcpu.org>  Tue, 08 Oct 2019 12:02:30 +0200
+
 virt-manager (1:2.2.1-1) unstable; urgency=medium
 
   * Drop superfluous python-requests dependency (Closes: #921618)
