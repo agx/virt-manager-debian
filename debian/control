@@ -5,7 +5,7 @@ Maintainer: Debian Libvirt Maintainers <pkg-libvirt-maintainers@lists.alioth.deb
 Uploaders:
  Guido Günther <agx@sigxcpu.org>,
  Laurent Léonard <laurent@open-minds.org>,
-Standards-Version: 4.1.1
+Standards-Version: 4.4.0
 Vcs-Git: https://salsa.debian.org/libvirt-team/virt-manager.git
 Vcs-Browser: https://salsa.debian.org/libvirt-team/virt-manager
 Homepage: http://virt-manager.org/
