@@ -1,3 +1,10 @@
+virt-manager (1:2.2.1-3) unstable; urgency=medium
+
+  * Add salsa-ci
+  * Bump standards version
+
+ -- Guido Günther <agx@sigxcpu.org>  Sat, 30 Nov 2019 15:07:53 +0100
+
 virt-manager (1:2.2.1-2) unstable; urgency=medium
 
   * d/control: wrap and sort
