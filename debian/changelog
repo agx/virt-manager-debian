@@ -154,7 +154,7 @@ virt-manager (1:1.4.0-3) unstable; urgency=medium
 
 virt-manager (1:1.4.0-2) unstable; urgency=medium
 
-  * Upload to unstable 
+  * Upload to unstable
 
  -- Guido Günther <agx@sigxcpu.org>  Fri, 22 Jul 2016 10:27:06 +0200
 
@@ -525,14 +525,14 @@ virt-manager (0.8.4-8) unstable; urgency=low
 
   [ Laurent Léonard ]
   * [2254aba] Bump Standards-Version to 3.9.1
-  * [5c4e495] Update patch 
+  * [5c4e495] Update patch
         0003-Update-french-translation.patch.
     Fix origin URL, yse author, date and description from the upstream patch.
     Rename the file to match upstream patch description.
   * [be93227] New patch
          0007-Fix-livecd-customize-before-install-traceback.patch
     Closes: #591808
- 
+
  -- Guido Günther <agx@sigxcpu.org>  Thu, 30 Sep 2010 13:32:01 +0200
 
 virt-manager (0.8.5-1) experimental; urgency=low
@@ -542,17 +542,17 @@ virt-manager (0.8.5-1) experimental; urgency=low
   * [cc1f7ce] Drop patches fixed upstream:
         0002-console-Don-t-throw-traceback-if-we-can-t-read-error.patch
            http://hg.fedorahosted.org/hg/virt-manager/rev/c206b12a8c7a
-        0003-Update-french-translation.patch 
+        0003-Update-french-translation.patch
            http://hg.fedorahosted.org/hg/virt-manager/rev/1f78c4ea0692
-        0004-create-Skip-post-install-restart-if-user-destroys-VM.patch 
+        0004-create-Skip-post-install-restart-if-user-destroys-VM.patch
            http://hg.fedorahosted.org/hg/virt-manager/rev/d8c0607c68dc
         0005-Add-conn-info-to-virtinst.VirtualGraphics.patch
            http://hg.fedorahosted.org/hg/virt-manager/rev/99cf13a133f3
-        0006-Fix-error-launching-create-wizard-on-qemu-session.patch 
+        0006-Fix-error-launching-create-wizard-on-qemu-session.patch
            http://hg.fedorahosted.org/hg/virt-manager/rev/ea94314da7d5
   * [f6cc98d] Bump virtinst dependency version to 0.500.4
   * [32e247c] Bump Standards-Version to 3.9.1
-  * [4d8c427] New patch 
+  * [4d8c427] New patch
         0002-l10n-Updates-to-French-fr-translation.patch
   * [66ebeaf] New patch
         0003-l10n-Updates-to-French-fr-translation.patch
@@ -782,7 +782,7 @@ virt-manager (0.7.0-1) unstable; urgency=low
   * [7ec628a] Imported Upstream version 0.7.0
         - e0f0b017caa9: ctrl-alt-backspace fixed (Closes: #520762)
         - 6126a50801de: migration uris fixed (Closes: #520772)
-  * [4b493f6] drop patches applied upstream: 
+  * [4b493f6] drop patches applied upstream:
           0002-remove-disambiguity-in-storage-dialog.patch
           0003-hint-to-ssh-askpass.patch
           0004-make-fullscreen-mode-more-useful.patch
@@ -820,9 +820,9 @@ virt-manager (0.6.1-2) experimental; urgency=low
 virt-manager (0.6.1-1) experimental; urgency=low
 
   * [31465dc] allow non root users for ssh connections
-  * [e43ed8a] Imported Upstream version 0.6.1 (Closes: #513290), 
+  * [e43ed8a] Imported Upstream version 0.6.1 (Closes: #513290),
     has our non-root ssh patch (Closes: #505936)
-  * [12f2cc7] drop patches 
+  * [12f2cc7] drop patches
         * fixed upstream:
               0007-populate-hostinfo-earlier-in-tick-function-so-it-isn.patch
         * applied ustream:
@@ -953,7 +953,7 @@ virt-manager (0.5.2+hg071220-2) experimental; urgency=low
 virt-manager (0.5.2+hg071220-1) experimental; urgency=low
 
   * new upstream version
-  * run autogen.sh 
+  * run autogen.sh
 
  -- Guido Guenther <agx@sigxcpu.org>  Thu, 20 Dec 2007 19:32:56 +0100
 
@@ -1016,4 +1016,3 @@ virt-manager (0.4.0-0ubuntu0~ppa1) feisty; urgency=low
   * Initial release based on xenbr packages.
 
  -- Marcelo Boveto Shima <marceloshima@gmail.com>  Thu,  7 Jun 2007 01:08:24 -0300
-
