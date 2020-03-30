@@ -44,6 +44,7 @@ Depends:
  ${misc:Depends},
  ${python3:Depends},
 Recommends:
+ gir1.2-appindicator3-0.1,
  gir1.2-spiceclientglib-2.0,
  gir1.2-spiceclientgtk-3.0,
  libvirt-daemon-system (>= 1.2.7),
